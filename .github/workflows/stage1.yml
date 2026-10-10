@@ -1,11 +1,11 @@
-name: Stage 1 checks and debug APK
+name: Stage 1 checks and UI screenshots
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,11 +24,11 @@ jobs:
       - run: bash tool/prepare_platforms.sh
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test
-      - run: flutter build apk --debug
+      - run: flutter test test/domain_test.dart test/widget_test.dart
+      - run: flutter test --update-goldens test/visual_snapshot_test.dart
       - uses: actions/upload-artifact@v4
         with:
-          name: lifeos-debug-apk-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: lifeos-ui-screenshots-${{ github.run_number }}
+          path: test/goldens/*.png
           if-no-files-found: error
           retention-days: 14

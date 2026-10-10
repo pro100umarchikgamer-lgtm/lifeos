@@ -23,6 +23,7 @@ void main() {
     expect(rub.parse('1 234.50'), 123450);
     expect(rub.parse('0.10') + rub.parse('0.20'), 30);
     expect(rub.format(1), '0.01 RUB');
+    expect(rub.format(-1), '-0.01 RUB');
     expect(Currency.fromCode('JPY').parse('100'), 100);
     expect(Currency.fromCode('KWD').parse('0.001'), 1);
     expect(() => rub.parse('1.001'), throwsA(isA<DomainFailure>()));

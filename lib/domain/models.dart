@@ -34,9 +34,10 @@ class Currency {
   }
 
   String format(int minor, {String separator = '.'}) {
-    final text = minor.toString().padLeft(digits + 1, '0');
-    if (digits == 0) return '$text $code';
-    return '${text.substring(0, text.length - digits)}$separator${text.substring(text.length - digits)} $code';
+    final sign = minor < 0 ? '-' : '';
+    final text = minor.abs().toString().padLeft(digits + 1, '0');
+    if (digits == 0) return '$sign$text $code';
+    return '$sign${text.substring(0, text.length - digits)}$separator${text.substring(text.length - digits)} $code';
   }
 }
 
