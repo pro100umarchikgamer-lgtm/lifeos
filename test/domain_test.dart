@@ -26,7 +26,7 @@ void main() {
     expect(formatMoney(rub, 900719925474099301, locale: 'ru'), '9 007 199 254 740 993,01 ₽');
     expect(formatMoney(Currency.fromCode('USD'), 123450, locale: 'en'), r'$1,234.50');
     expect(formatMoney(Currency.fromCode('JPY'), 1234, locale: 'en'), '¥1,234');
-    expect(formatMoney(Currency.fromCode('KWD'), 1, locale: 'en'), 'KWD0.001');
+    expect(formatMoney(Currency.fromCode('KWD'), 1, locale: 'en'), 'din0.001');
   });
   test('money uses integer minor units, comma input, and explicit precision', () {
     final rub = Currency.fromCode('rub');
