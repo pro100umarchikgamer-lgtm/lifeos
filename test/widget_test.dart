@@ -26,9 +26,14 @@ class UIStore implements ActionStore {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late PackCatalog catalog;
+  setUpAll(() async {
+    catalog = await PackCatalog.load();
+  });
   testWidgets('expense requires only amount; saving failure retains input', (tester) async {
     final store = UIStore();
-    final controller = AppController(store, await PackCatalog.load(), 'ru');
+    final controller = AppController(store, catalog, 'ru');
     await controller.load();
     await tester.pumpWidget(LifeOSApp(controller: controller));
     await tester.tap(find.byKey(const Key('quick_expense')));
@@ -49,7 +54,7 @@ void main() {
     expect(find.byKey(const Key('amount')), findsNothing);
   });
   testWidgets('Russian navigation fits a phone and changes to a tablet rail', (tester) async {
-    final controller = AppController(UIStore(), await PackCatalog.load(), 'ru');
+    final controller = AppController(UIStore(), catalog, 'ru');
     await controller.load();
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
