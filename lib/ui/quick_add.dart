@@ -41,10 +41,12 @@ class _QuickAddState extends State<QuickAdd> {
       await widget.controller.engine.execute(action);
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
-      if (mounted) setState(() {
-        _saving = false;
-        _error = error is DomainFailure ? error.key : 'save_failed';
-      });
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = error is DomainFailure ? error.key : 'save_failed';
+        });
+      }
     }
   }
 
