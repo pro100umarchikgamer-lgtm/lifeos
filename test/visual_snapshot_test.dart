@@ -127,7 +127,7 @@ void main() {
   for (final mode in ['light', 'dark']) {
     for (final width in [320.0, 390.0]) {
       if (mode == 'light' && width == 390) continue; // Existing page_finances.
-      final name = 'finances_$mode_${width.toInt()}';
+      final name = 'finances_${mode}_${width.toInt()}';
       testWidgets(name, (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = Size(width, 844);
