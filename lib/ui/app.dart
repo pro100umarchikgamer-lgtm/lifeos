@@ -224,7 +224,7 @@ class _HomeShellState extends State<HomeShell> {
       Icon(icon, color: color, size: 19), const SizedBox(width: 6),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(c.pack.t(title), maxLines: 2, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-        Text(c.pack.t(detail), maxLines: 2, style: TextStyle(fontSize: 9, color: LifePalette.muted)),
+        Text(c.pack.t(detail), maxLines: 2, style: const TextStyle(fontSize: 9, color: LifePalette.muted)),
       ])),
     ]));
 
@@ -249,12 +249,11 @@ class _HomeShellState extends State<HomeShell> {
     }
     final currency = Currency.fromCode(selected);
     return LifeCard(child: Column(children: [
-      Row(children: [
+      Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
         PopupMenuButton<int>(tooltip: c.pack.t('period'), onSelected: (offset) => setState(() => _month = DateTime(DateTime.now().year, DateTime.now().month + offset)),
           itemBuilder: (context) => [for (var offset = -11; offset <= 0; offset++) PopupMenuItem(value: offset,
             child: Text(MaterialLocalizations.of(context).formatMonthYear(DateTime(DateTime.now().year, DateTime.now().month + offset))))],
           child: _chip(MaterialLocalizations.of(context).formatMonthYear(_month))),
-        const Spacer(),
         PopupMenuButton<String>(tooltip: c.pack.t('currency'), onSelected: (v) => setState(() => _summaryCurrency = v),
           itemBuilder: (context) => [for (final code in currencies.isEmpty ? [selected] : currencies) PopupMenuItem(value: code, child: Text(code))],
           child: _chip(selected)),
@@ -296,8 +295,8 @@ class _HomeShellState extends State<HomeShell> {
   ]));
 
   Widget _actionGrid({required bool detailed}) => LayoutBuilder(builder: (context, constraints) {
-    if (!detailed) return Row(children: [for (final kind in EntryKind.values) Expanded(child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3), child: _actionTile(kind, detailed: false)))]);
+    if (!detailed) { return Row(children: [for (final kind in EntryKind.values) Expanded(child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3), child: _actionTile(kind, detailed: false)))]); }
     return Column(children: [
       Row(children: [Expanded(child: _actionTile(EntryKind.expense, detailed: true)), const SizedBox(width: 8), Expanded(child: _actionTile(EntryKind.income, detailed: true))]),
       const SizedBox(height: 8),
@@ -369,8 +368,8 @@ class _HomeShellState extends State<HomeShell> {
 
   Widget _noteRow(Record note) => InkWell(onTap: () => _showNote(note),
     child: Padding(padding: const EdgeInsets.symmetric(vertical: 7), child: Row(children: [
-      CircleAvatar(radius: 17, backgroundColor: LifePalette.mint,
-        child: const Icon(Icons.description_outlined, color: LifePalette.green, size: 18)),
+      const CircleAvatar(radius: 17, backgroundColor: LifePalette.mint,
+        child: Icon(Icons.description_outlined, color: LifePalette.green, size: 18)),
       const SizedBox(width: 9),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(_firstLine(note.text), maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -451,11 +450,11 @@ class _HomeShellState extends State<HomeShell> {
 
   List<Widget> _modules() => [
     _pageTitle('modules'), const SizedBox(height: 14),
-    LifeCard(child: ListTile(contentPadding: EdgeInsets.zero,
+    LifeCard(child: Material(type: MaterialType.transparency, child: ListTile(contentPadding: EdgeInsets.zero,
       leading: const CircleAvatar(backgroundColor: LifePalette.cream,
         child: Icon(Icons.description_outlined, color: LifePalette.orange)),
       title: Text(c.pack.t('recent_notes')), subtitle: Text(c.pack.t('notes_module_hint')),
-      trailing: const Icon(Icons.chevron_right), onTap: () => _entriesPage(EntryKind.note))),
+      trailing: const Icon(Icons.chevron_right), onTap: () => _entriesPage(EntryKind.note)))),
   ];
 
   void _entriesPage(EntryKind kind) => setState(() {
@@ -483,7 +482,7 @@ class _HomeShellState extends State<HomeShell> {
           DropdownMenuItem(value: code, child: Text(code))],
         onChanged: (value) { if (value != null) _preference('currency', value); }),
       const SizedBox(height: 12),
-      DropdownButtonFormField<String>(key: ValueKey('theme_${c.theme}'), initialValue: c.theme,
+      DropdownButtonFormField<String>(key: ValueKey('theme_${c.theme}'), initialValue: c.theme, isExpanded: true,
         decoration: InputDecoration(labelText: c.pack.t('theme')),
         items: [for (final mode in ['system', 'light', 'dark']) DropdownMenuItem(value: mode, child: Text(c.pack.t(mode)))],
         onChanged: (value) { if (value != null) _preference('theme', value); }),
