@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -89,4 +90,15 @@ class WidgetsFallbackDelegate extends LocalizationsDelegate<WidgetsLocalizations
     GlobalWidgetsLocalizations.delegate.isSupported(locale) ? locale : const Locale('en'));
   @override
   bool shouldReload(WidgetsFallbackDelegate old) => false;
+}
+
+class CupertinoFallbackDelegate extends LocalizationsDelegate<CupertinoLocalizations> {
+  const CupertinoFallbackDelegate();
+  @override
+  bool isSupported(Locale locale) => true;
+  @override
+  Future<CupertinoLocalizations> load(Locale locale) => GlobalCupertinoLocalizations.delegate.load(
+    GlobalCupertinoLocalizations.delegate.isSupported(locale) ? locale : const Locale('en'));
+  @override
+  bool shouldReload(CupertinoFallbackDelegate old) => false;
 }

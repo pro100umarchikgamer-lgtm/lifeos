@@ -18,7 +18,7 @@ class LifeOSApp extends StatelessWidget {
       filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 52))));
     return MaterialApp(title: 'LifeOS', debugShowCheckedModeBanner: false,
       locale: pack.locale, supportedLocales: controller.catalog.packs.values.map((p) => p.locale).toList(),
-      localizationsDelegates: const [MaterialFallbackDelegate(), WidgetsFallbackDelegate()],
+      localizationsDelegates: const [MaterialFallbackDelegate(), WidgetsFallbackDelegate(), CupertinoFallbackDelegate()],
       theme: theme(Brightness.light), darkTheme: theme(Brightness.dark),
       themeMode: switch (controller.theme) {'light' => ThemeMode.light, 'dark' => ThemeMode.dark, _ => ThemeMode.system},
       home: HomeShell(controller: controller));
