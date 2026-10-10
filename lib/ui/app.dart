@@ -6,6 +6,7 @@ import '../domain/models.dart';
 import '../localization/language_pack.dart';
 import 'design.dart';
 import 'quick_add.dart';
+import 'money_format.dart';
 
 class LifeOSApp extends StatelessWidget {
   const LifeOSApp({super.key, required this.controller});
@@ -117,11 +118,8 @@ class _HomeShellState extends State<HomeShell> {
         Expanded(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: content))),
       ])),
       bottomNavigationBar: wide ? null : _bottomBar(),
-      floatingActionButtonLocation: wide ? FloatingActionButtonLocation.endFloat : FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: SizedBox(width: 58, height: 58,
-        child: FloatingActionButton(key: const Key('add_button'), onPressed: _chooseAdd,
-          backgroundColor: LifePalette.green, foregroundColor: Colors.white,
-          shape: const CircleBorder(), elevation: 4, child: const Icon(Icons.add, size: 32))),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: wide ? _addButton() : null,
     );
   }
 
@@ -140,14 +138,27 @@ class _HomeShellState extends State<HomeShell> {
         child: Icon(Icons.person_rounded, size: 23, color: Theme.of(context).colorScheme.primary))),
   ]);
 
+  Widget _addButton() => Container(
+    width: 58, height: 58,
+    decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
+      BoxShadow(color: LifePalette.darkGreen.withValues(alpha: .16),
+        blurRadius: 10, offset: const Offset(0, 3)),
+    ]),
+    child: FloatingActionButton(key: const Key('add_button'), onPressed: _chooseAdd,
+      backgroundColor: LifePalette.green, foregroundColor: Colors.white,
+      shape: const CircleBorder(side: BorderSide.none),
+      elevation: 0, focusElevation: 0, hoverElevation: 0, highlightElevation: 0,
+      child: const Icon(Icons.add, size: 32)),
+  );
+
   Widget _bottomBar() {
     final surface = Theme.of(context).colorScheme.surface;
     final inactive = Theme.of(context).colorScheme.onSurfaceVariant;
     return BottomAppBar(height: 76, padding: EdgeInsets.zero, color: surface,
-      notchMargin: 8, shape: const CircularNotchedRectangle(),
+
       child: Row(children: [
         for (var i = 0; i < 2; i++) Expanded(child: _navItem(i, inactive)),
-        const SizedBox(width: 64),
+        SizedBox(width: 64, child: Center(child: _addButton())),
         for (var i = 2; i < 4; i++) Expanded(child: _navItem(i, inactive)),
       ]));
   }
@@ -260,11 +271,11 @@ class _HomeShellState extends State<HomeShell> {
       ]),
       const SizedBox(height: 15),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(child: _metric('income', currency.format(income), c.pack.count('record_count', incomeCount), LifePalette.green)),
+        Expanded(child: _metric('income', formatMoney(currency, income, locale: c.pack.tag), c.pack.count('record_count', incomeCount), LifePalette.green)),
         Container(width: 1, height: 48, color: Theme.of(context).dividerColor),
-        Expanded(child: _metric('expense', currency.format(expense), c.pack.count('record_count', expenseCount), LifePalette.red)),
+        Expanded(child: _metric('expense', formatMoney(currency, expense, locale: c.pack.tag), c.pack.count('record_count', expenseCount), LifePalette.red)),
         Container(width: 1, height: 48, color: Theme.of(context).dividerColor),
-        Expanded(child: _metric('difference', currency.format(income - expense), '', income - expense >= 0 ? LifePalette.green : LifePalette.red)),
+        Expanded(child: _metric('difference', formatMoney(currency, income - expense, locale: c.pack.tag), '', income - expense >= 0 ? LifePalette.green : LifePalette.red)),
       ]),
       const SizedBox(height: 12),
       DailyBarChart(income: dailyIncome, expense: dailyExpense),
@@ -442,7 +453,7 @@ class _HomeShellState extends State<HomeShell> {
           Text(record.text.isEmpty ? c.pack.t(record.kind.name) : record.text, maxLines: 2, overflow: TextOverflow.ellipsis),
           Text(record.date ?? '', style: const TextStyle(color: LifePalette.muted, fontSize: 11)),
         ])),
-        Text(record.currency!.format(record.amountMinor!),
+        Text(formatMoney(record.currency!, record.amountMinor!, locale: c.pack.tag),
           style: TextStyle(color: _kindColors(record.kind).foreground, fontWeight: FontWeight.w700)),
       ]))),
     ];

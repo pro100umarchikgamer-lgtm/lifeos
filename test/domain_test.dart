@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos/domain/action_engine.dart';
 import 'package:lifeos/domain/models.dart';
+import 'package:lifeos/ui/money_format.dart';
 
 class CapturingStore implements ActionStore {
   final List<AppAction> actions = [];
@@ -17,6 +18,16 @@ class CapturingStore implements ActionStore {
 }
 
 void main() {
+  test('localized money preserves cents and exact large integer values', () {
+    final rub = Currency.fromCode('RUB');
+    expect(formatMoney(rub, 12250000, locale: 'ru'), '122 500 ₽');
+    expect(formatMoney(rub, -1, locale: 'ru'), '-0,01 ₽');
+    expect(formatMoney(rub, 123450, locale: 'ru'), '1 234,50 ₽');
+    expect(formatMoney(rub, 900719925474099301, locale: 'ru'), '9 007 199 254 740 993,01 ₽');
+    expect(formatMoney(Currency.fromCode('USD'), 123450, locale: 'en'), r'$1,234.50');
+    expect(formatMoney(Currency.fromCode('JPY'), 1234, locale: 'en'), '¥1,234');
+    expect(formatMoney(Currency.fromCode('KWD'), 1, locale: 'en'), 'KWD0.001');
+  });
   test('money uses integer minor units, comma input, and explicit precision', () {
     final rub = Currency.fromCode('rub');
     expect(rub.parse('0,01'), 1);

@@ -77,7 +77,7 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           if (populated) {
-            expect(find.text('122500.00 RUB'), findsOneWidget);
+            expect(find.text('122 500 ₽'), findsOneWidget);
           } else {
             expect(find.text(controller.pack.t('welcome_title')), findsOneWidget);
           }
@@ -123,6 +123,32 @@ void main() {
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/page_$page.png'));
       expect(tester.takeException(), isNull);
     });
+  }
+  for (final mode in ['light', 'dark']) {
+    for (final width in [320.0, 390.0]) {
+      if (mode == 'light' && width == 390) continue; // Existing page_finances.
+      final name = 'finances_$mode_${width.toInt()}';
+      testWidgets(name, (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = Size(width, 844);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        final controller = AppController(SnapshotStore(sampleRecords(), mode), catalog, 'ru');
+        await controller.load();
+        await tester.pumpWidget(LifeOSApp(controller: controller));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('nav_finances')));
+        await tester.pumpAndSettle();
+        expect(find.text('122 500 ₽'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        final button = tester.getRect(find.byKey(const Key('add_button')));
+        final bar = tester.getRect(find.byType(BottomAppBar));
+        expect(button.top, greaterThanOrEqualTo(bar.top));
+        expect(button.bottom, lessThanOrEqualTo(bar.bottom));
+        await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
   testWidgets('home_populated_light_tablet', (tester) async {
     tester.view.devicePixelRatio = 1;
