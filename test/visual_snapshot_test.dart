@@ -55,6 +55,9 @@ void main() {
     final bytes = await File('test/fonts/NotoSans-Regular.ttf').readAsBytes();
     final loader = FontLoader('Roboto')..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
     await loader.load();
+    final iconLoader = FontLoader('MaterialIcons')
+      ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await iconLoader.load();
     catalog = await PackCatalog.load();
   });
 
