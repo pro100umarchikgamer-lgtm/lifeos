@@ -57,7 +57,7 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  void _chooseAdd() => showModalBottomSheet<void>(context: context,
+  void _chooseAdd() { showModalBottomSheet<void>(context: context,
     backgroundColor: Theme.of(context).colorScheme.surface,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (sheetContext) => SafeArea(child: Padding(
@@ -71,7 +71,7 @@ class _HomeShellState extends State<HomeShell> {
           onTap: () { Navigator.pop(sheetContext); _add(kind); },
         ),
       ]),
-    )));
+    ))); }
 
   Future<void> _complete(Record record, bool value) async {
     if (c.pendingTasks.contains(record.id)) return;
@@ -386,7 +386,7 @@ class _HomeShellState extends State<HomeShell> {
 
   String _firstLine(String value) => value.split('\n').first;
 
-  void _showNote(Record note) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (detailContext) => Scaffold(
+  void _showNote(Record note) { Navigator.of(context).push(MaterialPageRoute<void>(builder: (detailContext) => Scaffold(
     appBar: AppBar(title: Text(c.pack.t('note')), backgroundColor: Theme.of(detailContext).scaffoldBackgroundColor),
     body: SafeArea(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560),
       child: ListView(padding: const EdgeInsets.all(18), children: [
@@ -396,7 +396,7 @@ class _HomeShellState extends State<HomeShell> {
           style: const TextStyle(color: LifePalette.muted)),
         const SizedBox(height: 18),
         LifeCard(child: SelectableText(note.text, style: Theme.of(detailContext).textTheme.bodyLarge?.copyWith(height: 1.5))),
-      ])))))));
+      ]))))))); }
 
   List<Widget> _entries(EntryKind kind) {
     final records = c.records.where((r) => r.kind == kind).toList();
