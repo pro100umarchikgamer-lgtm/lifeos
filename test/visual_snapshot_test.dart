@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos/app_controller.dart';
 import 'package:lifeos/domain/action_engine.dart';
@@ -46,7 +50,14 @@ List<Record> sampleRecords() {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late PackCatalog catalog;
-  setUpAll(() async { catalog = await PackCatalog.load(); });
+  setUpAll(() async {
+    // Flutter's test font lacks Cyrillic. Keep this font in test/ only and
+    // register it as Roboto, the family used by the Material test theme.
+    final bytes = await File('test/fonts/NotoSans-Regular.ttf').readAsBytes();
+    final loader = FontLoader('Roboto')..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
+    await loader.load();
+    catalog = await PackCatalog.load();
+  });
 
   for (final mode in ['light', 'dark']) {
     for (final populated in [true, false]) {
@@ -69,6 +80,7 @@ void main() {
             expect(find.text(controller.pack.t('welcome_title')), findsOneWidget);
           }
           await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
+          expect(tester.takeException(), isNull);
         });
       }
     }
@@ -104,6 +116,7 @@ void main() {
       }
       expect(tester.takeException(), isNull);
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/page_$page.png'));
+      expect(tester.takeException(), isNull);
     });
   }
   testWidgets('home_populated_light_tablet', (tester) async {
@@ -118,5 +131,6 @@ void main() {
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(tester.takeException(), isNull);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/home_populated_light_tablet.png'));
+    expect(tester.takeException(), isNull);
   });
 }
