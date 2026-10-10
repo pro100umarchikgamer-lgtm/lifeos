@@ -34,7 +34,7 @@ List<Record> sampleRecords() {
     createdAt: now, amountMinor: amount, currency: currency,
     date: dateOnly(DateTime(now.year, now.month, day)));
   return [
-    Record(id: 'n1', kind: EntryKind.note, text: 'Идеи на выходные\nИсследовать новый маршрут в парке, посмотреть выставку и собрать список мест.', createdAt: now),
+    Record(id: 'n1', kind: EntryKind.note, text: 'Идеи на выходные\nИсследовать новый маршрут в парке, посмотреть выставку и собрать список мест. Бюджет: 100 ₽.', createdAt: now),
     Record(id: 't1', kind: EntryKind.task, text: 'Разобрать почту', createdAt: now),
     Record(id: 't2', kind: EntryKind.task, text: 'Купить продукты', createdAt: now),
     Record(id: 't3', kind: EntryKind.task, text: 'Подготовить документы', createdAt: now),
@@ -112,6 +112,9 @@ void main() {
       if (page == 'quick_expense') {
         await tester.tap(find.byKey(const Key('quick_expense')));
         await tester.pumpAndSettle();
+      }
+      if (page == 'notes') {
+        expect(find.textContaining('100 ₽'), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/page_$page.png'));
