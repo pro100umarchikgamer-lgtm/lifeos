@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../app_controller.dart';
 import '../domain/models.dart';
+import 'design.dart';
 
 class QuickAdd extends StatefulWidget {
   const QuickAdd({super.key, required this.controller, required this.kind});
@@ -53,10 +54,24 @@ class _QuickAddState extends State<QuickAdd> {
   @override
   Widget build(BuildContext context) {
     final pack = widget.controller.pack;
+    final accent = switch (widget.kind) {
+      EntryKind.expense => LifePalette.red, EntryKind.income => LifePalette.green,
+      EntryKind.task => LifePalette.blue, EntryKind.note => LifePalette.orange,
+    };
+    final icon = switch (widget.kind) {
+      EntryKind.expense => Icons.remove_circle_rounded, EntryKind.income => Icons.add_circle_rounded,
+      EntryKind.task => Icons.check_box_rounded, EntryKind.note => Icons.notes_rounded,
+    };
     return PopScope(canPop: !_saving, child: Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(20, 10, 20, 22 + MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [Expanded(child: Text(pack.t(widget.kind.name), style: Theme.of(context).textTheme.headlineSmall)),
+        Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(
+          color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(8)))),
+        const SizedBox(height: 18),
+        Row(children: [CircleAvatar(backgroundColor: accent.withValues(alpha: .12),
+            child: Icon(icon, color: accent)), const SizedBox(width: 10),
+          Expanded(child: Text(pack.t('create_${widget.kind.name}'),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
           IconButton(tooltip: pack.t('cancel'), onPressed: _saving ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.close))]),
         const SizedBox(height: 20),
@@ -91,6 +106,7 @@ class _QuickAddState extends State<QuickAdd> {
           child: Text(pack.t(_error!), style: TextStyle(color: Theme.of(context).colorScheme.error), semanticsLabel: pack.t(_error!))),
         const SizedBox(height: 20),
         FilledButton(key: const Key('save'), onPressed: _saving ? null : _save,
+          style: FilledButton.styleFrom(backgroundColor: LifePalette.green, foregroundColor: Colors.white),
           child: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(pack.t('save'))),
       ])),
     ));

@@ -62,7 +62,9 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     await tester.pumpWidget(LifeOSApp(controller: controller));
     await tester.pumpAndSettle();
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byKey(const Key('nav_today')), findsOneWidget);
+    expect(find.byKey(const Key('nav_modules')), findsOneWidget);
+    expect(find.byKey(const Key('add_button')), findsOneWidget);
     expect(tester.takeException(), isNull);
     tester.view.physicalSize = const Size(1100, 900);
     await tester.pumpAndSettle();

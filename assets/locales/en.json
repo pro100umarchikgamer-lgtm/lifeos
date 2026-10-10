@@ -54,9 +54,49 @@
     "save_failed": "Could not confirm saving. Your input is still here. Check the device storage and try again.",
     "read_failed": "The record was saved, but the list could not be refreshed. Reopen the app; do not add it again.",
     "storage_key_missing": "The key to the existing database is missing. Data has not been replaced. Restore the matching backup or contact support.",
-    "storage_unavailable": "Could not open local storage. Data has not been replaced. Check device storage and try again."
+    "storage_unavailable": "Could not open local storage. Data has not been replaced. Check device storage and try again.",
+    "search": "Search records",
+    "search_hint": "Search your saved records",
+    "search_empty": "No matching records",
+    "good_morning": "Good morning!",
+    "good_afternoon": "Good afternoon!",
+    "good_evening": "Good evening!",
+    "welcome_title": "Welcome to LifeOS!",
+    "welcome_body": "Start with one record. Keep your income, expenses, tasks and notes together — without registration or extra setup.",
+    "add_first_record": "Add your first record",
+    "start_examples": "Examples to get started",
+    "your_space": "Your space",
+    "feature_finance": "Recorded finances",
+    "feature_finance_hint": "Based on your entries",
+    "feature_tasks": "Open tasks",
+    "feature_tasks_hint": "While you have tasks",
+    "feature_notes": "Recent notes",
+    "feature_notes_hint": "While you have notes",
+    "feature_private": "Stored locally",
+    "feature_private_hint": "On this device",
+    "quick_add": "Quick add",
+    "create_expense": "Record expense",
+    "create_income": "Add income",
+    "create_task": "Create task",
+    "create_note": "Add note",
+    "example_expense": "For example, groceries",
+    "example_income": "For example, salary",
+    "example_task": "For example, study",
+    "example_note": "For example, an idea",
+    "my_tasks": "My tasks",
+    "all_tasks": "All tasks",
+    "recent_notes": "Recent notes",
+    "all_notes": "All notes",
+    "difference": "Difference",
+    "period": "Period",
+    "notes_module_hint": "Your saved notes",
+    "open_tasks": "Open tasks",
+    "completed_tasks": "Completed"
   },
   "plurals": {
-    "record_count": {"one": "{count} record", "other": "{count} records"}
+    "record_count": {
+      "one": "{count} record",
+      "other": "{count} records"
+    }
   }
 }
