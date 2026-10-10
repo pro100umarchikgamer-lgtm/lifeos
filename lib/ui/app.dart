@@ -386,18 +386,34 @@ class _HomeShellState extends State<HomeShell> {
 
   String _firstLine(String value) => value.split('\n').first;
 
-  void _showNote(Record note) => showDialog<void>(context: context, builder: (context) => AlertDialog(
-    title: Text(_firstLine(note.text)), content: SingleChildScrollView(child: SelectableText(note.text)),
-    actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(c.pack.t('close')))]));
+  void _showNote(Record note) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (detailContext) => Scaffold(
+    appBar: AppBar(title: Text(c.pack.t('note')), backgroundColor: Theme.of(detailContext).scaffoldBackgroundColor),
+    body: SafeArea(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560),
+      child: ListView(padding: const EdgeInsets.all(18), children: [
+        Text(_firstLine(note.text), style: Theme.of(detailContext).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 5),
+        Text(MaterialLocalizations.of(detailContext).formatMediumDate(note.createdAt.toLocal()),
+          style: const TextStyle(color: LifePalette.muted)),
+        const SizedBox(height: 18),
+        LifeCard(child: SelectableText(note.text, style: Theme.of(detailContext).textTheme.bodyLarge?.copyWith(height: 1.5))),
+      ])))))));
 
   List<Widget> _entries(EntryKind kind) {
     final records = c.records.where((r) => r.kind == kind).toList();
+    final open = records.where((r) => !r.completed).toList();
+    final completed = records.where((r) => r.completed).toList();
     return [
       _pageTitle(kind == EntryKind.task ? 'my_tasks' : 'recent_notes'),
       const SizedBox(height: 14),
       if (records.isEmpty) LifeCard(child: _cardEmpty(kind == EntryKind.task ? 'empty_tasks' : 'empty_notes', kind)),
-      if (records.isNotEmpty) LifeCard(child: Column(children: [for (final record in records)
-        kind == EntryKind.task ? _taskRow(record) : _noteRow(record)])),
+      if (kind == EntryKind.task && open.isNotEmpty) LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+        children: [_sectionTitle('open_tasks'), const SizedBox(height: 7), for (final record in open) _taskRow(record)])),
+      if (kind == EntryKind.task && completed.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          children: [_sectionTitle('completed_tasks'), const SizedBox(height: 7), for (final record in completed) _taskRow(record)])),
+      ],
+      if (kind == EntryKind.note && records.isNotEmpty) LifeCard(child: Column(children: [for (final record in records) _noteRow(record)])),
       const SizedBox(height: 14),
       FilledButton.icon(onPressed: () => _add(kind), icon: const Icon(Icons.add), label: Text(c.pack.t('create_${kind.name}'))),
     ];
@@ -410,7 +426,11 @@ class _HomeShellState extends State<HomeShell> {
       const SizedBox(height: 14),
       _financeSummary(),
       const SizedBox(height: 12),
-      _quickActions(),
+      LifeCard(child: Row(children: [
+        Expanded(child: _actionTile(EntryKind.expense, detailed: true)),
+        const SizedBox(width: 8),
+        Expanded(child: _actionTile(EntryKind.income, detailed: true)),
+      ])),
       const SizedBox(height: 12),
       Text(c.pack.t('no_account_hint'), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: LifePalette.muted)),
       const SizedBox(height: 12),
@@ -513,9 +533,10 @@ class _RecordSearch extends SearchDelegate<void> {
       for (final record in records) ListTile(
         title: Text(record.text.isEmpty ? controller.pack.t(record.kind.name) : record.text, maxLines: 2),
         subtitle: Text(controller.pack.t(record.kind.name)),
-        onTap: record.kind == EntryKind.note ? () => showDialog<void>(context: context,
-          builder: (context) => AlertDialog(content: SelectableText(record.text),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(controller.pack.t('close')))])) : null,
+        onTap: record.kind == EntryKind.note ? () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (detailContext) => Scaffold(
+          appBar: AppBar(title: Text(controller.pack.t('note'))),
+          body: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: LifeCard(
+            child: SelectableText(record.text, style: Theme.of(detailContext).textTheme.bodyLarge))))))) : null,
       ),
     ]);
   }

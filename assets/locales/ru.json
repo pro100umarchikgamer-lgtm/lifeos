@@ -89,7 +89,9 @@
     "all_notes": "Все заметки",
     "difference": "Разница",
     "period": "Период",
-    "notes_module_hint": "Ваши сохранённые заметки"
+    "notes_module_hint": "Ваши сохранённые заметки",
+    "open_tasks": "Открытые задачи",
+    "completed_tasks": "Выполненные"
   },
   "plurals": {
     "record_count": {

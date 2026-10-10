@@ -89,7 +89,9 @@
     "all_notes": "All notes",
     "difference": "Difference",
     "period": "Period",
-    "notes_module_hint": "Your saved notes"
+    "notes_module_hint": "Your saved notes",
+    "open_tasks": "Open tasks",
+    "completed_tasks": "Completed"
   },
   "plurals": {
     "record_count": {

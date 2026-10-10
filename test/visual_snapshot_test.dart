@@ -106,4 +106,17 @@ void main() {
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/page_$page.png'));
     });
   }
+  testWidgets('home_populated_light_tablet', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 900);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final controller = AppController(SnapshotStore(sampleRecords(), 'light'), catalog, 'ru');
+    await controller.load();
+    await tester.pumpWidget(LifeOSApp(controller: controller));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/home_populated_light_tablet.png'));
+  });
 }
