@@ -224,7 +224,7 @@ class _HomeShellState extends State<HomeShell> {
       Icon(icon, color: color, size: 19), const SizedBox(width: 6),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(c.pack.t(title), maxLines: 2, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-        Text(c.pack.t(detail), maxLines: 2, style: TextStyle(fontSize: 9, color: LifePalette.muted)),
+        Text(c.pack.t(detail), maxLines: 2, style: const TextStyle(fontSize: 9, color: LifePalette.muted)),
       ])),
     ]));
 
@@ -296,8 +296,8 @@ class _HomeShellState extends State<HomeShell> {
   ]));
 
   Widget _actionGrid({required bool detailed}) => LayoutBuilder(builder: (context, constraints) {
-    if (!detailed) return Row(children: [for (final kind in EntryKind.values) Expanded(child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3), child: _actionTile(kind, detailed: false)))]);
+    if (!detailed) { return Row(children: [for (final kind in EntryKind.values) Expanded(child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3), child: _actionTile(kind, detailed: false)))]); }
     return Column(children: [
       Row(children: [Expanded(child: _actionTile(EntryKind.expense, detailed: true)), const SizedBox(width: 8), Expanded(child: _actionTile(EntryKind.income, detailed: true))]),
       const SizedBox(height: 8),
@@ -369,8 +369,8 @@ class _HomeShellState extends State<HomeShell> {
 
   Widget _noteRow(Record note) => InkWell(onTap: () => _showNote(note),
     child: Padding(padding: const EdgeInsets.symmetric(vertical: 7), child: Row(children: [
-      CircleAvatar(radius: 17, backgroundColor: LifePalette.mint,
-        child: const Icon(Icons.description_outlined, color: LifePalette.green, size: 18)),
+      const CircleAvatar(radius: 17, backgroundColor: LifePalette.mint,
+        child: Icon(Icons.description_outlined, color: LifePalette.green, size: 18)),
       const SizedBox(width: 9),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(_firstLine(note.text), maxLines: 1, overflow: TextOverflow.ellipsis,
