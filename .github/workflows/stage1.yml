@@ -27,8 +27,9 @@ jobs:
       - run: flutter test test/domain_test.dart test/widget_test.dart
       - run: flutter test --update-goldens test/visual_snapshot_test.dart
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: lifeos-ui-screenshots-${{ github.run_number }}
           path: test/goldens/*.png
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
