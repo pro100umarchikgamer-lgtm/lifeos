@@ -1,9 +1,9 @@
 # LifeOS — Offline Core Expansion: Implementation Brief
 
-**Prepared:** 2026-10-11  
-**Repository:** `pro100umarchikgamer-lgtm/lifeos` · `main`  
-**Last verified remote HEAD:** `23e537d7256b` (GitHub Actions #39 successful). Always recheck HEAD before editing.  
-**Status:** Approved product direction; implementation NOT yet started for this expansion.  
+**Prepared:** 2026-10-11
+**Repository:** `pro100umarchikgamer-lgtm/lifeos` · `main`
+**Last verified remote HEAD:** `23e537d7256b` (GitHub Actions #39 successful). Always recheck HEAD before editing.
+**Status:** Approved product direction; implementation NOT yet started for this expansion.
 **Execution language:** Code/comments as appropriate; progress and final reports **in Russian**.
 
 ## 1. Product objective
