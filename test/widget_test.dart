@@ -66,7 +66,8 @@ void main() {
     ScheduleSpec? value = const ScheduleSpec(localStart:'2026-10-11T10:30:00',timezone:'UTC',repeat:RepeatRule.weekly,reminder:true);
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: StatefulBuilder(builder: (context, update) =>
       SingleChildScrollView(child: ScheduleEditor(controller: c, value: value, onChanged: (v) => update(() => value = v)))))));
-    await tester.tap(find.text(c.pack.t('tomorrow'))); await tester.pumpAndSettle();
+    expect(find.text('Завтра'), findsOneWidget);
+    await tester.tap(find.text('Завтра')); await tester.pumpAndSettle();
     expect(value!.repeat, RepeatRule.weekly); expect(value!.reminder, isTrue);
     final next = DateTime(c.now.year,c.now.month,c.now.day+1);
     expect(value!.localStart, '${dateOnly(next)}T10:30:00');
