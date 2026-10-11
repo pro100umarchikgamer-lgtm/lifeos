@@ -21,7 +21,12 @@ class PersonalModulesPage extends StatefulWidget {
 }
 class _PersonalModulesPageState extends State<PersonalModulesPage> {
   AppController get c=>widget.controller;String query='';bool busy=false;int shown=50;
-  String title(Map<String,Object?> row)=>row['name'] as String? ?? (widget.table==OfflineTable.memberships?(c.offline[OfflineTable.profiles]??[]).where((p)=>p['id']==row['profile_id']).firstOrNull?['name'] as String? : null) ?? row['label'] as String? ?? row['local_date'] as String? ?? row['tags'] as String? ?? c.pack.t('module_${widget.table.name}');
+  String title(Map<String,Object?> row) {
+    final profileName = widget.table == OfflineTable.memberships
+        ? ((c.offline[OfflineTable.profiles] ?? []).where((p) => p['id'] == row['profile_id']).firstOrNull?['name'] as String?)
+        : null;
+    return row['name'] as String? ?? profileName ?? row['label'] as String? ?? row['local_date'] as String? ?? row['tags'] as String? ?? c.pack.t('module_${widget.table.name}');
+  }
   Future<void> edit([Map<String,Object?>? row]) async {
     await showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,isDismissible:false,enableDrag:false,
       builder:(_)=>PersonalModuleEditor(controller:c,table:widget.table,row:row,parentId:widget.parentId,noteId:widget.noteId));
