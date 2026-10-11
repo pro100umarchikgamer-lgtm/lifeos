@@ -79,8 +79,10 @@ void main() {
       if (screen == 'appearance') Navigator.push<void>(context, MaterialPageRoute(builder: (_) => AppearanceEditor(controller:c)));
       if (screen == 'note_editor') showEntryEditor(context,c,EntryKind.note,record:sampleRecords().first);
       if (screen == 'task_entry') showEntryEditor(context,c,EntryKind.task);
-      if (screen == 'event_entry') showModalBottomSheet<void>(context: context,isScrollControlled:true,useSafeArea:true,
-        builder: (_) => EventEditor(controller:c,date:c.now));
+      if (screen == 'event_entry') {
+        showModalBottomSheet<void>(context: context,isScrollControlled:true,useSafeArea:true,
+          builder: (_) => EventEditor(controller:c,date:c.now));
+      }
       await tester.pumpAndSettle(); expect(tester.takeException(),isNull);
       await expectLater(find.byType(MaterialApp),matchesGoldenFile('goldens/premium_$screen.png'));
       expect(tester.takeException(),isNull);
