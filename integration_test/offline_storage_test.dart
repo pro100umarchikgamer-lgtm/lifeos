@@ -1,4 +1,9 @@
+import 'package:timezone/data/latest.dart' as timezone;
 import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart' as sql;
+import 'package:lifeos/platform/native_bridge.dart';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +15,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 void main() {
+  timezone.initializeTimeZones();
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('encrypted offline records survive reopen, retry cannot duplicate, lost key fails closed', (tester) async {
     final name = 'test_${DateTime.now().microsecondsSinceEpoch}';
@@ -42,7 +48,33 @@ void main() {
       expect(records.length, 3);
       expect(records.singleWhere((r) => r.id == id).amountMinor, 1250);
       final task = records.singleWhere((r) => r.kind == EntryKind.task);
-      await ActionEngine(store).execute(CompleteTask('done-op', task.id, true));
+      final edit = EditMoney('edit-op', id, EntryKind.expense, 1, amount: '20.01',
+        currencyCode: 'RUB', date: DateTime(2026, 10, 11), label: 'Corrected');
+      await ActionEngine(store).execute(edit);
+      await ActionEngine(store).execute(edit);
+      expect((await store.records()).singleWhere((r) => r.id == id).revision, 2);
+      await expectLater(ActionEngine(store).execute(EditMoney('stale-op', id, EntryKind.expense, 1,
+        amount: '99', currencyCode: 'RUB', date: DateTime(2026, 10, 11))), throwsA(isA<DomainFailure>()));
+      await ActionEngine(store).execute(DeleteRecord('delete-op', id, EntryKind.expense, 2));
+      expect((await store.records()).where((r) => r.id == id), isEmpty);
+      await ActionEngine(store).execute(UndoRecordChange('undo-op', id, EntryKind.expense, 3));
+      expect((await store.records()).singleWhere((r) => r.id == id).amountMinor, 2001);
+      final currentEngine = ActionEngine(store);
+      final note = (await store.records()).singleWhere((r) => r.kind == EntryKind.note);
+      await currentEngine.execute(EditNote('note-edit',note.id,1,'secret_edited_note'));
+      await currentEngine.execute(DeleteRecord('note-delete',note.id,EntryKind.note,2));
+      await currentEngine.execute(UndoRecordChange('note-undo',note.id,EntryKind.note,3));
+      expect((await store.records()).singleWhere((r) => r.id==note.id).text,'secret_edited_note');
+      await currentEngine.execute(EditTask('task-edit',task.id,1,'Edited task'));
+      await currentEngine.execute(DeleteRecord('task-delete',task.id,EntryKind.task,2));
+      await currentEngine.execute(UndoRecordChange('task-undo',task.id,EntryKind.task,3));
+      await currentEngine.execute(CompleteTask('done-op',task.id,true,expectedRevision:4));
+      final income = await currentEngine.execute(CreateMoney('income-create',kind:EntryKind.income,amount:'30',currencyCode:'RUB',date:DateTime(2026,10,11)));
+      await currentEngine.execute(EditMoney('income-edit',income,EntryKind.income,1,amount:'40.02',currencyCode:'RUB',date:DateTime(2026,10,12)));
+      await expectLater(currentEngine.execute(DeleteRecord('wrong-kind',income,EntryKind.expense,2)),throwsA(isA<DomainFailure>()));
+      await currentEngine.execute(DeleteRecord('income-delete',income,EntryKind.income,2));
+      await currentEngine.execute(UndoRecordChange('income-undo',income,EntryKind.income,3));
+      expect((await store.records()).singleWhere((r) => r.id==income).amountMinor,4002);
       await store.close();
       store = null;
       final key = await secure.read(key: keyName);
@@ -61,4 +93,86 @@ void main() {
       await secure.delete(key: keyName);
     }
   });
+  testWidgets('real encrypted v1 database upgrades atomically and restore keeps IDs and rejects corrupt data', (tester) async {
+    final name = 'test_upgrade_${DateTime.now().microsecondsSinceEpoch}';
+    final directory = await getApplicationSupportDirectory();
+    final file = File(path.join(directory.path, '$name.db'));
+    const secure = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device));
+    final keyName = '$name.database.key.v1';
+    final password = base64UrlEncode(List<int>.generate(32,(i) => i)); // Disposable fixture key, never used by production.
+    LocalStore? store;
+    sql.Database? legacy;
+    try {
+      await secure.write(key:keyName,value:password);
+      legacy = await sql.openDatabase(file.path,password:password,version:1,
+        onConfigure:(db) async { await db.execute('PRAGMA foreign_keys=ON'); },
+        onCreate:(db,version) async {
+          for (final statement in (await rootBundle.loadString('assets/migrations/001.sql')).split(';')) {
+            if (statement.trim().isNotEmpty) await db.execute(statement);
+          }
+        });
+      final now = DateTime(2026,10,11).toUtc().toIso8601String();
+      await legacy.transaction((tx) async {
+        await tx.insert('local_identity',{'id':'old-owner','workspace_id':'old-space','created_at':now});
+        await tx.insert('workspaces',{'id':'old-space','owner_id':'old-owner','kind':'personal','created_at':now});
+        await tx.insert('transactions',{'id':'old-money','owner_id':'old-owner','workspace_id':'old-space','kind':'income',
+          'amount_minor':10001,'currency':'RUB','minor_digits':2,'occurred_on':'2026-10-11','created_at':now,'updated_at':now});
+        await tx.insert('tasks',{'id':'old-task','owner_id':'old-owner','workspace_id':'old-space','title':'Старая задача','created_at':now,'updated_at':now});
+        await tx.insert('notes',{'id':'old-note','owner_id':'old-owner','workspace_id':'old-space','body':'Старая заметка','created_at':now,'updated_at':now});
+        await tx.insert('operations',{'id':'old-op','payload':'legacy','result_id':'old-money','created_at':now});
+      });
+      await legacy.close(); legacy = null;
+      store = await LocalStore.open(name:name);
+      expect((await store.records()).map((r) => r.id).toSet(),{'old-money','old-task','old-note'});
+      expect((await store.records()).singleWhere((r) => r.id=='old-money').amountMinor,10001);
+      final engine = ActionEngine(store);
+      const schedule = ScheduleSpec(localStart:'2026-10-11T09:00:00',timezone:'UTC',repeat:RepeatRule.daily,reminder:true);
+      await engine.execute(const EditTask('schedule-edit','old-task',1,'Задача со сроком',schedule:schedule,updateSchedule:true,expectedScheduleRevision:0));
+      final linked = (await store.calendarEntries()).single;
+      expect(linked.taskId,'old-task');
+      await expectLater(engine.execute(const EditTask('stale-schedule','old-task',2,'Must not change',schedule:schedule,updateSchedule:true,expectedScheduleRevision:0)),throwsA(isA<DomainFailure>()));
+      expect((await store.records()).singleWhere((r) => r.id=='old-task').revision,2);
+      final epoch = DateTime.utc(2026,10,11,9).millisecondsSinceEpoch;
+      await engine.execute(SetOccurrence('occurrence-done',linked.id,epoch,OccurrenceStatus.completed,expectedRevision:linked.revision));
+      await engine.execute(const EditTask('replace-schedule','old-task',2,'Changed series',schedule:ScheduleSpec(localStart:'2026-10-12T10:00:00',timezone:'UTC',repeat:RepeatRule.weekly),updateSchedule:true,expectedScheduleRevision:1));
+      expect(await store.occurrenceStates(),isEmpty);
+      await engine.execute(const UndoRecordChange('undo-series','old-task',EntryKind.task,3));
+      expect((await store.occurrenceStates()).single.status,OccurrenceStatus.completed);
+      await engine.execute(const DeleteRecord('delete-linked','old-task',EntryKind.task,4));
+      expect(await store.calendarEntries(),isEmpty);
+      await engine.execute(const UndoRecordChange('undo-linked','old-task',EntryKind.task,5));
+      expect((await store.calendarEntries()).single.id,linked.id);
+      final snapshot = await store.exportSnapshot();
+      await store.restoreSnapshot(snapshot);
+      expect((await store.records()).singleWhere((r) => r.id=='old-task').revision,6);
+      final invalid = jsonDecode(jsonEncode(snapshot)) as Map<String,dynamic>;
+      final tables = invalid['tables'] as Map<String,dynamic>;
+      (tables['transactions'] as List).first['amount_minor'] = -1;
+      await expectLater(store.restoreSnapshot(Map<String,Object?>.from(invalid)),throwsA(anyOf(isA<DomainFailure>(),isA<sql.DatabaseException>())));
+      expect((await store.records()).singleWhere((r) => r.id=='old-money').amountMinor,10001);
+      await store.close(); store = null;
+      store = await LocalStore.open(name:name);
+      expect((await store.calendarEntries()).single.taskId,'old-task');
+      expect((await store.records()).length,3);
+    } finally {
+      await legacy?.close(); await store?.close();
+      for (final suffix in ['', '-wal','-shm','-journal']) { final f=File('${file.path}$suffix'); if(await f.exists()) await f.delete(); }
+      await secure.delete(key:keyName);
+    }
+  });
+  testWidgets('Android bridge installs and cancels native schedules on the disposable CI emulator', (tester) async {
+    final bridge = NativeBridge();
+    final diagnostics = await bridge.diagnostics();
+    expect(diagnostics['supported'],true); expect(diagnostics['zone'],isA<String>());
+    final at = DateTime.now().add(const Duration(hours:1));
+    try {
+      await bridge.reconcile([{'id':'integration-only','revision':1,'nextAt':at.millisecondsSinceEpoch,
+        'schedule':ScheduleSpec(localStart:'${dateOnly(at)}T${at.hour.toString().padLeft(2,'0')}:${at.minute.toString().padLeft(2,'0')}:00',timezone:'device',reminder:true).toJson(),
+        'title':'LifeOS test','message':'Test','doneLabel':'Done','dismissLabel':'Dismiss','snoozeLabel':'Snooze','snoozeMinutes':10,'snoozes':<Object?>[]}]);
+      expect((await bridge.diagnostics())['entriesCount'],1);
+    } finally { await bridge.reconcile([]); }
+    expect((await bridge.diagnostics())['entriesCount'],0);
+  });
+
 }

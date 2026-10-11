@@ -1,3 +1,4 @@
+import 'package:timezone/data/latest.dart' as timezone;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -47,6 +48,7 @@ List<Record> sampleRecords() {
 }
 
 void main() {
+  timezone.initializeTimeZones();
   TestWidgetsFlutterBinding.ensureInitialized();
   late PackCatalog catalog;
   setUpAll(() async {

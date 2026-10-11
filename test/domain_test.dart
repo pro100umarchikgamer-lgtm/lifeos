@@ -18,9 +18,25 @@ class CapturingStore implements ActionStore {
 }
 
 void main() {
+  test('typed mutations validate before storage and preserve targets', () async {
+    final store = CapturingStore();
+    final engine = ActionEngine(store);
+    await engine.execute(EditMoney('edit', 'original', EntryKind.expense, 3,
+      amount: '1,25', currencyCode: 'RUB', date: DateTime(2026, 10, 11)));
+    await engine.execute(const EditTask('task-edit', 'task', 2, 'New title'));
+    await engine.execute(const EditNote('note-edit', 'note', 1, 'New body'));
+    await engine.execute(const DeleteRecord('delete', 'original', EntryKind.expense, 4));
+    await engine.execute(const UndoRecordChange('undo', 'original', EntryKind.expense, 5));
+    expect(store.actions.length, 5);
+    expect(store.actions.first.payload['id'], 'original');
+    expect(() => engine.execute(const EditTask('invalid', 'task', 0, 'Title')), throwsA(isA<DomainFailure>()));
+    expect(() => engine.execute(const EditNote('empty', 'note', 2, ' ')), throwsA(isA<DomainFailure>()));
+    expect(store.actions.length, 5);
+  });
   test('localized money preserves cents and exact large integer values', () {
     final rub = Currency.fromCode('RUB');
     expect(formatMoney(rub, 12250000, locale: 'ru'), '122 500 ₽');
+    expect(formatMoney(rub, BigInt.parse('9999999999999990000'), locale: 'ru'), '99 999 999 999 999 900 ₽');
     expect(formatMoney(rub, -1, locale: 'ru'), '-0,01 ₽');
     expect(formatMoney(rub, 123450, locale: 'ru'), '1 234,50 ₽');
     expect(formatMoney(rub, 900719925474099301, locale: 'ru'), '9 007 199 254 740 993,01 ₽');

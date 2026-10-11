@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:timezone/data/latest.dart' as timezone;
 
 import 'app_controller.dart';
 import 'data/local_store.dart';
@@ -8,6 +9,7 @@ import 'ui/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  timezone.initializeTimeZones();
   final catalog = await PackCatalog.load();
   await launch(catalog);
 }

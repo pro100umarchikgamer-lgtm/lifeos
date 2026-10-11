@@ -115,11 +115,11 @@ class _LandscapePainter extends CustomPainter {
 
 class DailyBarChart extends StatelessWidget {
   const DailyBarChart({super.key, required this.income, required this.expense});
-  final List<int> income;
-  final List<int> expense;
+  final List<BigInt> income;
+  final List<BigInt> expense;
   @override
   Widget build(BuildContext context) {
-    final maxValue = math.max(1, [...income, ...expense].fold<int>(0, math.max));
+    final maxValue = [...income, ...expense].fold<BigInt>(BigInt.one, (a,b) => a > b ? a : b);
     final dark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(height: 72, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
       for (var i = 0; i < income.length; i++) Expanded(child: Padding(
@@ -132,6 +132,6 @@ class DailyBarChart extends StatelessWidget {
       )),
     ]));
   }
-  Widget _bar(int value, int maxValue, Color color) => value == 0 ? const SizedBox.shrink() :
-    Container(height: math.max(2, value / maxValue * 64), decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(3))));
+  Widget _bar(BigInt value, BigInt maxValue, Color color) => value == BigInt.zero ? const SizedBox.shrink() :
+    Container(height: math.max(2, value.toDouble() / maxValue.toDouble() * 64), decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(3))));
 }
