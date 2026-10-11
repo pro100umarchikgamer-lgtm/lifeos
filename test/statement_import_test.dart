@@ -47,7 +47,7 @@ void main(){
   });
   test('legacy binary XLS and PDF are explicitly unsupported',(){
     for(final type in ['xls','pdf']) {
-      expect(()=>StatementTable.text(Uint8List.fromList([0xd0,0xcf,0x11,0xe0]),type),throwsA(isA<DomainFailure>().having((e)=>e.code,'code','import_format')));
+      expect(()=>StatementTable.text(Uint8List.fromList([0xd0,0xcf,0x11,0xe0]),type),throwsA(isA<DomainFailure>().having((e)=>e.key,'code','import_format')));
     }
   });
 
