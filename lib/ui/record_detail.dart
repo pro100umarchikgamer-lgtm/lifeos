@@ -17,8 +17,7 @@ class _RecordDetailState extends State<RecordDetail> {
   bool busy = false;
   AppController get c => widget.controller;
   Future<void> edit(Record record) async {
-    final changed = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true,
-      isDismissible: false, enableDrag: false, builder: (_) => QuickAdd(controller: c, kind: record.kind, record: record));
+    final changed = await showEntryEditor(context, c, record.kind, record: record);
     if (changed == true) { await c.refresh(); }
   }
   Future<void> remove(Record record) async {

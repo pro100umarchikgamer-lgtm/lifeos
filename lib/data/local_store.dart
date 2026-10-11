@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../domain/appearance.dart';
 import 'dart:io';
 import 'dart:math';
 
@@ -391,6 +392,9 @@ class LocalStore implements PersonalStore {
               'theme':['system','light','dark'], 'week_start':['1','7'], 'snooze_minutes':['5','10','15','30'],
               'notification_content':['hide','show'], 'region':['ru','en','de','fr','es','it','pt','kk','uz','uk','ka','az','hy','tg','ky']};
             if (choices.containsKey(key) && !choices[key]!.contains(value)) throw const DomainFailure('backup_invalid');
+            if (key == 'appearance_v1') {
+              try { Appearance.decode(value as String); } catch (_) { throw const DomainFailure('backup_invalid'); }
+            }
             if (key == 'currency') Currency.fromCode(value as String);
             if (key == 'language' && !RegExp(r'^[a-z]{2,3}(?:-[A-Za-z]{2,8})*$').hasMatch(value as String)) throw const DomainFailure('backup_invalid');
             if (key == 'timezone') CalendarEngine.validate(ScheduleSpec(localStart:'2026-01-01T09:00:00',timezone:value as String));

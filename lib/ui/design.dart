@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../domain/appearance.dart';
 
 class LifePalette {
   static const green = Color(0xff08745a);
@@ -18,32 +19,47 @@ class LifePalette {
   static const darkSurface = Color(0xff1c2a2d);
 }
 
-ThemeData lifeTheme(Brightness brightness) {
+class LifeSurfaces extends ThemeExtension<LifeSurfaces> {
+  const LifeSurfaces(this.radius, this.treatment);
+  final double radius;
+  final String treatment;
+  @override
+  LifeSurfaces copyWith({double? radius, String? treatment}) => LifeSurfaces(radius ?? this.radius, treatment ?? this.treatment);
+  @override
+  LifeSurfaces lerp(covariant LifeSurfaces? other, double t) => other == null ? this :
+    LifeSurfaces(radius + (other.radius - radius) * t, t < .5 ? treatment : other.treatment);
+}
+
+ThemeData lifeTheme(Brightness brightness, {Appearance appearance = const Appearance(), Color? wallpaperSeed}) {
   final dark = brightness == Brightness.dark;
-  final scheme = ColorScheme.fromSeed(
-    seedColor: LifePalette.green,
-    brightness: brightness,
-    primary: dark ? const Color(0xff69d0ae) : LifePalette.green,
-    surface: dark ? LifePalette.darkSurface : Colors.white,
-  );
+  final seed = appearance.dynamic && wallpaperSeed != null ? wallpaperSeed : switch (appearance.palette) {
+    'pistachio' => const Color(0xff60764e), 'sky' => const Color(0xff346b91),
+    'sand' => const Color(0xff846746), _ => LifePalette.green,
+  };
+  final classic = appearance.palette == 'emerald' && !(appearance.dynamic && wallpaperSeed != null);
+  final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: brightness,
+    primary: classic ? dark ? const Color(0xff69d0ae) : LifePalette.green : null,
+    surface: dark ? LifePalette.darkSurface : Colors.white);
+  final radius = switch (appearance.shape) {'subtle' => 12.0, 'rounded' => 28.0, _ => 20.0};
+  final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
   return ThemeData(
-    useMaterial3: true,
-    brightness: brightness,
-    colorScheme: scheme,
-    scaffoldBackgroundColor: dark ? LifePalette.darkBackground : LifePalette.background,
-    textTheme: ThemeData(brightness: brightness).textTheme.apply(
-      bodyColor: dark ? const Color(0xffebf3f0) : LifePalette.ink,
-      displayColor: dark ? const Color(0xffebf3f0) : LifePalette.ink,
-    ),
+    useMaterial3: true, brightness: brightness, colorScheme: scheme,
+    extensions: [LifeSurfaces(radius, appearance.surface)],
+    scaffoldBackgroundColor: classic ? dark ? LifePalette.darkBackground : LifePalette.background : scheme.surfaceContainerLowest,
+    textTheme: ThemeData(brightness: brightness).textTheme.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface),
+    dividerColor: scheme.outlineVariant,
     inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: dark ? const Color(0xff25363a) : const Color(0xfff8fbfa),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: scheme.primary)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    ),
-    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(
-      minimumSize: const Size(48, 52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
+      filled: true, fillColor: scheme.surfaceContainerLow,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(radius), borderSide: BorderSide(color: scheme.outlineVariant)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(radius), borderSide: BorderSide(color: scheme.outlineVariant)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(radius), borderSide: BorderSide(color: scheme.primary, width: 2)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18)),
+    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 52), shape: shape)),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48), shape: shape)),
+    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(minimumSize: const Size(48, 48))),
+    chipTheme: ChipThemeData(shape: shape, side: BorderSide(color: scheme.outlineVariant), padding: const EdgeInsets.all(8)),
+    bottomSheetTheme: BottomSheetThemeData(backgroundColor: scheme.surface, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(radius)))),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
   );
 }
 
@@ -52,15 +68,16 @@ class LifeCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .14 : .045), blurRadius: 20, offset: const Offset(0, 6))],
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context), colors = theme.colorScheme;
+    final surface = theme.extension<LifeSurfaces>() ?? const LifeSurfaces(20, 'soft');
+    return Container(padding: padding, decoration: BoxDecoration(
+      color: surface.treatment == 'tonal' ? colors.surfaceContainerLow : colors.surface,
+      borderRadius: BorderRadius.circular(surface.radius),
+      border: surface.treatment == 'outlined' ? Border.all(color: colors.outlineVariant) : null,
+      boxShadow: surface.treatment == 'soft' ? [BoxShadow(color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? .14 : .045), blurRadius: 20, offset: const Offset(0, 6))] : null,
+    ), child: child);
+  }
 }
 
 class KindColors {
@@ -73,7 +90,7 @@ class WelcomeLandscape extends StatelessWidget {
   const WelcomeLandscape({super.key});
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    borderRadius: BorderRadius.vertical(top: Radius.circular(Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20)),
     child: SizedBox(height: 104, width: double.infinity,
       child: CustomPaint(painter: _LandscapePainter(Theme.of(context).brightness == Brightness.dark))),
   );

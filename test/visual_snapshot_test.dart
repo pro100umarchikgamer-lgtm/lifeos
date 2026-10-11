@@ -9,6 +9,10 @@ import 'package:lifeos/domain/action_engine.dart';
 import 'package:lifeos/domain/models.dart';
 import 'package:lifeos/localization/language_pack.dart';
 import 'package:lifeos/ui/app.dart';
+import 'package:lifeos/domain/appearance.dart';
+import 'package:lifeos/ui/appearance_editor.dart';
+import 'package:lifeos/ui/quick_add.dart';
+import 'package:lifeos/ui/calendar.dart';
 
 // Sample records exist only in this visual test; production always reads its store.
 class SnapshotStore implements ActionStore {
@@ -63,6 +67,25 @@ void main() {
     catalog = await PackCatalog.load();
   });
 
+  for (final screen in ['pistachio', 'sky_dark', 'appearance', 'note_editor', 'task_entry', 'event_entry']) {
+    testWidgets('premium_$screen', (tester) async {
+      tester.view.devicePixelRatio = 1; tester.view.physicalSize = const Size(320,844);
+      addTearDown(tester.view.resetDevicePixelRatio); addTearDown(tester.view.resetPhysicalSize);
+      final c = AppController(SnapshotStore(sampleRecords(), 'light'), catalog, 'ru'); await c.load();
+      if (screen == 'pistachio') c.preferences['appearance_v1'] = const Appearance(palette:'pistachio',mode:'light').encode();
+      if (screen == 'sky_dark') c.preferences['appearance_v1'] = const Appearance(palette:'sky',mode:'dark',surface:'outlined').encode();
+      await tester.pumpWidget(LifeOSApp(controller:c)); await tester.pumpAndSettle();
+      final context = tester.element(find.byType(HomeShell));
+      if (screen == 'appearance') Navigator.push<void>(context, MaterialPageRoute(builder: (_) => AppearanceEditor(controller:c)));
+      if (screen == 'note_editor') showEntryEditor(context,c,EntryKind.note,record:sampleRecords().first);
+      if (screen == 'task_entry') showEntryEditor(context,c,EntryKind.task);
+      if (screen == 'event_entry') showModalBottomSheet<void>(context: context,isScrollControlled:true,useSafeArea:true,
+        builder: (_) => EventEditor(controller:c,date:c.now));
+      await tester.pumpAndSettle(); expect(tester.takeException(),isNull);
+      await expectLater(find.byType(MaterialApp),matchesGoldenFile('goldens/premium_$screen.png'));
+      expect(tester.takeException(),isNull);
+    });
+  }
   for (final mode in ['light', 'dark']) {
     for (final populated in [true, false]) {
       for (final width in [390.0, 320.0]) {

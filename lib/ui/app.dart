@@ -18,12 +18,14 @@ class LifeOSApp extends StatelessWidget {
   final AppController controller;
   final TransitionBuilder? builder;
   @override
-  Widget build(BuildContext context) => ListenableBuilder(listenable: controller, builder: (context, _) {
+  Widget build(BuildContext context) => ListenableBuilder(listenable: controller.presentation, builder: (context, _) {
     return MaterialApp(
       title: 'LifeOS', debugShowCheckedModeBanner: false, builder: builder,
+      themeAnimationDuration: WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations ? Duration.zero : const Duration(milliseconds: 180),
       locale: Locale(controller.region), supportedLocales: {for (final p in controller.catalog.packs.values) p.locale, Locale(controller.region)}.toList(),
       localizationsDelegates: const [MaterialFallbackDelegate(), WidgetsFallbackDelegate(), CupertinoFallbackDelegate()],
-      theme: lifeTheme(Brightness.light), darkTheme: lifeTheme(Brightness.dark),
+      theme: lifeTheme(Brightness.light, appearance: controller.appearance, wallpaperSeed: controller.wallpaperSeed == null ? null : Color(controller.wallpaperSeed!)),
+      darkTheme: lifeTheme(Brightness.dark, appearance: controller.appearance, wallpaperSeed: controller.wallpaperSeed == null ? null : Color(controller.wallpaperSeed!)),
       themeMode: switch (controller.theme) {'light' => ThemeMode.light, 'dark' => ThemeMode.dark, _ => ThemeMode.system},
       home: HomeShell(controller: controller),
     );
@@ -49,15 +51,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return codes.contains(_summaryCurrency) ? _summaryCurrency! : codes.contains(c.currency) ? c.currency : codes.firstOrNull ?? c.currency;
   }
   @override
-  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); WidgetsBinding.instance.addPostFrameCallback((_) => _resume()); }
+  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); c.addListener(_dataChanged); WidgetsBinding.instance.addPostFrameCallback((_) => _resume()); }
   @override
-  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  void dispose() { c.removeListener(_dataChanged); WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  void _dataChanged() { if (mounted) setState(() {}); }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) { if (state == AppLifecycleState.resumed) _resume(); }
   Future<void> _resume() async {
     if (!c.native.supported) return;
     try {
-      await c.refresh();
+      await c.refresh(forceReminders: true);
       final id = await c.native.launchTarget();
       if (!mounted || id == null) return;
       final entry = c.calendar.where((e) => e.id == id).firstOrNull;
@@ -78,12 +81,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _add(EntryKind kind) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context, isScrollControlled: true, useSafeArea: true,
-      isDismissible: false, enableDrag: false,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => QuickAdd(controller: c, kind: kind));
+    final saved = await showEntryEditor(context, c, kind);
     if (saved == true) {
       try { await c.refresh(); _message('saved'); } catch (_) { _message('read_failed'); }
     }
@@ -133,9 +131,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= 720;
-    final content = ListView(key: Key(_profileOpen ? 'profile_page' : _tabs[_tab]),
-      padding: EdgeInsets.fromLTRB(width < 350 ? 14 : 18, 8, width < 350 ? 14 : 18, 26),
-      children: [
+    final items = <Widget>[
+
         _header(),
         const SizedBox(height: 18),
         if (_profileOpen) ..._profile()
@@ -146,7 +143,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         else if (_tab == 2) ..._finance()
         else if (_notesOpen) ..._entries(EntryKind.note)
         else ..._modules(),
-      ]);
+    ];
+    final content = ListView.builder(key: Key(_profileOpen ? 'profile_page' : _tabs[_tab]),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.fromLTRB(width < 350 ? 14 : 18, 8, width < 350 ? 14 : 18, 26),
+      itemCount: items.length, itemBuilder: (_, index) => items[index]);
     return PopScope(canPop: _tab == 0 && !_profileOpen && !_notesOpen, onPopInvokedWithResult: (didPop, _) { if (!didPop) _navigate(0); }, child: Scaffold(
       body: SafeArea(child: Row(children: [
         if (wide) NavigationRail(selectedIndex: _tab, onDestinationSelected: _navigate,
@@ -184,7 +185,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         blurRadius: 10, offset: const Offset(0, 3)),
     ]),
     child: FloatingActionButton(key: const Key('add_button'), onPressed: _chooseAdd,
-      backgroundColor: LifePalette.green, foregroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Theme.of(context).colorScheme.onPrimary,
       shape: const CircleBorder(side: BorderSide.none),
       elevation: 0, focusElevation: 0, hoverElevation: 0, highlightElevation: 0,
       child: const Icon(Icons.add, size: 32)),
@@ -312,7 +313,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           child: _chip(selected)),
       ]),
       const SizedBox(height: 15),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (_tab == 2) ...[
+        _financeTotal('income', formatMoney(currency, income, locale: c.region), c.pack.count('record_count', incomeCount), LifePalette.green),
+        const Divider(height: 24),
+        _financeTotal('expense', formatMoney(currency, expense, locale: c.region), c.pack.count('record_count', expenseCount), LifePalette.red),
+        const Divider(height: 24),
+        _financeTotal('difference', formatMoney(currency, income - expense, locale: c.region), '', (income - expense).isNegative ? LifePalette.red : LifePalette.green),
+      ] else Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: _metric('income', formatMoney(currency, income, locale: c.region), c.pack.count('record_count', incomeCount), LifePalette.green)),
         Container(width: 1, height: 48, color: Theme.of(context).dividerColor),
         Expanded(child: _metric('expense', formatMoney(currency, expense, locale: c.region), c.pack.count('record_count', expenseCount), LifePalette.red)),
@@ -330,9 +337,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ]));
   }
 
+  Widget _financeTotal(String label, String amount, String count, Color color) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Wrap(spacing: 12, children: [Text(c.pack.t(label), style: Theme.of(context).textTheme.titleMedium),
+        if (count.isNotEmpty) Text(count, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))]),
+      const SizedBox(height: 4), Text(amount, style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
+    ]);
+
   Widget _chip(String label) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: .4)), borderRadius: BorderRadius.circular(14)),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+    decoration: BoxDecoration(border: Border.all(color: Theme.of(context).colorScheme.outlineVariant), borderRadius: BorderRadius.circular((Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20) * .7)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(fontSize: _tab == 0 ? 11 : 14, fontWeight: FontWeight.w600)),
       const SizedBox(width: 3), const Icon(Icons.keyboard_arrow_down, size: 14)]));
 
   Widget _metric(String key, String amount, String count, Color color) => Padding(
@@ -365,8 +379,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final background = Theme.of(context).brightness == Brightness.dark
       ? Color.alphaBlend(colors.foreground.withValues(alpha: .13), Theme.of(context).colorScheme.surface)
       : colors.background;
-    return Material(color: background, borderRadius: BorderRadius.circular(13),
-      child: InkWell(key: Key('quick_${kind.name}'), onTap: () => _add(kind), borderRadius: BorderRadius.circular(13),
+    return Material(color: background, borderRadius: BorderRadius.circular((Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20) * .65),
+      child: InkWell(key: Key('quick_${kind.name}'), onTap: () => _add(kind), borderRadius: BorderRadius.circular((Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20) * .65),
         child: Padding(padding: EdgeInsets.all(detailed ? 9 : 7), child: detailed
           ? Row(children: [
               CircleAvatar(radius: 17, backgroundColor: colors.foreground.withValues(alpha: .12),
@@ -421,8 +435,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       const SizedBox(width: 5),
       Expanded(child: InkWell(onTap: () => _showRecord(task.id), child: Padding(padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(task.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, decoration: task.completed ? TextDecoration.lineThrough : null)),
-          if (c.scheduleFor(task) case final CalendarEntry entry) Text(entry.schedule.localStart.replaceFirst('T',' '), style: const TextStyle(fontSize: 10, color: LifePalette.muted)),
+          Text(task.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: _tab == 0 ? 13 : 16, decoration: task.completed ? TextDecoration.lineThrough : null)),
+          if (c.scheduleFor(task) case final CalendarEntry entry) Text(entry.schedule.localStart.replaceFirst('T',' '), style: TextStyle(fontSize: _tab == 0 ? 10 : 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ])))),
     ]));
 
@@ -433,10 +447,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       const SizedBox(width: 9),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(_firstLine(note.text), maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          style: TextStyle(fontSize: _tab == 0 ? 12 : 16, fontWeight: FontWeight.w700)),
         if (note.text.contains('\n')) Text(note.text.substring(note.text.indexOf('\n') + 1).trim(),
           maxLines: 2, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, color: LifePalette.muted)),
+          style: TextStyle(fontSize: _tab == 0 ? 11 : 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ])),
       const SizedBox(width: 5),
       Text(MaterialLocalizations.of(context).formatShortDate(note.createdAt.toLocal()),
@@ -456,14 +470,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _pageTitle(kind == EntryKind.task ? 'my_tasks' : 'recent_notes'),
       const SizedBox(height: 14),
       if (records.isEmpty) LifeCard(child: _cardEmpty(kind == EntryKind.task ? 'empty_tasks' : 'empty_notes', kind)),
-      if (kind == EntryKind.task && open.isNotEmpty) LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-        children: [_sectionTitle('open_tasks'), const SizedBox(height: 7), for (final record in open) _taskRow(record)])),
-      if (kind == EntryKind.task && completed.isNotEmpty) ...[
-        const SizedBox(height: 12),
-        LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          children: [_sectionTitle('completed_tasks'), const SizedBox(height: 7), for (final record in completed) _taskRow(record)])),
+      if (kind == EntryKind.task && open.isNotEmpty) ...[
+        _sectionTitle('open_tasks'), const SizedBox(height: 8),
+        for (final record in open) Padding(padding: const EdgeInsets.only(bottom: 8), child: LifeCard(child: _taskRow(record))),
       ],
-      if (kind == EntryKind.note && records.isNotEmpty) LifeCard(child: Column(children: [for (final record in records) _noteRow(record)])),
+      if (kind == EntryKind.task && completed.isNotEmpty) ...[
+        const SizedBox(height: 12), _sectionTitle('completed_tasks'), const SizedBox(height: 8),
+        for (final record in completed) Padding(padding: const EdgeInsets.only(bottom: 8), child: LifeCard(child: _taskRow(record))),
+      ],
+      if (kind == EntryKind.note) for (final record in records)
+        Padding(padding: const EdgeInsets.only(bottom: 8), child: LifeCard(child: _noteRow(record))),
       const SizedBox(height: 14),
       FilledButton.icon(onPressed: () => _add(kind), icon: const Icon(Icons.add), label: Text(c.pack.t('create_${kind.name}'))),
     ];
@@ -491,7 +507,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(record.text.isEmpty ? c.pack.t(record.kind.name) : record.text, maxLines: 2, overflow: TextOverflow.ellipsis),
-          Text(record.date ?? '', style: const TextStyle(color: LifePalette.muted, fontSize: 11)),
+          Text(record.date == null ? '' : MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(record.date!)), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
         ])),
         Flexible(child: Text(formatMoney(record.currency!, record.amountMinor!, locale: c.region), textAlign: TextAlign.right,
           style: TextStyle(color: _kindColors(record.kind).foreground, fontWeight: FontWeight.w700))),
