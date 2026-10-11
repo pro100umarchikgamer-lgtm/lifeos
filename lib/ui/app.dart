@@ -12,15 +12,29 @@ import 'calendar.dart';
 import 'calendar_panel.dart';
 import 'record_detail.dart';
 import 'settings.dart';
+import 'notices.dart';
+import 'selection.dart';
 
-class LifeOSApp extends StatelessWidget {
+class LifeOSApp extends StatefulWidget {
   const LifeOSApp({super.key, required this.controller, this.builder});
   final AppController controller;
   final TransitionBuilder? builder;
   @override
+  State<LifeOSApp> createState() => _LifeOSAppState();
+}
+
+class _LifeOSAppState extends State<LifeOSApp> {
+  final notices = LifeNotices();
+  late final navigationObserver = NoticeNavigationObserver(notices);
+  AppController get controller => widget.controller;
+  @override
+  void dispose() { notices.dispose(); super.dispose(); }
+  @override
   Widget build(BuildContext context) => ListenableBuilder(listenable: controller.presentation, builder: (context, _) {
     return MaterialApp(
-      title: 'LifeOS', debugShowCheckedModeBanner: false, builder: builder,
+      title: 'LifeOS', debugShowCheckedModeBanner: false, scaffoldMessengerKey: notices.messengerKey,
+      navigatorObservers: [navigationObserver], builder: (context, child) => LifeNoticeScope(notices: notices,
+        child: widget.builder?.call(context, child) ?? child!),
       themeAnimationDuration: WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations ? Duration.zero : const Duration(milliseconds: 180),
       locale: Locale(controller.region), supportedLocales: {for (final p in controller.catalog.packs.values) p.locale, Locale(controller.region)}.toList(),
       localizationsDelegates: const [MaterialFallbackDelegate(), WidgetsFallbackDelegate(), CupertinoFallbackDelegate()],
@@ -77,7 +91,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   static const _icons = [Icons.home_rounded, Icons.format_list_bulleted_rounded, Icons.bar_chart_rounded, Icons.grid_view_rounded];
 
   void _message(String key) {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(c.pack.t(key))));
+    if (mounted) LifeNoticeScope.of(context).show(c.pack.t(key));
   }
 
   Future<void> _add(EntryKind kind) async {
@@ -88,6 +102,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   void _chooseAdd() { showModalBottomSheet<void>(context: context,
+    sheetAnimationStyle: MediaQuery.disableAnimationsOf(context) ? AnimationStyle.noAnimation : null,
     backgroundColor: Theme.of(context).colorScheme.surface,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (sheetContext) => SafeArea(child: Padding(
@@ -95,11 +110,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(c.pack.t('quick_add'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        for (final kind in EntryKind.values) ListTile(
-          leading: Icon(_kindIcon(kind), color: _kindColors(kind).foreground),
-          title: Text(c.pack.t(kind.name)),
-          onTap: () { Navigator.pop(sheetContext); _add(kind); },
-        ),
+        _actionGrid(detailed: false, sheetContext: sheetContext),
       ]),
     ))); }
 
@@ -125,7 +136,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     finally { if (mounted) setState(() => c.pendingTasks.remove(record.id)); }
   }
 
-  void _navigate(int tab) => setState(() { _tab = tab; _profileOpen = false; _notesOpen = false; });
+  void _navigate(int tab) { LifeNoticeScope.of(context).clear(); setState(() { _tab = tab; _profileOpen = false; _notesOpen = false; }); }
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +184,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ])),
     IconButton(tooltip: c.pack.t('search'), onPressed: _showSearch, icon: const Icon(Icons.search_rounded)),
     const SizedBox(width: 3),
-    IconButton(key: const Key('profile_button'), tooltip: c.pack.t('profile'), onPressed: () => setState(() => _profileOpen = true),
+    IconButton(key: const Key('profile_button'), tooltip: c.pack.t('profile'), onPressed: () { LifeNoticeScope.of(context).clear(); setState(() => _profileOpen = true); },
       icon: CircleAvatar(radius: 19, backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         child: Icon(Icons.person_rounded, size: 23, color: Theme.of(context).colorScheme.primary))),
   ]);
@@ -250,11 +261,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ])),
     ])),
     const SizedBox(height: 12),
-    LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionTitle('start_examples'),
-      const SizedBox(height: 10),
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionTitle('quick_add'),
+      const SizedBox(height: 12),
       _actionGrid(detailed: true),
-    ])),
+    ]),
     const SizedBox(height: 12),
     LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _sectionTitle('your_space'),
@@ -301,16 +312,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     final wholeMonth = _period.start.day == 1 && _period.end == DateTime(_period.start.year,_period.start.month + 1,0);
     final currency = Currency.fromCode(selected);
-    return LifeCard(child: Column(children: [
+    return LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
         InkWell(key: const Key('financial_period'), onTap: () async {
           final selected = await selectFinancialPeriod(context, c, _period);
           if (selected != null && mounted) setState(() => _period = selected);
         }, child: _chip(wholeMonth ? MaterialLocalizations.of(context).formatMonthYear(_period.start)
           : '${MaterialLocalizations.of(context).formatShortDate(_period.start)} — ${MaterialLocalizations.of(context).formatShortDate(_period.end)}')),
-        PopupMenuButton<String>(tooltip: c.pack.t('currency'), onSelected: (v) => setState(() => _summaryCurrency = v),
-          itemBuilder: (context) => [for (final code in currencies.isEmpty ? [selected] : currencies) PopupMenuItem(value: code, child: Text(code))],
-          child: _chip(selected)),
+        SizedBox(width: 124, child: LifeSelect<String>(label: c.pack.t('currency'), value: selected,
+          choices: {for (final code in currencies.isEmpty ? [selected] : currencies) code: code},
+          onChanged: (v) => setState(() => _summaryCurrency = v))),
       ]),
       const SizedBox(height: 15),
       if (_tab == 2) ...[
@@ -319,20 +330,27 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         _financeTotal('expense', formatMoney(currency, expense, locale: c.region), c.pack.count('record_count', expenseCount), LifePalette.red),
         const Divider(height: 24),
         _financeTotal('difference', formatMoney(currency, income - expense, locale: c.region), '', (income - expense).isNegative ? LifePalette.red : LifePalette.green),
-      ] else Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(child: _metric('income', formatMoney(currency, income, locale: c.region), c.pack.count('record_count', incomeCount), LifePalette.green)),
-        Container(width: 1, height: 48, color: Theme.of(context).dividerColor),
-        Expanded(child: _metric('expense', formatMoney(currency, expense, locale: c.region), c.pack.count('record_count', expenseCount), LifePalette.red)),
-        Container(width: 1, height: 48, color: Theme.of(context).dividerColor),
-        Expanded(child: _metric('difference', formatMoney(currency, income - expense, locale: c.region), '', (income - expense).isNegative ? LifePalette.red : LifePalette.green)),
-      ]),
+      ] else ...[
+        _metric('difference', formatMoney(currency, income - expense, locale: c.region), '',
+          (income - expense).isNegative ? LifePalette.red : LifePalette.green, prominent: true),
+        const SizedBox(height: 16),
+        LayoutBuilder(builder: (context, constraints) {
+          final metrics = [
+            _metric('income', formatMoney(currency, income, locale: c.region), c.pack.count('record_count', incomeCount), LifePalette.green),
+            _metric('expense', formatMoney(currency, expense, locale: c.region), c.pack.count('record_count', expenseCount), LifePalette.red),
+          ];
+          return MediaQuery.textScalerOf(context).scale(1) > 1.25
+            ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [metrics[0], const SizedBox(height: 12), metrics[1]])
+            : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: metrics[0]), const SizedBox(width: 16), Expanded(child: metrics[1])]);
+        }),
+      ],
       const SizedBox(height: 12),
       DailyBarChart(income: dailyIncome, expense: dailyExpense),
       const SizedBox(height: 4),
-      if (wholeMonth) Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [for (final day in [1,8,15,22,duration]) Text('$day',style: const TextStyle(fontSize: 10,color: LifePalette.muted))])
+      if (wholeMonth) Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [for (final day in [1,8,15,22,duration]) Text('$day',style: TextStyle(fontSize: 12,color: Theme.of(context).colorScheme.onSurfaceVariant))])
       else Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(MaterialLocalizations.of(context).formatShortDate(_period.start), style: const TextStyle(fontSize: 10, color: LifePalette.muted)),
-        Text(MaterialLocalizations.of(context).formatShortDate(_period.end), style: const TextStyle(fontSize: 10, color: LifePalette.muted)),
+        Text(MaterialLocalizations.of(context).formatShortDate(_period.start), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(MaterialLocalizations.of(context).formatShortDate(_period.end), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ]),
     ]));
   }
@@ -341,63 +359,59 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     crossAxisAlignment: CrossAxisAlignment.start, children: [
       Wrap(spacing: 12, children: [Text(c.pack.t(label), style: Theme.of(context).textTheme.titleMedium),
         if (count.isNotEmpty) Text(count, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))]),
-      const SizedBox(height: 4), Text(amount, style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 4), Text(amount, style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: lifeAccent(context, color), fontWeight: FontWeight.w700)),
     ]);
 
-  Widget _chip(String label) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+  Widget _chip(String label) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
     decoration: BoxDecoration(border: Border.all(color: Theme.of(context).colorScheme.outlineVariant), borderRadius: BorderRadius.circular((Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20) * .7)),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(fontSize: _tab == 0 ? 11 : 14, fontWeight: FontWeight.w600)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [Flexible(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
       const SizedBox(width: 3), const Icon(Icons.keyboard_arrow_down, size: 14)]));
 
-  Widget _metric(String key, String amount, String count, Color color) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 5),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(c.pack.t(key), style: const TextStyle(fontSize: 10)),
-      const SizedBox(height: 3),
-      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
-        child: Text(amount, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w800))),
-      if (count.isNotEmpty) Text(count, maxLines: 1, overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 9, color: LifePalette.muted)),
-    ]));
-
-  Widget _quickActions() => LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    _sectionTitle('quick_add'), const SizedBox(height: 10), _actionGrid(detailed: false),
-  ]));
-
-  Widget _actionGrid({required bool detailed}) => LayoutBuilder(builder: (context, constraints) {
-    if (!detailed) { return Row(children: [for (final kind in EntryKind.values) Expanded(child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3), child: _actionTile(kind, detailed: false)))]); }
-    return Column(children: [
-      Row(children: [Expanded(child: _actionTile(EntryKind.expense, detailed: true)), const SizedBox(width: 8), Expanded(child: _actionTile(EntryKind.income, detailed: true))]),
-      const SizedBox(height: 8),
-      Row(children: [Expanded(child: _actionTile(EntryKind.task, detailed: true)), const SizedBox(width: 8), Expanded(child: _actionTile(EntryKind.note, detailed: true))]),
+  Widget _metric(String key, String amount, String count, Color color, {bool prominent = false}) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(c.pack.t(key), style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      const SizedBox(height: 4),
+      Text(amount, style: TextStyle(color: lifeAccent(context, color), fontSize: prominent ? 28 : 18, fontWeight: FontWeight.w800, height: 1.2)),
+      if (count.isNotEmpty) ...[const SizedBox(height: 4), Text(count, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))],
     ]);
+
+  Widget _quickActions() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    _sectionTitle('quick_add'), const SizedBox(height: 12), _actionGrid(detailed: false),
+  ]);
+
+  Widget _actionGrid({required bool detailed, BuildContext? sheetContext}) => LayoutBuilder(builder: (context, constraints) {
+    final columns = !detailed && constraints.maxWidth >= 500 && MediaQuery.textScalerOf(context).scale(1) <= 1.2 ? 4 : 2;
+    const kinds = EntryKind.values;
+    return Column(children: [for (var start = 0; start < kinds.length; start += columns) ...[
+      if (start > 0) const SizedBox(height: 10),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [for (var i = start; i < start + columns && i < kinds.length; i++) ...[
+        if (i > start) const SizedBox(width: 10),
+        Expanded(child: _actionTile(kinds[i], detailed: detailed, onTap: sheetContext == null ? null : () { Navigator.pop(sheetContext); _add(kinds[i]); })),
+      ]]),
+    ]]);
   });
 
-  Widget _actionTile(EntryKind kind, {required bool detailed}) {
+  Widget _actionTile(EntryKind kind, {required bool detailed, VoidCallback? onTap}) {
     final colors = _kindColors(kind);
-    final background = Theme.of(context).brightness == Brightness.dark
-      ? Color.alphaBlend(colors.foreground.withValues(alpha: .13), Theme.of(context).colorScheme.surface)
-      : colors.background;
-    return Material(color: background, borderRadius: BorderRadius.circular((Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20) * .65),
-      child: InkWell(key: Key('quick_${kind.name}'), onTap: () => _add(kind), borderRadius: BorderRadius.circular((Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20) * .65),
-        child: Padding(padding: EdgeInsets.all(detailed ? 9 : 7), child: detailed
-          ? Row(children: [
-              CircleAvatar(radius: 17, backgroundColor: colors.foreground.withValues(alpha: .12),
-                child: Icon(_kindIcon(kind), color: colors.foreground, size: 19)),
-              const SizedBox(width: 6),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(c.pack.t('create_${kind.name}'), maxLines: 2, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-                Text(c.pack.t('example_${kind.name}'), maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9, color: LifePalette.muted)),
-              ])),
-            ])
-          : Column(children: [
-              Icon(_kindIcon(kind), color: colors.foreground, size: 23),
-              const SizedBox(height: 7),
-              Text(c.pack.t(kind.name), maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
-            ]))));
+    final theme = Theme.of(context);
+    final foreground = lifeAccent(context, colors.foreground);
+    final background = theme.brightness == Brightness.dark
+      ? Color.alphaBlend(foreground.withValues(alpha: .12), theme.colorScheme.surface) : colors.background;
+    final radius = BorderRadius.circular(theme.extension<LifeSurfaces>()?.radius ?? 20);
+    return Material(color: background, shape: RoundedRectangleBorder(borderRadius: radius,
+      side: BorderSide(color: foreground.withValues(alpha: .12))), clipBehavior: Clip.antiAlias,
+      child: InkWell(key: Key('quick_${kind.name}'), onTap: onTap ?? () => _add(kind),
+        child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 84),
+          child: Padding(padding: const EdgeInsets.all(12), child: Row(children: [
+            Icon(_kindIcon(kind), color: foreground, size: 26), const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(c.pack.t(kind.name), maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+              if (detailed) ...[const SizedBox(height: 4), Text(c.pack.t('example_${kind.name}'),
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))],
+            ])),
+          ])))));
   }
 
   Widget _tasksCard(List<Record> tasks) => LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -416,10 +430,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   Widget _sectionTitle(String key, {String? action, VoidCallback? onTap}) => Row(children: [
     Expanded(child: Text(c.pack.t(key), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
-    if (action != null) InkWell(onTap: onTap, child: Row(children: [
-      Text(c.pack.t(action), style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.primary)),
+    if (action != null) InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 44), child: Row(children: [
+      Text(c.pack.t(action), style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.primary)),
       Icon(Icons.chevron_right, size: 15, color: Theme.of(context).colorScheme.primary),
-    ])),
+    ]))),
   ]);
 
   Widget _cardEmpty(String key, EntryKind kind) => Padding(padding: const EdgeInsets.symmetric(vertical: 7),
@@ -430,31 +444,37 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     constraints: const BoxConstraints(minHeight: 48),
     decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: .35)))),
     child: Row(children: [
-      SizedBox(width: 35, child: Checkbox(key: Key('task_${task.id}'), value: task.completed, visualDensity: VisualDensity.compact,
+      SizedBox(width: 44, child: Checkbox(key: Key('task_${task.id}'), value: task.completed, visualDensity: VisualDensity.compact,
         onChanged: c.pendingTasks.contains(task.id) ? null : (value) => _complete(task, value!))),
       const SizedBox(width: 5),
       Expanded(child: InkWell(onTap: () => _showRecord(task.id), child: Padding(padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(task.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: _tab == 0 ? 13 : 16, decoration: task.completed ? TextDecoration.lineThrough : null)),
-          if (c.scheduleFor(task) case final CalendarEntry entry) Text(entry.schedule.localStart.replaceFirst('T',' '), style: TextStyle(fontSize: _tab == 0 ? 10 : 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(task.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, decoration: task.completed ? TextDecoration.lineThrough : null)),
+          if (c.scheduleFor(task) case final CalendarEntry entry) Padding(padding: const EdgeInsets.only(top: 5), child: Text(_scheduleLabel(entry), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant))),
         ])))),
     ]));
 
-  Widget _noteRow(Record note) => InkWell(onTap: () => _showNote(note),
-    child: Padding(padding: const EdgeInsets.symmetric(vertical: 7), child: Row(children: [
-      const CircleAvatar(radius: 17, backgroundColor: LifePalette.mint,
-        child: Icon(Icons.description_outlined, color: LifePalette.green, size: 18)),
-      const SizedBox(width: 9),
+  String _scheduleLabel(CalendarEntry entry) {
+    final date = DateTime.parse(entry.schedule.localStart);
+    final local = MaterialLocalizations.of(context);
+    return '${local.formatMediumDate(date)}${entry.schedule.allDay ? '' : ' · ${local.formatTimeOfDay(TimeOfDay.fromDateTime(date))}'}';
+  }
+
+  Widget _noteRow(Record note) => InkWell(onTap: () => _showNote(note), borderRadius: BorderRadius.circular(12),
+    child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      CircleAvatar(radius: 19, backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        child: Icon(Icons.description_outlined, color: Theme.of(context).colorScheme.onPrimaryContainer, size: 21)),
+      const SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_firstLine(note.text), maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: _tab == 0 ? 12 : 16, fontWeight: FontWeight.w700)),
-        if (note.text.contains('\n')) Text(note.text.substring(note.text.indexOf('\n') + 1).trim(),
+        Text(_firstLine(note.text), maxLines: 2, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        if (note.text.contains('\n')) ...[const SizedBox(height: 5), Text(note.text.substring(note.text.indexOf('\n') + 1).trim(),
           maxLines: 2, overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: _tab == 0 ? 11 : 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          style: TextStyle(fontSize: 14, height: 1.4, color: Theme.of(context).colorScheme.onSurfaceVariant))],
+        const SizedBox(height: 6),
+        Text(MaterialLocalizations.of(context).formatMediumDate(note.createdAt.toLocal()),
+          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ])),
-      const SizedBox(width: 5),
-      Text(MaterialLocalizations.of(context).formatShortDate(note.createdAt.toLocal()),
-        style: const TextStyle(fontSize: 10, color: LifePalette.muted)),
     ])));
 
   String _firstLine(String value) => value.split('\n').first;
@@ -524,11 +544,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       trailing: const Icon(Icons.chevron_right), onTap: () => _entriesPage(EntryKind.note)))),
   ];
 
-  void _entriesPage(EntryKind kind) => setState(() {
+  void _entriesPage(EntryKind kind) { LifeNoticeScope.of(context).clear(); setState(() {
     _profileOpen = false;
     _tab = kind == EntryKind.note ? 3 : 1;
     _notesOpen = kind == EntryKind.note;
-  });
+  }); }
 
   List<Widget> _profile() => [_pageTitle('profile'), const SizedBox(height: 14), PersonalSettings(controller: c)];
 

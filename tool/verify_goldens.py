@@ -16,6 +16,9 @@ expected.update({f'finances_{theme}_{width}.png': (width, 844)
                  for theme, width in [('light', 320), ('dark', 320), ('dark', 390)]})
 expected.update({f'premium_{screen}.png': (320, 844) for screen in ('pistachio','sky_dark','appearance','note_editor','task_entry','event_entry')})
 expected['home_populated_light_tablet.png'] = (900, 900)
+expected.update({f'polish_{screen}_{theme}.png': (430 if screen == 'home_430' else 390 if screen == 'home_scrolled_390' else 320, 844)
+                 for theme in ('light', 'dark')
+                 for screen in ('home_430','home_scrolled_320','home_scrolled_390','language','repeat','undo','undo_keyboard')})
 
 for name, dimensions in expected.items():
     path = root / name

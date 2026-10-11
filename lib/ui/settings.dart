@@ -7,6 +7,7 @@ import '../domain/models.dart';
 import '../services/backup_service.dart';
 import 'design.dart';
 import 'appearance_editor.dart';
+import 'selection.dart';
 
 class PersonalSettings extends StatefulWidget {
   const PersonalSettings({super.key, required this.controller});
@@ -26,9 +27,10 @@ class _PersonalSettingsState extends State<PersonalSettings> {
     try { await c.preference(key, value); } catch (e) { message(e is DomainFailure ? e.key : 'change_failed'); }
   }
   Widget select(String key, String value, Map<String, String> choices, {String? label}) => Padding(
-    padding: const EdgeInsets.only(bottom: 12), child: DropdownButtonFormField<String>(key: ValueKey('${key}_$value'), initialValue: value, isExpanded: true,
-      decoration: InputDecoration(labelText: c.pack.t(label ?? key)), items: [for (final entry in choices.entries) DropdownMenuItem(value: entry.key, child: Text(entry.value, overflow: TextOverflow.ellipsis))],
-      onChanged: busy ? null : (v) { if (v != null) preference(key, v); }));
+    padding: const EdgeInsets.only(bottom: 12), child: LifeSelect<String>(key: ValueKey('${key}_$value'), value: value,
+      label: c.pack.t(label ?? key), choices: choices,
+      searchLabel: key == 'language' || choices.length > 10 ? c.pack.t('search') : null,
+      onChanged: busy ? null : (v) => preference(key, v)));
   Future<void> native(String method) async {
     try { await c.native.request(method); await c.refresh(forceReminders: true); } catch (_) { message('native_unavailable'); }
   }
