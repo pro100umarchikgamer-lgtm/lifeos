@@ -103,3 +103,34 @@ class UndoOffline extends OfflineAction {
   @override
   Map<String,Object?> get payload => {...target,'action':'entity.undo','table':table.sqlName};
 }
+
+class SaveGoal extends OfflineAction {
+  const SaveGoal(super.operationId,super.id,super.expectedRevision,{required this.name,required this.currency,required this.targetMinor,this.targetOn,this.accountId});
+  final String name,currency;final int targetMinor;final DateTime? targetOn;final String? accountId;
+  @override Map<String,Object?> get payload=>{...target,'action':'goal.save','name':name.trim(),'currency':currency,'target':targetMinor,'targetOn':targetOn==null?null:dateOnly(targetOn!),'accountId':accountId};
+}
+class SaveGoalEntry extends OfflineAction {
+  const SaveGoalEntry(super.operationId,super.id,super.expectedRevision,{required this.goalId,required this.amountMinor,required this.date,this.transactionId,this.transferId});
+  final String goalId;final int amountMinor;final DateTime date;final String? transactionId,transferId;
+  @override Map<String,Object?> get payload=>{...target,'action':'goal.entry','goalId':goalId,'amount':amountMinor,'date':dateOnly(date),'transactionId':transactionId,'transferId':transferId};
+}
+class SaveDebt extends OfflineAction {
+  const SaveDebt(super.operationId,super.id,super.expectedRevision,{required this.name,required this.currency,required this.principalMinor,this.direction='owing',this.schedule});
+  final String name,currency,direction;final int principalMinor;final ScheduleSpec? schedule;
+  @override Map<String,Object?> get payload=>{...target,'action':'debt.save','name':name.trim(),'currency':currency,'principal':principalMinor,'direction':direction,'schedule':schedule?.toJson()};
+}
+class SaveDebtEntry extends OfflineAction {
+  const SaveDebtEntry(super.operationId,super.id,super.expectedRevision,{required this.debtId,required this.principalMinor,required this.date,this.interestMinor=0,this.feeMinor=0,this.flow='repay',this.transactionId});
+  final String debtId,flow;final int principalMinor,interestMinor,feeMinor;final DateTime date;final String? transactionId;
+  @override Map<String,Object?> get payload=>{...target,'action':'debt.entry','debtId':debtId,'principal':principalMinor,'interest':interestMinor,'fee':feeMinor,'flow':flow,'date':dateOnly(date),'transactionId':transactionId};
+}
+class SaveAsset extends OfflineAction {
+  const SaveAsset(super.operationId,super.id,super.expectedRevision,this.name,this.currency);
+  final String name,currency;
+  @override Map<String,Object?> get payload=>{...target,'action':'asset.save','name':name.trim(),'currency':currency};
+}
+class SaveInvestmentEntry extends OfflineAction {
+  const SaveInvestmentEntry(super.operationId,super.id,super.expectedRevision,{required this.assetId,required this.kind,required this.cashMinor,required this.date,this.quantityMicros=0,this.feeMinor=0,this.transactionId});
+  final String assetId,kind;final int cashMinor,quantityMicros,feeMinor;final DateTime date;final String? transactionId;
+  @override Map<String,Object?> get payload=>{...target,'action':'asset.entry','assetId':assetId,'kind':kind,'cash':cashMinor,'quantity':quantityMicros,'fee':feeMinor,'date':dateOnly(date),'transactionId':transactionId};
+}

@@ -38,3 +38,13 @@ class OfflineFinanceTests(unittest.TestCase):
         db.execute("INSERT INTO accounts(id,owner_id,workspace_id,currency) VALUES('a','owner','space','USD')")
         for amount in [0,-1,1.5]:
             with self.assertRaises(sqlite3.IntegrityError):db.execute("INSERT INTO transfers(id,owner_id,workspace_id,from_account_id,to_account_id,sent_minor,received_minor,occurred_on,created_at,updated_at) VALUES('t','owner','space','a','a',?,1,'2026-10-11','2026-10-11','2026-10-11')",(amount,))
+
+class WealthSchemaTests(unittest.TestCase):
+    def test_wealth_upgrade_and_no_actual_money_for_virtual_records(self):
+        db=expanded(5);self.addCleanup(db.close)
+        db.execute("INSERT INTO savings_goals(id,owner_id,workspace_id,name,currency,target_minor,created_at,updated_at) VALUES('g','owner','space','Holiday','USD',10000,'2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO savings_entries(id,owner_id,workspace_id,goal_id,amount_minor,occurred_on,created_at,updated_at) VALUES('c','owner','space','g',1000,'2026-10-11','2026-10-11','2026-10-11')")
+        self.assertEqual(db.execute('SELECT COUNT(*) FROM transactions').fetchone()[0],0)
+        self.assertEqual(db.execute('SELECT SUM(amount_minor) FROM savings_entries').fetchone()[0],1000)
+        with self.assertRaises(sqlite3.IntegrityError):db.execute("UPDATE savings_entries SET amount_minor=1.5")
+        self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())

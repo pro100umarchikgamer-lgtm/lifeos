@@ -8,6 +8,7 @@ import 'entry_sheet.dart';
 import 'selection.dart';
 import 'calendar.dart';
 import 'money_format.dart';
+import 'wealth.dart';
 
 int signedMinor(String raw,String code) {
   final text=raw.trim(), currency=Currency.fromCode(code);
@@ -53,6 +54,7 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
     final rows=c.offline[table]??[];
     return Scaffold(appBar:AppBar(title:Text(c.pack.t('financial_foundation'))),body:SafeArea(child:Column(children:[
       Padding(padding:const EdgeInsets.all(16),child:Wrap(spacing:8,runSpacing:4,children:[for(final t in types) ChoiceChip(label:Text(c.pack.t('module_${t.name}')),selected:t==table,onSelected:(_)=>setState(()=>table=t))])),
+      Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:OutlinedButton.icon(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>WealthPage(controller:c))),icon:const Icon(Icons.savings_outlined),label:Text(c.pack.t('wealth')))),
       Expanded(child:ListView.builder(padding:const EdgeInsets.all(16),itemCount:rows.isEmpty?1:rows.length,itemBuilder:(context,index) {
         if(rows.isEmpty) return LifeCard(child:Text(c.pack.t('offline_empty')));
         final row=rows[index];

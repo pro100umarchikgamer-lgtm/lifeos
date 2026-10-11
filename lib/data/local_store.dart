@@ -13,8 +13,10 @@ import 'package:uuid/uuid.dart';
 import '../domain/action_engine.dart';
 import '../domain/models.dart';
 import '../domain/calendar_engine.dart';
+import '../domain/wealth_engine.dart';
 import 'package:timezone/timezone.dart' as tz;
 part 'offline_store.dart';
+part 'wealth_store.dart';
 
 class LocalStore implements OfflineStore {
   LocalStore._(this._db, this.ownerId, this.workspaceId);
@@ -22,7 +24,7 @@ class LocalStore implements OfflineStore {
   String ownerId;
   String workspaceId;
   static const _uuid = Uuid();
-  static const schemaVersion = 4;
+  static const schemaVersion = 5;
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) throw const DomainFailure('invalid_action');
@@ -153,6 +155,7 @@ class LocalStore implements OfflineStore {
             for(final row in rows) { await tx.insert('transaction_splits',Map<String,Object?>.from(row as Map)); }
           }
           await _auditMoneyAfter(tx,id,action.operationId);
+          await _validateWealth(tx);
         }
         if (action is EditTask && action.updateSchedule) {
           await _linkedSchedule(tx, id, 'task_id', action.title.trim(), action.schedule, now);
@@ -356,13 +359,13 @@ class LocalStore implements OfflineStore {
 
   @override
   Future<Map<OfflineTable,List<Map<String,Object?>>>> offlineData({Set<OfflineTable>? tables}) async => {
-    for(final table in tables ?? {OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments})
+    for(final table in tables ?? {OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments,OfflineTable.goals,OfflineTable.goalEntries,OfflineTable.debts,OfflineTable.debtEntries,OfflineTable.assets,OfflineTable.investmentEntries})
       table: [for(final row in await _db.query(table.sqlName,where:'owner_id=? AND workspace_id=? AND deleted_at IS NULL',whereArgs:[ownerId,workspaceId])) Map<String,Object?>.from(row)],
   };
   @override
   Future<List<Map<String,Object?>>> splits() async => [for(final row in await _db.rawQuery('SELECT s.* FROM transaction_splits s JOIN transactions t ON t.id=s.transaction_id WHERE t.owner_id=? AND t.workspace_id=? AND t.deleted_at IS NULL',[ownerId,workspaceId])) Map<String,Object?>.from(row)];
 
-  static const _snapshotTables = ['local_identity','workspaces','accounts','categories','transactions','tasks','notes','operations','record_changes','calendar_entries','calendar_occurrences','settings','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes'];
+  static const _snapshotTables = ['local_identity','workspaces','accounts','categories','transactions','tasks','notes','operations','record_changes','calendar_entries','calendar_occurrences','settings','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','savings_goals','savings_entries','debts','debt_entries','investment_assets','investment_entries','entity_changes'];
 
   @override
   Future<Map<String, Object?>> exportSnapshot() => _db.transaction((tx) async => {
@@ -371,17 +374,17 @@ class LocalStore implements OfflineStore {
 
   Map<String,Object?> _upgradeBackup(Map<String,Object?> data) {
     if(data['schemaVersion']==schemaVersion) return data;
-    if(![1,2,3].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
+    if(![1,2,3,4].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
     final tables=Map<String,Object?>.from(jsonDecode(jsonEncode(data['tables'])) as Map);
     final version=data['schemaVersion'] as int;
-    final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences']];
+    final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences'],if(version>=4)...['categories','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes']];
     if(tables.length!=legacy.length||!legacy.every(tables.containsKey)) throw const DomainFailure('backup_invalid');
     for(final table in _snapshotTables) { tables.putIfAbsent(table,()=> <Object?>[]); }
-    for(final raw in tables['accounts'] as List) {
+    if(version<4) for(final raw in tables['accounts'] as List) {
       final r=raw as Map; final owner=(tables['local_identity'] as List).first as Map;
       r.addAll({'name':r['currency'],'kind':'cash','archived':0,'revision':1,'created_at':owner['created_at'],'updated_at':owner['created_at'],'deleted_at':null});
     }
-    for(final raw in tables['transactions'] as List) { (raw as Map)['category_id']=null; }
+    if(version<4) for(final raw in tables['transactions'] as List) { (raw as Map)['category_id']=null; }
     return {'schemaVersion':schemaVersion,'tables':tables};
   }
 

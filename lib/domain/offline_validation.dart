@@ -10,6 +10,14 @@ class OfflineValidation {
   static void validate(OfflineAction action) {
     if(action.id.isEmpty || action.expectedRevision<0) throw const DomainFailure('invalid_action');
     switch(action) {
+      case SaveGoal(): name(action.name);Currency.fromCode(action.currency);money(action.targetMinor,zero:true);if(action.targetOn!=null)date(action.targetOn!);
+      case SaveGoalEntry(): money(action.amountMinor,signed:true);date(action.date);if(action.amountMinor==0||action.transactionId!=null&&action.transferId!=null)throw const DomainFailure('invalid_action');
+      case SaveDebt(): name(action.name);Currency.fromCode(action.currency);money(action.principalMinor,zero:true);if(!['owing','owed'].contains(action.direction))throw const DomainFailure('invalid_action');if(action.schedule!=null)CalendarEngine.validate(action.schedule!);
+      case SaveDebtEntry(): money(action.principalMinor,zero:true);money(action.interestMinor,zero:true);money(action.feeMinor,zero:true);date(action.date);
+        if(!['advance','repay'].contains(action.flow)||BigInt.from(action.principalMinor)+BigInt.from(action.interestMinor)+BigInt.from(action.feeMinor)==BigInt.zero)throw const DomainFailure('invalid_action');
+      case SaveAsset(): name(action.name);Currency.fromCode(action.currency);
+      case SaveInvestmentEntry(): money(action.cashMinor,zero:true);money(action.feeMinor,zero:true);money(action.quantityMicros,zero:true);date(action.date);
+        if(!['buy','sell','dividend','distribution','valuation'].contains(action.kind)||['buy','sell'].contains(action.kind)&&action.quantityMicros==0||!['buy','sell'].contains(action.kind)&&action.quantityMicros!=0)throw const DomainFailure('invalid_action');
       case SaveAccount(): name(action.name); Currency.fromCode(action.currency); money(action.openingMinor,signed:true);
         if(!['cash','card','wallet','deposit','custom'].contains(action.kind)) throw const DomainFailure('invalid_action');
       case SaveCategory(): name(action.name); if(action.parentId==action.id) throw const DomainFailure('invalid_action');

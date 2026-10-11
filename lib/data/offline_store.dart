@@ -62,6 +62,7 @@ extension OfflinePersistence on LocalStore {
       if(p['account_id']!=null && (await _scoped(tx,'accounts',p['account_id'] as String,deleted:true,owner:owner,space:space))['currency']!=p['currency']) throw const DomainFailure('backup_invalid');
       if(p['category_id']!=null) await _scoped(tx,'categories',p['category_id'] as String,deleted:true,owner:owner,space:space);
     }
+    await _validateWealth(tx,owner:owner,space:space);
     final allowed={...OfflineTable.values.map((t)=>t.sqlName)};
     for(final change in await tx.query('entity_changes')) {
       if(!allowed.contains(change['table_name'])) throw const DomainFailure('backup_invalid');
@@ -75,6 +76,7 @@ extension OfflinePersistence on LocalStore {
   }
   Future<String> _applyOffline(sql.Transaction tx,OfflineAction action,String now) async {
     switch(action) {
+      case SaveGoal()||SaveGoalEntry()||SaveDebt()||SaveDebtEntry()||SaveAsset()||SaveInvestmentEntry(): await _applyWealth(tx,action,now);
       case SaveAccount():
         if(action.expectedRevision>0) {
           final before=await _scoped(tx,'accounts',action.id);
@@ -130,16 +132,16 @@ extension OfflinePersistence on LocalStore {
         return money;
       case DeleteOffline() || UndoOffline():
         final table=action is DeleteOffline?action.table:(action as UndoOffline).table;
-        if(![OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments].contains(table)) throw const DomainFailure('invalid_action');
+        if(![OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments,OfflineTable.goals,OfflineTable.goalEntries,OfflineTable.debts,OfflineTable.debtEntries,OfflineTable.assets,OfflineTable.investmentEntries].contains(table)) throw const DomainFailure('invalid_action');
         if(action is DeleteOffline) {
           if(table==OfflineTable.accounts||table==OfflineTable.categories) throw const DomainFailure('archive_instead');
           await _writeEntity(tx,table.sqlName,action,{'deleted_at':now},now);
-          if(table==OfflineTable.plannedPayments) {
+          if([OfflineTable.plannedPayments,OfflineTable.debts].contains(table)) {
             final row=await _scoped(tx,table.sqlName,action.id,deleted:true);
-            await tx.update('calendar_entries',{'deleted_at':now,'revision':((await _scoped(tx,'calendar_entries',row['calendar_id'] as String))['revision'] as int)+1,'updated_at':now},where:'id=?',whereArgs:[row['calendar_id']]);
+            if(row['calendar_id']!=null) await tx.update('calendar_entries',{'deleted_at':now,'revision':((await _scoped(tx,'calendar_entries',row['calendar_id'] as String))['revision'] as int)+1,'updated_at':now},where:'id=?',whereArgs:[row['calendar_id']]);
           }
         } else {
-          if(table==OfflineTable.plannedPayments) throw const DomainFailure('undo_unavailable');
+          if([OfflineTable.plannedPayments,OfflineTable.debts].contains(table)) throw const DomainFailure('undo_unavailable');
           final history=await tx.query('entity_changes',where:'table_name=? AND record_id=? AND revision=?',whereArgs:[table.sqlName,action.id,action.expectedRevision]);
           if(history.isEmpty||history.single['before_json']==null) throw const DomainFailure('undo_unavailable');
           final values=Map<String,Object?>.from(jsonDecode(history.single['before_json'] as String) as Map);
@@ -147,6 +149,7 @@ extension OfflinePersistence on LocalStore {
           await _writeEntity(tx,table.sqlName,action,values,now,undo:true);
         }
     }
+    await _validateWealth(tx);
     return action.id;
   }
 }
