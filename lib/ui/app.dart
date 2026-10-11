@@ -3,10 +3,15 @@ import 'package:uuid/uuid.dart';
 
 import '../app_controller.dart';
 import '../domain/models.dart';
+import '../domain/financial_period.dart';
 import '../localization/language_pack.dart';
 import 'design.dart';
 import 'quick_add.dart';
 import 'money_format.dart';
+import 'calendar.dart';
+import 'calendar_panel.dart';
+import 'record_detail.dart';
+import 'settings.dart';
 
 class LifeOSApp extends StatelessWidget {
   const LifeOSApp({super.key, required this.controller});
@@ -16,7 +21,7 @@ class LifeOSApp extends StatelessWidget {
     final pack = controller.pack;
     return MaterialApp(
       title: 'LifeOS', debugShowCheckedModeBanner: false,
-      locale: pack.locale, supportedLocales: controller.catalog.packs.values.map((p) => p.locale).toList(),
+      locale: Locale(controller.region), supportedLocales: {for (final p in controller.catalog.packs.values) p.locale, Locale(controller.region)}.toList(),
       localizationsDelegates: const [MaterialFallbackDelegate(), WidgetsFallbackDelegate(), CupertinoFallbackDelegate()],
       theme: lifeTheme(Brightness.light), darkTheme: lifeTheme(Brightness.dark),
       themeMode: switch (controller.theme) {'light' => ThemeMode.light, 'dark' => ThemeMode.dark, _ => ThemeMode.system},
@@ -32,11 +37,37 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _tab = 0;
   bool _profileOpen = false;
   bool _notesOpen = false;
-  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTimeRange _period = DateTimeRange(start: DateTime(DateTime.now().year, DateTime.now().month),
+    end: DateTime(DateTime.now().year, DateTime.now().month + 1, 0));
+  FinancialPeriod get financialPeriod => FinancialPeriod(_period.start, _period.end);
+  String get summaryCurrency {
+    final codes = financialPeriod.records(c.records).map((r) => r.currency!.code).toSet().toList()..sort();
+    return codes.contains(_summaryCurrency) ? _summaryCurrency! : codes.contains(c.currency) ? c.currency : codes.firstOrNull ?? c.currency;
+  }
+  @override
+  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); WidgetsBinding.instance.addPostFrameCallback((_) => _resume()); }
+  @override
+  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) { if (state == AppLifecycleState.resumed) _resume(); }
+  Future<void> _resume() async {
+    if (!c.native.supported) return;
+    try {
+      await c.refresh();
+      final id = await c.native.launchTarget();
+      if (!mounted || id == null) return;
+      final entry = c.calendar.where((e) => e.id == id).firstOrNull;
+      if (entry == null) return;
+      final source = entry.taskId ?? entry.noteId;
+      if (source != null) { _showRecord(source); }
+      else { await showModalBottomSheet<void>(context: context, useSafeArea: true, isScrollControlled: true,
+        builder: (_) => EventEditor(controller: c, date: DateTime.parse(entry.schedule.localStart), entry: entry)); }
+    } catch (_) { _message('read_failed'); }
+  }
   String? _summaryCurrency;
   AppController get c => widget.controller;
   static const _tabs = ['today', 'plans', 'finances', 'modules'];
@@ -79,15 +110,21 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => c.pendingTasks.add(record.id));
     var saved = false;
     try {
-      await c.engine.execute(CompleteTask(const Uuid().v4(), record.id, value, expectedRevision: record.revision));
+      final linked = c.scheduleFor(record);
+      if (value && linked != null && linked.schedule.repeat != RepeatRule.none) {
+        final now = DateTime.now();
+        final candidates = c.calendarEngine.between(linked, now.subtract(const Duration(days: 370)), now.add(const Duration(days: 370)), c.deviceZone)
+          .where((o) => !c.occurrences.any((s) => s.entryId == linked.id && s.revision == linked.revision && s.epoch == o.at.millisecondsSinceEpoch)).toList();
+        final due = candidates.where((o) => !o.at.isAfter(now)).lastOrNull ?? candidates.firstOrNull;
+        if (due == null) throw const DomainFailure('occurrence_missing');
+        await c.engine.execute(SetOccurrence(const Uuid().v4(), linked.id, due.at.millisecondsSinceEpoch, OccurrenceStatus.completed, expectedRevision: linked.revision));
+      } else {
+        await c.engine.execute(CompleteTask(const Uuid().v4(), record.id, value, expectedRevision: record.revision));
+      }
       saved = true;
       await c.refresh();
     } catch (_) { _message(saved ? 'read_failed' : 'change_failed'); }
     finally { if (mounted) setState(() => c.pendingTasks.remove(record.id)); }
-  }
-
-  Future<void> _preference(String key, String value) async {
-    try { await c.preference(key, value); } catch (_) { _message('change_failed'); }
   }
 
   void _navigate(int tab) => setState(() { _tab = tab; _profileOpen = false; _notesOpen = false; });
@@ -103,24 +140,26 @@ class _HomeShellState extends State<HomeShell> {
         const SizedBox(height: 18),
         if (_profileOpen) ..._profile()
         else if (_tab == 0) ..._home()
-        else if (_tab == 1) ..._entries(EntryKind.task)
+        else if (_tab == 1) ...[
+          CalendarPanel(controller: c), const SizedBox(height: 18), ..._entries(EntryKind.task),
+        ]
         else if (_tab == 2) ..._finance()
         else if (_notesOpen) ..._entries(EntryKind.note)
         else ..._modules(),
       ]);
-    return Scaffold(
+    return PopScope(canPop: _tab == 0 && !_profileOpen && !_notesOpen, onPopInvokedWithResult: (didPop, _) { if (!didPop) _navigate(0); }, child: Scaffold(
       body: SafeArea(child: Row(children: [
         if (wide) NavigationRail(selectedIndex: _tab, onDestinationSelected: _navigate,
           labelType: NavigationRailLabelType.all,
           backgroundColor: Theme.of(context).colorScheme.surface,
           destinations: [for (var i = 0; i < _tabs.length; i++)
             NavigationRailDestination(icon: Icon(_icons[i]), label: Text(c.pack.t(_tabs[i])))]),
-        Expanded(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: content))),
+        Expanded(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: AnimatedSwitcher(duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180), child: content)))),
       ])),
       bottomNavigationBar: wide ? null : _bottomBar(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: wide ? _addButton() : null,
-    );
+    ));
   }
 
   Widget _header() => Row(children: [
@@ -176,7 +215,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   List<Widget> _home() {
-    final now = DateTime.now();
+    final now = c.now;
     final tasks = c.records.where((r) => r.kind == EntryKind.task && !r.completed).take(3).toList();
     final notes = c.records.where((r) => r.kind == EntryKind.note).take(2).toList();
     return [
@@ -240,48 +279,54 @@ class _HomeShellState extends State<HomeShell> {
     ]));
 
   Widget _financeSummary() {
-    final monthRecords = c.records.where((r) => r.amountMinor != null && r.date != null &&
-      r.date!.startsWith('${_month.year}-${_month.month.toString().padLeft(2, '0')}')).toList();
-    final currencies = monthRecords.map((r) => r.currency!.code).toSet().toList()..sort();
-    final selected = currencies.contains(_summaryCurrency) ? _summaryCurrency! :
-      currencies.contains(c.currency) ? c.currency : currencies.isNotEmpty ? currencies.first : c.currency;
-    final records = monthRecords.where((r) => r.currency!.code == selected).toList();
-    final income = records.where((r) => r.kind == EntryKind.income).fold<int>(0, (sum, r) => sum + r.amountMinor!);
-    final expense = records.where((r) => r.kind == EntryKind.expense).fold<int>(0, (sum, r) => sum + r.amountMinor!);
+    final periodRecords = financialPeriod.records(c.records);
+    final currencies = periodRecords.map((r) => r.currency!.code).toSet().toList()..sort();
+    final selected = summaryCurrency;
+    final records = financialPeriod.records(c.records, currency: selected);
+    final income = financialPeriod.total(c.records, EntryKind.income, selected);
+    final expense = financialPeriod.total(c.records, EntryKind.expense, selected);
     final incomeCount = records.where((r) => r.kind == EntryKind.income).length;
     final expenseCount = records.where((r) => r.kind == EntryKind.expense).length;
-    final days = DateTime(_month.year, _month.month + 1, 0).day;
-    final dailyIncome = List<int>.filled(days, 0), dailyExpense = List<int>.filled(days, 0);
+    final duration = DateTime.utc(_period.end.year,_period.end.month,_period.end.day)
+      .difference(DateTime.utc(_period.start.year,_period.start.month,_period.start.day)).inDays + 1;
+    final days = duration < 31 ? duration : 31;
+    final dailyIncome = List<BigInt>.filled(days, BigInt.zero), dailyExpense = List<BigInt>.filled(days, BigInt.zero);
     for (final r in records) {
-      final day = int.tryParse(r.date!.substring(8, 10));
-      if (day == null || day < 1 || day > days) continue;
-      if (r.kind == EntryKind.income) { dailyIncome[day - 1] += r.amountMinor!; }
-      if (r.kind == EntryKind.expense) { dailyExpense[day - 1] += r.amountMinor!; }
+      final date = DateTime.parse(r.date!);
+      final offset = DateTime.utc(date.year,date.month,date.day).difference(DateTime.utc(_period.start.year,_period.start.month,_period.start.day)).inDays;
+      final bucket = offset * days ~/ duration;
+      if (r.kind == EntryKind.income) dailyIncome[bucket] += BigInt.from(r.amountMinor!);
+      if (r.kind == EntryKind.expense) dailyExpense[bucket] += BigInt.from(r.amountMinor!);
     }
+    final wholeMonth = _period.start.day == 1 && _period.end == DateTime(_period.start.year,_period.start.month + 1,0);
     final currency = Currency.fromCode(selected);
     return LifeCard(child: Column(children: [
       Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
-        PopupMenuButton<int>(tooltip: c.pack.t('period'), onSelected: (offset) => setState(() => _month = DateTime(DateTime.now().year, DateTime.now().month + offset)),
-          itemBuilder: (context) => [for (var offset = -11; offset <= 0; offset++) PopupMenuItem(value: offset,
-            child: Text(MaterialLocalizations.of(context).formatMonthYear(DateTime(DateTime.now().year, DateTime.now().month + offset))))],
-          child: _chip(MaterialLocalizations.of(context).formatMonthYear(_month))),
+        InkWell(key: const Key('financial_period'), onTap: () async {
+          final selected = await selectFinancialPeriod(context, c, _period);
+          if (selected != null && mounted) setState(() => _period = selected);
+        }, child: _chip(wholeMonth ? MaterialLocalizations.of(context).formatMonthYear(_period.start)
+          : '${MaterialLocalizations.of(context).formatShortDate(_period.start)} — ${MaterialLocalizations.of(context).formatShortDate(_period.end)}')),
         PopupMenuButton<String>(tooltip: c.pack.t('currency'), onSelected: (v) => setState(() => _summaryCurrency = v),
           itemBuilder: (context) => [for (final code in currencies.isEmpty ? [selected] : currencies) PopupMenuItem(value: code, child: Text(code))],
           child: _chip(selected)),
       ]),
       const SizedBox(height: 15),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(child: _metric('income', formatMoney(currency, income, locale: c.pack.tag), c.pack.count('record_count', incomeCount), LifePalette.green)),
+        Expanded(child: _metric('income', formatMoney(currency, income, locale: c.region), c.pack.count('record_count', incomeCount), LifePalette.green)),
         Container(width: 1, height: 48, color: Theme.of(context).dividerColor),
-        Expanded(child: _metric('expense', formatMoney(currency, expense, locale: c.pack.tag), c.pack.count('record_count', expenseCount), LifePalette.red)),
+        Expanded(child: _metric('expense', formatMoney(currency, expense, locale: c.region), c.pack.count('record_count', expenseCount), LifePalette.red)),
         Container(width: 1, height: 48, color: Theme.of(context).dividerColor),
-        Expanded(child: _metric('difference', formatMoney(currency, income - expense, locale: c.pack.tag), '', income - expense >= 0 ? LifePalette.green : LifePalette.red)),
+        Expanded(child: _metric('difference', formatMoney(currency, income - expense, locale: c.region), '', (income - expense).isNegative ? LifePalette.red : LifePalette.green)),
       ]),
       const SizedBox(height: 12),
       DailyBarChart(income: dailyIncome, expense: dailyExpense),
       const SizedBox(height: 4),
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [for (final day in [1, 8, 15, 22, days])
-        Text('$day', style: const TextStyle(fontSize: 10, color: LifePalette.muted))]),
+      if (wholeMonth) Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [for (final day in [1,8,15,22,duration]) Text('$day',style: const TextStyle(fontSize: 10,color: LifePalette.muted))])
+      else Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(MaterialLocalizations.of(context).formatShortDate(_period.start), style: const TextStyle(fontSize: 10, color: LifePalette.muted)),
+        Text(MaterialLocalizations.of(context).formatShortDate(_period.end), style: const TextStyle(fontSize: 10, color: LifePalette.muted)),
+      ]),
     ]));
   }
 
@@ -368,13 +413,17 @@ class _HomeShellState extends State<HomeShell> {
       IconButton(tooltip: c.pack.t('create_${kind.name}'), onPressed: () => _add(kind), icon: const Icon(Icons.add_circle_outline))]));
 
   Widget _taskRow(Record task) => Container(
+    constraints: const BoxConstraints(minHeight: 48),
     decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: .35)))),
     child: Row(children: [
       SizedBox(width: 35, child: Checkbox(key: Key('task_${task.id}'), value: task.completed, visualDensity: VisualDensity.compact,
         onChanged: c.pendingTasks.contains(task.id) ? null : (value) => _complete(task, value!))),
       const SizedBox(width: 5),
-      Expanded(child: Text(task.text, maxLines: 2, overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: 13, decoration: task.completed ? TextDecoration.lineThrough : null))),
+      Expanded(child: InkWell(onTap: () => _showRecord(task.id), child: Padding(padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(task.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, decoration: task.completed ? TextDecoration.lineThrough : null)),
+          if (c.scheduleFor(task) case final CalendarEntry entry) Text(entry.schedule.localStart.replaceFirst('T',' '), style: const TextStyle(fontSize: 10, color: LifePalette.muted)),
+        ])))),
     ]));
 
   Widget _noteRow(Record note) => InkWell(onTap: () => _showNote(note),
@@ -396,17 +445,8 @@ class _HomeShellState extends State<HomeShell> {
 
   String _firstLine(String value) => value.split('\n').first;
 
-  void _showNote(Record note) { Navigator.of(context).push(MaterialPageRoute<void>(builder: (detailContext) => Scaffold(
-    appBar: AppBar(title: Text(c.pack.t('note')), backgroundColor: Theme.of(detailContext).scaffoldBackgroundColor),
-    body: SafeArea(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560),
-      child: ListView(padding: const EdgeInsets.all(18), children: [
-        Text(_firstLine(note.text), style: Theme.of(detailContext).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 5),
-        Text(MaterialLocalizations.of(detailContext).formatMediumDate(note.createdAt.toLocal()),
-          style: const TextStyle(color: LifePalette.muted)),
-        const SizedBox(height: 18),
-        LifeCard(child: SelectableText(note.text, style: Theme.of(detailContext).textTheme.bodyLarge?.copyWith(height: 1.5))),
-      ]))))))); }
+  void _showRecord(String id) { Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordDetail(controller: c, id: id))); }
+  void _showNote(Record note) => _showRecord(note.id);
 
   List<Widget> _entries(EntryKind kind) {
     final records = c.records.where((r) => r.kind == kind).toList();
@@ -430,7 +470,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   List<Widget> _finance() {
-    final records = c.records.where((r) => r.amountMinor != null).toList();
+    final records = financialPeriod.records(c.records, currency: summaryCurrency)..sort((a,b) => b.date!.compareTo(a.date!));
     return [
       _pageTitle('finances'),
       const SizedBox(height: 14),
@@ -445,7 +485,7 @@ class _HomeShellState extends State<HomeShell> {
       Text(c.pack.t('no_account_hint'), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: LifePalette.muted)),
       const SizedBox(height: 12),
       if (records.isEmpty) LifeCard(child: Text(c.pack.t('empty_money'))),
-      for (final record in records) Padding(padding: const EdgeInsets.only(bottom: 8), child: LifeCard(child: Row(children: [
+      for (final record in records) Padding(padding: const EdgeInsets.only(bottom: 8), child: InkWell(onTap: () => _showRecord(record.id), child: LifeCard(child: Row(children: [
         CircleAvatar(backgroundColor: _kindColors(record.kind).background,
           child: Icon(_kindIcon(record.kind), color: _kindColors(record.kind).foreground)),
         const SizedBox(width: 10),
@@ -453,9 +493,9 @@ class _HomeShellState extends State<HomeShell> {
           Text(record.text.isEmpty ? c.pack.t(record.kind.name) : record.text, maxLines: 2, overflow: TextOverflow.ellipsis),
           Text(record.date ?? '', style: const TextStyle(color: LifePalette.muted, fontSize: 11)),
         ])),
-        Text(formatMoney(record.currency!, record.amountMinor!, locale: c.pack.tag),
-          style: TextStyle(color: _kindColors(record.kind).foreground, fontWeight: FontWeight.w700)),
-      ]))),
+        Flexible(child: Text(formatMoney(record.currency!, record.amountMinor!, locale: c.region), textAlign: TextAlign.right,
+          style: TextStyle(color: _kindColors(record.kind).foreground, fontWeight: FontWeight.w700))),
+      ])))),
     ];
   }
 
@@ -474,31 +514,7 @@ class _HomeShellState extends State<HomeShell> {
     _notesOpen = kind == EntryKind.note;
   });
 
-  List<Widget> _profile() => [
-    _pageTitle('profile'), const SizedBox(height: 14),
-    LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(c.pack.t('local_profile'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8), Text(c.pack.t('local_privacy')),
-    ])),
-    const SizedBox(height: 12),
-    LifeCard(child: Column(children: [
-      DropdownButtonFormField<String>(key: ValueKey('language_${c.pack.tag}'), initialValue: c.pack.tag, isExpanded: true,
-        decoration: InputDecoration(labelText: c.pack.t('language')),
-        items: [for (final pack in c.catalog.packs.values) DropdownMenuItem(value: pack.tag, child: Text(pack.name))],
-        onChanged: (value) { if (value != null) _preference('language', value); }),
-      const SizedBox(height: 12),
-      DropdownButtonFormField<String>(key: ValueKey('currency_${c.currency}'), initialValue: c.currency, isExpanded: true,
-        decoration: InputDecoration(labelText: c.pack.t('currency')),
-        items: [for (final code in {'USD', 'EUR', 'RUB', 'KZT', 'UZS', 'UAH', 'GBP', 'GEL', 'AZN', 'AMD', 'TJS', 'KGS', c.currency})
-          DropdownMenuItem(value: code, child: Text(code))],
-        onChanged: (value) { if (value != null) _preference('currency', value); }),
-      const SizedBox(height: 12),
-      DropdownButtonFormField<String>(key: ValueKey('theme_${c.theme}'), initialValue: c.theme, isExpanded: true,
-        decoration: InputDecoration(labelText: c.pack.t('theme')),
-        items: [for (final mode in ['system', 'light', 'dark']) DropdownMenuItem(value: mode, child: Text(c.pack.t(mode)))],
-        onChanged: (value) { if (value != null) _preference('theme', value); }),
-    ])),
-  ];
+  List<Widget> _profile() => [_pageTitle('profile'), const SizedBox(height: 14), PersonalSettings(controller: c)];
 
   Widget _pageTitle(String key) => Text(c.pack.t(key),
     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800));
@@ -543,10 +559,7 @@ class _RecordSearch extends SearchDelegate<void> {
       for (final record in records) ListTile(
         title: Text(record.text.isEmpty ? controller.pack.t(record.kind.name) : record.text, maxLines: 2),
         subtitle: Text(controller.pack.t(record.kind.name)),
-        onTap: record.kind == EntryKind.note ? () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (detailContext) => Scaffold(
-          appBar: AppBar(title: Text(controller.pack.t('note'))),
-          body: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: LifeCard(
-            child: SelectableText(record.text, style: Theme.of(detailContext).textTheme.bodyLarge))))))) : null,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordDetail(controller: controller, id: record.id))),
       ),
     ]);
   }

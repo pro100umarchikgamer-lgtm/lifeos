@@ -36,6 +36,7 @@ void main() {
   test('localized money preserves cents and exact large integer values', () {
     final rub = Currency.fromCode('RUB');
     expect(formatMoney(rub, 12250000, locale: 'ru'), '122 500 ₽');
+    expect(formatMoney(rub, BigInt.parse('9999999999999990000'), locale: 'ru'), '99 999 999 999 999 900 ₽');
     expect(formatMoney(rub, -1, locale: 'ru'), '-0,01 ₽');
     expect(formatMoney(rub, 123450, locale: 'ru'), '1 234,50 ₽');
     expect(formatMoney(rub, 900719925474099301, locale: 'ru'), '9 007 199 254 740 993,01 ₽');

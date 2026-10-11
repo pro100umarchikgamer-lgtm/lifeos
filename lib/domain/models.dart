@@ -1,3 +1,5 @@
+part 'calendar_models.dart';
+
 enum EntryKind { expense, income, task, note }
 
 class DomainFailure implements Exception {
@@ -77,17 +79,21 @@ class CreateMoney extends AppAction {
 }
 
 class CreateTask extends AppAction {
-  const CreateTask(super.operationId, this.title);
+  const CreateTask(super.operationId, this.title, {this.schedule});
   final String title;
+  final ScheduleSpec? schedule;
   @override
-  Map<String, Object?> get payload => {'action': 'task.create', 'title': title.trim()};
+  Map<String, Object?> get payload => {'action': 'task.create', 'title': title.trim(),
+    if (schedule != null) 'schedule': schedule!.toJson()};
 }
 
 class CreateNote extends AppAction {
-  const CreateNote(super.operationId, this.body);
+  const CreateNote(super.operationId, this.body, {this.schedule});
   final String body;
+  final ScheduleSpec? schedule;
   @override
-  Map<String, Object?> get payload => {'action': 'note.create', 'body': body.trim()};
+  Map<String, Object?> get payload => {'action': 'note.create', 'body': body.trim(),
+    if (schedule != null) 'schedule': schedule!.toJson()};
 }
 
 class CompleteTask extends AppAction {
@@ -121,19 +127,27 @@ class EditMoney extends RecordMutation {
 }
 
 class EditTask extends RecordMutation {
-  const EditTask(String operationId, String id, int revision, this.title)
+  const EditTask(String operationId, String id, int revision, this.title, {this.schedule, this.updateSchedule = false, this.expectedScheduleRevision})
     : super(operationId, id, EntryKind.task, revision);
   final String title;
+  final ScheduleSpec? schedule;
+  final bool updateSchedule;
+  final int? expectedScheduleRevision;
   @override
-  Map<String, Object?> get payload => {...target, 'action': 'task.edit', 'title': title.trim()};
+  Map<String, Object?> get payload => {...target, 'action': 'task.edit', 'title': title.trim(),
+    if (updateSchedule) ...{'schedule': schedule?.toJson(), 'expectedScheduleRevision': expectedScheduleRevision}};
 }
 
 class EditNote extends RecordMutation {
-  const EditNote(String operationId, String id, int revision, this.body)
+  const EditNote(String operationId, String id, int revision, this.body, {this.schedule, this.updateSchedule = false, this.expectedScheduleRevision})
     : super(operationId, id, EntryKind.note, revision);
   final String body;
+  final ScheduleSpec? schedule;
+  final bool updateSchedule;
+  final int? expectedScheduleRevision;
   @override
-  Map<String, Object?> get payload => {...target, 'action': 'note.edit', 'body': body.trim()};
+  Map<String, Object?> get payload => {...target, 'action': 'note.edit', 'body': body.trim(),
+    if (updateSchedule) ...{'schedule': schedule?.toJson(), 'expectedScheduleRevision': expectedScheduleRevision}};
 }
 
 class DeleteRecord extends RecordMutation {

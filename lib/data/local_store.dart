@@ -11,14 +11,15 @@ import 'package:uuid/uuid.dart';
 
 import '../domain/action_engine.dart';
 import '../domain/models.dart';
+import '../domain/calendar_engine.dart';
 
-class LocalStore implements ActionStore {
+class LocalStore implements PersonalStore {
   LocalStore._(this._db, this.ownerId, this.workspaceId);
   final sql.Database _db;
-  final String ownerId;
-  final String workspaceId;
+  String ownerId;
+  String workspaceId;
   static const _uuid = Uuid();
-  static const schemaVersion = 2;
+  static const schemaVersion = 3;
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) throw const DomainFailure('invalid_action');
@@ -83,7 +84,9 @@ class LocalStore implements ActionStore {
       return previous.single['result_id'] as String;
     }
     final id = switch (action) {
-      CompleteTask() => action.id, RecordMutation() => action.id, _ => _uuid.v4(),
+      CompleteTask() => action.id, RecordMutation() => action.id,
+      SaveCalendar() => action.id ?? _uuid.v4(), DeleteCalendar() => action.id,
+      SetOccurrence() => action.entryId, _ => _uuid.v4(),
     };
     final now = DateTime.now().toUtc().toIso8601String();
     final metadata = {'id': id, 'owner_id': ownerId, 'workspace_id': workspaceId,
@@ -96,8 +99,10 @@ class LocalStore implements ActionStore {
           'minor_digits': currency.digits, 'label': action.label.trim(), 'occurred_on': dateOnly(action.date)});
       case CreateTask():
         await tx.insert('tasks', {...metadata, 'title': action.title.trim()});
+        if (action.schedule != null) await _saveCalendar(tx, _uuid.v4(), action.title.trim(), action.schedule!, now, taskId: id);
       case CreateNote():
         await tx.insert('notes', {...metadata, 'body': action.body.trim()});
+        if (action.schedule != null) await _saveCalendar(tx, _uuid.v4(), action.body.trim().split('\n').first, action.schedule!, now, noteId: id);
       case CompleteTask():
         await _mutate(tx, 'tasks', id, action.expectedRevision,
           {'completed': action.completed ? 1 : 0}, action.operationId, now);
@@ -107,6 +112,11 @@ class LocalStore implements ActionStore {
           EntryKind.task => 'tasks', EntryKind.note => 'notes',
         };
         final values = <String, Object?>{};
+        if (action is EditTask && action.updateSchedule || action is EditNote && action.updateSchedule) {
+          final expected = action is EditTask ? action.expectedScheduleRevision : (action as EditNote).expectedScheduleRevision;
+          final linked = await tx.query('calendar_entries', where: '${table == 'tasks' ? 'task_id' : 'note_id'} = ? AND deleted_at IS NULL', whereArgs: [id]);
+          if (expected == null || expected != (linked.firstOrNull?['revision'] ?? 0)) throw const DomainFailure('revision_conflict');
+        }
         switch (action) {
           case EditMoney():
             final currency = Currency.fromCode(action.currencyCode);
@@ -124,22 +134,75 @@ class LocalStore implements ActionStore {
             for (final key in ['id', 'owner_id', 'workspace_id', 'visibility', 'created_at', 'updated_at', 'revision']) {
               values.remove(key);
             }
+            values.remove('__schedule');
         }
         await _mutate(tx, table, id, action.expectedRevision, values, action.operationId, now,
-          allowDeleted: action is UndoRecordChange);
+          allowDeleted: action is UndoRecordChange, expectedKind: action.kind);
+        if (action is EditTask && action.updateSchedule) {
+          await _linkedSchedule(tx, id, 'task_id', action.title.trim(), action.schedule, now);
+        }
+        if (action is EditNote && action.updateSchedule) {
+          await _linkedSchedule(tx, id, 'note_id', action.body.trim().split('\n').first, action.schedule, now);
+        }
+        if (action is UndoRecordChange && table != 'transactions') {
+          final changes = await tx.query('record_changes', where: 'table_name = ? AND record_id = ? AND revision = ?',
+            whereArgs: [table, id, action.expectedRevision]);
+          final before = Map<String, Object?>.from(jsonDecode(changes.single['before_json'] as String) as Map);
+          if (before.containsKey('__schedule')) {
+            await _restoreLinked(tx, id, table == 'tasks' ? 'task_id' : 'note_id', before['__schedule'], now);
+          }
+        }
+        if (table != 'transactions') {
+          final updated = (await tx.query(table, where: 'id = ?', whereArgs: [id])).single;
+          final schedule = await tx.query('calendar_entries', where: '${table == 'tasks' ? 'task_id' : 'note_id'} = ? AND deleted_at IS NULL', whereArgs: [id]);
+          await tx.update('record_changes', {'after_json': jsonEncode({...updated, '__schedule': schedule.firstOrNull})},
+            where: 'operation_id = ?', whereArgs: [action.operationId]);
+        }
+      case SaveCalendar():
+        if (action.taskId != null || action.noteId != null) throw const DomainFailure('invalid_action');
+        if (action.id != null) {
+          final existing = await tx.query('calendar_entries', where: 'id = ?', whereArgs: [id]);
+          if (existing.isNotEmpty && (existing.single['task_id'] != null || existing.single['note_id'] != null)) throw const DomainFailure('invalid_action');
+        }
+        await _saveCalendar(tx, id, action.title.trim(), action.schedule, now,
+          taskId: action.taskId, noteId: action.noteId, expectedRevision: action.expectedRevision);
+      case DeleteCalendar():
+        final linked = await tx.query('calendar_entries', where: 'id = ? AND (task_id IS NOT NULL OR note_id IS NOT NULL)', whereArgs: [id]);
+        if (linked.isNotEmpty) throw const DomainFailure('invalid_action');
+        final count = await tx.update('calendar_entries', {'deleted_at': now, 'updated_at': now, 'revision': action.expectedRevision + 1},
+          where: 'id = ? AND owner_id = ? AND workspace_id = ? AND revision = ? AND deleted_at IS NULL',
+          whereArgs: [id, ownerId, workspaceId, action.expectedRevision]);
+        if (count != 1) throw const DomainFailure('revision_conflict');
+      case SetOccurrence():
+        final entry = await tx.query('calendar_entries', where: 'id = ? AND owner_id = ? AND workspace_id = ? AND deleted_at IS NULL',
+          whereArgs: [id, ownerId, workspaceId]);
+        if (entry.isEmpty) throw const DomainFailure('record_missing');
+        if (action.expectedRevision != null && entry.single['revision'] != action.expectedRevision) throw const DomainFailure('revision_conflict');
+        if (action.status == OccurrenceStatus.completed && entry.single['task_id'] != null && entry.single['repeat_rule'] == 'none') {
+          final task = (await tx.query('tasks', where: 'id = ?', whereArgs: [entry.single['task_id']])).single;
+          if (task['completed'] != 1) await _mutate(tx, 'tasks', entry.single['task_id'] as String, null, {'completed': 1}, action.operationId, now);
+        }
+        await tx.insert('calendar_occurrences', {'entry_id': id, 'revision': entry.single['revision'], 'epoch': action.epoch,
+          'status': action.status.name, 'snoozed_until': action.snoozedUntil, 'updated_at': now},
+          conflictAlgorithm: sql.ConflictAlgorithm.replace);
     }
     await tx.insert('operations', {'id': action.operationId, 'payload': payload, 'result_id': id, 'created_at': now});
     return id;
   });
 
   Future<void> _mutate(sql.Transaction tx, String table, String id, int? revision,
-      Map<String, Object?> values, String operationId, String now, {bool allowDeleted = false}) async {
+      Map<String, Object?> values, String operationId, String now, {bool allowDeleted = false, EntryKind? expectedKind}) async {
     final rows = await tx.query(table, where: 'id = ? AND owner_id = ? AND workspace_id = ?',
       whereArgs: [id, ownerId, workspaceId]);
     if (rows.length != 1 || (!allowDeleted && rows.single['deleted_at'] != null)) {
       throw const DomainFailure('record_missing');
     }
-    final before = rows.single;
+    final before = <String, Object?>{...rows.single};
+    if (table == 'transactions' && expectedKind != null && before['kind'] != expectedKind.name) throw const DomainFailure('invalid_action');
+    if (table == 'tasks' || table == 'notes') {
+      final linked = await tx.query('calendar_entries', where: '${table == 'tasks' ? 'task_id' : 'note_id'} = ? AND deleted_at IS NULL', whereArgs: [id]);
+      before['__schedule'] = linked.firstOrNull;
+    }
     final actual = before['revision'] as int;
     if (revision != null && actual != revision) throw const DomainFailure('revision_conflict');
     final after = {...before, ...values, 'updated_at': now, 'revision': actual + 1};
@@ -150,6 +213,63 @@ class LocalStore implements ActionStore {
     await tx.insert('record_changes', {'id': _uuid.v4(), 'operation_id': operationId,
       'table_name': table, 'record_id': id, 'revision': actual + 1,
       'before_json': jsonEncode(before), 'after_json': jsonEncode(after), 'created_at': now});
+  }
+
+  Future<void> _saveCalendar(sql.Transaction tx, String id, String title, ScheduleSpec spec, String now,
+      {String? taskId, String? noteId, int? expectedRevision}) async {
+    for (final link in [(taskId, 'tasks'), (noteId, 'notes')]) {
+      if (link.$1 != null) {
+        final rows = await tx.query(link.$2, where: 'id = ? AND owner_id = ? AND workspace_id = ? AND deleted_at IS NULL',
+          whereArgs: [link.$1, ownerId, workspaceId]);
+        if (rows.length != 1) throw const DomainFailure('record_missing');
+      }
+    }
+    final values = {'title': title, 'task_id': taskId, 'note_id': noteId, 'local_start': spec.localStart,
+      'timezone': spec.timezone, 'all_day': spec.allDay ? 1 : 0, 'repeat_rule': spec.repeat.name,
+      'repeat_interval': spec.interval, 'until_date': spec.until, 'reminder': spec.reminder ? 1 : 0,
+      'reminder_mode': spec.mode.name, 'updated_at': now};
+    if (expectedRevision == null) {
+      await tx.insert('calendar_entries', {...values, 'id': id, 'owner_id': ownerId,
+        'workspace_id': workspaceId, 'created_at': now});
+    } else {
+      final changed = await tx.update('calendar_entries', {...values, 'revision': expectedRevision + 1},
+        where: 'id = ? AND owner_id = ? AND workspace_id = ? AND revision = ? AND deleted_at IS NULL',
+        whereArgs: [id, ownerId, workspaceId, expectedRevision]);
+      if (changed != 1) throw const DomainFailure('revision_conflict');
+      // Old occurrence revisions remain in the encrypted history; they cannot affect the edited series.
+    }
+  }
+
+  Future<void> _linkedSchedule(sql.Transaction tx, String recordId, String column, String title, ScheduleSpec? spec, String now) async {
+    final rows = await tx.query('calendar_entries', where: '$column = ? AND deleted_at IS NULL', whereArgs: [recordId]);
+    if (spec == null) {
+      if (rows.isNotEmpty) await tx.update('calendar_entries', {'deleted_at': now, 'updated_at': now,
+        'revision': (rows.single['revision'] as int) + 1}, where: 'id = ?', whereArgs: [rows.single['id']]);
+      return;
+    }
+    await _saveCalendar(tx, rows.isEmpty ? _uuid.v4() : rows.single['id'] as String, title, spec, now,
+      taskId: column == 'task_id' ? recordId : null, noteId: column == 'note_id' ? recordId : null,
+      expectedRevision: rows.isEmpty ? null : rows.single['revision'] as int);
+  }
+
+  Future<void> _restoreLinked(sql.Transaction tx, String id, String column, Object? snapshot, String now) async {
+    final active = await tx.query('calendar_entries', where: '$column = ? AND deleted_at IS NULL', whereArgs: [id]);
+    for (final row in active) {
+      await tx.update('calendar_entries', {'deleted_at': now, 'updated_at': now, 'revision': (row['revision'] as int) + 1},
+        where: 'id = ?', whereArgs: [row['id']]);
+    }
+    if (snapshot is Map) {
+      final old = Map<String, Object?>.from(snapshot);
+      final current = (await tx.query('calendar_entries', where: 'id = ?', whereArgs: [old['id']])).single;
+      old['revision'] = (current['revision'] as int) + 1;
+      old['updated_at'] = now;
+      old['native_synced_revision'] = 0;
+      await tx.update('calendar_entries', old, where: 'id = ?', whereArgs: [old['id']]);
+      final previousRevision = (snapshot['revision'] as int);
+      await tx.rawInsert('''INSERT INTO calendar_occurrences(entry_id,revision,epoch,status,snoozed_until,updated_at)
+        SELECT entry_id,?,epoch,status,snoozed_until,? FROM calendar_occurrences WHERE entry_id=? AND revision=?''',
+        [old['revision'],now,old['id'],previousRevision]);
+    }
   }
 
   @override
@@ -186,4 +306,128 @@ class LocalStore implements ActionStore {
 
   @override
   Future<void> close() => _db.close();
+
+  @override
+  Future<List<CalendarEntry>> calendarEntries() async {
+    final rows = await _db.rawQuery('''SELECT c.*, COALESCE(t.title, n.body, c.title) AS display_title FROM calendar_entries c
+      LEFT JOIN tasks t ON c.task_id = t.id LEFT JOIN notes n ON c.note_id = n.id
+      WHERE c.owner_id = ? AND c.workspace_id = ? AND c.deleted_at IS NULL
+      AND (c.task_id IS NULL OR t.deleted_at IS NULL)
+      AND (c.note_id IS NULL OR n.deleted_at IS NULL)''', [ownerId, workspaceId]);
+    return [for (final r in rows) CalendarEntry(id: r['id'] as String, title: (r['display_title'] as String).split('\n').first,
+      taskId: r['task_id'] as String?, noteId: r['note_id'] as String?, revision: r['revision'] as int,
+      syncedRevision: r['native_synced_revision'] as int,
+      schedule: ScheduleSpec(localStart: r['local_start'] as String, timezone: r['timezone'] as String,
+        allDay: r['all_day'] == 1, repeat: RepeatRule.values.byName(r['repeat_rule'] as String),
+        interval: r['repeat_interval'] as int, until: r['until_date'] as String?, reminder: r['reminder'] == 1,
+        mode: ReminderMode.values.byName(r['reminder_mode'] as String)))];
+  }
+
+  @override
+  Future<List<OccurrenceState>> occurrenceStates() async => [
+    for (final r in await _db.rawQuery('''SELECT o.* FROM calendar_occurrences o JOIN calendar_entries c ON c.id = o.entry_id
+      WHERE c.owner_id = ? AND c.workspace_id = ? AND o.revision = c.revision''', [ownerId, workspaceId]))
+      OccurrenceState(r['entry_id'] as String, r['epoch'] as int, OccurrenceStatus.values.byName(r['status'] as String),
+        snoozedUntil: r['snoozed_until'] as int?, revision: r['revision'] as int),
+  ];
+
+  @override
+  Future<void> markCalendarSynced(String id, int revision) async {
+    await _db.update('calendar_entries', {'native_synced_revision': revision},
+      where: 'id = ? AND revision = ? AND owner_id = ? AND workspace_id = ?', whereArgs: [id, revision, ownerId, workspaceId]);
+  }
+
+  static const _snapshotTables = ['local_identity', 'workspaces', 'accounts', 'transactions', 'tasks', 'notes',
+    'operations', 'record_changes', 'calendar_entries', 'calendar_occurrences', 'settings'];
+
+  @override
+  Future<Map<String, Object?>> exportSnapshot() => _db.transaction((tx) async => {
+    'schemaVersion': schemaVersion, 'tables': {for (final table in _snapshotTables) table: await tx.query(table)},
+  });
+
+  @override
+  Future<void> restoreSnapshot(Map<String, Object?> data) async {
+    if (data['schemaVersion'] != schemaVersion || data['tables'] is! Map) throw const DomainFailure('backup_invalid');
+    final tables = Map<String, Object?>.from(data['tables'] as Map);
+    if (tables.length != _snapshotTables.length || !_snapshotTables.every(tables.containsKey)) {
+      throw const DomainFailure('backup_invalid');
+    }
+    for (final value in tables.values) {
+      if (value is! List || value.length > 50000 || value.any((r) => r is! Map)) throw const DomainFailure('backup_invalid');
+    }
+    final identityRows = tables['local_identity'] as List;
+    if (identityRows.length != 1) throw const DomainFailure('backup_invalid');
+    final identity = Map<String, Object?>.from(identityRows.single as Map);
+    final newOwner = identity['id'] as String?, newSpace = identity['workspace_id'] as String?;
+    if (newOwner == null || newSpace == null) throw const DomainFailure('backup_invalid');
+    final workspaces = tables['workspaces'] as List;
+    if (workspaces.length != 1 || (workspaces.single as Map)['id'] != newSpace) throw const DomainFailure('backup_invalid');
+    await _db.transaction((tx) async {
+      for (final table in _snapshotTables.reversed) { await tx.delete(table); }
+      for (final table in _snapshotTables) {
+        final definitions = await tx.rawQuery('PRAGMA table_info($table)');
+        final columns = definitions.map((c) => c['name']).toSet();
+        for (final raw in tables[table] as List) {
+          final row = Map<String, Object?>.from(raw as Map);
+          if (row.length != columns.length || row.keys.any((key) => !columns.contains(key)) ||
+              row.values.any((v) => v != null && v is! String && v is! num) ||
+              row.containsKey('owner_id') && row['owner_id'] != newOwner ||
+              row.containsKey('workspace_id') && row['workspace_id'] != newSpace) {
+            throw const DomainFailure('backup_invalid');
+          }
+          for (final column in definitions) {
+            final value = row[column['name']];
+            if (value == null && (column['notnull'] == 1 || (column['pk'] as int) > 0) ||
+                value != null && column['type'] == 'INTEGER' && value is! int ||
+                value != null && column['type'] == 'TEXT' && value is! String) throw const DomainFailure('backup_invalid');
+          }
+          if (row.containsKey('id') && (row['id'] as String).isEmpty) throw const DomainFailure('backup_invalid');
+          for (final field in ['created_at','updated_at','deleted_at']) {
+            if (row[field] != null && DateTime.tryParse(row[field] as String) == null) throw const DomainFailure('backup_invalid');
+          }
+          if (table == 'settings') {
+            final key = row['key'], value = row['value'];
+            final choices = <String,List<String>>{
+              'theme':['system','light','dark'], 'week_start':['1','7'], 'snooze_minutes':['5','10','15','30'],
+              'notification_content':['hide','show'], 'region':['ru','en','de','fr','es','it','pt','kk','uz','uk','ka','az','hy','tg','ky']};
+            if (choices.containsKey(key) && !choices[key]!.contains(value)) throw const DomainFailure('backup_invalid');
+            if (key == 'currency') Currency.fromCode(value as String);
+            if (key == 'language' && !RegExp(r'^[a-z]{2,3}(?:-[A-Za-z]{2,8})*$').hasMatch(value as String)) throw const DomainFailure('backup_invalid');
+            if (key == 'timezone') CalendarEngine.validate(ScheduleSpec(localStart:'2026-01-01T09:00:00',timezone:value as String));
+          }
+          if (table == 'transactions') {
+            final currency = Currency.fromCode(row['currency'] as String);
+            final date = DateTime.tryParse(row['occurred_on'] as String);
+            if (currency.digits != row['minor_digits'] || date == null || dateOnly(date) != row['occurred_on'] || date.year < 1900 || date.year > 2200) throw const DomainFailure('backup_invalid');
+          }
+          if (table == 'calendar_entries') {
+            CalendarEngine.validate(ScheduleSpec(localStart: row['local_start'] as String, timezone: row['timezone'] as String,
+              repeat: RepeatRule.values.byName(row['repeat_rule'] as String), interval: row['repeat_interval'] as int, until: row['until_date'] as String?));
+            row['native_synced_revision'] = 0;
+          }
+          await tx.insert(table, row);
+        }
+      }
+      for (final raw in tables['record_changes'] as List) {
+        final change = Map<String,Object?>.from(raw as Map);
+        final table = change['table_name'] as String;
+        if (!['transactions','tasks','notes'].contains(table) ||
+            (await tx.query(table,columns:['id'],where:'id = ?',whereArgs:[change['record_id']])).isEmpty) throw const DomainFailure('backup_invalid');
+        for (final field in ['before_json','after_json']) {
+          final decoded = jsonDecode(change[field] as String);
+          if (decoded is! Map || decoded['id'] != change['record_id'] || decoded['owner_id'] != newOwner ||
+              decoded['workspace_id'] != newSpace || decoded['revision'] is! int) throw const DomainFailure('backup_invalid');
+          final schedule = decoded['__schedule'];
+          if (schedule != null) {
+            if (schedule is! Map || schedule['owner_id'] != newOwner || schedule['workspace_id'] != newSpace ||
+                schedule[table == 'tasks' ? 'task_id' : 'note_id'] != change['record_id'] || schedule['revision'] is! int ||
+                (await tx.query('calendar_entries',columns:['id'],where:'id = ?',whereArgs:[schedule['id']])).isEmpty) throw const DomainFailure('backup_invalid');
+          }
+        }
+      }
+      if ((await tx.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) throw const DomainFailure('backup_invalid');
+    });
+    ownerId = newOwner;
+    workspaceId = newSpace;
+  }
 }

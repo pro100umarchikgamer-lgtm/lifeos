@@ -1,11 +1,19 @@
-name: Stage 1 checks, UI screenshots and debug APK
-on: [push, pull_request, workflow_dispatch]
+name: Personal Core validation and final debug APK
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'Build the final debug APK after all validation succeeds'
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,7 +32,7 @@ jobs:
       - run: bash tool/prepare_platforms.sh
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test test/domain_test.dart test/widget_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/widget_test.dart
       - run: flutter test --update-goldens test/visual_snapshot_test.dart
       - run: python3 tool/verify_goldens.py
       - uses: actions/upload-artifact@v4
@@ -34,9 +42,29 @@ jobs:
           path: test/goldens/*.png
           if-no-files-found: warn
           retention-days: 14
+      - name: Compile native Android code without creating an APK
+        working-directory: android
+        run: ./gradlew :app:compileDebugKotlin --no-daemon
+      - name: Enable KVM for encrypted storage integration tests
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: SQLCipher persistence, migrations and verified restore on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 20
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          script: flutter test integration_test/offline_storage_test.dart -d emulator-5554
       - name: Build Android debug APK
+        if: github.event_name == 'workflow_dispatch' && inputs.build_apk
         run: flutter build apk --debug
       - name: Upload Android debug APK
+        if: github.event_name == 'workflow_dispatch' && inputs.build_apk
         uses: actions/upload-artifact@v4
         with:
           name: lifeos-debug-apk-${{ github.run_number }}
