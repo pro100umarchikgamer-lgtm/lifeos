@@ -91,7 +91,9 @@
     "period": "Period",
     "notes_module_hint": "Your saved notes",
     "open_tasks": "Open tasks",
-    "completed_tasks": "Completed"
+    "completed_tasks": "Completed",
+    "revision_conflict": "This record has changed. Reopen it before saving.",
+    "undo_unavailable": "This change can no longer be undone."
   },
   "plurals": {
     "record_count": {

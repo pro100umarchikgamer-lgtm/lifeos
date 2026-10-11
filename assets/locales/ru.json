@@ -91,7 +91,9 @@
     "period": "Период",
     "notes_module_hint": "Ваши сохранённые заметки",
     "open_tasks": "Открытые задачи",
-    "completed_tasks": "Выполненные"
+    "completed_tasks": "Выполненные",
+    "revision_conflict": "Запись уже изменилась. Откройте её заново перед сохранением.",
+    "undo_unavailable": "Изменение больше нельзя отменить."
   },
   "plurals": {
     "record_count": {

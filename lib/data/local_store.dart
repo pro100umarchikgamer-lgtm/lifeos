@@ -18,7 +18,7 @@ class LocalStore implements ActionStore {
   final String ownerId;
   final String workspaceId;
   static const _uuid = Uuid();
-  static const schemaVersion = 1;
+  static const schemaVersion = 2;
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) throw const DomainFailure('invalid_action');
@@ -82,7 +82,9 @@ class LocalStore implements ActionStore {
       if (previous.single['payload'] != payload) throw const DomainFailure('operation_conflict');
       return previous.single['result_id'] as String;
     }
-    final id = action is CompleteTask ? action.id : _uuid.v4();
+    final id = switch (action) {
+      CompleteTask() => action.id, RecordMutation() => action.id, _ => _uuid.v4(),
+    };
     final now = DateTime.now().toUtc().toIso8601String();
     final metadata = {'id': id, 'owner_id': ownerId, 'workspace_id': workspaceId,
       'visibility': 'private', 'created_at': now, 'updated_at': now};
@@ -97,13 +99,58 @@ class LocalStore implements ActionStore {
       case CreateNote():
         await tx.insert('notes', {...metadata, 'body': action.body.trim()});
       case CompleteTask():
-        final count = await tx.rawUpdate('UPDATE tasks SET completed = ?, updated_at = ?, revision = revision + 1 WHERE id = ? AND owner_id = ? AND workspace_id = ? AND deleted_at IS NULL',
-          [action.completed ? 1 : 0, now, id, ownerId, workspaceId]);
-        if (count != 1) throw const DomainFailure('record_missing');
+        await _mutate(tx, 'tasks', id, action.expectedRevision,
+          {'completed': action.completed ? 1 : 0}, action.operationId, now);
+      case RecordMutation():
+        final table = switch (action.kind) {
+          EntryKind.expense || EntryKind.income => 'transactions',
+          EntryKind.task => 'tasks', EntryKind.note => 'notes',
+        };
+        final values = <String, Object?>{};
+        switch (action) {
+          case EditMoney():
+            final currency = Currency.fromCode(action.currencyCode);
+            values.addAll({'kind': action.kind.name, 'amount_minor': currency.parse(action.amount),
+              'currency': currency.code, 'minor_digits': currency.digits,
+              'label': action.label.trim(), 'occurred_on': dateOnly(action.date)});
+          case EditTask(): values['title'] = action.title.trim();
+          case EditNote(): values['body'] = action.body.trim();
+          case DeleteRecord(): values['deleted_at'] = now;
+          case UndoRecordChange():
+            final changes = await tx.query('record_changes', where: 'table_name = ? AND record_id = ? AND revision = ?',
+              whereArgs: [table, id, action.expectedRevision]);
+            if (changes.isEmpty) throw const DomainFailure('undo_unavailable');
+            values.addAll(Map<String, Object?>.from(jsonDecode(changes.single['before_json'] as String) as Map));
+            for (final key in ['id', 'owner_id', 'workspace_id', 'visibility', 'created_at', 'updated_at', 'revision']) {
+              values.remove(key);
+            }
+        }
+        await _mutate(tx, table, id, action.expectedRevision, values, action.operationId, now,
+          allowDeleted: action is UndoRecordChange);
     }
     await tx.insert('operations', {'id': action.operationId, 'payload': payload, 'result_id': id, 'created_at': now});
     return id;
   });
+
+  Future<void> _mutate(sql.Transaction tx, String table, String id, int? revision,
+      Map<String, Object?> values, String operationId, String now, {bool allowDeleted = false}) async {
+    final rows = await tx.query(table, where: 'id = ? AND owner_id = ? AND workspace_id = ?',
+      whereArgs: [id, ownerId, workspaceId]);
+    if (rows.length != 1 || (!allowDeleted && rows.single['deleted_at'] != null)) {
+      throw const DomainFailure('record_missing');
+    }
+    final before = rows.single;
+    final actual = before['revision'] as int;
+    if (revision != null && actual != revision) throw const DomainFailure('revision_conflict');
+    final after = {...before, ...values, 'updated_at': now, 'revision': actual + 1};
+    final count = await tx.update(table, {...values, 'updated_at': now, 'revision': actual + 1},
+      where: 'id = ? AND owner_id = ? AND workspace_id = ? AND revision = ?',
+      whereArgs: [id, ownerId, workspaceId, actual]);
+    if (count != 1) throw const DomainFailure('revision_conflict');
+    await tx.insert('record_changes', {'id': _uuid.v4(), 'operation_id': operationId,
+      'table_name': table, 'record_id': id, 'revision': actual + 1,
+      'before_json': jsonEncode(before), 'after_json': jsonEncode(after), 'created_at': now});
+  }
 
   @override
   Future<List<Record>> records() async {
@@ -119,7 +166,8 @@ class LocalStore implements ActionStore {
           createdAt: DateTime.parse(row['created_at'] as String),
           amountMinor: row['amount_minor'] as int?,
           currency: table == 'transactions' ? Currency(row['currency'] as String, row['minor_digits'] as int) : null,
-          date: row['occurred_on'] as String?, completed: row['completed'] == 1));
+          date: row['occurred_on'] as String?, completed: row['completed'] == 1,
+          revision: row['revision'] as int, updatedAt: DateTime.parse(row['updated_at'] as String)));
       }
     }
     result.sort((a, b) => b.createdAt.compareTo(a.createdAt));

@@ -42,6 +42,17 @@ void main() {
       expect(records.length, 3);
       expect(records.singleWhere((r) => r.id == id).amountMinor, 1250);
       final task = records.singleWhere((r) => r.kind == EntryKind.task);
+      final edit = EditMoney('edit-op', id, EntryKind.expense, 1, amount: '20.01',
+        currencyCode: 'RUB', date: DateTime(2026, 10, 11), label: 'Corrected');
+      await ActionEngine(store).execute(edit);
+      await ActionEngine(store).execute(edit);
+      expect((await store.records()).singleWhere((r) => r.id == id).revision, 2);
+      await expectLater(ActionEngine(store).execute(EditMoney('stale-op', id, EntryKind.expense, 1,
+        amount: '99', currencyCode: 'RUB', date: DateTime(2026, 10, 11))), throwsA(isA<DomainFailure>()));
+      await ActionEngine(store).execute(DeleteRecord('delete-op', id, EntryKind.expense, 2));
+      expect((await store.records()).where((r) => r.id == id), isEmpty);
+      await ActionEngine(store).execute(UndoRecordChange('undo-op', id, EntryKind.expense, 3));
+      expect((await store.records()).singleWhere((r) => r.id == id).amountMinor, 2001);
       await ActionEngine(store).execute(CompleteTask('done-op', task.id, true));
       await store.close();
       store = null;

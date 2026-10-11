@@ -43,7 +43,8 @@ class Currency {
 
 class Record {
   const Record({required this.id, required this.kind, required this.text,
-    required this.createdAt, this.amountMinor, this.currency, this.date, this.completed = false});
+    required this.createdAt, this.amountMinor, this.currency, this.date, this.completed = false,
+    this.revision = 1, this.updatedAt});
   final String id;
   final EntryKind kind;
   final String text;
@@ -52,6 +53,8 @@ class Record {
   final Currency? currency;
   final String? date;
   final bool completed;
+  final int revision;
+  final DateTime? updatedAt;
 }
 
 sealed class AppAction {
@@ -88,11 +91,61 @@ class CreateNote extends AppAction {
 }
 
 class CompleteTask extends AppAction {
-  const CompleteTask(super.operationId, this.id, this.completed);
+  const CompleteTask(super.operationId, this.id, this.completed, {this.expectedRevision});
   final String id;
   final bool completed;
+  final int? expectedRevision;
   @override
-  Map<String, Object?> get payload => {'action': 'task.complete', 'id': id, 'completed': completed};
+  Map<String, Object?> get payload => {'action': 'task.complete', 'id': id, 'completed': completed,
+    if (expectedRevision != null) 'expectedRevision': expectedRevision};
+}
+
+sealed class RecordMutation extends AppAction {
+  const RecordMutation(super.operationId, this.id, this.kind, this.expectedRevision);
+  final String id;
+  final EntryKind kind;
+  final int expectedRevision;
+  Map<String, Object?> get target => {'id': id, 'kind': kind.name, 'expectedRevision': expectedRevision};
+}
+
+class EditMoney extends RecordMutation {
+  const EditMoney(super.operationId, super.id, super.kind, super.expectedRevision,
+    {required this.amount, required this.currencyCode, required this.date, this.label = ''});
+  final String amount;
+  final String currencyCode;
+  final DateTime date;
+  final String label;
+  @override
+  Map<String, Object?> get payload => {...target, 'action': 'money.edit', 'amount': amount,
+    'currency': currencyCode, 'date': dateOnly(date), 'label': label.trim()};
+}
+
+class EditTask extends RecordMutation {
+  const EditTask(String operationId, String id, int revision, this.title)
+    : super(operationId, id, EntryKind.task, revision);
+  final String title;
+  @override
+  Map<String, Object?> get payload => {...target, 'action': 'task.edit', 'title': title.trim()};
+}
+
+class EditNote extends RecordMutation {
+  const EditNote(String operationId, String id, int revision, this.body)
+    : super(operationId, id, EntryKind.note, revision);
+  final String body;
+  @override
+  Map<String, Object?> get payload => {...target, 'action': 'note.edit', 'body': body.trim()};
+}
+
+class DeleteRecord extends RecordMutation {
+  const DeleteRecord(super.operationId, super.id, super.kind, super.expectedRevision);
+  @override
+  Map<String, Object?> get payload => {...target, 'action': 'record.delete'};
+}
+
+class UndoRecordChange extends RecordMutation {
+  const UndoRecordChange(super.operationId, super.id, super.kind, super.expectedRevision);
+  @override
+  Map<String, Object?> get payload => {...target, 'action': 'record.undo'};
 }
 
 String dateOnly(DateTime date) => '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

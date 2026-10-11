@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,7 +34,7 @@ List<Record> sampleRecords() {
     createdAt: now, amountMinor: amount, currency: currency,
     date: dateOnly(DateTime(now.year, now.month, day)));
   return [
-    Record(id: 'n1', kind: EntryKind.note, text: 'Идеи на выходные\nИсследовать новый маршрут в парке, посмотреть выставку и собрать список мест.', createdAt: now),
+    Record(id: 'n1', kind: EntryKind.note, text: 'Идеи на выходные\nИсследовать новый маршрут в парке, посмотреть выставку и собрать список мест. Бюджет: 100 ₽.', createdAt: now),
     Record(id: 't1', kind: EntryKind.task, text: 'Разобрать почту', createdAt: now),
     Record(id: 't2', kind: EntryKind.task, text: 'Купить продукты', createdAt: now),
     Record(id: 't3', kind: EntryKind.task, text: 'Подготовить документы', createdAt: now),
@@ -56,6 +55,9 @@ void main() {
     final bytes = await File('test/fonts/NotoSans-Regular.ttf').readAsBytes();
     final loader = FontLoader('Roboto')..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
     await loader.load();
+    final iconLoader = FontLoader('MaterialIcons')
+      ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await iconLoader.load();
     catalog = await PackCatalog.load();
   });
 
@@ -75,7 +77,7 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           if (populated) {
-            expect(find.text('122500.00 RUB'), findsOneWidget);
+            expect(find.text('122 500 ₽'), findsOneWidget);
           } else {
             expect(find.text(controller.pack.t('welcome_title')), findsOneWidget);
           }
@@ -114,10 +116,39 @@ void main() {
         await tester.tap(find.byKey(const Key('quick_expense')));
         await tester.pumpAndSettle();
       }
+      if (page == 'notes') {
+        expect(find.textContaining('100 ₽'), findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/page_$page.png'));
       expect(tester.takeException(), isNull);
     });
+  }
+  for (final mode in ['light', 'dark']) {
+    for (final width in [320.0, 390.0]) {
+      if (mode == 'light' && width == 390) continue; // Existing page_finances.
+      final name = 'finances_${mode}_${width.toInt()}';
+      testWidgets(name, (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = Size(width, 844);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        final controller = AppController(SnapshotStore(sampleRecords(), mode), catalog, 'ru');
+        await controller.load();
+        await tester.pumpWidget(LifeOSApp(controller: controller));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('nav_finances')));
+        await tester.pumpAndSettle();
+        expect(find.text('122 500 ₽'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        final button = tester.getRect(find.byKey(const Key('add_button')));
+        final bar = tester.getRect(find.byType(BottomAppBar));
+        expect(button.top, greaterThanOrEqualTo(bar.top));
+        expect(button.bottom, lessThanOrEqualTo(bar.bottom));
+        await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
   testWidgets('home_populated_light_tablet', (tester) async {
     tester.view.devicePixelRatio = 1;

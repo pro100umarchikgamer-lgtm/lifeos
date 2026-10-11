@@ -1,4 +1,4 @@
-name: Stage 1 checks and UI screenshots
+name: Stage 1 checks, UI screenshots and debug APK
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
@@ -33,4 +33,13 @@ jobs:
           name: lifeos-ui-screenshots-${{ github.run_number }}
           path: test/goldens/*.png
           if-no-files-found: warn
+          retention-days: 14
+      - name: Build Android debug APK
+        run: flutter build apk --debug
+      - name: Upload Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-debug-apk-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
           retention-days: 14

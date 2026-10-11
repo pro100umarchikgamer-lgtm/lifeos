@@ -12,6 +12,8 @@ expected = {
 }
 expected.update({f'page_{page}.png': (390, 844)
                  for page in ('finances', 'plans', 'notes', 'profile', 'quick_expense')})
+expected.update({f'finances_{theme}_{width}.png': (width, 844)
+                 for theme, width in [('light', 320), ('dark', 320), ('dark', 390)]})
 expected['home_populated_light_tablet.png'] = (900, 900)
 
 for name, dimensions in expected.items():
