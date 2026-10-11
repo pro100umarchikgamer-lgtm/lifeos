@@ -5,6 +5,7 @@ import '../domain/models.dart';
 import 'design.dart';
 import 'money_format.dart';
 import 'quick_add.dart';
+import 'money_details.dart';
 import 'notices.dart';
 
 class RecordDetail extends StatefulWidget {
@@ -61,6 +62,7 @@ class _RecordDetailState extends State<RecordDetail> {
               if (linked.schedule.reminder) Text(c.pack.t('mode_${linked.schedule.mode.name}')),
             ])),
           ],
+          if(record.amountMinor!=null) OutlinedButton.icon(onPressed:busy?null:()=>showModalBottomSheet<void>(context:context,isScrollControlled:true,useSafeArea:true,builder:(_)=>MoneyDetails(controller:c,record:record)),icon:const Icon(Icons.account_balance_wallet_outlined),label:Text(c.pack.t('account_and_splits'))),
           const SizedBox(height: 20), FilledButton.icon(key: const Key('edit_record'), onPressed: busy ? null : () => edit(record), icon: const Icon(Icons.edit_outlined), label: Text(c.pack.t('edit'))),
           const SizedBox(height: 8), OutlinedButton.icon(key: const Key('delete_record'), onPressed: busy ? null : () => remove(record), icon: const Icon(Icons.delete_outline), label: Text(c.pack.t('delete'))),
           if (record.revision > 1) TextButton.icon(onPressed: busy ? null : () async {

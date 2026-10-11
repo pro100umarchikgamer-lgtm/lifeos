@@ -12,6 +12,7 @@ import 'calendar.dart';
 import 'calendar_panel.dart';
 import 'record_detail.dart';
 import 'settings.dart';
+import 'finance_foundation.dart';
 import 'notices.dart';
 import 'selection.dart';
 
@@ -510,6 +511,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return [
       _pageTitle('finances'),
       const SizedBox(height: 14),
+      LifeCard(child:ListTile(leading:const Icon(Icons.account_balance_wallet_outlined),title:Text(c.pack.t('financial_foundation')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>FinanceFoundation(controller:c))))),
+      const SizedBox(height:12),
       _financeSummary(),
       const SizedBox(height: 12),
       LifeCard(child: Row(children: [

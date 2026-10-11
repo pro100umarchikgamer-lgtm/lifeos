@@ -15,6 +15,11 @@ class AppController extends ChangeNotifier {
   final PackCatalog catalog;
   final String deviceLanguage;
   List<Record> records = [];
+  Map<OfflineTable,List<Map<String,Object?>>> offline = {};
+  List<Map<String,Object?>> allocations = [];
+  Future<void> refreshOffline({Set<OfflineTable>? tables}) async {
+    if(store case final OfflineStore database) { offline.addAll(await database.offlineData(tables:tables)); allocations=await database.splits(); notifyListeners(); }
+  }
   Map<String, String> preferences = {};
   final Set<String> pendingTasks = {};
   final NativeBridge native;
@@ -50,6 +55,7 @@ class AppController extends ChangeNotifier {
     _reminderFingerprint = null;
     presentation.notifyListeners();
     await refresh();
+    await refreshOffline();
   }
   Future<void> _refreshTail = Future<void>.value();
   Future<void> refresh({bool forceReminders = false}) {
@@ -128,6 +134,7 @@ class AppController extends ChangeNotifier {
   Future<void> execute(AppAction action) async {
     await engine.execute(action);
     await refresh();
+    if(action is OfflineAction || action is RecordMutation) await refreshOffline();
   }
   Future<void> preference(String key, String value) async {
     switch (key) {

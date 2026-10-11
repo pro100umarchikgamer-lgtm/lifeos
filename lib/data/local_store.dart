@@ -13,14 +13,16 @@ import 'package:uuid/uuid.dart';
 import '../domain/action_engine.dart';
 import '../domain/models.dart';
 import '../domain/calendar_engine.dart';
+import 'package:timezone/timezone.dart' as tz;
+part 'offline_store.dart';
 
-class LocalStore implements PersonalStore {
+class LocalStore implements OfflineStore {
   LocalStore._(this._db, this.ownerId, this.workspaceId);
   final sql.Database _db;
   String ownerId;
   String workspaceId;
   static const _uuid = Uuid();
-  static const schemaVersion = 3;
+  static const schemaVersion = 4;
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) throw const DomainFailure('invalid_action');
@@ -85,14 +87,16 @@ class LocalStore implements PersonalStore {
       return previous.single['result_id'] as String;
     }
     final id = switch (action) {
-      CompleteTask() => action.id, RecordMutation() => action.id,
+      OfflineAction() => action.id, CompleteTask() => action.id, RecordMutation() => action.id,
       SaveCalendar() => action.id ?? _uuid.v4(), DeleteCalendar() => action.id,
       SetOccurrence() => action.entryId, _ => _uuid.v4(),
     };
     final now = DateTime.now().toUtc().toIso8601String();
+    var resultId=id;
     final metadata = {'id': id, 'owner_id': ownerId, 'workspace_id': workspaceId,
       'visibility': 'private', 'created_at': now, 'updated_at': now};
     switch (action) {
+      case OfflineAction(): resultId=await _applyOffline(tx,action,now);
       case CreateMoney():
         final currency = Currency.fromCode(action.currencyCode);
         await tx.insert('transactions', {...metadata, 'kind': action.kind.name,
@@ -135,10 +139,21 @@ class LocalStore implements PersonalStore {
             for (final key in ['id', 'owner_id', 'workspace_id', 'visibility', 'created_at', 'updated_at', 'revision']) {
               values.remove(key);
             }
-            values.remove('__schedule');
+            values.remove('__schedule'); values.remove('__splits');
+            if(table=='transactions') values.putIfAbsent('category_id',()=>null);
         }
         await _mutate(tx, table, id, action.expectedRevision, values, action.operationId, now,
           allowDeleted: action is UndoRecordChange, expectedKind: action.kind);
+        if(table=='transactions') {
+          if(action is UndoRecordChange) {
+            final change=(await tx.query('record_changes',where:'table_name=? AND record_id=? AND revision=?',whereArgs:[table,id,action.expectedRevision])).single;
+            final before=jsonDecode(change['before_json'] as String) as Map;
+            final rows=before['__splits'] as List? ?? [];
+            await tx.delete('transaction_splits',where:'transaction_id=?',whereArgs:[id]);
+            for(final row in rows) { await tx.insert('transaction_splits',Map<String,Object?>.from(row as Map)); }
+          }
+          await _auditMoneyAfter(tx,id,action.operationId);
+        }
         if (action is EditTask && action.updateSchedule) {
           await _linkedSchedule(tx, id, 'task_id', action.title.trim(), action.schedule, now);
         }
@@ -187,8 +202,8 @@ class LocalStore implements PersonalStore {
           'status': action.status.name, 'snoozed_until': action.snoozedUntil, 'updated_at': now},
           conflictAlgorithm: sql.ConflictAlgorithm.replace);
     }
-    await tx.insert('operations', {'id': action.operationId, 'payload': payload, 'result_id': id, 'created_at': now});
-    return id;
+    await tx.insert('operations', {'id': action.operationId, 'payload': payload, 'result_id': resultId, 'created_at': now});
+    return resultId;
   });
 
   Future<void> _mutate(sql.Transaction tx, String table, String id, int? revision,
@@ -204,6 +219,7 @@ class LocalStore implements PersonalStore {
       final linked = await tx.query('calendar_entries', where: '${table == 'tasks' ? 'task_id' : 'note_id'} = ? AND deleted_at IS NULL', whereArgs: [id]);
       before['__schedule'] = linked.firstOrNull;
     }
+    if(table=='transactions') before['__splits']=await tx.query('transaction_splits',where:'transaction_id=?',whereArgs:[id]);
     final actual = before['revision'] as int;
     if (revision != null && actual != revision) throw const DomainFailure('revision_conflict');
     final after = {...before, ...values, 'updated_at': now, 'revision': actual + 1};
@@ -288,7 +304,7 @@ class LocalStore implements PersonalStore {
           amountMinor: row['amount_minor'] as int?,
           currency: table == 'transactions' ? Currency(row['currency'] as String, row['minor_digits'] as int) : null,
           date: row['occurred_on'] as String?, completed: row['completed'] == 1,
-          revision: row['revision'] as int, updatedAt: DateTime.parse(row['updated_at'] as String)));
+          accountId: row['account_id'] as String?, categoryId: row['category_id'] as String?, revision: row['revision'] as int, updatedAt: DateTime.parse(row['updated_at'] as String)));
       }
     }
     result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -338,16 +354,40 @@ class LocalStore implements PersonalStore {
       where: 'id = ? AND revision = ? AND owner_id = ? AND workspace_id = ?', whereArgs: [id, revision, ownerId, workspaceId]);
   }
 
-  static const _snapshotTables = ['local_identity', 'workspaces', 'accounts', 'transactions', 'tasks', 'notes',
-    'operations', 'record_changes', 'calendar_entries', 'calendar_occurrences', 'settings'];
+  @override
+  Future<Map<OfflineTable,List<Map<String,Object?>>>> offlineData({Set<OfflineTable>? tables}) async => {
+    for(final table in tables ?? {OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments})
+      table: [for(final row in await _db.query(table.sqlName,where:'owner_id=? AND workspace_id=? AND deleted_at IS NULL',whereArgs:[ownerId,workspaceId])) Map<String,Object?>.from(row)],
+  };
+  @override
+  Future<List<Map<String,Object?>>> splits() async => [for(final row in await _db.rawQuery('SELECT s.* FROM transaction_splits s JOIN transactions t ON t.id=s.transaction_id WHERE t.owner_id=? AND t.workspace_id=? AND t.deleted_at IS NULL',[ownerId,workspaceId])) Map<String,Object?>.from(row)];
+
+  static const _snapshotTables = ['local_identity','workspaces','accounts','categories','transactions','tasks','notes','operations','record_changes','calendar_entries','calendar_occurrences','settings','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes'];
 
   @override
   Future<Map<String, Object?>> exportSnapshot() => _db.transaction((tx) async => {
     'schemaVersion': schemaVersion, 'tables': {for (final table in _snapshotTables) table: await tx.query(table)},
   });
 
+  Map<String,Object?> _upgradeBackup(Map<String,Object?> data) {
+    if(data['schemaVersion']==schemaVersion) return data;
+    if(![1,2,3].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
+    final tables=Map<String,Object?>.from(jsonDecode(jsonEncode(data['tables'])) as Map);
+    final version=data['schemaVersion'] as int;
+    final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences']];
+    if(tables.length!=legacy.length||!legacy.every(tables.containsKey)) throw const DomainFailure('backup_invalid');
+    for(final table in _snapshotTables) { tables.putIfAbsent(table,()=> <Object?>[]); }
+    for(final raw in tables['accounts'] as List) {
+      final r=raw as Map; final owner=(tables['local_identity'] as List).first as Map;
+      r.addAll({'name':r['currency'],'kind':'cash','archived':0,'revision':1,'created_at':owner['created_at'],'updated_at':owner['created_at'],'deleted_at':null});
+    }
+    for(final raw in tables['transactions'] as List) { (raw as Map)['category_id']=null; }
+    return {'schemaVersion':schemaVersion,'tables':tables};
+  }
+
   @override
   Future<void> restoreSnapshot(Map<String, Object?> data) async {
+    data=_upgradeBackup(data);
     if (data['schemaVersion'] != schemaVersion || data['tables'] is! Map) throw const DomainFailure('backup_invalid');
     final tables = Map<String, Object?>.from(data['tables'] as Map);
     if (tables.length != _snapshotTables.length || !_snapshotTables.every(tables.containsKey)) {
@@ -364,6 +404,7 @@ class LocalStore implements PersonalStore {
     final workspaces = tables['workspaces'] as List;
     if (workspaces.length != 1 || (workspaces.single as Map)['id'] != newSpace) throw const DomainFailure('backup_invalid');
     await _db.transaction((tx) async {
+      await tx.execute('PRAGMA defer_foreign_keys=ON');
       for (final table in _snapshotTables.reversed) { await tx.delete(table); }
       for (final table in _snapshotTables) {
         final definitions = await tx.rawQuery('PRAGMA table_info($table)');
@@ -429,6 +470,8 @@ class LocalStore implements PersonalStore {
           }
         }
       }
+      for(final row in await tx.query('transactions')) { await _moneyRelations(tx,row['id'] as String,owner:newOwner,space:newSpace); }
+      await _validateOfflineRestore(tx,newOwner,newSpace);
       if ((await tx.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) throw const DomainFailure('backup_invalid');
     });
     ownerId = newOwner;
