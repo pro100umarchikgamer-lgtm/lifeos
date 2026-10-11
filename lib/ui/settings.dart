@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' as background;
 import 'package:timezone/timezone.dart' as tz;
 import '../app_controller.dart';
 import '../domain/action_engine.dart';
@@ -56,12 +56,12 @@ class _PersonalSettingsState extends State<PersonalSettings> {
     try {
       if (!restore) {
         final secret = await password(create: true); if (secret == null) return;
-        final bytes = await compute(encryptBackupWorker, {'snapshot': await store.exportSnapshot(), 'password': secret});
+        final bytes = await background.compute(encryptBackupWorker, {'snapshot': await store.exportSnapshot(), 'password': secret});
         if (await c.native.saveBackup(bytes)) message('backup_saved');
       } else {
         final bytes = await c.native.readBackup(); if (bytes == null) return;
         final secret = await password(create: false); if (secret == null) return;
-        final snapshot = await compute(decryptBackupWorker, {'bytes': bytes, 'password': secret});
+        final snapshot = await background.compute(decryptBackupWorker, {'bytes': bytes, 'password': secret});
         final tables = snapshot['tables'];
         if (tables is! Map) throw const DomainFailure('backup_invalid');
         int count(String table) => (tables[table] is List) ? (tables[table] as List).where((r) => r is Map && r['deleted_at'] == null).length : 0;

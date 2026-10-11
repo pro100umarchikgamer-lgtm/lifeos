@@ -54,7 +54,7 @@ class AppController extends ChangeNotifier {
     schedulingError = null;
     if (!native.supported) return;
     try {
-      notificationStatus = await native.diagnostics();
+      notificationStatus = await native.diagnostics(labels: {for (final mode in ReminderMode.values) mode.name: pack.t('mode_${mode.name}')});
       deviceZone = notificationStatus['zone'] as String? ?? 'UTC';
       final pending = await native.pendingActions();
       final acknowledged = <String>[];

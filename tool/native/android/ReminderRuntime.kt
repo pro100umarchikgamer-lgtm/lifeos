@@ -47,15 +47,16 @@ object ReminderRuntime {
     private fun alarm(c: Context) = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     private fun notifications(c: Context) = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private fun intent(c: Context, id: String, slot: String, epoch: Long, revision: Int) = Intent(c, ReminderReceiver::class.java)
-        .setAction("lifeos.fire").setData(Uri.parse("lifeos://reminder/$id/$slot"))
+        .setAction("lifeos.fire").setData(Uri.Builder().scheme("lifeos").authority("reminder").appendPath(id).appendPath(slot).build())
         .putExtra("id", id).putExtra("slot", slot).putExtra("epoch", epoch).putExtra("revision", revision)
     private fun pending(c: Context, id: String, slot: String, epoch: Long, revision: Int) = PendingIntent.getBroadcast(c, 0,
         intent(c, id, slot, epoch, revision), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun exact(c: Context): Boolean = Build.VERSION.SDK_INT < 31 || alarm(c).canScheduleExactAlarms()
-    fun channels(c: Context) {
+    fun channels(c: Context, names: JSONObject? = null) {
         if (Build.VERSION.SDK_INT < 26) return
         for ((id, priority) in listOf("standard" to NotificationManager.IMPORTANCE_DEFAULT, "important" to NotificationManager.IMPORTANCE_HIGH, "alarm" to NotificationManager.IMPORTANCE_HIGH)) {
-            notifications(c).createNotificationChannel(NotificationChannel("lifeos.$id", "LifeOS · $id", priority).apply {
+            if (names == null && notifications(c).getNotificationChannel("lifeos.$id") != null) continue
+            notifications(c).createNotificationChannel(NotificationChannel("lifeos.$id", names?.optString(id) ?: "LifeOS · $id", priority).apply {
                 enableVibration(id != "standard")
                 if (id == "alarm") setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM), AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
             })
@@ -198,10 +199,10 @@ object ReminderRuntime {
         }
     }
     private fun open(c: Context, id: String): PendingIntent = PendingIntent.getActivity(c, 0,
-        Intent(c, MainActivity::class.java).setData(Uri.parse("lifeos://calendar/$id")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+        Intent(c, MainActivity::class.java).setData(Uri.Builder().scheme("lifeos").authority("calendar").appendPath(id).build()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     private fun action(c: Context, e: JSONObject, epoch: Long, status: String): PendingIntent = PendingIntent.getBroadcast(c, 0,
-        Intent(c, ReminderReceiver::class.java).setAction("lifeos.$status").setData(Uri.parse("lifeos://action/${e.getString("id")}/$epoch/$status"))
+        Intent(c, ReminderReceiver::class.java).setAction("lifeos.$status").setData(Uri.Builder().scheme("lifeos").authority("action").appendPath(e.getString("id")).appendPath(epoch.toString()).appendPath(status).build())
             .putExtra("id", e.getString("id")).putExtra("epoch", epoch).putExtra("revision", e.getInt("revision")),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun notification(c: Context, e: JSONObject, epoch: Long): Notification {

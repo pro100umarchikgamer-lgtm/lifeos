@@ -23,7 +23,7 @@ class MainActivity : FlutterActivity() {
             try {
                 when (call.method) {
                     "diagnostics" -> {
-                        ReminderRuntime.channels(this)
+                        ReminderRuntime.channels(this, if (call.arguments is Map<*, *>) JSONObject(call.arguments as Map<*, *>) else null)
                         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                         val enabled = if (Build.VERSION.SDK_INT >= 24) manager.areNotificationsEnabled() else true
                         val permission = Build.VERSION.SDK_INT < 33 || checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED

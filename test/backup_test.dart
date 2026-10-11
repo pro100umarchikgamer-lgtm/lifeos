@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:typed_data' as typed;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos/services/backup_service.dart';
 import 'package:lifeos/domain/models.dart';
@@ -17,9 +17,9 @@ void main() {
     final envelope = jsonDecode(utf8.decode(first)) as Map<String,dynamic>;
     final ciphertext = base64Decode(envelope['ciphertext'] as String); ciphertext[0] ^= 1;
     envelope['ciphertext'] = base64Encode(ciphertext);
-    await expectLater(service.decrypt(Uint8List.fromList(utf8.encode(jsonEncode(envelope))), password), throwsA(isA<DomainFailure>()));
+    await expectLater(service.decrypt(typed.Uint8List.fromList(utf8.encode(jsonEncode(envelope))), password), throwsA(isA<DomainFailure>()));
     envelope['iterations'] = 999999999;
-    await expectLater(service.decrypt(Uint8List.fromList(utf8.encode(jsonEncode(envelope))), password), throwsA(isA<DomainFailure>()));
+    await expectLater(service.decrypt(typed.Uint8List.fromList(utf8.encode(jsonEncode(envelope))), password), throwsA(isA<DomainFailure>()));
     await expectLater(service.encrypt(snapshot, 'short'), throwsA(isA<DomainFailure>()));
   }, timeout: const Timeout(Duration(minutes: 2)));
 }

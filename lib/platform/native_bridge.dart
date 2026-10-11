@@ -1,12 +1,12 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:typed_data' as typed;
 import 'package:flutter/services.dart';
 
 class NativeBridge {
   static const channel = MethodChannel('lifeos/native');
   bool get supported => Platform.isAndroid;
-  Future<Map<String, Object?>> diagnostics() async => supported
-    ? Map<String, Object?>.from(await channel.invokeMapMethod<String, Object?>('diagnostics') ?? {})
+  Future<Map<String, Object?>> diagnostics({Map<String,String>? labels}) async => supported
+    ? Map<String, Object?>.from(await channel.invokeMapMethod<String, Object?>('diagnostics', labels) ?? {})
     : {'supported': false, 'zone': 'UTC'};
   Future<void> reconcile(List<Map<String, Object?>> entries) async {
     if (supported) await channel.invokeMethod<void>('reconcile', {'entries': entries});
@@ -24,12 +24,12 @@ class NativeBridge {
     if (!supported) throw PlatformException(code: 'unsupported');
     await channel.invokeMethod<void>('testNotification', labels);
   }
-  Future<bool> saveBackup(Uint8List bytes) async {
+  Future<bool> saveBackup(typed.Uint8List bytes) async {
     if (!supported) throw PlatformException(code: 'unsupported');
     return await channel.invokeMethod<bool>('saveBackup', bytes) ?? false;
   }
-  Future<Uint8List?> readBackup() async {
+  Future<typed.Uint8List?> readBackup() async {
     if (!supported) throw PlatformException(code: 'unsupported');
-    return channel.invokeMethod<Uint8List>('readBackup');
+    return channel.invokeMethod<typed.Uint8List>('readBackup');
   }
 }
