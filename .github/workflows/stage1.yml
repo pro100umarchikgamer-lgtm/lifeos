@@ -8,49 +8,80 @@ on:
         description: 'Build the final debug APK after all validation succeeds'
         type: boolean
         default: false
+      force_full_validation:
+        description: 'Run all mandatory checks even when identical inputs were already validated'
+        type: boolean
+        default: false
+concurrency:
+  group: lifeos-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 permissions:
   contents: read
+  actions: read
 jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python3 -m unittest discover -s tool/tests -v
-      - run: python3 tool/validate_packs.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.7'
           channel: stable
           cache: true
       - run: bash tool/prepare_platforms.sh
       - run: flutter pub get
+      - name: Validate CI and signing scripts
+        run: |
+          python3 -m py_compile tool/ci_validation.py
+          bash -n tool/ci_signing.sh
+      - name: Verify prior validation evidence and prevent duplicate APKs
+        id: validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_APK: ${{ inputs.build_apk || false }}
+          FORCE_FULL_VALIDATION: ${{ inputs.force_full_validation || false }}
+        run: python3 tool/ci_validation.py
+      - run: python3 -m unittest discover -s tool/tests -v
+        if: steps.validation.outputs.full == 'true'
+      - run: python3 tool/validate_packs.py
+        if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
+        if: steps.validation.outputs.full == 'true'
       - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/widget_test.dart
+        if: steps.validation.outputs.full == 'true'
       - run: flutter test --update-goldens test/visual_snapshot_test.dart
+        if: steps.validation.outputs.full == 'true'
       - run: python3 tool/verify_goldens.py
+        if: steps.validation.outputs.full == 'true'
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.validation.outputs.full == 'true'
         with:
           name: lifeos-ui-screenshots-${{ github.run_number }}
           path: test/goldens/*.png
           if-no-files-found: warn
           retention-days: 14
       - name: Compile native Android code without creating an APK
+        if: steps.validation.outputs.full == 'true'
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin --no-daemon
       - name: Enable KVM for encrypted storage integration tests
+        if: steps.validation.outputs.full == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: SQLCipher persistence, migrations and verified restore on Android emulator
+        if: steps.validation.outputs.full == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 20
         with:
@@ -60,14 +91,28 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: flutter test integration_test/offline_storage_test.dart -d emulator-5554
-      - name: Build Android debug APK
-        if: github.event_name == 'workflow_dispatch' && inputs.build_apk
-        run: flutter build apk --debug
-      - name: Upload Android debug APK
-        if: github.event_name == 'workflow_dispatch' && inputs.build_apk
+      - name: Save evidence after all mandatory validation succeeds
+        if: steps.validation.outputs.full == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: lifeos-debug-apk-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: lifeos-validation-proof
+          path: validation-proof.json
+          retention-days: 90
           if-no-files-found: error
-          retention-days: 14
+      - name: Build and verify one APK with the persistent test identity
+        if: steps.validation.outputs.build == 'true'
+        env:
+          LIFEOS_TEST_KEYSTORE_BASE64: ${{ secrets.LIFEOS_TEST_KEYSTORE_BASE64 }}
+        run: bash tool/ci_signing.sh
+      - name: Upload signed APK and public certificate evidence
+        if: steps.validation.outputs.build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-debug-apk-${{ steps.validation.outputs.sha }}
+          path: |
+            build/app/outputs/flutter-apk/app-debug.apk
+            apk-identity.txt
+            apk-certificate.txt
+            apk-manifest.txt
+          if-no-files-found: error
+          retention-days: 90
