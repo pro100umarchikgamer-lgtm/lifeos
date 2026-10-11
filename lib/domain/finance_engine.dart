@@ -44,18 +44,37 @@ class FinanceEngine {
     final category=budget['category_id'] as String?;
     final tree=category==null?null:categoryTree(category,categories);
     final customEnd=budget['end_on']==null?null:DateTime.parse(budget['end_on'] as String);
-    DateTime boundary(int n)=>switch(period) {
-      'week'=>first.add(Duration(days:7*n)), 'month'=>DateTime.utc(first.year,first.month+n),
-      'year'=>DateTime.utc(first.year+n), _=>first.add(Duration(days:(DateTime.utc(customEnd!.year,customEnd.month,customEnd.day).difference(first).inDays+1)*n)),
-    };
-    var carry=BigInt.zero;
-    for(var n=0;n<16000;n++) {
-      final start=boundary(n), next=boundary(n+1);
-      final used=spending(records,splits,budget['currency'] as String,start,next.subtract(const Duration(days:1)),categories:tree);
-      final remainder=BigInt.from(budget['limit_minor'] as int)+carry-used;
-      if(current.isBefore(next)) return remainder;
-      carry=policy=='both'||policy=='positive'&&!remainder.isNegative||policy=='negative'&&remainder.isNegative?remainder:BigInt.zero;
+    final customDays=period=='custom'?DateTime.utc(customEnd!.year,customEnd.month,customEnd.day).difference(first).inDays+1:1;
+    int index(DateTime d)=>switch(period){'week'=>d.difference(first).inDays~/7,'month'=>(12*(d.year-first.year)+d.month-first.month),'year'=>d.year-first.year,_=>d.difference(first).inDays~/customDays};
+    final target=index(current), buckets=<int,BigInt>{},grouped=<String,List<Map<String,Object?>>>{};
+    for(final s in splits){grouped.putIfAbsent(s['transaction_id'] as String,()=>[]).add(s);}
+    for(final r in records){
+      if(r.kind!=EntryKind.expense||r.currency?.code!=budget['currency']||r.date==null)continue;
+      final rawDate=DateTime.parse(r.date!),d=DateTime.utc(rawDate.year,rawDate.month,rawDate.day);
+      if(d.isBefore(first))continue;final n=index(d);if(n>target)continue;
+      var used=BigInt.zero;
+      if(tree==null){used=BigInt.from(r.amountMinor!);}else {
+        final parts=grouped[r.id];
+        if(parts==null||parts.isEmpty){if(tree.contains(r.categoryId))used=BigInt.from(r.amountMinor!);}
+        else{for(final s in parts){if(tree.contains(s['category_id']))used+=BigInt.from(s['amount_minor'] as int);}}
+      }
+      buckets[n]=(buckets[n]??BigInt.zero)+used;
     }
-    throw const DomainFailure('invalid_date');
+    final allowance=BigInt.from(budget['limit_minor'] as int);
+    BigInt carryRule(BigInt amount)=>policy=='both'||policy=='positive'&&!amount.isNegative||policy=='negative'&&amount.isNegative?amount:BigInt.zero;
+    BigInt emptyPeriods(BigInt carry,int count){
+      if(count<=0)return carry;if(policy=='none')return BigInt.zero;
+      final value=carry+allowance*BigInt.from(count);
+      return policy=='negative'&&!value.isNegative?BigInt.zero:value;
+    }
+    var carry=BigInt.zero,position=0;
+    final periods=buckets.keys.toList()..sort();
+    for(final n in periods){
+      carry=emptyPeriods(carry,n-position);
+      final remaining=allowance+carry-buckets[n]!;
+      if(n==target)return remaining;
+      carry=carryRule(remaining);position=n+1;
+    }
+    return allowance+emptyPeriods(carry,target-position);
   }
 }

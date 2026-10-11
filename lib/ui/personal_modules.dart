@@ -1,3 +1,4 @@
+import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../app_controller.dart';
@@ -9,6 +10,7 @@ import 'selection.dart';
 import 'calendar.dart';
 import 'record_detail.dart';
 import 'quick_add.dart';
+import 'wealth.dart';
 
 const personalModules=[OfflineTable.projects,OfflineTable.habits,OfflineTable.subjects,OfflineTable.checklists,OfflineTable.wellness];
 class PersonalModulesPage extends StatefulWidget {
@@ -18,7 +20,7 @@ class PersonalModulesPage extends StatefulWidget {
 }
 class _PersonalModulesPageState extends State<PersonalModulesPage> {
   AppController get c=>widget.controller;String query='';bool busy=false;int shown=50;
-  String title(Map<String,Object?> row)=>row['name'] as String? ?? row['label'] as String? ?? row['local_date'] as String? ?? row['tags'] as String? ?? c.pack.t('module_${widget.table.name}');
+  String title(Map<String,Object?> row)=>row['name'] as String? ?? (widget.table==OfflineTable.memberships?(c.offline[OfflineTable.profiles]??[]).where((p)=>p['id']==row['profile_id']).firstOrNull?['name'] as String?:null) ?? row['label'] as String? ?? row['local_date'] as String? ?? row['tags'] as String? ?? c.pack.t('module_${widget.table.name}');
   Future<void> edit([Map<String,Object?>? row]) async {
     await showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,isDismissible:false,enableDrag:false,
       builder:(_)=>PersonalModuleEditor(controller:c,table:widget.table,row:row,parentId:widget.parentId,noteId:widget.noteId));
@@ -32,6 +34,8 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
   Widget details(Map<String,Object?> row) {
     final id=row['id'] as String;
     switch(widget.table) {
+      case OfflineTable.profiles:return Text(c.pack.t('profile_${row['kind']}'));
+      case OfflineTable.memberships:return Text(c.pack.t('member_${row['role']}'));
       case OfflineTable.projects:
         final placements=(c.offline[OfflineTable.taskPlacements]??[]).where((p)=>p['project_id']==id).toList();
         final tasks=c.records.where((r)=>r.kind==EntryKind.task&&placements.any((p)=>p['task_id']==r.id)).toList();
@@ -41,10 +45,10 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
         ]);
       case OfflineTable.habits:
         final spec=storedSchedule(row);final checks=(c.offline[OfflineTable.habitChecks]??[]).where((h)=>h['habit_id']==id).toList();
-        final date=dateOnly(c.now),today=checks.where((h)=>h['local_date']==date).firstOrNull;
-        final streak=spec==null?0:habitStreak(CalendarEntry(id:id,title:title(row),schedule:spec),c.now,c.deviceZone,checks);
+        final date=dateOnly(spec==null||spec.timezone=='device'?DateTime.now():tz.TZDateTime.now(tz.getLocation(spec.timezone))),today=checks.where((h)=>h['local_date']==date).firstOrNull;
+        final streak=spec==null?0:habitStreak(CalendarEntry(id:id,title:title(row),schedule:spec),c.now,c.deviceZone,checks,pauses:[for(final p in row['__pauses'] as List? ?? [])Map<String,Object?>.from(p as Map)]);
         return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(row['paused']==1?c.pack.t('status_paused'):'${c.pack.t('habit_streak')}: $streak'),
-          CheckboxListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('check_today')),value:today?['completed']==1,onChanged:busy||row['paused']==1?null:(v)=>change(CheckHabit(const Uuid().v4(),today?['id'] as String? ?? const Uuid().v4(),today?['revision'] as int? ?? 0,habitId:id,localDate:date,timezone:c.timezone=='device'?c.deviceZone:c.timezone,completed:v==true))),
+          CheckboxListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('check_today')),value:today?['completed']==1,onChanged:busy||row['paused']==1?null:(v)=>change(CheckHabit(const Uuid().v4(),today?['id'] as String? ?? const Uuid().v4(),today?['revision'] as int? ?? 0,habitId:id,localDate:date,timezone:spec==null||spec.timezone=='device'?c.deviceZone:spec.timezone,completed:v==true))),
           TextButton(onPressed:()=>open(OfflineTable.habitChecks,id),child:Text(c.pack.t('check_history')))]);
       case OfflineTable.subjects:return TextButton(onPressed:()=>open(OfflineTable.studyItems,id),child:Text(c.pack.t('module_studyItems')));
       case OfflineTable.checklists:return TextButton(onPressed:()=>open(OfflineTable.checklistItems,id),child:Text(c.pack.t('module_checklistItems')));
@@ -54,7 +58,7 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
       case OfflineTable.wellness:return Text('${c.pack.t('wellness_${row['kind']}')} · ${row['minutes']} ${c.pack.t('minutes')}');
       case OfflineTable.recordLinks:
         final target=row['target_id'] as String;final type=row['target_type'];
-        return TextButton(onPressed:()=>type=='task'||type=='note'?Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>RecordDetail(controller:c,id:target))):open(type=='project'?OfflineTable.projects:OfflineTable.goals,target),child:Text(c.pack.t('open_link')));
+        return TextButton(onPressed:()=>type=='task'||type=='note'?Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>RecordDetail(controller:c,id:target))):type=='project'?open(OfflineTable.projects,target):Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>WealthPage(controller:c))),child:Text(c.pack.t('open_link')));
       default:return Text('${row['due_on']??row['local_date']??''} ${row['quantity']??''}');
     }
   }
@@ -68,8 +72,8 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
         if(rows.isEmpty)return LifeCard(child:Text(c.pack.t('offline_empty')));
         if(index==shown)return TextButton(onPressed:()=>setState(()=>shown+=50),child:Text(c.pack.t('load_more')));
         final row=rows[index];return Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-          ListTile(contentPadding:EdgeInsets.zero,title:Text(title(row)),trailing:const Icon(Icons.edit_outlined),onTap:()=>edit(row)),details(row),
-          TextButton.icon(onPressed:busy?null:() async {final yes=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:Text(c.pack.t('delete')),content:Text(c.pack.t('delete_confirm')),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(c.pack.t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(context,true),child:Text(c.pack.t('delete')))]));if(yes==true)await change(DeleteOffline(const Uuid().v4(),row['id'] as String,row['revision'] as int,widget.table));},icon:const Icon(Icons.delete_outline),label:Text(c.pack.t('delete'))),
+          ListTile(contentPadding:EdgeInsets.zero,title:Text(title(row)),trailing:const Icon(Icons.edit_outlined),onTap:row['role']=='owner'?null:()=>edit(row)),details(row),
+          if(![OfflineTable.profiles,OfflineTable.memberships,OfflineTable.habitChecks].contains(widget.table))TextButton.icon(onPressed:busy?null:() async {final yes=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:Text(c.pack.t('delete')),content:Text(c.pack.t('delete_confirm')),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(c.pack.t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(context,true),child:Text(c.pack.t('delete')))]));if(yes==true)await change(DeleteOffline(const Uuid().v4(),row['id'] as String,row['revision'] as int,widget.table));},icon:const Icon(Icons.delete_outline),label:Text(c.pack.t('delete'))),
         ])));
       })),
     ])),floatingActionButton:FloatingActionButton(onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
@@ -86,10 +90,12 @@ class _PersonalModuleEditorState extends State<PersonalModuleEditor> {
   late final name=TextEditingController(text:widget.row?['name'] as String? ?? widget.row?['label'] as String? ?? '');
   late final detail=TextEditingController(text:widget.row?['goal'] as String? ?? widget.row?['quantity'] as String? ?? widget.row?['tags'] as String? ?? '');
   late final minutes=TextEditingController(text:'${widget.row?['minutes']??30}');
+  late String guardian=widget.row?['guardian_id'] as String? ?? '',profile=widget.row?['profile_id'] as String? ?? '',role=widget.row?['role'] as String? ?? 'viewer';
+  late bool archived=widget.row?['archived']==1;
   late String project=widget.row?['project_id'] as String? ?? (table==OfflineTable.milestones||table==OfflineTable.taskPlacements?widget.parentId??'':''),
     parent=widget.row?['parent_task_id'] as String? ?? '',task=widget.row?['task_id'] as String? ?? '',
     note=widget.row?['note_id'] as String? ?? widget.noteId??'',budget=widget.row?['budget_id'] as String? ?? '',
-    kind=widget.row?['kind'] as String? ?? (table==OfflineTable.wellness?'activity':'shopping'),status=widget.row?['status'] as String? ?? 'active',
+    kind=widget.row?['kind'] as String? ?? (table==OfflineTable.wellness?'activity':table==OfflineTable.profiles?'adult':'shopping'),status=widget.row?['status'] as String? ?? 'active',
     targetType=widget.row?['target_type'] as String? ?? 'task',target=widget.row?['target_id'] as String? ?? '';
   late int priority=widget.row?['priority'] as int? ?? 0;
   late bool completed=widget.row?['completed']==1,paused=widget.row?['paused']==1;
@@ -109,6 +115,8 @@ class _PersonalModuleEditorState extends State<PersonalModuleEditor> {
       final rev=widget.row?['revision'] as int? ?? 0;
       String? optional(String text)=>text.isEmpty?null:text;
       final action=switch(table) {
+        OfflineTable.profiles=>SaveProfile(operation,id,rev,name:name.text,kind:kind,guardianId:kind=='adult'?null:optional(guardian),archived:archived),
+        OfflineTable.memberships=>SaveMembership(operation,id,rev,profileId:profile,role:role,permissions:switch(role){'viewer'=>1,'contributor'=>3,_=>7}),
         OfflineTable.projects=>SaveProject(operation,id,rev,name:name.text,goal:detail.text,status:status,dueOn:due,budgetId:optional(budget)),
         OfflineTable.milestones=>SaveMilestone(operation,id,rev,projectId:project,name:name.text,dueOn:due,completed:completed),
         OfflineTable.taskPlacements=>SetTaskPlacement(operation,id,rev,taskId:task,projectId:optional(project),parentTaskId:optional(parent),priority:priority),
@@ -128,7 +136,9 @@ class _PersonalModuleEditorState extends State<PersonalModuleEditor> {
   }
   @override Widget build(BuildContext context)=>EntrySheet(saving:saving,saveLabel:c.pack.t(saving?'saving':'save'),onSave:save,children:[
     Row(children:[Expanded(child:Text(c.pack.t('module_${table.name}'),style:Theme.of(context).textTheme.titleLarge)),IconButton(tooltip:c.pack.t('cancel'),onPressed:saving?null:()=>Navigator.pop(context),icon:const Icon(Icons.close))]),
-    if(![OfflineTable.taskPlacements,OfflineTable.habitChecks,OfflineTable.noteMetadata,OfflineTable.recordLinks].contains(table))input(name,'name'),
+    if(![OfflineTable.taskPlacements,OfflineTable.habitChecks,OfflineTable.noteMetadata,OfflineTable.recordLinks,OfflineTable.memberships].contains(table))input(name,'name'),
+    if(table==OfflineTable.profiles)...[Text(c.pack.t('profiles_local_only')),select('kind',kind,{'adult':c.pack.t('profile_adult'),'child':c.pack.t('profile_child')},(v)=>kind=v),if(kind=='child')select('guardian',guardian,{'':c.pack.t('unassigned'),for(final p in c.offline[OfflineTable.profiles]??[])if(p['kind']=='adult'&&p['archived']==0&&p['id']!=id)p['id'] as String:p['name'] as String},(v)=>guardian=v),SwitchListTile(title:Text(c.pack.t('archived')),value:archived,onChanged:(v)=>setState(()=>archived=v))],
+    if(table==OfflineTable.memberships)...[Text(c.pack.t('membership_metadata')),select('local_profile',profile,choices(OfflineTable.profiles),(v)=>profile=v),select('role',role,{for(final r in ['viewer','contributor','manager'])r:c.pack.t('member_$r')},(v)=>role=v)],
     if(table==OfflineTable.projects)...[input(detail,'project_goal'),select('status',status,{for(final k in ['active','paused','done'])k:c.pack.t('status_$k')},(v)=>status=v),pick(true),select('module_budgets',budget,choices(OfflineTable.budgets),(v)=>budget=v)],
     if([OfflineTable.milestones,OfflineTable.taskPlacements,OfflineTable.subjects,OfflineTable.checklists].contains(table))select('module_projects',project,choices(OfflineTable.projects),(v)=>project=v),
     if(table==OfflineTable.milestones)pick(true),

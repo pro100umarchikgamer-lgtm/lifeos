@@ -1,3 +1,4 @@
+import 'module_calendar_route.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:uuid/uuid.dart';
@@ -28,6 +29,7 @@ class _CalendarPanelState extends State<CalendarPanel> {
       isDismissible: false, enableDrag: false, builder: (_) => EventEditor(controller: c, date: day, entry: entry));
   }
   void open(CalendarEntry entry) {
+    final module=calendarModule(c,entry.id);if(module!=null){openModuleCalendar(context,c,module);return;}
     final linked = entry.taskId ?? entry.noteId;
     if (linked == null) { editor(entry); }
     else { Navigator.push(context, MaterialPageRoute<void>(builder: (_) => RecordDetail(controller: c, id: linked))); }
@@ -84,7 +86,7 @@ class _CalendarPanelState extends State<CalendarPanel> {
         if (!done) TextButton.icon(onPressed: busy ? null : () => state(o, OccurrenceStatus.completed), icon: const Icon(Icons.check, size: 18), label: Text(c.pack.t('complete'))),
         if (!done && o.entry.schedule.reminder) TextButton(onPressed: busy || o.at.isAfter(DateTime.now()) ? null : () => state(o, OccurrenceStatus.snoozed), child: Text(c.pack.t('snooze'))),
         if (!done) TextButton(onPressed: busy ? null : () => state(o, OccurrenceStatus.dismissed), child: Text(c.pack.t('dismiss'))),
-        if (o.entry.taskId == null && o.entry.noteId == null) TextButton(onPressed: busy ? null : () async {
+        if (o.entry.taskId == null && o.entry.noteId == null && calendarModule(c,o.entry.id)==null) TextButton(onPressed: busy ? null : () async {
           final confirm = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: Text(c.pack.t('delete')), content: Text(c.pack.t('delete_series')),
             actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: Text(c.pack.t('cancel'))), FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(c.pack.t('delete')))]));
           if (confirm != true) return;

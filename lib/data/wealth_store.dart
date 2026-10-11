@@ -11,14 +11,14 @@ extension WealthPersistence on LocalStore {
   Future<void> _applyWealth(sql.Transaction tx,OfflineAction action,String now) async {
     switch(action) {
       case SaveGoal():
-        await _preserveWealthCurrency(tx,'savings_goals','savings_entries','goal_id',action,action.currency);
-        if(action.accountId!=null&&(await _scoped(tx,'accounts',action.accountId!))['currency']!=action.currency)throw const DomainFailure('currency_mismatch');
-        await _writeEntity(tx,'savings_goals',action,{'name':action.name.trim(),'currency':action.currency,'target_minor':action.targetMinor,'target_on':action.targetOn==null?null:dateOnly(action.targetOn!),'account_id':action.accountId},now);
+        await _preserveWealthCurrency(tx,'savings_goals','savings_entries','goal_id',action,Currency.fromCode(action.currency).code);
+        if(action.accountId!=null&&(await _scoped(tx,'accounts',action.accountId!))['currency']!=Currency.fromCode(action.currency).code)throw const DomainFailure('currency_mismatch');
+        await _writeEntity(tx,'savings_goals',action,{'name':action.name.trim(),'currency':Currency.fromCode(action.currency).code,'target_minor':action.targetMinor,'target_on':action.targetOn==null?null:dateOnly(action.targetOn!),'account_id':action.accountId},now);
       case SaveGoalEntry():
         await _scoped(tx,'savings_goals',action.goalId);
         await _writeEntity(tx,'savings_entries',action,{'goal_id':action.goalId,'amount_minor':action.amountMinor,'occurred_on':dateOnly(action.date),'transaction_id':action.transactionId,'transfer_id':action.transferId},now);
       case SaveDebt():
-        await _preserveWealthCurrency(tx,'debts','debt_entries','debt_id',action,action.currency);
+        await _preserveWealthCurrency(tx,'debts','debt_entries','debt_id',action,Currency.fromCode(action.currency).code);
         final old=action.expectedRevision==0?null:await _scoped(tx,'debts',action.id);
         final calendar=old?['calendar_id'] as String? ?? (action.schedule==null?null:LocalStore._uuid.v4());
         if(action.schedule!=null) {
@@ -28,11 +28,11 @@ extension WealthPersistence on LocalStore {
           final prior=await _scoped(tx,'calendar_entries',calendar!);
           await tx.update('calendar_entries',{'deleted_at':now,'updated_at':now,'revision':(prior['revision'] as int)+1},where:'id=?',whereArgs:[calendar]);
         }
-        await _writeEntity(tx,'debts',action,{'name':action.name.trim(),'currency':action.currency,'principal_minor':action.principalMinor,'direction':action.direction,'calendar_id':action.schedule==null?null:calendar},now);
+        await _writeEntity(tx,'debts',action,{'name':action.name.trim(),'currency':Currency.fromCode(action.currency).code,'principal_minor':action.principalMinor,'direction':action.direction,'calendar_id':action.schedule==null?null:calendar},now);
       case SaveDebtEntry():
         await _scoped(tx,'debts',action.debtId);
         await _writeEntity(tx,'debt_entries',action,{'debt_id':action.debtId,'flow':action.flow,'principal_minor':action.principalMinor,'interest_minor':action.interestMinor,'fee_minor':action.feeMinor,'occurred_on':dateOnly(action.date),'transaction_id':action.transactionId},now);
-      case SaveAsset():await _preserveWealthCurrency(tx,'investment_assets','investment_entries','asset_id',action,action.currency);await _writeEntity(tx,'investment_assets',action,{'name':action.name.trim(),'currency':action.currency},now);
+      case SaveAsset():await _preserveWealthCurrency(tx,'investment_assets','investment_entries','asset_id',action,Currency.fromCode(action.currency).code);await _writeEntity(tx,'investment_assets',action,{'name':action.name.trim(),'currency':Currency.fromCode(action.currency).code},now);
       case SaveInvestmentEntry():
         await _scoped(tx,'investment_assets',action.assetId);
         await _writeEntity(tx,'investment_entries',action,{'asset_id':action.assetId,'kind':action.kind,'quantity_micros':action.quantityMicros,'cash_minor':action.cashMinor,'fee_minor':action.feeMinor,'occurred_on':dateOnly(action.date),'transaction_id':action.transactionId},now);

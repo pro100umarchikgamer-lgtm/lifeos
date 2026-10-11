@@ -17,6 +17,7 @@ import 'notices.dart';
 import 'selection.dart';
 import 'personal_modules.dart';
 import 'dashboard_editor.dart';
+import 'module_calendar_route.dart';
 
 class LifeOSApp extends StatefulWidget {
   const LifeOSApp({super.key, required this.controller, this.builder});
@@ -82,6 +83,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!mounted || id == null) return;
       final entry = c.calendar.where((e) => e.id == id).firstOrNull;
       if (entry == null) return;
+      final module=calendarModule(c,entry.id);if(module!=null){await openModuleCalendar(context,c,module);return;}
       final source = entry.taskId ?? entry.noteId;
       if (source != null) { _showRecord(source); }
       else { await showModalBottomSheet<void>(context: context, useSafeArea: true, isScrollControlled: true,

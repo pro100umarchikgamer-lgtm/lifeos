@@ -385,7 +385,27 @@
     "widget_shopping": "Shopping",
     "load_more": "Show more",
     "offline_module_hint": "On this device",
-    "has_active_children": "Finish or remove linked records first. Data will not be hidden automatically."
+    "has_active_children": "Finish or remove linked records first. Data will not be hidden automatically.",
+    "module_profiles": "Local profiles",
+    "module_memberships": "Future workspace roles",
+    "profile_adult": "Adult",
+    "profile_child": "Adult-managed child profile",
+    "guardian": "Managing adult",
+    "role": "Future role",
+    "member_owner": "Device owner",
+    "member_viewer": "View shared records",
+    "member_contributor": "Edit shared records",
+    "member_manager": "Manage shared workspace",
+    "profiles_local_only": "Profiles exist only here. Invitations, family access and sync are not available. Private records remain private.",
+    "membership_metadata": "This prepares future permission data. These settings do not give access to other people or devices.",
+    "invalid_profile": "Check profile and managing adult",
+    "owner_immutable": "Owner identity and role remain immutable",
+    "permissions_diagnostics": "Permissions and diagnostics",
+    "reminder_modes": "Reminder modes",
+    "os_limitations": "Android limitations",
+    "already_imported": "Already imported",
+    "clear_habit_check": "Clear completion instead of deleting history",
+    "module_calendar_owned": "Edit the schedule in its module"
   },
   "plurals": {
     "record_count": {

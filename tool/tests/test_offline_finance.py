@@ -9,6 +9,9 @@ def expanded(version=4):
     for n in range(1,version+1): db.executescript((ROOT/f'assets/migrations/{n:03}.sql').read_text())
     db.execute("INSERT INTO local_identity VALUES('owner','space','2026-10-11')")
     db.execute("INSERT INTO workspaces VALUES('space','owner','personal','2026-10-11')")
+    if version>=8:
+        db.execute("INSERT INTO local_profiles(id,owner_id,workspace_id,name,kind,created_at,updated_at) VALUES('owner','owner','space','LifeOS','adult','2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO local_memberships(id,owner_id,workspace_id,profile_id,role,permissions,created_at,updated_at) VALUES('owner','owner','space','owner','owner',7,'2026-10-11','2026-10-11')")
     return db
 
 class OfflineFinanceTests(unittest.TestCase):
@@ -82,3 +85,36 @@ class PersonalModulesSchemaTests(unittest.TestCase):
         db.rollback()
         self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='projects'").fetchone())
         self.assertEqual(db.execute('SELECT id FROM local_identity').fetchone(),('owner',))
+
+class LocalIdentitySchemaTests(unittest.TestCase):
+    def test_upgrade_seeds_original_immutable_owner_and_allows_equal_names(self):
+        db=expanded(7);self.addCleanup(db.close)
+        db.executescript((ROOT/'assets/migrations/008.sql').read_text())
+        self.assertEqual(db.execute('SELECT id,owner_id,kind FROM local_profiles').fetchone(),('owner','owner','adult'))
+        self.assertEqual(db.execute('SELECT profile_id,role,permissions FROM local_memberships').fetchone(),('owner','owner',7))
+        for id in ['adult1','adult2']:
+            db.execute("INSERT INTO local_profiles(id,owner_id,workspace_id,name,kind,created_at,updated_at) VALUES(?,'owner','space','Alex','adult','2026-10-11','2026-10-11')",(id,))
+        db.execute("UPDATE local_profiles SET name='Renamed' WHERE id='adult1'")
+        self.assertEqual(db.execute("SELECT id FROM local_profiles WHERE name='Alex'").fetchone(),('adult2',))
+        with self.assertRaises(sqlite3.IntegrityError):db.execute("INSERT INTO local_profiles(id,owner_id,workspace_id,name,kind,guardian_id,created_at,updated_at) VALUES('child','owner','space','Child','child','missing','2026-10-11','2026-10-11')")
+        self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())
+    def test_all_prior_versions_upgrade_preserving_records(self):
+        for version in range(1,9):
+            db=expanded(version)
+            db.execute("INSERT INTO notes(id,owner_id,workspace_id,body,created_at,updated_at) VALUES('note','owner','space','Keep me','2026-10-11','2026-10-11')");db.commit()
+            for n in range(version+1,10):db.executescript((ROOT/f'assets/migrations/{n:03}.sql').read_text())
+            self.assertEqual(db.execute('SELECT id,body FROM notes').fetchone(),('note','Keep me'))
+            self.assertEqual(db.execute('SELECT id FROM local_profiles').fetchone(),('owner',))
+            self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall());db.close()
+
+
+class HabitPauseSchemaTests(unittest.TestCase):
+    def test_one_open_pause_and_valid_boundaries(self):
+        db=expanded(9);self.addCleanup(db.close)
+        db.execute("INSERT INTO calendar_entries(id,owner_id,workspace_id,title,local_start,timezone,repeat_rule,reminder_mode,created_at,updated_at) VALUES('calendar','owner','space','Habit','2026-10-11T09:00:00','UTC','daily','standard','2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO habits(id,owner_id,workspace_id,name,calendar_id,created_at,updated_at) VALUES('h','owner','space','Walk','calendar','2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO habit_pauses VALUES('pause','h','2026-10-11',NULL)")
+        with self.assertRaises(sqlite3.IntegrityError):db.execute("INSERT INTO habit_pauses VALUES('other','h','2026-10-12',NULL)")
+        with self.assertRaises(sqlite3.IntegrityError):db.execute("UPDATE habit_pauses SET end_on='2026-10-10'")
+        db.execute("UPDATE habit_pauses SET end_on='2026-10-13'")
+        self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())

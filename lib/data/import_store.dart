@@ -2,6 +2,7 @@ part of 'local_store.dart';
 extension ImportPersistence on LocalStore {
   Future<String> _applyImport(sql.Transaction tx,OfflineAction action,String now) async {
     if(action is ConfirmImport) {
+      if(await importDigest({'rows':action.rows.map((r)=>r.toJson()).toList(),'account':action.accountId??''})!=action.contentKey)throw const DomainFailure('invalid_action');
       final prior=await tx.query('import_batches',where:'content_key=? AND owner_id=? AND workspace_id=?',whereArgs:[action.contentKey,ownerId,workspaceId]);
       // Batch identity includes confirmed subset, mapping and account. Reversed batches remain deduplicated.
       if(prior.isNotEmpty)return prior.single['id'] as String;

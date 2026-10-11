@@ -31,7 +31,7 @@ class NativeBridge {
   }
   Future<Map<String,Object?>?> pickStatement() async {
     if(!supported)throw PlatformException(code:'unsupported');
-    final value=await channel.invokeMapMethod<String,Object?>('pickStatement');
+    final value=await channel.invokeMapMethod<String,Object?>('pickStatement').timeout(const Duration(seconds:30));
     return value==null?null:Map<String,Object?>.from(value);
   }
   Future<typed.Uint8List?> readBackup() async {

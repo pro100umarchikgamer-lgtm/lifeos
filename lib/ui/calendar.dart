@@ -152,7 +152,7 @@ class ScheduleEditor extends StatelessWidget {
           title: Text(p.t('repeat')), subtitle: Text(p.t('repeat_${value!.repeat.name}')),
           initiallyExpanded: false, children: [
         LifeSelect<RepeatRule>(key: ValueKey('repeat_${value!.repeat}'), value: value!.repeat,
-          label: p.t('repeat'), choices: {for (final r in RepeatRule.values) r: p.t('repeat_${r.name}')},
+          label: p.t('repeat'), showLabel:false, choices: {for (final r in RepeatRule.values) r: p.t('repeat_${r.name}')},
           onChanged: (v) => onChanged(_copy(repeat: v, clearUntil: v == RepeatRule.none))),
         if (value!.repeat != RepeatRule.none) ...[
           const SizedBox(height: 12),
@@ -172,7 +172,7 @@ class ScheduleEditor extends StatelessWidget {
             Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(p.t('reminder_no_future'), style: TextStyle(color: Theme.of(context).colorScheme.error))),
           ExpansionTile(expansionAnimationStyle: AnimationStyle(duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180)), tilePadding: EdgeInsets.zero, title: Text(p.t('reminder_mode')), subtitle: Text(p.t('mode_${value!.mode.name}')), children: [
           LifeSelect<ReminderMode>(key: ValueKey('mode_${value!.mode}'), value: value!.mode,
-          label: p.t('reminder_mode'), choices: {for (final m in ReminderMode.values) m: p.t('mode_${m.name}')},
+          label: p.t('reminder_mode'), showLabel:false, choices: {for (final m in ReminderMode.values) m: p.t('mode_${m.name}')},
           onChanged: (v) => onChanged(_copy(mode: v))),
           const SizedBox(height: 8), Text(p.t('alarm_limits'), style: Theme.of(context).textTheme.bodyMedium),
           ]),

@@ -5,6 +5,7 @@ import 'offline_validation.dart';
 abstract interface class OfflineStore implements PersonalStore {
   Future<Map<OfflineTable,List<Map<String,Object?>>>> offlineData({Set<OfflineTable>? tables});
   Future<List<Map<String,Object?>>> splits();
+  Future<Set<String>> importedOrigins();
 }
 
 abstract interface class ActionStore {

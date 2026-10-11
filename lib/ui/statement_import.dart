@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' as background;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -19,7 +20,7 @@ class _StatementImportPageState extends State<StatementImportPage> {
   Map<String,StatementTable> sheets={};StatementTable? table;
   String sheet='',account='',format='iso',decimal='.',error='',encoding='utf8';
   int date=0,amount=1,description=2,currency=-1,step=0;
-  bool busy=false;List<ImportedMoney?> preview=[];List<String> errors=[];Set<int> selected={};Set<int> duplicates={};
+  bool busy=false;List<ImportedMoney?> preview=[];List<String> errors=[];Set<int> selected={};Set<int> duplicates={};Set<int> alreadyImported={};
   @override void dispose(){sheets.clear();preview.clear();errors.clear();selected.clear();super.dispose();}
   Future<void> pick() async {
     if(busy)return;setState((){busy=true;error='';});
@@ -28,7 +29,7 @@ class _StatementImportPageState extends State<StatementImportPage> {
       if(source['sheets'] is Map){sheets={for(final e in (source['sheets'] as Map).entries)e.key as String:StatementTable.checked([for(final row in e.value as List)(row as List).cast<String>()])};}
       else {
         final bytes=source['bytes'] as Uint8List;
-        try{sheets={'':StatementTable.text(bytes,(source['name'] as String).split('.').last,encoding:encoding)};}finally{bytes.fillRange(0,bytes.length,0);source.clear();}
+        try{sheets={'':StatementTable.checked(await background.compute(parseStatementWorker,{'bytes':bytes,'extension':(source['name'] as String).split('.').last,'encoding':encoding}))};}finally{bytes.fillRange(0,bytes.length,0);source.clear();}
       }
       sheet=sheets.keys.first;table=sheets[sheet];if(mounted)setState(()=>step=1);
     }catch(e){if(mounted)setState(()=>error=e is DomainFailure?e.key:'import_format');}
@@ -37,11 +38,11 @@ class _StatementImportPageState extends State<StatementImportPage> {
   Future<void> review() async {
     final source=table;if(source==null)return;
     setState((){busy=true;error='';});
-    preview=[];errors=[];selected={};duplicates={};
+    preview=[];errors=[];selected={};duplicates={};alreadyImported={};
     final mapping=ImportMapping(date:date,amount:amount,description:description,currency:currency,dateFormat:format,decimal:decimal,defaultCurrency:c.currency);
     final content=await importDigest(source.rows);final seen=<String>{};
     for(var i=1;i<source.rows.length;i++) {
-      try{final money=mapping.normalize(source.rows[i]);preview.add(money.identified(await importDigest([content,sheet,i,money.canonical])));errors.add('');if(c.records.any(money.matches)||!seen.add(await importDigest(money.canonical))){duplicates.add(i-1);}else{selected.add(i-1);}}
+      try{final money=mapping.normalize(source.rows[i]);preview.add(money.identified(await importDigest([content,sheet,i,money.canonical])));errors.add('');if(c.importedOrigins.contains(preview.last!.originKey)){alreadyImported.add(i-1);}else if(c.records.any(money.matches)||!seen.add(await importDigest(money.canonical))){duplicates.add(i-1);}else{selected.add(i-1);}}
       catch(e){preview.add(null);errors.add(c.pack.t(e is DomainFailure?e.key:'import_format'));}
     }
     if(mounted)setState((){busy=false;step=2;});
@@ -67,7 +68,7 @@ class _StatementImportPageState extends State<StatementImportPage> {
       select('date_format',format,{'iso':'YYYY-MM-DD / YYYYMMDD','dmy':'DD.MM.YYYY','mdy':'MM/DD/YYYY','excel':c.pack.t('excel_date')},(v)=>setState(()=>format=v)),
       select('decimal_separator',decimal,{'.':'1,234.56',',':'1.234,56'},(v)=>setState(()=>decimal=v)),
       select('account',account,{'':c.pack.t('unassigned'),for(final a in c.offline[OfflineTable.accounts]??[])a['id'] as String:a['name'] as String},(v)=>setState(()=>account=v)),
-    ]):ListView.builder(padding:const EdgeInsets.all(16),itemCount:preview.length,itemBuilder:(context,i){final r=preview[i];return CheckboxListTile(value:selected.contains(i),onChanged:busy||r==null?null:(v)=>setState((){if(v==true)selected.add(i);else selected.remove(i);}),title:Text(r==null?'${i+2}: ${errors[i]}':'${r.date} · ${Currency.fromCode(r.currency).format(r.amountMinor)}'),subtitle:Text(r==null?'':'${r.label}${duplicates.contains(i)?' · ${c.pack.t('import_duplicate')}':''}'));})),
+    ]):ListView.builder(padding:const EdgeInsets.all(16),itemCount:preview.length,itemBuilder:(context,i){final r=preview[i];return CheckboxListTile(value:selected.contains(i),onChanged:busy||r==null||alreadyImported.contains(i)?null:(v)=>setState((){if(v==true)selected.add(i);else selected.remove(i);}),title:Text(r==null?'${i+2}: ${errors[i]}':'${r.date} · ${Currency.fromCode(r.currency).format(r.amountMinor)}'),subtitle:Text(r==null?'':'${r.label}${alreadyImported.contains(i)?' · ${c.pack.t('already_imported')}':''}${duplicates.contains(i)?' · ${c.pack.t('import_duplicate')}':''}'));})),
     if(step>0)Padding(padding:const EdgeInsets.all(16),child:FilledButton(onPressed:busy?null:step==1?review:selected.isEmpty?null:confirm,child:Text(busy?c.pack.t('saving'):step==1?c.pack.t('import_preview'):'${c.pack.t('import_confirm')} (${selected.length})'))),
   ]))));
 }

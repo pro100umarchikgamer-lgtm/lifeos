@@ -55,11 +55,12 @@ class ExpenseSplit {
   Map<String,Object?> toJson() => {'id':id,'amountMinor':amountMinor,'categoryId':categoryId,'projectId':projectId,'profileId':profileId};
 }
 class SetMoneyDetails extends OfflineAction {
-  const SetMoneyDetails(super.operationId,super.id,super.expectedRevision,{this.accountId,this.categoryId,this.splits=const []});
+  const SetMoneyDetails(super.operationId,super.id,super.expectedRevision,{this.accountId,this.categoryId,this.splits=const [],this.amountMinor});
   final String? accountId,categoryId;
   final List<ExpenseSplit> splits;
+  final int? amountMinor;
   @override
-  Map<String,Object?> get payload => {...target,'action':'money.details','accountId':accountId,'categoryId':categoryId,'splits':splits.map((s)=>s.toJson()).toList()};
+  Map<String,Object?> get payload => {...target,'action':'money.details','accountId':accountId,'categoryId':categoryId,'splits':splits.map((s)=>s.toJson()).toList(),if(amountMinor!=null)'amountMinor':amountMinor};
 }
 class SaveBudget extends OfflineAction {
   const SaveBudget(super.operationId,super.id,super.expectedRevision,{required this.name,required this.currency,
@@ -209,4 +210,15 @@ class SaveDashboard extends OfflineAction {
   const SaveDashboard(super.operationId,super.id,super.expectedRevision,{required this.widget,required this.position,this.visible=true,this.expanded=false});
   final String widget;final int position;final bool visible,expanded;
   @override Map<String,Object?> get payload=>{...target,'action':'dashboard.save','widget':widget,'position':position,'visible':visible,'expanded':expanded};
+}
+
+class SaveProfile extends OfflineAction {
+  const SaveProfile(super.operationId,super.id,super.expectedRevision,{required this.name,this.kind='adult',this.guardianId,this.archived=false});
+  final String name,kind;final String? guardianId;final bool archived;
+  @override Map<String,Object?> get payload=>{...target,'action':'profile.save','name':name.trim(),'kind':kind,'guardian':guardianId,'archived':archived};
+}
+class SaveMembership extends OfflineAction {
+  const SaveMembership(super.operationId,super.id,super.expectedRevision,{required this.profileId,this.role='viewer',this.permissions=0});
+  final String profileId,role;final int permissions;
+  @override Map<String,Object?> get payload=>{...target,'action':'membership.save','profile':profileId,'role':role,'permissions':permissions};
 }

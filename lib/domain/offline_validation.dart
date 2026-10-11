@@ -11,6 +11,8 @@ class OfflineValidation {
   static void validate(OfflineAction action) {
     if(action.id.isEmpty || action.expectedRevision<0) throw const DomainFailure('invalid_action');
     switch(action) {
+      case SaveProfile():name(action.name);if(!['adult','child'].contains(action.kind)||action.kind=='child'&&(action.guardianId==null||action.guardianId==action.id)||action.kind=='adult'&&action.guardianId!=null)throw const DomainFailure('invalid_profile');
+      case SaveMembership():if(!['viewer','contributor','manager'].contains(action.role)||action.permissions<0||action.permissions>7)throw const DomainFailure('invalid_action');
       case SaveProject(): name(action.name);if(action.goal.length>2000||!['active','paused','done'].contains(action.status))throw const DomainFailure('invalid_action');if(action.dueOn!=null)date(action.dueOn!);
       case SaveMilestone():name(action.name);if(action.dueOn!=null)date(action.dueOn!);
       case SetTaskPlacement():if(action.taskId==action.parentTaskId||action.priority<0||action.priority>3)throw const DomainFailure('invalid_action');
@@ -35,13 +37,13 @@ class OfflineValidation {
         if(!['advance','repay'].contains(action.flow)||BigInt.from(action.principalMinor)+BigInt.from(action.interestMinor)+BigInt.from(action.feeMinor)==BigInt.zero)throw const DomainFailure('invalid_action');
       case SaveAsset(): name(action.name);Currency.fromCode(action.currency);
       case SaveInvestmentEntry(): money(action.cashMinor,zero:true);money(action.feeMinor,zero:true);money(action.quantityMicros,zero:true);date(action.date);
-        if(!['buy','sell','dividend','distribution','valuation'].contains(action.kind)||['buy','sell'].contains(action.kind)&&action.quantityMicros==0||!['buy','sell'].contains(action.kind)&&action.quantityMicros!=0)throw const DomainFailure('invalid_action');
+        if(!['buy','sell','dividend','distribution','valuation'].contains(action.kind)||['buy','sell'].contains(action.kind)&&action.quantityMicros==0||!['buy','sell'].contains(action.kind)&&action.quantityMicros!=0)throw const DomainFailure('invalid_action');if(action.kind!='buy'&&action.feeMinor>action.cashMinor)throw const DomainFailure('invalid_amount');
       case SaveAccount(): name(action.name); Currency.fromCode(action.currency); money(action.openingMinor,signed:true);
         if(!['cash','card','wallet','deposit','custom'].contains(action.kind)) throw const DomainFailure('invalid_action');
       case SaveCategory(): name(action.name); if(action.parentId==action.id) throw const DomainFailure('invalid_action');
       case SaveTransfer(): money(action.sentMinor); money(action.receivedMinor); date(action.date);
         if(action.fromId.isEmpty||action.toId.isEmpty||action.fromId==action.toId) throw const DomainFailure('invalid_action');
-      case SetMoneyDetails(): if(action.expectedRevision<1) throw const DomainFailure('invalid_action'); validateSplits(action.splits);
+      case SetMoneyDetails(): if(action.expectedRevision<1) throw const DomainFailure('invalid_action'); validateSplits(action.splits);if(action.amountMinor!=null)money(action.amountMinor!);
       case SaveBudget(): name(action.name); Currency.fromCode(action.currency); money(action.limitMinor,zero:true); date(action.start);
         if(!['week','month','year','custom'].contains(action.period)||!['none','positive','negative','both'].contains(action.rollover)||
           action.period=='month'&&action.start.day!=1 || action.period=='year'&&(action.start.day!=1||action.start.month!=1)||

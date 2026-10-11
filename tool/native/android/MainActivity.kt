@@ -58,6 +58,18 @@ class MainActivity : FlutterActivity() {
                             .put("schedule", JSONObject().put("mode", "standard"))
                         ReminderRuntime.show(this, e, System.currentTimeMillis()); result.success(null)
                     }
+                    "decodeStatement" -> {
+                        val bytes = call.argument<ByteArray>("bytes") ?: error("Missing bytes")
+                        require(bytes.size <= 5 * 1024 * 1024)
+                        val format = call.argument<String>("format")
+                        Thread {
+                            try {
+                                val sheets = when (format) { "xlsx" -> StatementReader.sheets(bytes); "xml" -> StatementReader.statementXml(bytes); else -> error("Unsupported format") }
+                                runOnUiThread { result.success(sheets) }
+                            } catch (e: Exception) { runOnUiThread { result.error("statement_failed", e.javaClass.simpleName, null) } }
+                            finally { bytes.fill(0) }
+                        }.start()
+                    }
                     "saveBackup", "readBackup", "pickStatement" -> {
                         check(documentResult == null) { "Document operation already in progress" }
                         documentResult = result

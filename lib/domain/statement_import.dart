@@ -57,15 +57,15 @@ class StatementTable {
     return StatementTable(rows);
   }
   static List<List<String>> _delimited(String text,String separator) {
-    final rows=<List<String>>[], row=<String>[];var buffer=StringBuffer(),quoted=false;
+    final rows=<List<String>>[], row=<String>[];var buffer=StringBuffer(),quoted=false,closed=false;
     for(var i=0;i<text.length;i++) {
       final char=text[i];
-      if(char=='"') {if(quoted&&i+1<text.length&&text[i+1]=='"'){buffer.write('"');i++;}else if(quoted||buffer.isEmpty){quoted=!quoted;}else{throw const DomainFailure('import_format');}}
+      if(char=='"') {if(quoted&&i+1<text.length&&text[i+1]=='"'){buffer.write('"');i++;}else if(quoted||buffer.isEmpty){if(quoted)closed=true;quoted=!quoted;}else{throw const DomainFailure('import_format');}}
       else if(!quoted&&(char==separator||char=='\n'||char=='\r')) {
-        row.add(buffer.toString());buffer=StringBuffer();
+        row.add(buffer.toString());buffer=StringBuffer();closed=false;
         if(char!=separator){if(char=='\r'&&i+1<text.length&&text[i+1]=='\n')i++;if(row.any((v)=>v.isNotEmpty))rows.add(List.of(row));row.clear();}
         if(rows.length>maxRows+1||row.length>maxColumns)throw const DomainFailure('import_limit');
-      }else{buffer.write(char);}
+      }else{if(closed)throw const DomainFailure('import_format');buffer.write(char);if(buffer.length>4000)throw const DomainFailure('import_limit');}
     }
     if(quoted)throw const DomainFailure('import_format');
     if(buffer.isNotEmpty||row.isNotEmpty){row.add(buffer.toString());rows.add(row);}
@@ -109,3 +109,5 @@ class ImportedMoney {
   ImportedMoney identified(String key,{bool duplicate=false})=>ImportedMoney(kind:kind,amountMinor:amountMinor,currency:currency,date:date,label:label,originKey:key,allowDuplicate:duplicate);
 }
 Future<String> importDigest(Object value) async => (await Sha256().hash(utf8.encode(jsonEncode(value)))).bytes.map((b)=>b.toRadixString(16).padLeft(2,'0')).join();
+
+List<List<String>> parseStatementWorker(Map<String,Object?> args)=>StatementTable.text(args['bytes'] as Uint8List,args['extension'] as String,encoding:args['encoding'] as String).rows;

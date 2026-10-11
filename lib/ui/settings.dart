@@ -8,6 +8,7 @@ import '../services/backup_service.dart';
 import 'design.dart';
 import 'appearance_editor.dart';
 import 'selection.dart';
+import 'personal_modules.dart';
 
 class PersonalSettings extends StatefulWidget {
   const PersonalSettings({super.key, required this.controller});
@@ -102,19 +103,17 @@ class _PersonalSettingsState extends State<PersonalSettings> {
     }));
     if (selected != null) await preference('timezone', selected);
   }
-  Future<void> notificationDetails() => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => Scaffold(
-    appBar: AppBar(title: Text(c.pack.t('notification_details'))), body: SafeArea(child: ListenableBuilder(listenable: c,
-      builder: (context, _) => ListView(padding: const EdgeInsets.all(20), children: [
-      Text(c.pack.t(c.notificationStatus['exact'] == true ? 'exact_allowed' : 'exact_unavailable')),
-      if (c.notificationStatus['channels'] case final Map channels)
-        for (final mode in ReminderMode.values) Text('${c.pack.t('mode_${mode.name}')}: ${c.pack.t(channels[mode.name] is Map && (channels[mode.name] as Map)['importance'] != 0 && (channels[mode.name] as Map)['sound'] == true ? 'audible_enabled' : 'audible_restricted')}'),
-      const SizedBox(height: 8), Text(c.pack.t('alarm_limits'), style: Theme.of(context).textTheme.bodySmall),
-      if (c.schedulingError != null) Text(c.pack.t(c.schedulingError!), style: TextStyle(color: Theme.of(context).colorScheme.error)),
-      Wrap(spacing: 8, children: [
-        OutlinedButton(onPressed: busy || !c.native.supported ? null : () => native('requestNotifications'), child: Text(c.pack.t('notification_permission'))),
-        OutlinedButton(onPressed: busy || !c.native.supported ? null : () => native('requestExactAlarms'), child: Text(c.pack.t('exact_permission'))),
-        TextButton(onPressed: busy || !c.native.supported ? null : () => native('notificationSettings'), child: Text(c.pack.t('system_settings'))),
-      ]),
+  Future<void> notificationDetails() => Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(
+    appBar:AppBar(title:Text(c.pack.t('permissions_diagnostics'))),body:SafeArea(child:ListenableBuilder(listenable:c,builder:(context,_)=>ListView(padding:const EdgeInsets.all(20),children:[
+      LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(c.pack.t('notification_permission'),style:Theme.of(context).textTheme.titleMedium),const SizedBox(height:8),Text(c.pack.t(!c.native.supported?'native_unavailable':c.notificationStatus['enabled']==true?'notifications_enabled':'notifications_disabled')),const SizedBox(height:12),OutlinedButton.icon(onPressed:busy||!c.native.supported?null:()=>native('requestNotifications'),icon:const Icon(Icons.notifications_active_outlined),label:Text(c.pack.t('notification_permission')))])),
+      const SizedBox(height:12),LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(c.pack.t('exact_permission'),style:Theme.of(context).textTheme.titleMedium),const SizedBox(height:8),Text(c.pack.t(!c.native.supported?'native_unavailable':c.notificationStatus['exact']==true?'exact_allowed':'exact_unavailable')),const SizedBox(height:12),OutlinedButton.icon(onPressed:busy||!c.native.supported?null:()=>native('requestExactAlarms'),icon:const Icon(Icons.alarm_on_outlined),label:Text(c.pack.t('exact_permission')))])),
+      if(c.notificationStatus['channels'] case final Map channels) ...[
+        const SizedBox(height:12),LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(c.pack.t('reminder_modes'),style:Theme.of(context).textTheme.titleMedium),for(final mode in ReminderMode.values)ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('mode_${mode.name}')),subtitle:Text(c.pack.t(channels[mode.name] is Map&&(channels[mode.name] as Map)['importance']!=0&&(channels[mode.name] as Map)['sound']==true?'audible_enabled':'audible_restricted')),leading:Icon(mode==ReminderMode.alarm?Icons.alarm:Icons.notifications_outlined))])),
+      ],
+      const SizedBox(height:12),OutlinedButton.icon(onPressed:busy||!c.native.supported?null:()=>native('notificationSettings'),icon:const Icon(Icons.settings_outlined),label:Text(c.pack.t('system_settings'))),
+      const SizedBox(height:12),FilledButton.icon(onPressed:busy||!c.native.supported?null:() async {try{await c.native.testNotification({'title':'LifeOS','body':c.pack.t('test_notification_body')});}catch(_){message('native_unavailable');}},icon:const Icon(Icons.send_outlined),label:Text(c.pack.t('test_notification'))),
+      const SizedBox(height:12),ExpansionTile(tilePadding:EdgeInsets.zero,title:Text(c.pack.t('os_limitations')),children:[Padding(padding:const EdgeInsets.only(bottom:16),child:Text(c.pack.t('alarm_limits')))]),
+      if(c.schedulingError!=null)Text(c.pack.t(c.schedulingError!),style:TextStyle(color:Theme.of(context).colorScheme.error)),
     ]))))));
   Future<void> backupGuide() async {
     await Navigator.push<void>(context, MaterialPageRoute(builder: (_) => ListenableBuilder(
@@ -134,6 +133,9 @@ class _PersonalSettingsState extends State<PersonalSettings> {
   }
   @override
   Widget build(BuildContext context) => ListenableBuilder(listenable: c, builder: (context, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      LifeCard(child:Column(children:[Text(c.pack.t('profiles_local_only')),for(final table in [OfflineTable.profiles,OfflineTable.memberships])ListTile(title:Text(c.pack.t('module_${table.name}')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table))))])),
+      const SizedBox(height:12),
+
     LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(c.pack.t('local_profile'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       const SizedBox(height: 8), Text(c.pack.t('local_privacy')),

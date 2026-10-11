@@ -28,4 +28,10 @@ void main(){
     expect(()=>OfflineValidation.validate(SaveTransfer('op','id',0,fromId:'a',toId:'a',sentMinor:1,receivedMinor:1,date:DateTime(2026))),throwsA(isA<DomainFailure>()));
     expect(()=>OfflineValidation.validateSplits([const ExpenseSplit('same',1),const ExpenseSplit('same',1)]),throwsA(isA<DomainFailure>()));
   });
+  test('rollover skips long empty intervals without repeatedly scanning all transactions',(){
+    final budget={'id':'b','currency':'RUB','limit_minor':100,'start_on':'1900-01-01','period':'custom','end_on':'1900-01-01','rollover':'both','category_id':null};
+    final days=DateTime.utc(2200,1,1).difference(DateTime.utc(1900,1,1)).inDays;
+    expect(const FinanceEngine().budgetRemaining(budget,DateTime.utc(2200,1,1),[],[],[]),BigInt.from((days+1)*100));
+  });
+
 }

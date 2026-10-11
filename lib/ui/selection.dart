@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 /// The same bounded, keyboard-safe picker for preferences and form values.
 class LifeSelect<T> extends StatelessWidget {
   const LifeSelect({super.key, required this.label, required this.value,
-    required this.choices, required this.onChanged, this.searchLabel});
+    required this.choices, required this.onChanged, this.searchLabel, this.showLabel=true});
   final String label;
+  final bool showLabel;
   final T value;
   final Map<T, String> choices;
   final ValueChanged<T>? onChanged;
@@ -20,10 +21,12 @@ class LifeSelect<T> extends StatelessWidget {
         sheetAnimationStyle: MediaQuery.disableAnimationsOf(context) ? AnimationStyle.noAnimation : null,
         builder: (_) => _ChoiceSheet<T>(label: label, value: value, choices: choices, searchLabel: searchLabel));
       if (selected != null && context.mounted) onChanged?.call(selected);
-    }, child: InputDecorator(decoration: InputDecoration(labelText: label, enabled: onChanged != null,
+    }, child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,mainAxisSize:MainAxisSize.min,children:[
+      if(showLabel)...[Padding(padding:const EdgeInsets.only(left:4,bottom:6),child:Text(label,style:Theme.of(context).textTheme.bodyMedium)),],
+      InputDecorator(decoration: InputDecoration(enabled: onChanged != null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
       child: Row(children: [Expanded(child: Text(choices[value] ?? '$value', maxLines: 2,
-        overflow: TextOverflow.ellipsis)), const SizedBox(width: 8), const Icon(Icons.expand_more_rounded)]))));
+        overflow: TextOverflow.ellipsis)), const SizedBox(width: 8), const Icon(Icons.expand_more_rounded)])),])));
 }
 
 class _ChoiceSheet<T> extends StatefulWidget {

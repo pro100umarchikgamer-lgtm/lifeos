@@ -15,4 +15,9 @@ void main(){
     expect(()=>OfflineValidation.validate(const SetTaskPlacement('o','p',0,taskId:'task',parentTaskId:'task')),throwsA(isA<DomainFailure>()));
     expect(()=>OfflineValidation.validate(const SaveStudyItem('o','s',0,subjectId:'subject',name:'Exam',taskId:'task',schedule:ScheduleSpec(localStart:'2026-10-11T09:00:00',timezone:'UTC'))),throwsA(isA<DomainFailure>()));
   });
+  test('paused civil dates do not become missed streak days',(){
+    final e=CalendarEntry(id:'h',title:'Walk',schedule:const ScheduleSpec(localStart:'2026-10-23T09:00:00',timezone:'Europe/Berlin',repeat:RepeatRule.daily));
+    expect(habitStreak(e,DateTime.utc(2026,10,27,12),'UTC',[{'local_date':'2026-10-23','completed':1},{'local_date':'2026-10-27','completed':1}],pauses:[{'start_on':'2026-10-24','end_on':'2026-10-27'}]),2);
+  });
+
 }
