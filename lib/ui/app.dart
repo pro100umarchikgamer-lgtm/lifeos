@@ -14,13 +14,13 @@ import 'record_detail.dart';
 import 'settings.dart';
 
 class LifeOSApp extends StatelessWidget {
-  const LifeOSApp({super.key, required this.controller});
+  const LifeOSApp({super.key, required this.controller, this.builder});
   final AppController controller;
+  final TransitionBuilder? builder;
   @override
   Widget build(BuildContext context) => ListenableBuilder(listenable: controller, builder: (context, _) {
-    final pack = controller.pack;
     return MaterialApp(
-      title: 'LifeOS', debugShowCheckedModeBanner: false,
+      title: 'LifeOS', debugShowCheckedModeBanner: false, builder: builder,
       locale: Locale(controller.region), supportedLocales: {for (final p in controller.catalog.packs.values) p.locale, Locale(controller.region)}.toList(),
       localizationsDelegates: const [MaterialFallbackDelegate(), WidgetsFallbackDelegate(), CupertinoFallbackDelegate()],
       theme: lifeTheme(Brightness.light), darkTheme: lifeTheme(Brightness.dark),

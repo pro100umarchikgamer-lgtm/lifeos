@@ -106,9 +106,8 @@ void main() {
     tester.view.devicePixelRatio = 1; tester.view.physicalSize = const Size(320,844);
     addTearDown(tester.view.resetDevicePixelRatio); addTearDown(tester.view.resetPhysicalSize);
     final c = AppController(UIStore(),catalog,'ru'); await c.load();
-    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.pumpWidget(LifeOSApp(controller:c));
+    await tester.pumpWidget(LifeOSApp(controller:c, builder:(context,child) => MediaQuery(
+      data:MediaQuery.of(context).copyWith(textScaler:const TextScaler.linear(1.5)),child:child!)));
     await tester.pumpAndSettle(); expect(tester.takeException(),isNull);
     await tester.tap(find.byKey(const Key('profile_button'))); await tester.pumpAndSettle();
     expect(find.text(c.pack.t('language')),findsOneWidget); expect(tester.takeException(),isNull);
