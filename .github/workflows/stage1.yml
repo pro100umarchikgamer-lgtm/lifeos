@@ -104,6 +104,14 @@ jobs:
         env:
           LIFEOS_TEST_KEYSTORE_BASE64: ${{ secrets.LIFEOS_TEST_KEYSTORE_BASE64 }}
         run: bash tool/ci_signing.sh
+      - name: Save public signing diagnostics on failure
+        if: failure() && steps.validation.outputs.build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-signing-diagnostics-${{ github.run_number }}
+          path: apk-certificate.txt
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload signed APK and public certificate evidence
         if: steps.validation.outputs.build == 'true'
         uses: actions/upload-artifact@v4

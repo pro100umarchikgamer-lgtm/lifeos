@@ -12,8 +12,35 @@ expected=$(tr -d '\r\n' < docs/ANDROID_TEST_CERT.sha256)
 [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
 actual=$(keytool -exportcert -keystore "$keystore" -storepass android -alias androiddebugkey 2>/dev/null | sha256sum | cut -d' ' -f1)
 [[ "$actual" == "$expected" ]] || { echo 'Signing certificate does not match the pinned LifeOS test identity.' >&2; exit 1; }
-# Existing Flutter template uses this keystore for debug. Fail if it changes.
+# Bind the generated Gradle debug configuration to the restored secret explicitly.
 grep -Eq 'applicationId = "app.lifeos.lifeos"' android/app/build.gradle.kts
+export LIFEOS_DEBUG_KEYSTORE_PATH="$keystore"
+python3 - <<'LIFEOS_GRADLE_SIGNING'
+from pathlib import Path
+p = Path('android/app/build.gradle.kts')
+s = p.read_text()
+marker = '// LifeOS persistent CI debug signing'
+if marker not in s:
+    s += '''
+// LifeOS persistent CI debug signing
+android {
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file(System.getenv("LIFEOS_DEBUG_KEYSTORE_PATH"))
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+}
+'''
+    p.write_text(s)
+LIFEOS_GRADLE_SIGNING
 [[ "${GITHUB_RUN_ATTEMPT}" -lt 1000 ]]
 version_code=$((GITHUB_RUN_NUMBER * 1000 + GITHUB_RUN_ATTEMPT))
 [[ "$version_code" -gt 1 && "$version_code" -le 2147483647 ]]
@@ -23,6 +50,7 @@ sdk_root=${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Android SDK unavailable}}
 apksigner=$(find "$sdk_root/build-tools" -mindepth 2 -maxdepth 2 -name apksigner | sort -V | tail -n 1)
 "$apksigner" verify --verbose --print-certs "$apk" > apk-certificate.txt
 apk_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' apk-certificate.txt | tr '[:upper:]' '[:lower:]')
+cat apk-certificate.txt
 [[ "$apk_cert" == "$expected" ]] || { echo 'APK certificate mismatch.' >&2; exit 1; }
 aapt=$(dirname "$apksigner")/aapt
 "$aapt" dump badging "$apk" > apk-manifest.txt
