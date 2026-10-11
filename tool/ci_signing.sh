@@ -49,9 +49,20 @@ apk=build/app/outputs/flutter-apk/app-debug.apk
 sdk_root=${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Android SDK unavailable}}
 apksigner=$(find "$sdk_root/build-tools" -mindepth 2 -maxdepth 2 -name apksigner | sort -V | tail -n 1)
 "$apksigner" verify --verbose --print-certs "$apk" > apk-certificate.txt
-apk_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' apk-certificate.txt | tr '[:upper:]' '[:lower:]')
 cat apk-certificate.txt
-[[ "$apk_cert" == "$expected" ]] || { echo 'APK certificate mismatch.' >&2; exit 1; }
+apk_cert=$(python3 - <<'LIFEOS_APK_CERT'
+from pathlib import Path
+import re
+report = Path('apk-certificate.txt').read_text()
+expected = Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip()
+digests = set(re.findall(
+    r'^(?:Signer #1|V[0-9.]+ Signer):? certificate SHA-256 digest: ([0-9a-fA-F]{64})\s*$',
+    report, re.MULTILINE))
+if not re.search(r'^Number of signers: 1\s*$', report, re.MULTILINE) or {d.lower() for d in digests} != {expected}:
+    raise SystemExit('APK certificate mismatch or unsupported signer report.')
+print(expected)
+LIFEOS_APK_CERT
+)
 aapt=$(dirname "$apksigner")/aapt
 "$aapt" dump badging "$apk" > apk-manifest.txt
 grep -q "package: name='app.lifeos.lifeos' versionCode='$version_code'" apk-manifest.txt
