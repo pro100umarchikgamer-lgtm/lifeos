@@ -75,7 +75,7 @@ class _WealthEditorState extends State<WealthEditor> {
   @override void dispose(){for(final field in [name,currency,amount,interest,fee,quantity]){field.dispose();}super.dispose();}
   Widget field(TextEditingController value,String key,{bool number=false})=>Padding(padding:const EdgeInsets.only(bottom:12),child:TextField(controller:value,keyboardType:number?const TextInputType.numberWithOptions(decimal:true,signed:true):TextInputType.text,decoration:InputDecoration(labelText:c.pack.t(key))));
   Widget select(String key,String value,Map<String,String> choices,ValueChanged<String> changed)=>Padding(padding:const EdgeInsets.only(bottom:12),child:LifeSelect<String>(label:c.pack.t(key),value:value,choices:choices,onChanged:(v)=>setState(()=>changed(v))));
-  Future<void> pick({bool target=false})async{final d=await showDatePicker(context:context,initialDate:target?targetOn??c.now:date,firstDate:DateTime(1900),lastDate:DateTime(2200,12,31));if(d!=null&&mounted)setState((){if(target)targetOn=d;else date=d;});}
+  Future<void> pick({bool target=false})async{final d=await showDatePicker(context:context,initialDate:target?targetOn??c.now:date,firstDate:DateTime(1900),lastDate:DateTime(2200,12,31));if(d!=null&&mounted)setState((){if(target){targetOn=d;}else{date=d;}});}
   Future<void> save()async{if(saving)return;setState((){saving=true;error=null;});try{
     final rev=widget.row?['revision'] as int? ?? 0,code=Currency.fromCode(currency.text).code;
     final value=signedMinor(amount.text,code),parent=widget.parent?['id'] as String?;

@@ -415,9 +415,10 @@ class LocalStore implements OfflineStore {
     final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences'],if(version>=4)...['categories','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes'],if(version>=5)...['savings_goals','savings_entries','debts','debt_entries','investment_assets','investment_entries'],if(version>=6)...['import_batches','import_rows'],if(version>=7)...['projects','project_milestones','task_placements','habits','habit_checks','learning_subjects','study_items','checklists','checklist_items','note_metadata','record_links','wellness_entries','dashboard_configs'],if(version>=8)...['local_profiles','local_memberships'],if(version>=9)'habit_pauses'];
     if(tables.length!=legacy.length||!legacy.every(tables.containsKey)) throw const DomainFailure('backup_invalid');
     for(final table in _snapshotTables) { tables.putIfAbsent(table,()=> <Object?>[]); }
-    if(version<4) for(final raw in tables['accounts'] as List) {
+    if(version<4) { for(final raw in tables['accounts'] as List) {
       final r=raw as Map; final owner=(tables['local_identity'] as List).first as Map;
       r.addAll({'name':r['currency'],'kind':'cash','archived':0,'revision':1,'created_at':owner['created_at'],'updated_at':owner['created_at'],'deleted_at':null});
+    }
     }
     if(version<4) for(final raw in tables['transactions'] as List) { (raw as Map)['category_id']=null; }
     if(version<8) {
@@ -510,7 +511,7 @@ class LocalStore implements OfflineStore {
             (await tx.query(table,columns:['id'],where:'id = ?',whereArgs:[change['record_id']])).isEmpty) { throw const DomainFailure('backup_invalid'); }
         for (final field in ['before_json','after_json']) {
           final decoded = await _historySnapshot(tx,table,jsonDecode(change[field] as String),change['record_id'] as String,owner:newOwner,space:newSpace);
-          if (decoded is! Map || decoded['id'] != change['record_id'] || decoded['owner_id'] != newOwner ||
+          if (decoded['id'] != change['record_id'] || decoded['owner_id'] != newOwner ||
               decoded['workspace_id'] != newSpace || decoded['revision'] is! int) { throw const DomainFailure('backup_invalid'); }
           final schedule = decoded['__schedule'];
           if (schedule != null) {

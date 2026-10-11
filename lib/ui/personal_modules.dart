@@ -21,7 +21,7 @@ class PersonalModulesPage extends StatefulWidget {
 }
 class _PersonalModulesPageState extends State<PersonalModulesPage> {
   AppController get c=>widget.controller;String query='';bool busy=false;int shown=50;
-  String title(Map<String,Object?> row)=>row['name'] as String? ?? (widget.table==OfflineTable.memberships?(c.offline[OfflineTable.profiles]??[]).where((p)=>p['id']==row['profile_id']).firstOrNull?['name'] as String?:null) ?? row['label'] as String? ?? row['local_date'] as String? ?? row['tags'] as String? ?? c.pack.t('module_${widget.table.name}');
+  String title(Map<String,Object?> row)=>row['name'] as String? ?? (widget.table==OfflineTable.memberships?(c.offline[OfflineTable.profiles]??[]).where((p)=>p['id']==row['profile_id']).firstOrNull?['name'] as String? : null) ?? row['label'] as String? ?? row['local_date'] as String? ?? row['tags'] as String? ?? c.pack.t('module_${widget.table.name}');
   Future<void> edit([Map<String,Object?>? row]) async {
     await showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,isDismissible:false,enableDrag:false,
       builder:(_)=>PersonalModuleEditor(controller:c,table:widget.table,row:row,parentId:widget.parentId,noteId:widget.noteId));
@@ -115,7 +115,7 @@ class _PersonalModuleEditorState extends State<PersonalModuleEditor> {
   Map<String,String> records(EntryKind kind)=>{'':c.pack.t('unassigned'),for(final r in c.records)if(r.kind==kind)r.id:r.text.split('\n').first};
   Widget select<T>(String key,T value,Map<T,String> options,ValueChanged<T> changed)=>Padding(padding:const EdgeInsets.only(bottom:12),child:LifeSelect<T>(label:c.pack.t(key),value:value,choices:options,onChanged:(v)=>setState(()=>changed(v)),searchLabel:c.pack.t('search')));
   Widget input(TextEditingController controller,String key)=>Padding(padding:const EdgeInsets.only(bottom:12),child:TextField(controller:controller,decoration:InputDecoration(labelText:c.pack.t(key))));
-  Widget pick(bool optional)=>Row(children:[Expanded(child:OutlinedButton.icon(onPressed:() async {final value=await showDatePicker(context:context,initialDate:optional?due??c.now:date,firstDate:DateTime(1900),lastDate:DateTime(2200,12,31));if(value!=null&&mounted)setState((){if(optional)due=value;else date=value;});},icon:const Icon(Icons.calendar_today),label:Text(optional?due==null?c.pack.t('no_date'):MaterialLocalizations.of(context).formatMediumDate(due!):MaterialLocalizations.of(context).formatMediumDate(date)))),if(optional&&due!=null)IconButton(tooltip:c.pack.t('clear'),onPressed:()=>setState(()=>due=null),icon:const Icon(Icons.close))]);
+  Widget pick(bool optional)=>Row(children:[Expanded(child:OutlinedButton.icon(onPressed:() async {final value=await showDatePicker(context:context,initialDate:optional?due??c.now:date,firstDate:DateTime(1900),lastDate:DateTime(2200,12,31));if(value!=null&&mounted)setState((){if(optional){due=value;}else{date=value;}});},icon:const Icon(Icons.calendar_today),label:Text(optional?due==null?c.pack.t('no_date'):MaterialLocalizations.of(context).formatMediumDate(due!):MaterialLocalizations.of(context).formatMediumDate(date)))),if(optional&&due!=null)IconButton(tooltip:c.pack.t('clear'),onPressed:()=>setState(()=>due=null),icon:const Icon(Icons.close))]);
   Future<void> save() async {
     if(saving)return;setState((){saving=true;error=null;});
     try {

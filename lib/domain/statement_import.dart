@@ -10,6 +10,9 @@ class StatementTable {
   static const maxBytes=5*1024*1024, maxRows=10000, maxColumns=100;
   static StatementTable text(Uint8List bytes,String extension,{String encoding='utf8',String delimiter='auto'}) {
     if(bytes.length>maxBytes)throw const DomainFailure('import_limit');
+    if(!const {'csv','tsv','txt','json','ofx','qif'}.contains(extension.toLowerCase())) {
+      throw const DomainFailure('import_format');
+    }
     String decode() {
       if(encoding=='utf16') {
         if(bytes.length<2||bytes.length.isOdd)throw const DomainFailure('import_format');
