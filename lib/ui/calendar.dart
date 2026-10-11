@@ -167,6 +167,8 @@ class ScheduleEditor extends StatelessWidget {
         ]),
         SwitchListTile.adaptive(contentPadding: EdgeInsets.zero, title: Text(p.t('reminder')), value: value!.reminder, onChanged: (v) => onChanged(_copy(reminder: v))),
         if (value!.reminder) ...[
+          if (controller.calendarEngine.next(CalendarEntry(id: 'preview', title: '', schedule: value!), DateTime.now(), controller.deviceZone, const []) == null)
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(p.t('reminder_no_future'), style: TextStyle(color: Theme.of(context).colorScheme.error))),
           ExpansionTile(expansionAnimationStyle: AnimationStyle(duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180)), tilePadding: EdgeInsets.zero, title: Text(p.t('reminder_mode')), subtitle: Text(p.t('mode_${value!.mode.name}')), children: [
           DropdownButtonFormField<ReminderMode>(key: ValueKey('mode_${value!.mode}'), initialValue: value!.mode, isExpanded: true,
             decoration: InputDecoration(labelText: p.t('reminder_mode')), items: [for (final m in ReminderMode.values) DropdownMenuItem(value: m, child: Text(p.t('mode_${m.name}')))],

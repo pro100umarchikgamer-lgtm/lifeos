@@ -42,7 +42,7 @@ try:
         if reuse and run['head_sha'] != proof['sha']:
             continue
         artifacts = api(f"{API}/runs/{run['id']}/artifacts")['artifacts']
-        apk_exists |= any(a['name'] == f"lifeos-debug-apk-{proof['sha']}" and not a['expired'] for a in artifacts)
+        apk_exists |= any(a['name'] == f"lifeos-release-test-apk-{proof['sha']}" and not a['expired'] for a in artifacts)
         for artifact in ([] if reuse else artifacts):
             if artifact['name'] != 'lifeos-validation-proof' or artifact['expired']:
                 continue

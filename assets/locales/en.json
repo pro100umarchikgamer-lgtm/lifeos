@@ -223,7 +223,8 @@
     "previous_month": "Previous month",
     "last_30_days": "Last 30 days",
     "calendar_preferences": "Calendar and time",
-    "backup_cancelled": "Cancelled. Existing data has been preserved."
+    "backup_cancelled": "Cancelled. Existing data has been preserved.",
+    "reminder_no_future": "There is no future reminder. Choose another time or adjust the repeat rule."
   },
   "plurals": {
     "record_count": {

@@ -3,8 +3,8 @@ set -euo pipefail
 # The secret is passed only via env; never enable shell tracing here.
 : "${LIFEOS_TEST_KEYSTORE_BASE64:?Configure the protected GitHub Actions keystore secret first}"
 umask 077
-mkdir -p "$HOME/.android"
-keystore="$HOME/.android/debug.keystore"
+keystore="${RUNNER_TEMP:?GitHub runner temporary directory unavailable}/lifeos-signing/debug.keystore"
+mkdir -p "$(dirname "$keystore")"
 trap 'rm -f "$keystore"' EXIT
 printf '%s' "$LIFEOS_TEST_KEYSTORE_BASE64" | base64 --decode > "$keystore"
 unset LIFEOS_TEST_KEYSTORE_BASE64
@@ -19,10 +19,10 @@ python3 - <<'LIFEOS_GRADLE_SIGNING'
 from pathlib import Path
 p = Path('android/app/build.gradle.kts')
 s = p.read_text()
-marker = '// LifeOS persistent CI debug signing'
+marker = '// LifeOS persistent CI test signing'
 if marker not in s:
     s += '''
-// LifeOS persistent CI debug signing
+// LifeOS persistent CI test signing
 android {
     signingConfigs {
         getByName("debug") {
@@ -33,7 +33,7 @@ android {
         }
     }
     buildTypes {
-        getByName("debug") {
+        getByName("release") {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -44,8 +44,8 @@ LIFEOS_GRADLE_SIGNING
 [[ "${GITHUB_RUN_ATTEMPT}" -lt 1000 ]]
 version_code=$((GITHUB_RUN_NUMBER * 1000 + GITHUB_RUN_ATTEMPT))
 [[ "$version_code" -gt 1 && "$version_code" -le 2147483647 ]]
-flutter build apk --debug --build-number "$version_code"
-apk=build/app/outputs/flutter-apk/app-debug.apk
+flutter build apk --release --build-number "$version_code"
+apk=build/app/outputs/flutter-apk/app-release.apk
 sdk_root=${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Android SDK unavailable}}
 apksigner=$(find "$sdk_root/build-tools" -mindepth 2 -maxdepth 2 -name apksigner | sort -V | tail -n 1)
 "$apksigner" verify --verbose --print-certs "$apk" > apk-certificate.txt
