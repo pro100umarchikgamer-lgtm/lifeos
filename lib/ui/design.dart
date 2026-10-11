@@ -76,7 +76,7 @@ class LifeCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(surface.radius),
       border: surface.treatment == 'outlined' ? Border.all(color: colors.outlineVariant) : null,
       boxShadow: surface.treatment == 'soft' ? [BoxShadow(color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? .14 : .045), blurRadius: 20, offset: const Offset(0, 6))] : null,
-    ), child: child);
+    ), child: Material(type: MaterialType.transparency, child: child));
   }
 }
 

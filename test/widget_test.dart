@@ -46,7 +46,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(c.pack.t('appearance_pistachio'))); await tester.pumpAndSettle();
     expect(c.appearance.palette, 'pistachio'); expect(c.preferences.containsKey('appearance_v1'), isFalse);
-    await tester.pageBack(); await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+    await tester.tap(find.byType(BackButton)); await tester.pumpAndSettle();
     expect(c.appearance.palette, const Appearance().palette); expect(tester.takeException(), isNull);
   });
   testWidgets('note editor is full screen and keeps text after save failure', (tester) async {
@@ -76,9 +77,12 @@ void main() {
     final c = AppController(UIStore(), catalog, 'ru'); await c.load();
     tester.view.devicePixelRatio = 1; tester.view.physicalSize = const Size(320,844);
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(LifeOSApp(controller: c, builder: (context, child) => MediaQuery(
-      data: MediaQuery.of(context).copyWith(viewInsets: const EdgeInsets.only(bottom: 300)), child: child!)));
+    await tester.pumpWidget(LifeOSApp(controller: c)); await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('quick_expense'))); await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('amount')));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
     final bounds = tester.getRect(find.byKey(const Key('save')));
     expect(bounds.bottom, lessThanOrEqualTo(544)); expect(tester.takeException(), isNull);
   });
