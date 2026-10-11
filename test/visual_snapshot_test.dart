@@ -13,6 +13,8 @@ import 'package:lifeos/domain/appearance.dart';
 import 'package:lifeos/ui/appearance_editor.dart';
 import 'package:lifeos/ui/quick_add.dart';
 import 'package:lifeos/ui/calendar.dart';
+import 'package:lifeos/ui/notices.dart';
+import 'package:lifeos/ui/selection.dart';
 
 // Sample records exist only in this visual test; production always reads its store.
 class SnapshotStore implements ActionStore {
@@ -191,4 +193,47 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/home_populated_light_tablet.png'));
     expect(tester.takeException(), isNull);
   });
+  for (final mode in ['light','dark']) {
+    for (final screen in ['home_430','home_scrolled_320','home_scrolled_390','language','repeat','undo','undo_keyboard']) {
+      testWidgets('polish_${screen}_$mode', (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = Size(screen == 'home_430' ? 430 : screen == 'home_scrolled_390' ? 390 : 320,844);
+        addTearDown(tester.view.resetDevicePixelRatio); addTearDown(tester.view.resetPhysicalSize);
+        final c = AppController(SnapshotStore(sampleRecords(),mode),catalog,'ru'); await c.load();
+        await tester.pumpWidget(LifeOSApp(controller:c)); await tester.pumpAndSettle();
+        if (screen.startsWith('home_scrolled')) {
+          await tester.drag(find.byType(ListView).first,const Offset(0,-550)); await tester.pumpAndSettle();
+        }
+        if (screen == 'language') {
+          await tester.tap(find.byKey(const Key('profile_button'))); await tester.pumpAndSettle();
+          await tester.tap(find.byType(LifeSelect<String>).first); await tester.pumpAndSettle();
+        }
+        if (screen == 'repeat') {
+          final context = tester.element(find.byType(HomeShell));
+          showEntryEditor(context,c,EntryKind.task); await tester.pumpAndSettle();
+          await tester.tap(find.text(c.pack.t('tomorrow'))); await tester.pumpAndSettle();
+          await tester.scrollUntilVisible(find.text(c.pack.t('repeat')).first,150, scrollable: find.descendant(of: find.byType(BottomSheet).last, matching: find.byType(Scrollable)).first); await tester.pumpAndSettle();
+          await tester.tap(find.text(c.pack.t('repeat')).first); await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byType(LifeSelect<RepeatRule>)); await tester.pumpAndSettle();
+          await tester.tap(find.byType(LifeSelect<RepeatRule>)); await tester.pumpAndSettle();
+        }
+        if (screen.startsWith('undo')) {
+          if (screen == 'undo_keyboard') {
+            tester.view.viewInsets = const FakeViewPadding(bottom:300); addTearDown(tester.view.resetViewInsets);
+            tester.view.padding = const FakeViewPadding(bottom:24); addTearDown(tester.view.resetPadding);
+          }
+          LifeNoticeScope.of(tester.element(find.byType(HomeShell))).show(c.pack.t('deleted'),
+            undoLabel:c.pack.t('undo'), undo:() async {});
+          await tester.pump(); await tester.pump(const Duration(milliseconds:300));
+          expect(find.byType(SnackBar),findsOneWidget);
+          if (screen == 'undo_keyboard') expect(tester.getRect(find.byType(SnackBar)).bottom,lessThanOrEqualTo(544));
+        }
+        expect(tester.takeException(),isNull);
+        await expectLater(find.byType(MaterialApp),matchesGoldenFile('goldens/polish_${screen}_$mode.png'));
+        expect(tester.takeException(),isNull);
+        await tester.pumpWidget(const SizedBox()); await tester.pumpAndSettle();
+      });
+    }
+  }
+
 }
