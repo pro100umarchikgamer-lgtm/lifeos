@@ -46,7 +46,7 @@ try:
         for artifact in ([] if reuse else artifacts):
             if artifact['name'] != 'lifeos-validation-proof' or artifact['expired']:
                 continue
-            raw = subprocess.check_output(['gh', 'api', f"{API}/artifacts/{artifact['id']}/zip"])
+            raw = subprocess.check_output(['gh', 'api', '--allow-escape-sequences', f"{API}/artifacts/{artifact['id']}/zip"])
             with zipfile.ZipFile(io.BytesIO(raw)) as archive:
                 prior = json.loads(archive.read('validation-proof.json'))
             if prior['sha'] != run['head_sha']:
@@ -60,7 +60,7 @@ try:
     if trusted and not reuse:
         baseline = api(f'{API}/runs/38132716495')
         if baseline['conclusion'] == 'success' and baseline['head_sha'] == 'ce2f52b7e7ffd8fc3d1bcdb3610b88b962241067' and sdk == '3.47.7' and inputs(baseline['head_sha']) == proof['inputs']:
-            logs = command('gh', 'api', f'{API}/jobs/114450184799/logs')
+            logs = command('gh', 'api', '--allow-escape-sequences', f'{API}/jobs/114450184799/logs')
             old = dict(re.findall(r'^\S+Z \+ ([a-z_0-9]+) (\S+)', logs, re.MULTILINE))
             dependencies = json.loads(command('flutter', 'pub', 'deps', '--json'))['packages']
             current = {p['name']: p['version'] for p in dependencies if p['name'] != 'lifeos'}
