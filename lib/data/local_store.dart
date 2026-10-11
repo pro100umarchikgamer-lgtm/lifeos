@@ -243,8 +243,8 @@ class LocalStore implements PersonalStore {
   Future<void> _linkedSchedule(sql.Transaction tx, String recordId, String column, String title, ScheduleSpec? spec, String now) async {
     final rows = await tx.query('calendar_entries', where: '$column = ? AND deleted_at IS NULL', whereArgs: [recordId]);
     if (spec == null) {
-      if (rows.isNotEmpty) await tx.update('calendar_entries', {'deleted_at': now, 'updated_at': now,
-        'revision': (rows.single['revision'] as int) + 1}, where: 'id = ?', whereArgs: [rows.single['id']]);
+      if (rows.isNotEmpty) { await tx.update('calendar_entries', {'deleted_at': now, 'updated_at': now,
+        'revision': (rows.single['revision'] as int) + 1}, where: 'id = ?', whereArgs: [rows.single['id']]); }
       return;
     }
     await _saveCalendar(tx, rows.isEmpty ? _uuid.v4() : rows.single['id'] as String, title, spec, now,
@@ -379,7 +379,7 @@ class LocalStore implements PersonalStore {
             final value = row[column['name']];
             if (value == null && (column['notnull'] == 1 || (column['pk'] as int) > 0) ||
                 value != null && column['type'] == 'INTEGER' && value is! int ||
-                value != null && column['type'] == 'TEXT' && value is! String) throw const DomainFailure('backup_invalid');
+                value != null && column['type'] == 'TEXT' && value is! String) { throw const DomainFailure('backup_invalid'); }
           }
           if (row.containsKey('id') && (row['id'] as String).isEmpty) throw const DomainFailure('backup_invalid');
           for (final field in ['created_at','updated_at','deleted_at']) {
@@ -412,16 +412,16 @@ class LocalStore implements PersonalStore {
         final change = Map<String,Object?>.from(raw as Map);
         final table = change['table_name'] as String;
         if (!['transactions','tasks','notes'].contains(table) ||
-            (await tx.query(table,columns:['id'],where:'id = ?',whereArgs:[change['record_id']])).isEmpty) throw const DomainFailure('backup_invalid');
+            (await tx.query(table,columns:['id'],where:'id = ?',whereArgs:[change['record_id']])).isEmpty) { throw const DomainFailure('backup_invalid'); }
         for (final field in ['before_json','after_json']) {
           final decoded = jsonDecode(change[field] as String);
           if (decoded is! Map || decoded['id'] != change['record_id'] || decoded['owner_id'] != newOwner ||
-              decoded['workspace_id'] != newSpace || decoded['revision'] is! int) throw const DomainFailure('backup_invalid');
+              decoded['workspace_id'] != newSpace || decoded['revision'] is! int) { throw const DomainFailure('backup_invalid'); }
           final schedule = decoded['__schedule'];
           if (schedule != null) {
             if (schedule is! Map || schedule['owner_id'] != newOwner || schedule['workspace_id'] != newSpace ||
                 schedule[table == 'tasks' ? 'task_id' : 'note_id'] != change['record_id'] || schedule['revision'] is! int ||
-                (await tx.query('calendar_entries',columns:['id'],where:'id = ?',whereArgs:[schedule['id']])).isEmpty) throw const DomainFailure('backup_invalid');
+                (await tx.query('calendar_entries',columns:['id'],where:'id = ?',whereArgs:[schedule['id']])).isEmpty) { throw const DomainFailure('backup_invalid'); }
           }
         }
       }

@@ -8,7 +8,7 @@ class CalendarEngine {
     final start = DateTime.tryParse(spec.localStart);
     if (start == null || start.year < 1900 || start.year > 2200 ||
         !RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00$').hasMatch(spec.localStart) ||
-        spec.interval < 1 || spec.interval > 365) throw const DomainFailure('invalid_date');
+        spec.interval < 1 || spec.interval > 365) { throw const DomainFailure('invalid_date'); }
     final canonical = '${dateOnly(start)}T${start.hour.toString().padLeft(2,'0')}:${start.minute.toString().padLeft(2,'0')}:00';
     if (canonical != spec.localStart) throw const DomainFailure('invalid_date');
     if (spec.timezone != 'device') {

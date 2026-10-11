@@ -101,8 +101,8 @@ class _PersonalSettingsState extends State<PersonalSettings> {
       select('currency', c.currency, {for (final code in {'USD','EUR','RUB','KZT','UZS','UAH','GBP','GEL','AZN','AMD','TJS','KGS',c.currency}) code: code}),
       select('region', c.region, {for (final code in {'ru','en','de','fr','es','it','pt','kk','uz','uk','ka','az','hy','tg','ky',c.region}) code: code.toUpperCase()}),
       select('week_start', '${c.weekStart}', {'1': c.pack.t('monday'), '7': c.pack.t('sunday')}),
-      ListTile(contentPadding: EdgeInsets.zero, title: Text(c.pack.t('timezone')), subtitle: Text(c.timezone == 'device' ? '${c.pack.t('device_timezone')} · ${c.deviceZone}' : c.timezone),
-        trailing: const Icon(Icons.chevron_right), onTap: busy ? null : zone),
+      Material(type: MaterialType.transparency, child: ListTile(contentPadding: EdgeInsets.zero, title: Text(c.pack.t('timezone')), subtitle: Text(c.timezone == 'device' ? '${c.pack.t('device_timezone')} · ${c.deviceZone}' : c.timezone),
+        trailing: const Icon(Icons.chevron_right), onTap: busy ? null : zone)),
     ])), const SizedBox(height: 12),
     LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [Expanded(child: Text(c.pack.t('notifications'), style: Theme.of(context).textTheme.titleMedium)), IconButton(tooltip: c.pack.t('refresh'), onPressed: busy ? null : () async { try { await c.refresh(); } catch (_) { message('read_failed'); } }, icon: const Icon(Icons.refresh))]), const SizedBox(height: 8),

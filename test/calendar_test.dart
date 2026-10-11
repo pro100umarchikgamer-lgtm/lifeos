@@ -36,10 +36,10 @@ void main() {
   });
   test('future schedules beyond one year are not lost; handled repeats are skipped', () {
     final future = series('2029-01-01T09:00:00', RepeatRule.none);
-    expect(engine.next(future, DateTime.utc(2026), 'UTC', [])?.at, DateTime.utc(2029,1,1,9));
+    expect(engine.next(future, DateTime.utc(2026), 'UTC', [])?.at.toUtc(), DateTime.utc(2029,1,1,9));
     final e = series('2026-10-01T09:00:00', RepeatRule.daily);
     final at = DateTime.utc(2026,10,1,9);
-    expect(engine.next(e, DateTime.utc(2026,10,1), 'UTC', [OccurrenceState(e.id, at.millisecondsSinceEpoch, OccurrenceStatus.completed)])?.at, DateTime.utc(2026,10,2,9));
+    expect(engine.next(e, DateTime.utc(2026,10,1), 'UTC', [OccurrenceState(e.id, at.millisecondsSinceEpoch, OccurrenceStatus.completed)])?.at.toUtc(), DateTime.utc(2026,10,2,9));
   });
   test('device zone affects device schedules but never a fixed zone', () {
     final e = series('2026-10-11T09:00:00', RepeatRule.none, zone: 'device');

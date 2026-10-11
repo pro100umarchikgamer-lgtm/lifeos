@@ -78,7 +78,7 @@ void main() {
     final store = UIStore()..items = [Record(id: 'original-note', kind: EntryKind.note, text: 'Записанная заметка', createdAt: DateTime(2026,10,11), revision: 4)];
     final c = AppController(store, catalog, 'ru'); await c.load();
     await tester.pumpWidget(LifeOSApp(controller: c)); await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Записанная заметка')); await tester.tap(find.text('Записанная заметка')); await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Записанная заметка'), 300); await tester.tap(find.text('Записанная заметка')); await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('edit_record'))); await tester.pumpAndSettle();
     expect(find.text('Записанная заметка'), findsWidgets);
     await tester.enterText(find.byKey(const Key('entry_text')), 'Исправленная заметка');

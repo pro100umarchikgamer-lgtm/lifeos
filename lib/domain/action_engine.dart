@@ -61,7 +61,7 @@ class ActionEngine {
           throw const DomainFailure('required_text');
         }
         if (action is EditTask && action.updateSchedule && (action.expectedScheduleRevision == null || action.expectedScheduleRevision! < 0) ||
-            action is EditNote && action.updateSchedule && (action.expectedScheduleRevision == null || action.expectedScheduleRevision! < 0)) throw const DomainFailure('invalid_action');
+            action is EditNote && action.updateSchedule && (action.expectedScheduleRevision == null || action.expectedScheduleRevision! < 0)) { throw const DomainFailure('invalid_action'); }
         if (action is EditTask && action.schedule != null) CalendarEngine.validate(action.schedule!);
         if (action is EditNote && action.schedule != null) CalendarEngine.validate(action.schedule!);
       case SaveCalendar():
