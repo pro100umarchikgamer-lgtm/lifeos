@@ -1,4 +1,6 @@
+import 'statement_import.dart';
 part 'calendar_models.dart';
+part 'offline_models.dart';
 
 enum EntryKind { expense, income, task, note }
 
@@ -46,7 +48,7 @@ class Currency {
 class Record {
   const Record({required this.id, required this.kind, required this.text,
     required this.createdAt, this.amountMinor, this.currency, this.date, this.completed = false,
-    this.revision = 1, this.updatedAt});
+    this.revision = 1, this.updatedAt, this.accountId, this.categoryId});
   final String id;
   final EntryKind kind;
   final String text;
@@ -57,6 +59,7 @@ class Record {
   final bool completed;
   final int revision;
   final DateTime? updatedAt;
+  final String? accountId,categoryId;
 }
 
 sealed class AppAction {

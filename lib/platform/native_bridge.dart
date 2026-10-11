@@ -29,6 +29,11 @@ class NativeBridge {
     if (!supported) throw PlatformException(code: 'unsupported');
     return await channel.invokeMethod<bool>('saveBackup', bytes) ?? false;
   }
+  Future<Map<String,Object?>?> pickStatement() async {
+    if(!supported)throw PlatformException(code:'unsupported');
+    final value=await channel.invokeMapMethod<String,Object?>('pickStatement').timeout(const Duration(seconds:30));
+    return value==null?null:Map<String,Object?>.from(value);
+  }
   Future<typed.Uint8List?> readBackup() async {
     if (!supported) throw PlatformException(code: 'unsupported');
     return channel.invokeMethod<typed.Uint8List>('readBackup');

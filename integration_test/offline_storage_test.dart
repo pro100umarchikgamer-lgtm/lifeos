@@ -94,7 +94,8 @@ void main() {
       await secure.delete(key: keyName);
     }
   });
-  testWidgets('real encrypted v1 database upgrades atomically and restore keeps IDs and rejects corrupt data', (tester) async {
+  for(final legacyVersion in [1,2,3]) {
+  testWidgets('real encrypted v$legacyVersion database upgrades atomically and restore keeps IDs and rejects corrupt data', (tester) async {
     final name = 'test_upgrade_${DateTime.now().microsecondsSinceEpoch}';
     final directory = await getApplicationSupportDirectory();
     final file = File(path.join(directory.path, '$name.db'));
@@ -106,12 +107,12 @@ void main() {
     sql.Database? legacy;
     try {
       await secure.write(key:keyName,value:password);
-      legacy = await sql.openDatabase(file.path,password:password,version:1,
+      legacy = await sql.openDatabase(file.path,password:password,version:legacyVersion,
         onConfigure:(db) async { await db.execute('PRAGMA foreign_keys=ON'); },
         onCreate:(db,version) async {
-          for (final statement in (await rootBundle.loadString('assets/migrations/001.sql')).split(';')) {
+          for(var n=1;n<=legacyVersion;n++){for (final statement in (await rootBundle.loadString('assets/migrations/${n.toString().padLeft(3,'0')}.sql')).split(';')) {
             if (statement.trim().isNotEmpty) await db.execute(statement);
-          }
+          }}
         });
       final now = DateTime(2026,10,11).toUtc().toIso8601String();
       await legacy.transaction((tx) async {
@@ -171,6 +172,7 @@ void main() {
       await secure.delete(key:keyName);
     }
   });
+  }
   testWidgets('Android bridge installs and cancels native schedules on the disposable CI emulator', (tester) async {
     final bridge = NativeBridge();
     final diagnostics = await bridge.diagnostics();

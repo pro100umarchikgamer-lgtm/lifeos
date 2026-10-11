@@ -15,6 +15,12 @@ class AppController extends ChangeNotifier {
   final PackCatalog catalog;
   final String deviceLanguage;
   List<Record> records = [];
+  Map<OfflineTable,List<Map<String,Object?>>> offline = {};
+  List<Map<String,Object?>> allocations = [];
+  Set<String> importedOrigins = {};
+  Future<void> refreshOffline({Set<OfflineTable>? tables}) async {
+    if(store case final OfflineStore database) { offline.addAll(await database.offlineData(tables:tables)); if(tables==null){allocations=await database.splits(); importedOrigins=await database.importedOrigins();} notifyListeners(); }
+  }
   Map<String, String> preferences = {};
   final Set<String> pendingTasks = {};
   final NativeBridge native;
@@ -50,6 +56,7 @@ class AppController extends ChangeNotifier {
     _reminderFingerprint = null;
     presentation.notifyListeners();
     await refresh();
+    await refreshOffline();
   }
   Future<void> _refreshTail = Future<void>.value();
   Future<void> refresh({bool forceReminders = false}) {
@@ -94,6 +101,7 @@ class AppController extends ChangeNotifier {
         occurrences = await personal.occurrenceStates();
         records = await personal.records();
         calendar = await personal.calendarEntries();
+        if(personal case final OfflineStore database)offline.addAll(await database.offlineData(tables:{OfflineTable.habitChecks}));
       }
       final now = DateTime.now();
       final payload = <Map<String, Object?>>[];
@@ -127,7 +135,25 @@ class AppController extends ChangeNotifier {
 
   Future<void> execute(AppAction action) async {
     await engine.execute(action);
-    await refresh();
+    final affected=switch(action) {
+      CopyChecklist()=>{OfflineTable.checklists,OfflineTable.checklistItems},SaveProfile()=>{OfflineTable.profiles},SaveMembership()=>{OfflineTable.memberships},
+      SaveProject()=>{OfflineTable.projects},SaveMilestone()=>{OfflineTable.milestones},SetTaskPlacement()=>{OfflineTable.taskPlacements},
+      SaveHabit()=>{OfflineTable.habits},CheckHabit()=>{OfflineTable.habitChecks},SaveSubject()=>{OfflineTable.subjects},SaveStudyItem()=>{OfflineTable.studyItems},
+      SaveChecklist()=>{OfflineTable.checklists},SaveChecklistItem()=>{OfflineTable.checklistItems},SetNoteMetadata()=>{OfflineTable.noteMetadata},SaveRecordLink()=>{OfflineTable.recordLinks},SaveWellness()=>{OfflineTable.wellness},SaveDashboard()=>{OfflineTable.dashboard},
+      SaveAccount()=>{OfflineTable.accounts},SaveCategory()=>{OfflineTable.categories},SaveTransfer()=>{OfflineTable.transfers},SaveBudget()=>{OfflineTable.budgets},SavePlannedPayment()=>{OfflineTable.plannedPayments},
+      SaveGoal()=>{OfflineTable.goals},SaveGoalEntry()=>{OfflineTable.goalEntries},SaveDebt()=>{OfflineTable.debts},SaveDebtEntry()=>{OfflineTable.debtEntries},SaveAsset()=>{OfflineTable.assets},SaveInvestmentEntry()=>{OfflineTable.investmentEntries},
+      ConfirmImport()||ReverseImport()=>{OfflineTable.importBatches},DeleteOffline()=>{action.table},UndoOffline()=>{action.table},
+      _=><OfflineTable>{},
+    };
+    // Metadata does not reload every record or reconcile OS alarms. Schedule/cash mutations still do.
+    final metadata=action is OfflineAction&&action is! SaveProject&&action is! SaveMilestone&&action is! SaveHabit&&action is! CheckHabit&&action is! SaveStudyItem&&action is! SaveDebt&&action is! SavePlannedPayment&&action is! ConfirmPlannedPayment&&action is! SetMoneyDetails&&action is! ConfirmImport&&action is! ReverseImport&&action is! DeleteOffline&&action is! UndoOffline;
+    if(!metadata)await refresh();
+    if(action is SetOccurrence)affected.add(OfflineTable.habitChecks);
+    if(affected.isNotEmpty)await refreshOffline(tables:affected);
+    if(action is SetMoneyDetails||action is RecordMutation||action is ConfirmImport||action is ReverseImport){
+      if(store case final OfflineStore database){allocations=await database.splits();if(action is ConfirmImport||action is ReverseImport)importedOrigins=await database.importedOrigins();}
+    }
+    if(affected.isEmpty||action is SetMoneyDetails||action is RecordMutation)notifyListeners();
   }
   Future<void> preference(String key, String value) async {
     switch (key) {

@@ -10,8 +10,8 @@ import zipfile
 
 REPO = os.environ['GITHUB_REPOSITORY']
 API = f'repos/{REPO}/actions'
-EXCLUDED = {'.github/workflows/stage1.yml', 'tool/ci_validation.py',
-            'tool/ci_signing.sh', 'docs/ANDROID_TEST_CERT.sha256', 'docs/ANDROID_TEST_SIGNING.md'}
+# Validation and signing gate changes must invalidate prior proof as well.
+EXCLUDED = {'docs/ANDROID_TEST_SIGNING.md'}
 
 def command(*args):
     return subprocess.check_output(args).decode()

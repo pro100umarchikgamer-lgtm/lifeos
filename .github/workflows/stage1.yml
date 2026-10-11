@@ -1,4 +1,4 @@
-name: Personal Core validation and final optimized test APK
+name: Offline Core validation and final signed test APK
 on:
   push:
   pull_request:
@@ -57,9 +57,9 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test --update-goldens test/visual_snapshot_test.dart
+      - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: python3 tool/verify_goldens.py
         if: steps.validation.outputs.full == 'true'
@@ -90,7 +90,7 @@ jobs:
           target: google_apis
           profile: pixel_2
           disable-animations: true
-          script: flutter test integration_test/offline_storage_test.dart -d emulator-5554
+          script: flutter test integration_test/offline_storage_test.dart integration_test/offline_expansion_test.dart -d emulator-5554
       - name: Save evidence after all mandatory validation succeeds
         if: steps.validation.outputs.full == 'true'
         uses: actions/upload-artifact@v4

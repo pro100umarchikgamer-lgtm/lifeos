@@ -1,3 +1,5 @@
+import '../domain/offline_validation.dart';
+import '../domain/statement_import.dart';
 import 'dart:convert';
 import '../domain/appearance.dart';
 import 'dart:io';
@@ -13,14 +15,21 @@ import 'package:uuid/uuid.dart';
 import '../domain/action_engine.dart';
 import '../domain/models.dart';
 import '../domain/calendar_engine.dart';
+import '../domain/wealth_engine.dart';
+import 'package:timezone/timezone.dart' as tz;
+part 'offline_store.dart';
+part 'wealth_store.dart';
+part 'import_store.dart';
+part 'personal_modules_store.dart';
+part 'history_validation.dart';
 
-class LocalStore implements PersonalStore {
+class LocalStore implements OfflineStore {
   LocalStore._(this._db, this.ownerId, this.workspaceId);
   final sql.Database _db;
   String ownerId;
   String workspaceId;
   static const _uuid = Uuid();
-  static const schemaVersion = 3;
+  static const schemaVersion = 10;
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) throw const DomainFailure('invalid_action');
@@ -52,12 +61,15 @@ class LocalStore implements PersonalStore {
     try {
       await db.transaction((tx) async {
         final identity = await tx.query('local_identity');
-        if (identity.isNotEmpty) return;
+        if (identity.isEmpty) {
         final owner = _uuid.v4();
         final workspace = _uuid.v4();
         final now = DateTime.now().toUtc().toIso8601String();
         await tx.insert('local_identity', {'id': owner, 'workspace_id': workspace, 'created_at': now});
         await tx.insert('workspaces', {'id': workspace, 'owner_id': owner, 'kind': 'personal', 'created_at': now});
+        }
+        await tx.rawInsert("INSERT OR IGNORE INTO local_profiles(id,owner_id,workspace_id,name,kind,created_at,updated_at) SELECT id,id,workspace_id,'LifeOS','adult',created_at,created_at FROM local_identity");
+        await tx.rawInsert("INSERT OR IGNORE INTO local_memberships(id,owner_id,workspace_id,profile_id,role,permissions,created_at,updated_at) SELECT id,id,workspace_id,id,'owner',7,created_at,created_at FROM local_identity");
       });
       final identity = (await db.query('local_identity')).single;
       return LocalStore._(db, identity['id'] as String, identity['workspace_id'] as String);
@@ -73,6 +85,11 @@ class LocalStore implements PersonalStore {
       for (final statement in source.split(';')) {
         if (statement.trim().isNotEmpty) await db.execute(statement);
       }
+      if(version==10){for(final table in ['projects','project_milestones']){for(final row in await db.query(table,where:'due_on IS NOT NULL')){
+        final id=_uuid.v4();
+        await db.insert('calendar_entries',{'id':id,'owner_id':row['owner_id'],'workspace_id':row['workspace_id'],'title':row['name'],'local_start':'${row['due_on']}T09:00:00','timezone':'device','all_day':1,'repeat_rule':'none','reminder':0,'reminder_mode':'standard','created_at':row['created_at'],'updated_at':row['updated_at'],'deleted_at':row['deleted_at']??(row['status']=='done'||row['completed']==1?DateTime.now().toUtc().toIso8601String():null)});
+        await db.update(table,{'calendar_id':id},where:'id=?',whereArgs:[row['id']]);
+      }}}
     }
   }
 
@@ -85,14 +102,16 @@ class LocalStore implements PersonalStore {
       return previous.single['result_id'] as String;
     }
     final id = switch (action) {
-      CompleteTask() => action.id, RecordMutation() => action.id,
+      OfflineAction() => action.id, CompleteTask() => action.id, RecordMutation() => action.id,
       SaveCalendar() => action.id ?? _uuid.v4(), DeleteCalendar() => action.id,
       SetOccurrence() => action.entryId, _ => _uuid.v4(),
     };
     final now = DateTime.now().toUtc().toIso8601String();
+    var resultId=id;
     final metadata = {'id': id, 'owner_id': ownerId, 'workspace_id': workspaceId,
       'visibility': 'private', 'created_at': now, 'updated_at': now};
     switch (action) {
+      case OfflineAction(): resultId=await _applyOffline(tx,action,now);
       case CreateMoney():
         final currency = Currency.fromCode(action.currencyCode);
         await tx.insert('transactions', {...metadata, 'kind': action.kind.name,
@@ -131,14 +150,26 @@ class LocalStore implements PersonalStore {
             final changes = await tx.query('record_changes', where: 'table_name = ? AND record_id = ? AND revision = ?',
               whereArgs: [table, id, action.expectedRevision]);
             if (changes.isEmpty) throw const DomainFailure('undo_unavailable');
-            values.addAll(Map<String, Object?>.from(jsonDecode(changes.single['before_json'] as String) as Map));
+            values.addAll(await _historySnapshot(tx,table,jsonDecode(changes.single['before_json'] as String),id));
             for (final key in ['id', 'owner_id', 'workspace_id', 'visibility', 'created_at', 'updated_at', 'revision']) {
               values.remove(key);
             }
-            values.remove('__schedule');
+            values.remove('__schedule'); values.remove('__splits');
+            if(table=='transactions') values.putIfAbsent('category_id',()=>null);
         }
         await _mutate(tx, table, id, action.expectedRevision, values, action.operationId, now,
           allowDeleted: action is UndoRecordChange, expectedKind: action.kind);
+        if(table=='transactions') {
+          if(action is UndoRecordChange) {
+            final change=(await tx.query('record_changes',where:'table_name=? AND record_id=? AND revision=?',whereArgs:[table,id,action.expectedRevision])).single;
+            final before=jsonDecode(change['before_json'] as String) as Map;
+            final rows=before['__splits'] as List? ?? [];
+            await tx.delete('transaction_splits',where:'transaction_id=?',whereArgs:[id]);
+            for(final row in rows) { await tx.insert('transaction_splits',Map<String,Object?>.from(row as Map)); }
+          }
+          await _auditMoneyAfter(tx,id,action.operationId);
+          await _validateWealth(tx);
+        }
         if (action is EditTask && action.updateSchedule) {
           await _linkedSchedule(tx, id, 'task_id', action.title.trim(), action.schedule, now);
         }
@@ -160,6 +191,7 @@ class LocalStore implements PersonalStore {
             where: 'operation_id = ?', whereArgs: [action.operationId]);
         }
       case SaveCalendar():
+        if(action.id!=null)await _guardModuleCalendar(tx,id);
         if (action.taskId != null || action.noteId != null) throw const DomainFailure('invalid_action');
         if (action.id != null) {
           final existing = await tx.query('calendar_entries', where: 'id = ?', whereArgs: [id]);
@@ -168,6 +200,7 @@ class LocalStore implements PersonalStore {
         await _saveCalendar(tx, id, action.title.trim(), action.schedule, now,
           taskId: action.taskId, noteId: action.noteId, expectedRevision: action.expectedRevision);
       case DeleteCalendar():
+        await _guardModuleCalendar(tx,id);
         final linked = await tx.query('calendar_entries', where: 'id = ? AND (task_id IS NOT NULL OR note_id IS NOT NULL)', whereArgs: [id]);
         if (linked.isNotEmpty) throw const DomainFailure('invalid_action');
         final count = await tx.update('calendar_entries', {'deleted_at': now, 'updated_at': now, 'revision': action.expectedRevision + 1},
@@ -186,9 +219,18 @@ class LocalStore implements PersonalStore {
         await tx.insert('calendar_occurrences', {'entry_id': id, 'revision': entry.single['revision'], 'epoch': action.epoch,
           'status': action.status.name, 'snoozed_until': action.snoozedUntil, 'updated_at': now},
           conflictAlgorithm: sql.ConflictAlgorithm.replace);
+        final habits=await tx.query('habits',where:'calendar_id=? AND deleted_at IS NULL AND paused=0',whereArgs:[id]);
+        if(habits.isNotEmpty&&action.status==OccurrenceStatus.completed){
+          final habit=habits.single,spec=entry.single;
+          final utc=DateTime.fromMillisecondsSinceEpoch(action.epoch,isUtc:true);
+          final civil=(spec['timezone']=='device'?utc.toLocal():tz.TZDateTime.from(utc,tz.getLocation(spec['timezone'] as String)));
+          final checks=await tx.query('habit_checks',where:'habit_id=? AND local_date=?',whereArgs:[habit['id'],dateOnly(civil)]);
+          final prior=checks.firstOrNull;
+          await _writeEntity(tx,'habit_checks',CheckHabit(action.operationId,prior?['id'] as String? ?? _uuid.v4(),prior?['revision'] as int? ?? 0,habitId:habit['id'] as String,localDate:dateOnly(civil),timezone:spec['timezone'] as String),{'habit_id':habit['id'],'local_date':dateOnly(civil),'timezone':spec['timezone'],'completed':1,'deleted_at':null},now,undo:true);
+        }
     }
-    await tx.insert('operations', {'id': action.operationId, 'payload': payload, 'result_id': id, 'created_at': now});
-    return id;
+    await tx.insert('operations', {'id': action.operationId, 'payload': payload, 'result_id': resultId, 'created_at': now});
+    return resultId;
   });
 
   Future<void> _mutate(sql.Transaction tx, String table, String id, int? revision,
@@ -204,6 +246,7 @@ class LocalStore implements PersonalStore {
       final linked = await tx.query('calendar_entries', where: '${table == 'tasks' ? 'task_id' : 'note_id'} = ? AND deleted_at IS NULL', whereArgs: [id]);
       before['__schedule'] = linked.firstOrNull;
     }
+    if(table=='transactions') before['__splits']=await tx.query('transaction_splits',where:'transaction_id=?',whereArgs:[id]);
     final actual = before['revision'] as int;
     if (revision != null && actual != revision) throw const DomainFailure('revision_conflict');
     final after = {...before, ...values, 'updated_at': now, 'revision': actual + 1};
@@ -288,7 +331,7 @@ class LocalStore implements PersonalStore {
           amountMinor: row['amount_minor'] as int?,
           currency: table == 'transactions' ? Currency(row['currency'] as String, row['minor_digits'] as int) : null,
           date: row['occurred_on'] as String?, completed: row['completed'] == 1,
-          revision: row['revision'] as int, updatedAt: DateTime.parse(row['updated_at'] as String)));
+          accountId: row['account_id'] as String?, categoryId: row['category_id'] as String?, revision: row['revision'] as int, updatedAt: DateTime.parse(row['updated_at'] as String)));
       }
     }
     result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -338,16 +381,62 @@ class LocalStore implements PersonalStore {
       where: 'id = ? AND revision = ? AND owner_id = ? AND workspace_id = ?', whereArgs: [id, revision, ownerId, workspaceId]);
   }
 
-  static const _snapshotTables = ['local_identity', 'workspaces', 'accounts', 'transactions', 'tasks', 'notes',
-    'operations', 'record_changes', 'calendar_entries', 'calendar_occurrences', 'settings'];
+  @override
+  Future<Map<OfflineTable,List<Map<String,Object?>>>> offlineData({Set<OfflineTable>? tables}) async {
+    final result=<OfflineTable,List<Map<String,Object?>>>{};
+    for(final table in tables ?? {OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments,OfflineTable.goals,OfflineTable.goalEntries,OfflineTable.debts,OfflineTable.debtEntries,OfflineTable.assets,OfflineTable.investmentEntries,OfflineTable.importBatches,OfflineTable.projects,OfflineTable.milestones,OfflineTable.taskPlacements,OfflineTable.habits,OfflineTable.habitChecks,OfflineTable.subjects,OfflineTable.studyItems,OfflineTable.checklists,OfflineTable.checklistItems,OfflineTable.noteMetadata,OfflineTable.recordLinks,OfflineTable.wellness,OfflineTable.dashboard,OfflineTable.profiles,OfflineTable.memberships}) {
+      final rows=[for(final row in await _db.query(table.sqlName,where:'owner_id=? AND workspace_id=? AND deleted_at IS NULL',whereArgs:[ownerId,workspaceId],orderBy:'created_at DESC,id')) Map<String,Object?>.from(row)];
+      if(table==OfflineTable.habits){for(final row in rows){row['__pauses']=await _db.query('habit_pauses',where:'habit_id=?',whereArgs:[row['id']]);}}
+      if([OfflineTable.projects,OfflineTable.milestones,OfflineTable.habits,OfflineTable.studyItems,OfflineTable.debts,OfflineTable.plannedPayments].contains(table)) {
+        for(final row in rows){if(row['calendar_id']!=null)row['__schedule']=(await _db.query('calendar_entries',where:'id=? AND owner_id=? AND workspace_id=?',whereArgs:[row['calendar_id'],ownerId,workspaceId])).firstOrNull;}
+      }
+      result[table]=rows;
+    }
+    return result;
+  }
+  @override
+  Future<List<Map<String,Object?>>> splits() async => [for(final row in await _db.rawQuery('SELECT s.* FROM transaction_splits s JOIN transactions t ON t.id=s.transaction_id WHERE t.owner_id=? AND t.workspace_id=? AND t.deleted_at IS NULL',[ownerId,workspaceId])) Map<String,Object?>.from(row)];
+
+  @override
+  Future<Set<String>> importedOrigins() async => {for(final r in await _db.rawQuery('SELECT r.origin_key FROM import_rows r JOIN import_batches b ON b.id=r.batch_id WHERE b.owner_id=? AND b.workspace_id=?',[ownerId,workspaceId]))r['origin_key'] as String};
+
+  static const _snapshotTables = ['local_identity','workspaces','accounts','categories','transactions','tasks','notes','operations','record_changes','calendar_entries','calendar_occurrences','settings','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','savings_goals','savings_entries','debts','debt_entries','investment_assets','investment_entries','import_batches','import_rows','projects','project_milestones','task_placements','habits','habit_checks','learning_subjects','study_items','checklists','checklist_items','note_metadata','record_links','wellness_entries','dashboard_configs','local_profiles','local_memberships','habit_pauses','entity_changes'];
 
   @override
   Future<Map<String, Object?>> exportSnapshot() => _db.transaction((tx) async => {
     'schemaVersion': schemaVersion, 'tables': {for (final table in _snapshotTables) table: await tx.query(table)},
   });
 
+  Map<String,Object?> _upgradeBackup(Map<String,Object?> data) {
+    if(data['schemaVersion']==schemaVersion) return data;
+    if(![1,2,3,4,5,6,7,8,9].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
+    final tables=Map<String,Object?>.from(jsonDecode(jsonEncode(data['tables'])) as Map);
+    final version=data['schemaVersion'] as int;
+    final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences'],if(version>=4)...['categories','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes'],if(version>=5)...['savings_goals','savings_entries','debts','debt_entries','investment_assets','investment_entries'],if(version>=6)...['import_batches','import_rows'],if(version>=7)...['projects','project_milestones','task_placements','habits','habit_checks','learning_subjects','study_items','checklists','checklist_items','note_metadata','record_links','wellness_entries','dashboard_configs'],if(version>=8)...['local_profiles','local_memberships'],if(version>=9)'habit_pauses'];
+    if(tables.length!=legacy.length||!legacy.every(tables.containsKey)) throw const DomainFailure('backup_invalid');
+    for(final table in _snapshotTables) { tables.putIfAbsent(table,()=> <Object?>[]); }
+    if(version<4) for(final raw in tables['accounts'] as List) {
+      final r=raw as Map; final owner=(tables['local_identity'] as List).first as Map;
+      r.addAll({'name':r['currency'],'kind':'cash','archived':0,'revision':1,'created_at':owner['created_at'],'updated_at':owner['created_at'],'deleted_at':null});
+    }
+    if(version<4) for(final raw in tables['transactions'] as List) { (raw as Map)['category_id']=null; }
+    if(version<8) {
+      final identity=(tables['local_identity'] as List).single as Map;
+      final meta={'id':identity['id'],'owner_id':identity['id'],'workspace_id':identity['workspace_id'],'created_at':identity['created_at'],'updated_at':identity['created_at'],'revision':1,'deleted_at':null};
+      tables['local_profiles']=[{...meta,'name':'LifeOS','kind':'adult','guardian_id':null,'archived':0}];
+      tables['local_memberships']=[{...meta,'profile_id':identity['id'],'role':'owner','permissions':7}];
+    }
+    if(version<10){for(final table in ['projects','project_milestones']){for(final raw in tables[table] as List){
+      final row=raw as Map;row['calendar_id']=null;if(row['due_on']==null)continue;
+      final id=_uuid.v4();row['calendar_id']=id;
+      (tables['calendar_entries'] as List).add({'id':id,'owner_id':row['owner_id'],'workspace_id':row['workspace_id'],'title':row['name'],'task_id':null,'note_id':null,'local_start':'${row['due_on']}T09:00:00','timezone':'device','all_day':1,'repeat_rule':'none','repeat_interval':1,'until_date':null,'reminder':0,'reminder_mode':'standard','revision':1,'native_synced_revision':0,'created_at':row['created_at'],'updated_at':row['updated_at'],'deleted_at':row['deleted_at']??(row['status']=='done'||row['completed']==1?DateTime.now().toUtc().toIso8601String():null)});
+    }}}
+    return {'schemaVersion':schemaVersion,'tables':tables};
+  }
+
   @override
   Future<void> restoreSnapshot(Map<String, Object?> data) async {
+    data=_upgradeBackup(data);
     if (data['schemaVersion'] != schemaVersion || data['tables'] is! Map) throw const DomainFailure('backup_invalid');
     final tables = Map<String, Object?>.from(data['tables'] as Map);
     if (tables.length != _snapshotTables.length || !_snapshotTables.every(tables.containsKey)) {
@@ -364,6 +453,7 @@ class LocalStore implements PersonalStore {
     final workspaces = tables['workspaces'] as List;
     if (workspaces.length != 1 || (workspaces.single as Map)['id'] != newSpace) throw const DomainFailure('backup_invalid');
     await _db.transaction((tx) async {
+      await tx.execute('PRAGMA defer_foreign_keys=ON');
       for (final table in _snapshotTables.reversed) { await tx.delete(table); }
       for (final table in _snapshotTables) {
         final definitions = await tx.rawQuery('PRAGMA table_info($table)');
@@ -409,6 +499,7 @@ class LocalStore implements PersonalStore {
               repeat: RepeatRule.values.byName(row['repeat_rule'] as String), interval: row['repeat_interval'] as int, until: row['until_date'] as String?));
             row['native_synced_revision'] = 0;
           }
+          _entitySemantics(table,row);
           await tx.insert(table, row);
         }
       }
@@ -418,7 +509,7 @@ class LocalStore implements PersonalStore {
         if (!['transactions','tasks','notes'].contains(table) ||
             (await tx.query(table,columns:['id'],where:'id = ?',whereArgs:[change['record_id']])).isEmpty) { throw const DomainFailure('backup_invalid'); }
         for (final field in ['before_json','after_json']) {
-          final decoded = jsonDecode(change[field] as String);
+          final decoded = await _historySnapshot(tx,table,jsonDecode(change[field] as String),change['record_id'] as String,owner:newOwner,space:newSpace);
           if (decoded is! Map || decoded['id'] != change['record_id'] || decoded['owner_id'] != newOwner ||
               decoded['workspace_id'] != newSpace || decoded['revision'] is! int) { throw const DomainFailure('backup_invalid'); }
           final schedule = decoded['__schedule'];
@@ -429,6 +520,8 @@ class LocalStore implements PersonalStore {
           }
         }
       }
+      for(final row in await tx.query('transactions')) { await _moneyRelations(tx,row['id'] as String,owner:newOwner,space:newSpace); }
+      await _validateOfflineRestore(tx,newOwner,newSpace);
       if ((await tx.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) throw const DomainFailure('backup_invalid');
     });
     ownerId = newOwner;

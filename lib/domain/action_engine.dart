@@ -1,5 +1,12 @@
 import 'models.dart';
 import 'calendar_engine.dart';
+import 'offline_validation.dart';
+
+abstract interface class OfflineStore implements PersonalStore {
+  Future<Map<OfflineTable,List<Map<String,Object?>>>> offlineData({Set<OfflineTable>? tables});
+  Future<List<Map<String,Object?>>> splits();
+  Future<Set<String>> importedOrigins();
+}
 
 abstract interface class ActionStore {
   Future<String> apply(AppAction action);
@@ -24,6 +31,7 @@ class ActionEngine {
   Future<String> execute(AppAction action) {
     if (action.operationId.trim().isEmpty) throw const DomainFailure('invalid_action');
     switch (action) {
+      case OfflineAction(): OfflineValidation.validate(action);
       case CreateMoney():
         if (action.kind != EntryKind.expense && action.kind != EntryKind.income) {
           throw const DomainFailure('invalid_action');
