@@ -132,7 +132,7 @@ void main() {
         await tester.pumpAndSettle();
       }
       if (page == 'notes') {
-        await tester.scrollUntilVisible(find.text(controller.pack.t('recent_notes')).hitTestable(),200); expect(find.text(controller.pack.t('recent_notes')).hitTestable(), findsOneWidget); await tester.tap(find.text(controller.pack.t('recent_notes')).hitTestable());
+        await tester.scrollUntilVisible(find.text(controller.pack.t('recent_notes')).hitTestable(),200,scrollable:find.descendant(of:find.byKey(const Key('modules')),matching:find.byType(Scrollable)).first); expect(find.text(controller.pack.t('recent_notes')).hitTestable(), findsOneWidget); await tester.tap(find.text(controller.pack.t('recent_notes')).hitTestable());
         await tester.pumpAndSettle();
         await tester.tap(find.text('Идеи на выходные').first);
         await tester.pumpAndSettle();

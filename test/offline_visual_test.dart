@@ -44,7 +44,14 @@ void main(){
       if(screen=='habit')showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,builder:(_)=>PersonalModuleEditor(controller:c,table:OfflineTable.habits));
       if(screen=='import'){
         Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>StatementImportPage(controller:c)));await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(find.text(c.pack.t('choose_file')).hitTestable(),200,scrollable:find.descendant(of:find.byType(StatementImportPage),matching:find.byType(Scrollable)).first);await tester.tap(find.text(c.pack.t('choose_file')).hitTestable());await tester.pumpAndSettle();expect(find.text(c.pack.t('import_step_1')),findsOneWidget);
+        await tester.scrollUntilVisible(find.text(c.pack.t('choose_file')).hitTestable(),200,scrollable:find.descendant(of:find.byType(StatementImportPage),matching:find.byType(Scrollable)).first);await tester.tap(find.text(c.pack.t('choose_file')).hitTestable());
+        // compute() runs in a real isolate; fake-clock pumpAndSettle alone cannot await it.
+        for(var attempt=0;attempt<50;attempt++) {
+          await tester.runAsync(()=>Future<void>.delayed(const Duration(milliseconds:100)));
+          await tester.pumpAndSettle();
+          if(find.text(c.pack.t('import_step_1')).evaluate().isNotEmpty) { break; }
+        }
+        expect(find.text(c.pack.t('import_step_1')),findsOneWidget);
       }
       if(screen=='permissions'){
         Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(body:SafeArea(child:ListView(key:const Key('offline_test_settings'),children:[PersonalSettings(controller:c)])))));await tester.pumpAndSettle();
