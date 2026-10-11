@@ -58,7 +58,7 @@ class MainActivity : FlutterActivity() {
                             .put("schedule", JSONObject().put("mode", "standard"))
                         ReminderRuntime.show(this, e, System.currentTimeMillis()); result.success(null)
                     }
-                    "saveBackup", "readBackup" -> {
+                    "saveBackup", "readBackup", "pickStatement" -> {
                         check(documentResult == null) { "Document operation already in progress" }
                         documentResult = result
                         if (call.method == "saveBackup") {
@@ -66,7 +66,7 @@ class MainActivity : FlutterActivity() {
                             require(backupBytes!!.size <= 20 * 1024 * 1024)
                             startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                                 .setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE, "LifeOS.lifeosbackup"), 81)
-                        } else startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), 82)
+                        } else startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), if (call.method == "pickStatement") 83 else 82)
                     }
                     else -> result.notImplemented()
                 }
@@ -80,7 +80,7 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Platform compatibility callback")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != 81 && requestCode != 82) return
+        if (requestCode !in 81..83) return
         val result = documentResult ?: return
         documentResult = null
         try {
@@ -91,19 +91,32 @@ class MainActivity : FlutterActivity() {
                 val saved = readDocument(uri)
                 check(java.security.MessageDigest.isEqual(saved, backupBytes!!))
                 result.success(true)
+            } else if (requestCode == 83) {
+                // User granted only this URI. Do not retain URI permission or copy source into app files.
+                Thread {
+                    try {
+                        var name = ""
+                        contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                            if (cursor.moveToFirst()) name = cursor.getString(0)
+                        }
+                        val bytes = readDocument(uri, 5 * 1024 * 1024)
+                        val value = if (name.endsWith(".xlsx", true)) mapOf("name" to name, "sheets" to StatementReader.sheets(bytes)) else if (name.endsWith(".xml", true)) mapOf("name" to name, "sheets" to StatementReader.statementXml(bytes)) else mapOf("name" to name, "bytes" to bytes)
+                        runOnUiThread { result.success(value); bytes.fill(0) }
+                    } catch (e: Exception) { runOnUiThread { result.error("statement_failed", e.javaClass.simpleName, null) } }
+                }.start()
             } else {
                 result.success(readDocument(uri))
             }
         } catch (e: Exception) { result.error("document_failed", e.javaClass.simpleName, null) }
         finally { backupBytes = null }
     }
-    private fun readDocument(uri: Uri): ByteArray {
+    private fun readDocument(uri: Uri, limit: Int = 20 * 1024 * 1024): ByteArray {
         val output = java.io.ByteArrayOutputStream()
         contentResolver.openInputStream(uri)!!.use { input ->
             val buffer = ByteArray(8192)
             while (true) {
                 val n = input.read(buffer); if (n < 0) break
-                require(output.size() + n <= 20 * 1024 * 1024)
+                require(output.size() + n <= limit)
                 output.write(buffer, 0, n)
             }
         }

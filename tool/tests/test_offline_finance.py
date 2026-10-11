@@ -48,3 +48,15 @@ class WealthSchemaTests(unittest.TestCase):
         self.assertEqual(db.execute('SELECT SUM(amount_minor) FROM savings_entries').fetchone()[0],1000)
         with self.assertRaises(sqlite3.IntegrityError):db.execute("UPDATE savings_entries SET amount_minor=1.5")
         self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())
+
+class ImportSchemaTests(unittest.TestCase):
+    def test_origin_unique_and_reversal_cannot_include_unrelated_money(self):
+        db=expanded(6);self.addCleanup(db.close)
+        for id in ['manual','imported']:
+            db.execute("INSERT INTO transactions(id,owner_id,workspace_id,kind,amount_minor,currency,minor_digits,occurred_on,created_at,updated_at) VALUES(?,'owner','space','expense',1234,'RUB',2,'2026-10-11','2026-10-11','2026-10-11')",(id,))
+        db.execute("INSERT INTO import_batches(id,owner_id,workspace_id,content_key,row_count,created_at,updated_at) VALUES('batch','owner','space','key',1,'2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO import_rows(origin_key,batch_id,fingerprint,transaction_id) VALUES('origin','batch','hash','imported')")
+        with self.assertRaises(sqlite3.IntegrityError):db.execute("INSERT INTO import_rows(origin_key,batch_id,fingerprint,transaction_id) VALUES('origin','batch','hash','manual')")
+        db.execute("UPDATE transactions SET deleted_at='2026-10-11' WHERE id IN (SELECT transaction_id FROM import_rows WHERE batch_id='batch')")
+        self.assertEqual(db.execute("SELECT deleted_at FROM transactions WHERE id='manual'").fetchone(),(None,))
+        self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())

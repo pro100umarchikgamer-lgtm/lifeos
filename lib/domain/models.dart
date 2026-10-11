@@ -1,3 +1,4 @@
+import 'statement_import.dart';
 part 'calendar_models.dart';
 part 'offline_models.dart';
 

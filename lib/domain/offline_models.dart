@@ -1,6 +1,6 @@
 part of 'models.dart';
 
-enum OfflineTable { accounts, categories, transfers, budgets, plannedPayments, goals, goalEntries, debts, debtEntries, assets, investmentEntries, projects, habits, habitChecks, subjects, studyItems, checklists, checklistItems, wellness, profiles, memberships, dashboard }
+enum OfflineTable { accounts, categories, transfers, budgets, plannedPayments, goals, goalEntries, debts, debtEntries, assets, investmentEntries, projects, habits, habitChecks, subjects, studyItems, checklists, checklistItems, wellness, profiles, memberships, dashboard, importBatches }
 extension OfflineTableName on OfflineTable {
   String get sqlName => switch (this) {
     OfflineTable.plannedPayments => 'planned_payments', OfflineTable.goals => 'savings_goals',
@@ -9,7 +9,7 @@ extension OfflineTableName on OfflineTable {
     OfflineTable.habitChecks => 'habit_checks', OfflineTable.subjects => 'learning_subjects', OfflineTable.studyItems => 'study_items',
     OfflineTable.checklistItems => 'checklist_items', OfflineTable.wellness => 'wellness_entries',
     OfflineTable.profiles => 'local_profiles', OfflineTable.memberships => 'local_memberships',
-    OfflineTable.dashboard => 'dashboard_configs', _ => name,
+    OfflineTable.importBatches => 'import_batches', OfflineTable.dashboard => 'dashboard_configs', _ => name,
   };
 }
 
@@ -133,4 +133,14 @@ class SaveInvestmentEntry extends OfflineAction {
   const SaveInvestmentEntry(super.operationId,super.id,super.expectedRevision,{required this.assetId,required this.kind,required this.cashMinor,required this.date,this.quantityMicros=0,this.feeMinor=0,this.transactionId});
   final String assetId,kind;final int cashMinor,quantityMicros,feeMinor;final DateTime date;final String? transactionId;
   @override Map<String,Object?> get payload=>{...target,'action':'asset.entry','assetId':assetId,'kind':kind,'cash':cashMinor,'quantity':quantityMicros,'fee':feeMinor,'date':dateOnly(date),'transactionId':transactionId};
+}
+
+class ConfirmImport extends OfflineAction {
+  const ConfirmImport(super.operationId,super.id,super.expectedRevision,{required this.contentKey,required this.rows,this.accountId});
+  final String contentKey;final List<ImportedMoney> rows;final String? accountId;
+  @override Map<String,Object?> get payload=>{...target,'action':'import.confirm','contentKey':contentKey,'rows':rows.map((r)=>r.toJson()).toList(),'accountId':accountId};
+}
+class ReverseImport extends OfflineAction {
+  const ReverseImport(super.operationId,super.id,super.expectedRevision);
+  @override Map<String,Object?> get payload=>{...target,'action':'import.reverse'};
 }

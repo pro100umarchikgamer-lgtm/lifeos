@@ -76,6 +76,7 @@ extension OfflinePersistence on LocalStore {
   }
   Future<String> _applyOffline(sql.Transaction tx,OfflineAction action,String now) async {
     switch(action) {
+      case ConfirmImport()||ReverseImport(): return _applyImport(tx,action,now);
       case SaveGoal()||SaveGoalEntry()||SaveDebt()||SaveDebtEntry()||SaveAsset()||SaveInvestmentEntry(): await _applyWealth(tx,action,now);
       case SaveAccount():
         if(action.expectedRevision>0) {

@@ -10,6 +10,10 @@ class OfflineValidation {
   static void validate(OfflineAction action) {
     if(action.id.isEmpty || action.expectedRevision<0) throw const DomainFailure('invalid_action');
     switch(action) {
+      case ConfirmImport():
+        if(action.expectedRevision!=0||!RegExp(r'^[0-9a-f]{64}$').hasMatch(action.contentKey)||action.rows.isEmpty||action.rows.length>10000||action.rows.map((r)=>r.originKey).toSet().length!=action.rows.length)throw const DomainFailure('invalid_action');
+        for(final r in action.rows){money(r.amountMinor);Currency.fromCode(r.currency);if(r.kind!=EntryKind.income&&r.kind!=EntryKind.expense||!RegExp(r'^[0-9a-f]{64}$').hasMatch(r.originKey)||r.label.length>2000)throw const DomainFailure('invalid_action');final d=DateTime.tryParse(r.date);if(d==null||dateOnly(d)!=r.date)throw const DomainFailure('invalid_date');date(d);}
+      case ReverseImport(): if(action.expectedRevision<1)throw const DomainFailure('invalid_action');
       case SaveGoal(): name(action.name);Currency.fromCode(action.currency);money(action.targetMinor,zero:true);if(action.targetOn!=null)date(action.targetOn!);
       case SaveGoalEntry(): money(action.amountMinor,signed:true);date(action.date);if(action.amountMinor==0||action.transactionId!=null&&action.transferId!=null)throw const DomainFailure('invalid_action');
       case SaveDebt(): name(action.name);Currency.fromCode(action.currency);money(action.principalMinor,zero:true);if(!['owing','owed'].contains(action.direction))throw const DomainFailure('invalid_action');if(action.schedule!=null)CalendarEngine.validate(action.schedule!);
