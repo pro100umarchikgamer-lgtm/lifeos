@@ -23,6 +23,7 @@ class LifeNotices {
     messenger.showSnackBar(SnackBar(content: Text(message),
       duration: const Duration(milliseconds: 3500),
       behavior: SnackBarBehavior.floating,
+      actionOverflowThreshold: 1,
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
