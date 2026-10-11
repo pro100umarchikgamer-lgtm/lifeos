@@ -1,11 +1,11 @@
-name: Personal Core validation and final debug APK
+name: Personal Core validation and final optimized test APK
 on:
   push:
   pull_request:
   workflow_dispatch:
     inputs:
       build_apk:
-        description: 'Build the final debug APK after all validation succeeds'
+        description: 'Build the final optimized test APK after all validation succeeds'
         type: boolean
         default: false
       force_full_validation:
@@ -57,7 +57,7 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/widget_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: flutter test --update-goldens test/visual_snapshot_test.dart
         if: steps.validation.outputs.full == 'true'
@@ -116,9 +116,9 @@ jobs:
         if: steps.validation.outputs.build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: lifeos-debug-apk-${{ steps.validation.outputs.sha }}
+          name: lifeos-release-test-apk-${{ steps.validation.outputs.sha }}
           path: |
-            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/app-release.apk
             apk-identity.txt
             apk-certificate.txt
             apk-manifest.txt

@@ -11,6 +11,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:lifeos/data/local_store.dart';
 import 'package:lifeos/domain/action_engine.dart';
 import 'package:lifeos/domain/models.dart';
+import 'package:lifeos/domain/appearance.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -143,9 +144,17 @@ void main() {
       expect(await store.calendarEntries(),isEmpty);
       await engine.execute(const UndoRecordChange('undo-linked','old-task',EntryKind.task,5));
       expect((await store.calendarEntries()).single.id,linked.id);
+      const appearance = Appearance(palette: 'pistachio', shape: 'rounded', surface: 'tonal', mode: 'dark');
+      await store.setSetting('appearance_v1', appearance.encode());
       final snapshot = await store.exportSnapshot();
       await store.restoreSnapshot(snapshot);
       expect((await store.records()).singleWhere((r) => r.id=='old-task').revision,6);
+      final damagedTheme = jsonDecode(jsonEncode(snapshot)) as Map<String,dynamic>;
+      final damagedSettings = (damagedTheme['tables'] as Map)['settings'] as List;
+      damagedSettings.singleWhere((row) => row['key'] == 'appearance_v1')['value'] = '{"version":999}';
+      await expectLater(store.restoreSnapshot(Map<String,Object?>.from(damagedTheme)),throwsA(isA<DomainFailure>()));
+      expect(Appearance.decode((await store.settings())['appearance_v1']).encode(),appearance.encode());
+      expect((await store.records()).singleWhere((r) => r.id=='old-money').amountMinor,10001);
       final invalid = jsonDecode(jsonEncode(snapshot)) as Map<String,dynamic>;
       final tables = invalid['tables'] as Map<String,dynamic>;
       (tables['transactions'] as List).first['amount_minor'] = -1;
@@ -155,6 +164,7 @@ void main() {
       store = await LocalStore.open(name:name);
       expect((await store.calendarEntries()).single.taskId,'old-task');
       expect((await store.records()).length,3);
+      expect(Appearance.decode((await store.settings())['appearance_v1']).palette,'pistachio');
     } finally {
       await legacy?.close(); await store?.close();
       for (final suffix in ['', '-wal','-shm','-journal']) { final f=File('${file.path}$suffix'); if(await f.exists()) await f.delete(); }
@@ -165,6 +175,7 @@ void main() {
     final bridge = NativeBridge();
     final diagnostics = await bridge.diagnostics();
     expect(diagnostics['supported'],true); expect(diagnostics['zone'],isA<String>());
+    expect(await bridge.wallpaperSeed(),isA<int>()); // API 35 disposable emulator.
     final at = DateTime.now().add(const Duration(hours:1));
     try {
       await bridge.reconcile([{'id':'integration-only','revision':1,'nextAt':at.millisecondsSinceEpoch,

@@ -17,6 +17,11 @@ class _CalendarPanelState extends State<CalendarPanel> {
   DateTime day = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
   late DateTime month = DateTime(day.year, day.month);
   bool busy = false;
+  List<CalendarEntry>? _calendarSource;
+  String? _monthKey;
+  List<CalendarOccurrence> _monthOccurrences = [];
+  Map<(String, int, int), OccurrenceState> _states = {};
+  Set<String> _completed = {};
   AppController get c => widget.controller;
   Future<void> editor([CalendarEntry? entry]) async {
     await showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true,
@@ -42,7 +47,14 @@ class _CalendarPanelState extends State<CalendarPanel> {
     final location = tz.getLocation(c.timezone == 'device' ? c.deviceZone : c.timezone);
     final from = tz.TZDateTime(location, month.year, month.month);
     final to = tz.TZDateTime(location, month.year, month.month + 1);
-    final all = [for (final e in c.calendar) ...c.calendarEngine.between(e, from, to, c.deviceZone)]..sort((a,b) => a.at.compareTo(b.at));
+    final key = '${month.year}-${month.month}-${location.name}-${c.deviceZone}';
+    if (_calendarSource != c.calendar || _monthKey != key) {
+      _monthOccurrences = [for (final e in c.calendar) ...c.calendarEngine.between(e, from, to, c.deviceZone)]..sort((a,b) => a.at.compareTo(b.at));
+      _calendarSource = c.calendar; _monthKey = key;
+    }
+    _states = {for (final s in c.occurrences) (s.entryId, s.revision, s.epoch): s};
+    _completed = c.records.where((r) => r.completed).map((r) => r.id).toSet();
+    final all = _monthOccurrences;
     final selected = all.where((o) => dateOnly(tz.TZDateTime.from(o.at, location)) == dateOnly(day)).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       LifeCard(child: CalendarGrid(month: month, selected: day, weekStart: c.weekStart,
@@ -58,14 +70,14 @@ class _CalendarPanelState extends State<CalendarPanel> {
     ]);
   });
   Widget _agenda(CalendarOccurrence o, tz.Location location) {
-    final saved = c.occurrences.where((s) => s.entryId == o.entry.id && s.revision == o.entry.revision && s.epoch == o.at.millisecondsSinceEpoch).firstOrNull;
-    final done = saved?.status == OccurrenceStatus.completed || saved?.status == OccurrenceStatus.dismissed || c.records.any((r) => r.id == o.entry.taskId && r.completed);
+    final saved = _states[(o.entry.id, o.entry.revision, o.at.millisecondsSinceEpoch)];
+    final done = saved?.status == OccurrenceStatus.completed || saved?.status == OccurrenceStatus.dismissed || _completed.contains(o.entry.taskId);
     final at = tz.TZDateTime.from(o.at, location);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       ListTile(contentPadding: EdgeInsets.zero, leading: Icon(o.entry.taskId != null ? Icons.check_box_outlined : o.entry.noteId != null ? Icons.notes : Icons.event,
-        color: done ? LifePalette.muted : LifePalette.green), title: Text(o.entry.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-          style: TextStyle(decoration: done ? TextDecoration.lineThrough : null)),
-        subtitle: Text(o.entry.schedule.allDay ? c.pack.t('all_day') : MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(at))),
+        color: done ? Theme.of(context).colorScheme.onSurfaceVariant : o.entry.taskId != null ? LifePalette.blue : o.entry.noteId != null ? LifePalette.orange : Theme.of(context).colorScheme.primary), title: Text(o.entry.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, decoration: done ? TextDecoration.lineThrough : null)),
+        subtitle: Text('${c.pack.t(o.entry.taskId != null ? 'task' : o.entry.noteId != null ? 'note' : 'event')} · ${o.entry.schedule.allDay ? c.pack.t('all_day') : MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(at))}'),
         onTap: () => open(o.entry)),
       if (saved?.snoozedUntil != null) Text('${c.pack.t('snooze')}: ${DateTime.fromMillisecondsSinceEpoch(saved!.snoozedUntil!).toLocal()}'),
       Wrap(spacing: 4, children: [

@@ -16,6 +16,7 @@ class NativeBridge {
   Future<void> acknowledge(List<String> ids) async {
     if (supported) await channel.invokeMethod<void>('ackActions', ids);
   }
+  Future<int?> wallpaperSeed() async => supported ? channel.invokeMethod<int>('wallpaperSeed') : null;
   Future<String?> launchTarget() async => supported ? channel.invokeMethod<String>('launchTarget') : null;
   Future<void> request(String permission) async {
     if (supported) await channel.invokeMethod<void>(permission);

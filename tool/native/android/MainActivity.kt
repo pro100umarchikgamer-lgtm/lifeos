@@ -22,6 +22,10 @@ class MainActivity : FlutterActivity() {
         MethodChannel(engine.dartExecutor.binaryMessenger, "lifeos/native").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
+                    "wallpaperSeed" -> {
+                        val id = if (Build.VERSION.SDK_INT >= 31) resources.getIdentifier("system_accent1_600", "color", "android") else 0
+                        result.success(if (id != 0) resources.getColor(id, theme).toLong() and 0xffffffffL else null)
+                    }
                     "diagnostics" -> {
                         ReminderRuntime.channels(this, if (call.arguments is Map<*, *>) JSONObject(call.arguments as Map<*, *>) else null)
                         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
