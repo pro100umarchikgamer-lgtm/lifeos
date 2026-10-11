@@ -222,3 +222,9 @@ class SaveMembership extends OfflineAction {
   final String profileId,role;final int permissions;
   @override Map<String,Object?> get payload=>{...target,'action':'membership.save','profile':profileId,'role':role,'permissions':permissions};
 }
+
+class CopyChecklist extends OfflineAction {
+  const CopyChecklist(super.operationId,super.id,super.expectedRevision,{required this.sourceId,required this.sourceRevision,required this.name});
+  final String sourceId,name;final int sourceRevision;
+  @override Map<String,Object?> get payload=>{...target,'action':'checklist.copy','source':sourceId,'sourceRevision':sourceRevision,'name':name.trim()};
+}

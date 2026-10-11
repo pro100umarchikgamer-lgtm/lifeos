@@ -20,6 +20,8 @@ expected.update({f'polish_{screen}_{theme}.png': (430 if screen == 'home_430' el
                  for theme in ('light', 'dark')
                  for screen in ('home_430','home_scrolled_320','home_scrolled_390','language','repeat','undo','undo_keyboard')})
 
+expected.update({f'offline_{screen}_{theme}_{width}_scaled.png': (width,844) for screen in ('finance','projects','habit','import','permissions','repeat') for theme in ('light','dark') for width in (320,390,430)})
+
 for name, dimensions in expected.items():
     path = root / name
     data = path.read_bytes()

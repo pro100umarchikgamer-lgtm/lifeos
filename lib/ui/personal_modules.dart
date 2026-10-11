@@ -11,6 +11,7 @@ import 'calendar.dart';
 import 'record_detail.dart';
 import 'quick_add.dart';
 import 'wealth.dart';
+import 'money_format.dart';
 
 const personalModules=[OfflineTable.projects,OfflineTable.habits,OfflineTable.subjects,OfflineTable.checklists,OfflineTable.wellness];
 class PersonalModulesPage extends StatefulWidget {
@@ -39,7 +40,10 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
       case OfflineTable.projects:
         final placements=(c.offline[OfflineTable.taskPlacements]??[]).where((p)=>p['project_id']==id).toList();
         final tasks=c.records.where((r)=>r.kind==EntryKind.task&&placements.any((p)=>p['task_id']==r.id)).toList();
-        return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text('${tasks.where((t)=>t.completed).length}/${tasks.length} · ${c.pack.t('status_${row['status']}')}'),
+        final actual=<String,BigInt>{};
+        for(final allocation in c.allocations.where((a)=>a['project_id']==id)){final money=c.records.where((r)=>r.id==allocation['transaction_id']).firstOrNull;if(money?.currency!=null){final code=money!.currency!.code;actual[code]=(actual[code]??BigInt.zero)+BigInt.from(allocation['amount_minor'] as int);}}
+        final budget=(c.offline[OfflineTable.budgets]??[]).where((b)=>b['id']==row['budget_id']).firstOrNull;
+        return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[if(budget!=null)Text('${c.pack.t('linked_budget')}: ${budget['name']} · ${formatMoney(Currency.fromCode(budget['currency'] as String),budget['limit_minor'] as int,locale:c.region)}'),for(final total in actual.entries)Text('${c.pack.t('project_actual_all_time')}: ${formatMoney(Currency.fromCode(total.key),total.value,locale:c.region)}'),Text('${tasks.where((t)=>t.completed).length}/${tasks.length} · ${c.pack.t('status_${row['status']}')}'),
           if(tasks.isNotEmpty)LinearProgressIndicator(value:tasks.where((t)=>t.completed).length/tasks.length),
           Wrap(spacing:8,children:[TextButton(onPressed:()=>open(OfflineTable.milestones,id),child:Text(c.pack.t('module_milestones'))),TextButton(onPressed:()=>open(OfflineTable.taskPlacements,id),child:Text(c.pack.t('project_tasks')))]),
         ]);
@@ -51,7 +55,10 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
           CheckboxListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('check_today')),value:today?['completed']==1,onChanged:busy||row['paused']==1?null:(v)=>change(CheckHabit(const Uuid().v4(),today?['id'] as String? ?? const Uuid().v4(),today?['revision'] as int? ?? 0,habitId:id,localDate:date,timezone:spec==null||spec.timezone=='device'?c.deviceZone:spec.timezone,completed:v==true))),
           TextButton(onPressed:()=>open(OfflineTable.habitChecks,id),child:Text(c.pack.t('check_history')))]);
       case OfflineTable.subjects:return TextButton(onPressed:()=>open(OfflineTable.studyItems,id),child:Text(c.pack.t('module_studyItems')));
-      case OfflineTable.checklists:return TextButton(onPressed:()=>open(OfflineTable.checklistItems,id),child:Text(c.pack.t('module_checklistItems')));
+      case OfflineTable.checklists:return Wrap(spacing:8,children:[TextButton(onPressed:()=>open(OfflineTable.checklistItems,id),child:Text(c.pack.t('module_checklistItems'))),if(row['kind']=='chores')TextButton(onPressed:busy?null:()=>change(CopyChecklist(const Uuid().v4(),const Uuid().v4(),0,sourceId:id,sourceRevision:row['revision'] as int,name:'${row['name']} · ${c.pack.t('new_copy')}')),child:Text(c.pack.t('use_template')))]);
+      case OfflineTable.checklistItems:
+        final linked=c.records.where((r)=>r.id==row['task_id']).firstOrNull;
+        return CheckboxListTile(contentPadding:EdgeInsets.zero,title:Text(row['quantity'] as String),value:linked?.completed??row['completed']==1,onChanged:busy?null:(v)=>change(linked==null?SaveChecklistItem(const Uuid().v4(),id,row['revision'] as int,checklistId:row['checklist_id'] as String,name:row['name'] as String,quantity:row['quantity'] as String,completed:v==true,taskId:row['task_id'] as String?):CompleteTask(const Uuid().v4(),linked.id,v==true,expectedRevision:linked.revision)));
       case OfflineTable.taskPlacements:
         final task=c.records.where((r)=>r.id==row['task_id']).firstOrNull;
         return task==null?Text(c.pack.t('record_missing')):ListTile(contentPadding:EdgeInsets.zero,title:Text(task.text),leading:Checkbox(value:task.completed,onChanged:busy?null:(v)=>change(CompleteTask(const Uuid().v4(),task.id,v==true,expectedRevision:task.revision))),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>RecordDetail(controller:c,id:task.id))));
@@ -64,7 +71,7 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
   }
   @override Widget build(BuildContext context)=>ListenableBuilder(listenable:c,builder:(context,_) {
     final foreign=switch(widget.table){OfflineTable.milestones||OfflineTable.taskPlacements=>'project_id',OfflineTable.habitChecks=>'habit_id',OfflineTable.studyItems=>'subject_id',OfflineTable.checklistItems=>'checklist_id',_=>null};
-    final rows=(c.offline[widget.table]??[]).where((r)=>(foreign==null||widget.parentId==null||r[foreign]==widget.parentId)&&(widget.noteId==null||r['note_id']==widget.noteId)&&title(r).toLowerCase().contains(query.toLowerCase())).toList();
+    final rows=(c.offline[widget.table]??[]).where((r)=>(widget.parentId==null||(foreign==null?r['id']==widget.parentId:r[foreign]==widget.parentId))&&(widget.noteId==null||r['note_id']==widget.noteId)&&title(r).toLowerCase().contains(query.toLowerCase())).toList();
     return Scaffold(appBar:AppBar(title:Text(c.pack.t('module_${widget.table.name}'))),body:SafeArea(child:Column(children:[
       Padding(padding:const EdgeInsets.all(16),child:TextField(decoration:InputDecoration(labelText:c.pack.t('search'),prefixIcon:const Icon(Icons.search)),onChanged:(v)=>setState((){query=v;shown=50;}))),
       if(widget.table==OfflineTable.taskPlacements) TextButton.icon(onPressed:()=>showEntryEditor(context,c,EntryKind.task),icon:const Icon(Icons.add),label:Text(c.pack.t('create_task'))),

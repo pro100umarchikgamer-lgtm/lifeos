@@ -8,7 +8,7 @@ class StatementTable {
   const StatementTable(this.rows);
   final List<List<String>> rows;
   static const maxBytes=5*1024*1024, maxRows=10000, maxColumns=100;
-  static StatementTable text(Uint8List bytes,String extension,{String encoding='utf8'}) {
+  static StatementTable text(Uint8List bytes,String extension,{String encoding='utf8',String delimiter='auto'}) {
     if(bytes.length>maxBytes)throw const DomainFailure('import_limit');
     String decode() {
       if(encoding=='utf16') {
@@ -31,13 +31,14 @@ class StatementTable {
       case 'json':
         final source=jsonDecode(text);
         if(source is! List||source.any((r)=>r is! Map))throw const DomainFailure('import_format');
+        if(source.any((r)=>(r as Map).values.any((v)=>v!=null&&v is! String&&v is! int)))throw const DomainFailure('import_json_decimal');
         final keys=source.isEmpty?<String>[]:(source.first as Map).keys.cast<String>().toList();
         rows=[keys,for(final raw in source)[for(final k in keys)(raw as Map)[k]?.toString()??'']];
       case 'ofx':
         String tag(String value,String name)=>RegExp('<$name>([^<\\r\\n]+)',caseSensitive:false).firstMatch(value)?.group(1)?.trim()??'';
-        final currency=tag(text,'CURDEF');
+        final currency=tag(text,'CURDEF');String posted(String block){final v=tag(block,'DTPOSTED');return v.length>=8?v.substring(0,8):v;}
         rows=[['date','amount','description','currency'],for(final block in RegExp(r'<STMTTRN>(.*?)</STMTTRN>',caseSensitive:false,dotAll:true).allMatches(text))
-          [tag(block.group(1)!,'DTPOSTED').substring(0,8),tag(block.group(1)!,'TRNAMT'),tag(block.group(1)!,'MEMO').isEmpty?tag(block.group(1)!,'NAME'):tag(block.group(1)!,'MEMO'),currency]];
+          [posted(block.group(1)!),tag(block.group(1)!,'TRNAMT'),tag(block.group(1)!,'MEMO').isEmpty?tag(block.group(1)!,'NAME'):tag(block.group(1)!,'MEMO'),currency]];
       case 'qif':
         rows=[['date','amount','description']];
         for(final block in text.split('^')) {
@@ -46,7 +47,7 @@ class StatementTable {
         }
       case 'csv'||'tsv'||'txt':
         final first=text.split('\n').first;
-        final separator=extension=='tsv'?'\t':first.split(';').length>first.split(',').length?';':first.contains('\t')?'\t':',';
+        final separator=delimiter!='auto'?delimiter:extension=='tsv'?'\t':first.split(';').length>first.split(',').length?';':first.contains('\t')?'\t':',';
         rows=_delimited(text,separator);
       default:throw const DomainFailure('import_format');
     }
@@ -73,15 +74,18 @@ class StatementTable {
   }
 }
 class ImportMapping {
-  const ImportMapping({required this.date,required this.amount,required this.description,this.currency=-1,this.dateFormat='iso',this.decimal='.',this.defaultCurrency='RUB'});
+  const ImportMapping({required this.date,required this.amount,required this.description,this.currency=-1,this.dateFormat='iso',this.decimal='.',this.defaultCurrency='RUB',this.direction='signed'});
   final int date,amount,description,currency;
-  final String dateFormat,decimal,defaultCurrency;
+  final String dateFormat,decimal,defaultCurrency,direction;
   ImportedMoney normalize(List<String> row) {
+    if(!['signed','expense','income'].contains(direction)||!['iso','dmy','mdy','excel'].contains(dateFormat)||!['.',','].contains(decimal))throw const DomainFailure('import_format');
     String cell(int index){if(index<0||index>=row.length)throw const DomainFailure('import_columns');return row[index].trim();}
     final code=Currency.fromCode(currency<0?defaultCurrency:cell(currency));
     var number=cell(amount).replaceAll(' ','').replaceAll('\u00a0','');
     final negative=number.startsWith('-')||number.startsWith('(')&&number.endsWith(')');
     number=number.replaceAll(RegExp(r'^[+-]|^\(|\)$'),'');
+    final thousands=decimal==','?'.':',';
+    if(number.contains(thousands)){final pattern=decimal==','?r'^\d{1,3}(?:\.\d{3})+(?:,\d+)?$':r'^\d{1,3}(?:,\d{3})+(?:\.\d+)?$';if(!RegExp(pattern).hasMatch(number))throw const DomainFailure('import_number_ambiguous');}
     if(decimal==','){number=number.replaceAll('.','').replaceAll(',','.');}else{number=number.replaceAll(',','');}
     final minor=code.parse(number),raw=cell(date);DateTime parsed;
     if(dateFormat=='iso') {
@@ -95,8 +99,8 @@ class ImportMapping {
       parsed=_date(int.parse(parts[2]),int.parse(parts[dateFormat=='dmy'?1:0]),int.parse(parts[dateFormat=='dmy'?0:1]));
     }
     if(parsed.year<1900||parsed.year>2200)throw const DomainFailure('invalid_date');
-    final label=cell(description);if(label.length>2000)throw const DomainFailure('required_text');
-    return ImportedMoney(kind:negative?EntryKind.expense:EntryKind.income,amountMinor:minor,currency:code.code,date:dateOnly(parsed),label:label);
+    final label=description<0?'':cell(description);if(label.length>2000)throw const DomainFailure('required_text');
+    return ImportedMoney(kind:direction=='expense'||direction=='signed'&&negative?EntryKind.expense:EntryKind.income,amountMinor:minor,currency:code.code,date:dateOnly(parsed),label:label);
   }
   static DateTime _date(int year,int month,int day){final d=DateTime.utc(year,month,day);if(d.year!=year||d.month!=month||d.day!=day)throw const DomainFailure('invalid_date');return d;}
 }
@@ -110,4 +114,4 @@ class ImportedMoney {
 }
 Future<String> importDigest(Object value) async => (await Sha256().hash(utf8.encode(jsonEncode(value)))).bytes.map((b)=>b.toRadixString(16).padLeft(2,'0')).join();
 
-List<List<String>> parseStatementWorker(Map<String,Object?> args)=>StatementTable.text(args['bytes'] as Uint8List,args['extension'] as String,encoding:args['encoding'] as String).rows;
+List<List<String>> parseStatementWorker(Map<String,Object?> args)=>StatementTable.text(args['bytes'] as Uint8List,args['extension'] as String,encoding:args['encoding'] as String,delimiter:args['delimiter'] as String? ?? 'auto').rows;

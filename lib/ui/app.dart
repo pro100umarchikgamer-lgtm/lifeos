@@ -61,6 +61,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _tab = 0;
   bool _profileOpen = false;
   bool _notesOpen = false;
+  String _moduleQuery='';
   DateTimeRange _period = DateTimeRange(start: DateTime(DateTime.now().year, DateTime.now().month),
     end: DateTime(DateTime.now().year, DateTime.now().month + 1, 0));
   FinancialPeriod get financialPeriod => FinancialPeriod(_period.start, _period.end);
@@ -233,12 +234,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   List<Widget> _home() {
     final now=c.now;
-    if(c.records.isEmpty)return _emptyHome();
+    if(c.records.isEmpty&&[OfflineTable.projects,OfflineTable.habits,OfflineTable.checklists,OfflineTable.goals,OfflineTable.accounts].every((t)=>(c.offline[t]??[]).isEmpty))return _emptyHome();
     final config=[for(final key in dashboardWidgets)dashboardChoice(c,key)]..sort((a,b){final order=(a['position'] as int).compareTo(b['position'] as int);return order==0?(a['widget'] as String).compareTo(b['widget'] as String):order;});
     final tasks=c.records.where((r)=>r.kind==EntryKind.task&&!r.completed),notes=c.records.where((r)=>r.kind==EntryKind.note);
     Widget card(Map<String,Object?> row) {
       final expanded=row['expanded']==1,key=row['widget'] as String;
-      if(key=='financial')return expanded?_financeSummary():LifeCard(child:Text('${c.pack.t('finances')} · $summaryCurrency',style:Theme.of(context).textTheme.titleMedium));
+      if(key=='financial')return expanded?_financeSummary():LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(c.pack.t('finances'),style:Theme.of(context).textTheme.titleMedium),Text('${c.pack.t('difference')}: ${formatMoney(Currency.fromCode(summaryCurrency),financialPeriod.total(c.records,EntryKind.income,summaryCurrency)-financialPeriod.total(c.records,EntryKind.expense,summaryCurrency),locale:c.region)}')]));
       if(key=='tasks')return _tasksCard(tasks.take(expanded?3:1).toList());
       if(key=='notes')return _notesCard(notes.take(expanded?2:1).toList());
       final table=switch(key){'projects'=>OfflineTable.projects,'habits'=>OfflineTable.habits,_=>OfflineTable.checklists};
@@ -543,11 +544,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   List<Widget> _modules() => [
     _pageTitle('modules'), const SizedBox(height: 14),
-    for(final table in personalModules) Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('module_${table.name}')),subtitle:Text(c.pack.t('offline_module_hint')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table)))))),
+    TextField(decoration:InputDecoration(labelText:c.pack.t('search_modules'),prefixIcon:const Icon(Icons.search)),onChanged:(v)=>setState(()=>_moduleQuery=v)),const SizedBox(height:12),
+    if(c.pack.t('financial_foundation').toLowerCase().contains(_moduleQuery.toLowerCase()))LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('financial_foundation')),leading:const Icon(Icons.account_balance_wallet_outlined),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>FinanceFoundation(controller:c))))),
+    const SizedBox(height:12),
+    for(final table in personalModules)if(c.pack.t('module_${table.name}').toLowerCase().contains(_moduleQuery.toLowerCase())) Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('module_${table.name}')),subtitle:Text(c.pack.t('offline_module_hint')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table)))))),
     LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('dashboard_customize')),leading:const Icon(Icons.dashboard_customize_outlined),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>DashboardEditor(controller:c))))),
     const SizedBox(height:12),
 
-    LifeCard(child: Material(type: MaterialType.transparency, child: ListTile(contentPadding: EdgeInsets.zero,
+    if(c.pack.t('recent_notes').toLowerCase().contains(_moduleQuery.toLowerCase()))LifeCard(child: Material(type: MaterialType.transparency, child: ListTile(contentPadding: EdgeInsets.zero,
       leading: const CircleAvatar(backgroundColor: LifePalette.cream,
         child: Icon(Icons.description_outlined, color: LifePalette.orange)),
       title: Text(c.pack.t('recent_notes')), subtitle: Text(c.pack.t('notes_module_hint')),
@@ -598,7 +602,7 @@ class _RecordSearch extends SearchDelegate<void> {
   @override
   Widget buildSuggestions(BuildContext context) {
     final records = query.trim().isEmpty ? <Record>[] : controller.records.where((r) =>
-      r.text.toLowerCase().contains(query.trim().toLowerCase())).toList();
+      (r.text.toLowerCase().contains(query.trim().toLowerCase())||r.kind==EntryKind.note&&(controller.offline[OfflineTable.noteMetadata]??[]).any((m)=>m['note_id']==r.id&&(m['tags'] as String).toLowerCase().contains(query.trim().toLowerCase())))).toList();
     return ListView(children: [
       if (query.trim().isEmpty) ListTile(title: Text(controller.pack.t('search_hint'))),
       if (query.trim().isNotEmpty && records.isEmpty) ListTile(title: Text(controller.pack.t('search_empty'))),

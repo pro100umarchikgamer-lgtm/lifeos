@@ -101,6 +101,7 @@ class AppController extends ChangeNotifier {
         occurrences = await personal.occurrenceStates();
         records = await personal.records();
         calendar = await personal.calendarEntries();
+        if(personal case final OfflineStore database)offline.addAll(await database.offlineData(tables:{OfflineTable.habitChecks}));
       }
       final now = DateTime.now();
       final payload = <Map<String, Object?>>[];
@@ -135,7 +136,7 @@ class AppController extends ChangeNotifier {
   Future<void> execute(AppAction action) async {
     await engine.execute(action);
     final affected=switch(action) {
-      SaveProfile()=>{OfflineTable.profiles},SaveMembership()=>{OfflineTable.memberships},
+      CopyChecklist()=>{OfflineTable.checklists,OfflineTable.checklistItems},SaveProfile()=>{OfflineTable.profiles},SaveMembership()=>{OfflineTable.memberships},
       SaveProject()=>{OfflineTable.projects},SaveMilestone()=>{OfflineTable.milestones},SetTaskPlacement()=>{OfflineTable.taskPlacements},
       SaveHabit()=>{OfflineTable.habits},CheckHabit()=>{OfflineTable.habitChecks},SaveSubject()=>{OfflineTable.subjects},SaveStudyItem()=>{OfflineTable.studyItems},
       SaveChecklist()=>{OfflineTable.checklists},SaveChecklistItem()=>{OfflineTable.checklistItems},SetNoteMetadata()=>{OfflineTable.noteMetadata},SaveRecordLink()=>{OfflineTable.recordLinks},SaveWellness()=>{OfflineTable.wellness},SaveDashboard()=>{OfflineTable.dashboard},
@@ -145,7 +146,7 @@ class AppController extends ChangeNotifier {
       _=><OfflineTable>{},
     };
     // Metadata does not reload every record or reconcile OS alarms. Schedule/cash mutations still do.
-    final metadata=action is OfflineAction&&action is! SaveHabit&&action is! CheckHabit&&action is! SaveStudyItem&&action is! SaveDebt&&action is! SavePlannedPayment&&action is! ConfirmPlannedPayment&&action is! SetMoneyDetails&&action is! ConfirmImport&&action is! ReverseImport&&action is! DeleteOffline&&action is! UndoOffline;
+    final metadata=action is OfflineAction&&action is! SaveProject&&action is! SaveMilestone&&action is! SaveHabit&&action is! CheckHabit&&action is! SaveStudyItem&&action is! SaveDebt&&action is! SavePlannedPayment&&action is! ConfirmPlannedPayment&&action is! SetMoneyDetails&&action is! ConfirmImport&&action is! ReverseImport&&action is! DeleteOffline&&action is! UndoOffline;
     if(!metadata)await refresh();
     if(action is SetOccurrence)affected.add(OfflineTable.habitChecks);
     if(affected.isNotEmpty)await refreshOffline(tables:affected);

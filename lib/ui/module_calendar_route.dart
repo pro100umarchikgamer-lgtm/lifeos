@@ -6,7 +6,7 @@ import 'finance_foundation.dart';
 import 'wealth.dart';
 
 (OfflineTable,Map<String,Object?>)? calendarModule(AppController c,String id) {
-  for(final t in [OfflineTable.habits,OfflineTable.studyItems,OfflineTable.debts,OfflineTable.plannedPayments]) {
+  for(final t in [OfflineTable.projects,OfflineTable.milestones,OfflineTable.habits,OfflineTable.studyItems,OfflineTable.debts,OfflineTable.plannedPayments]) {
     final row=c.offline[t]?.where((r)=>r['calendar_id']==id).firstOrNull;
     if(row!=null)return (t,row);
   }

@@ -29,8 +29,9 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
   AppController get c=>widget.controller;
   OfflineTable table=OfflineTable.accounts;
   bool busy=false;
-  static const types=[OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments];
+  static const types=[OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments,OfflineTable.importBatches];
   Future<void> edit([Map<String,Object?>? row]) async {
+    if(table==OfflineTable.importBatches)return;
     await showModalBottomSheet<void>(context:context,isScrollControlled:true,useSafeArea:true,isDismissible:false,enableDrag:false,
       builder:(_)=>FinanceEditor(controller:c,table:table,row:row));
   }
@@ -41,6 +42,7 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
     finally { if(mounted) setState(()=>busy=false); }
   }
   String summary(Map<String,Object?> row) {
+    if(table==OfflineTable.importBatches)return '${row["row_count"]} · ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(row["created_at"] as String))}';
     const f=FinanceEngine();
     if(table==OfflineTable.accounts) return formatMoney(Currency.fromCode(row['currency'] as String),f.accountBalance(row,c.records,c.offline[OfflineTable.transfers]??[]),locale:c.region);
     if(table==OfflineTable.transfers) {
@@ -57,18 +59,18 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
       Padding(padding:const EdgeInsets.all(16),child:Wrap(spacing:8,runSpacing:4,children:[for(final t in types) ChoiceChip(label:Text(c.pack.t('module_${t.name}')),selected:t==table,onSelected:(_)=>setState(()=>table=t))])),
       Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:OutlinedButton.icon(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>WealthPage(controller:c))),icon:const Icon(Icons.savings_outlined),label:Text(c.pack.t('wealth')))),
       Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:OutlinedButton.icon(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>StatementImportPage(controller:c))),icon:const Icon(Icons.file_open_outlined),label:Text(c.pack.t('import_file')))),
-      for(final batch in c.offline[OfflineTable.importBatches]??[]) ListTile(title:Text('${c.pack.t('import_batch')}: ${batch['row_count']}'),trailing:TextButton(onPressed:busy?null:()=>change(ReverseImport(const Uuid().v4(),batch['id'] as String,batch['revision'] as int)),child:Text(c.pack.t('undo')))),
       Expanded(child:ListView.builder(padding:const EdgeInsets.all(16),itemCount:rows.isEmpty?1:rows.length,itemBuilder:(context,index) {
         if(rows.isEmpty) return LifeCard(child:Text(c.pack.t('offline_empty')));
         final row=rows[index];
         return Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
           ListTile(contentPadding:EdgeInsets.zero,title:Text(row['name'] as String? ?? row['label'] as String? ?? c.pack.t('module_${table.name}')),
-            subtitle:Text(summary(row)),trailing:const Icon(Icons.edit_outlined),onTap:()=>edit(row)),
+            subtitle:Text(summary(row)),trailing:const Icon(Icons.edit_outlined),onTap:table==OfflineTable.importBatches?null:()=>edit(row)),
+          if(table==OfflineTable.importBatches)TextButton.icon(onPressed:busy?null:() async {final yes=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:Text(c.pack.t('reverse_import')),content:Text(c.pack.t('reverse_import_help')),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(c.pack.t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(context,true),child:Text(c.pack.t('undo')))]));if(yes==true)await change(ReverseImport(const Uuid().v4(),row['id'] as String,row['revision'] as int));},icon:const Icon(Icons.undo),label:Text(c.pack.t('reverse_import'))),
           if(table==OfflineTable.plannedPayments) TextButton.icon(onPressed:busy?null:() async {
             final date=await showDatePicker(context:context,initialDate:c.now,firstDate:DateTime(1900),lastDate:DateTime(2200,12,31));
             if(date!=null) await change(ConfirmPlannedPayment(const Uuid().v4(),row['id'] as String,row['revision'] as int,dateOnly(date)));
           },icon:const Icon(Icons.check),label:Text(c.pack.t('confirm_payment'))),
-          if(![OfflineTable.accounts,OfflineTable.categories].contains(table)) Wrap(spacing:8,children:[
+          if(![OfflineTable.accounts,OfflineTable.categories,OfflineTable.importBatches].contains(table)) Wrap(spacing:8,children:[
             TextButton(onPressed:busy?null:() async {
               final yes=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:Text(c.pack.t('delete')),content:Text(c.pack.t('delete_confirm')),
                 actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(c.pack.t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(context,true),child:Text(c.pack.t('delete')))]));
@@ -78,7 +80,7 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
           ]),
         ])));
       })),
-    ])),floatingActionButton:FloatingActionButton(onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
+    ])),floatingActionButton:table==OfflineTable.importBatches?null:FloatingActionButton(onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
   });
 }
 

@@ -29,7 +29,7 @@ class LocalStore implements OfflineStore {
   String ownerId;
   String workspaceId;
   static const _uuid = Uuid();
-  static const schemaVersion = 9;
+  static const schemaVersion = 10;
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) throw const DomainFailure('invalid_action');
@@ -85,6 +85,11 @@ class LocalStore implements OfflineStore {
       for (final statement in source.split(';')) {
         if (statement.trim().isNotEmpty) await db.execute(statement);
       }
+      if(version==10){for(final table in ['projects','project_milestones']){for(final row in await db.query(table,where:'due_on IS NOT NULL')){
+        final id=_uuid.v4();
+        await db.insert('calendar_entries',{'id':id,'owner_id':row['owner_id'],'workspace_id':row['workspace_id'],'title':row['name'],'local_start':'${row['due_on']}T09:00:00','timezone':'device','all_day':1,'repeat_rule':'none','reminder':0,'reminder_mode':'standard','created_at':row['created_at'],'updated_at':row['updated_at'],'deleted_at':row['deleted_at']??(row['status']=='done'||row['completed']==1?DateTime.now().toUtc().toIso8601String():null)});
+        await db.update(table,{'calendar_id':id},where:'id=?',whereArgs:[row['id']]);
+      }}}
     }
   }
 
@@ -382,7 +387,7 @@ class LocalStore implements OfflineStore {
     for(final table in tables ?? {OfflineTable.accounts,OfflineTable.categories,OfflineTable.transfers,OfflineTable.budgets,OfflineTable.plannedPayments,OfflineTable.goals,OfflineTable.goalEntries,OfflineTable.debts,OfflineTable.debtEntries,OfflineTable.assets,OfflineTable.investmentEntries,OfflineTable.importBatches,OfflineTable.projects,OfflineTable.milestones,OfflineTable.taskPlacements,OfflineTable.habits,OfflineTable.habitChecks,OfflineTable.subjects,OfflineTable.studyItems,OfflineTable.checklists,OfflineTable.checklistItems,OfflineTable.noteMetadata,OfflineTable.recordLinks,OfflineTable.wellness,OfflineTable.dashboard,OfflineTable.profiles,OfflineTable.memberships}) {
       final rows=[for(final row in await _db.query(table.sqlName,where:'owner_id=? AND workspace_id=? AND deleted_at IS NULL',whereArgs:[ownerId,workspaceId],orderBy:'created_at DESC,id')) Map<String,Object?>.from(row)];
       if(table==OfflineTable.habits){for(final row in rows){row['__pauses']=await _db.query('habit_pauses',where:'habit_id=?',whereArgs:[row['id']]);}}
-      if([OfflineTable.habits,OfflineTable.studyItems,OfflineTable.debts,OfflineTable.plannedPayments].contains(table)) {
+      if([OfflineTable.projects,OfflineTable.milestones,OfflineTable.habits,OfflineTable.studyItems,OfflineTable.debts,OfflineTable.plannedPayments].contains(table)) {
         for(final row in rows){if(row['calendar_id']!=null)row['__schedule']=(await _db.query('calendar_entries',where:'id=? AND owner_id=? AND workspace_id=?',whereArgs:[row['calendar_id'],ownerId,workspaceId])).firstOrNull;}
       }
       result[table]=rows;
@@ -404,10 +409,10 @@ class LocalStore implements OfflineStore {
 
   Map<String,Object?> _upgradeBackup(Map<String,Object?> data) {
     if(data['schemaVersion']==schemaVersion) return data;
-    if(![1,2,3,4,5,6,7,8].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
+    if(![1,2,3,4,5,6,7,8,9].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
     final tables=Map<String,Object?>.from(jsonDecode(jsonEncode(data['tables'])) as Map);
     final version=data['schemaVersion'] as int;
-    final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences'],if(version>=4)...['categories','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes'],if(version>=5)...['savings_goals','savings_entries','debts','debt_entries','investment_assets','investment_entries'],if(version>=6)...['import_batches','import_rows'],if(version>=7)...['projects','project_milestones','task_placements','habits','habit_checks','learning_subjects','study_items','checklists','checklist_items','note_metadata','record_links','wellness_entries','dashboard_configs'],if(version>=8)...['local_profiles','local_memberships']];
+    final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences'],if(version>=4)...['categories','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes'],if(version>=5)...['savings_goals','savings_entries','debts','debt_entries','investment_assets','investment_entries'],if(version>=6)...['import_batches','import_rows'],if(version>=7)...['projects','project_milestones','task_placements','habits','habit_checks','learning_subjects','study_items','checklists','checklist_items','note_metadata','record_links','wellness_entries','dashboard_configs'],if(version>=8)...['local_profiles','local_memberships'],if(version>=9)'habit_pauses'];
     if(tables.length!=legacy.length||!legacy.every(tables.containsKey)) throw const DomainFailure('backup_invalid');
     for(final table in _snapshotTables) { tables.putIfAbsent(table,()=> <Object?>[]); }
     if(version<4) for(final raw in tables['accounts'] as List) {
@@ -421,6 +426,11 @@ class LocalStore implements OfflineStore {
       tables['local_profiles']=[{...meta,'name':'LifeOS','kind':'adult','guardian_id':null,'archived':0}];
       tables['local_memberships']=[{...meta,'profile_id':identity['id'],'role':'owner','permissions':7}];
     }
+    if(version<10){for(final table in ['projects','project_milestones']){for(final raw in tables[table] as List){
+      final row=raw as Map;row['calendar_id']=null;if(row['due_on']==null)continue;
+      final id=_uuid.v4();row['calendar_id']=id;
+      (tables['calendar_entries'] as List).add({'id':id,'owner_id':row['owner_id'],'workspace_id':row['workspace_id'],'title':row['name'],'task_id':null,'note_id':null,'local_start':'${row['due_on']}T09:00:00','timezone':'device','all_day':1,'repeat_rule':'none','repeat_interval':1,'until_date':null,'reminder':0,'reminder_mode':'standard','revision':1,'native_synced_revision':0,'created_at':row['created_at'],'updated_at':row['updated_at'],'deleted_at':row['deleted_at']??(row['status']=='done'||row['completed']==1?DateTime.now().toUtc().toIso8601String():null)});
+    }}}
     return {'schemaVersion':schemaVersion,'tables':tables};
   }
 
@@ -489,6 +499,7 @@ class LocalStore implements OfflineStore {
               repeat: RepeatRule.values.byName(row['repeat_rule'] as String), interval: row['repeat_interval'] as int, until: row['until_date'] as String?));
             row['native_synced_revision'] = 0;
           }
+          _entitySemantics(table,row);
           await tx.insert(table, row);
         }
       }

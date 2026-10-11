@@ -11,6 +11,7 @@ class OfflineValidation {
   static void validate(OfflineAction action) {
     if(action.id.isEmpty || action.expectedRevision<0) throw const DomainFailure('invalid_action');
     switch(action) {
+      case CopyChecklist():name(action.name);if(action.expectedRevision!=0||action.sourceRevision<1||action.sourceId==action.id)throw const DomainFailure('invalid_action');
       case SaveProfile():name(action.name);if(!['adult','child'].contains(action.kind)||action.kind=='child'&&(action.guardianId==null||action.guardianId==action.id)||action.kind=='adult'&&action.guardianId!=null)throw const DomainFailure('invalid_profile');
       case SaveMembership():if(!['viewer','contributor','manager'].contains(action.role)||action.permissions<0||action.permissions>7)throw const DomainFailure('invalid_action');
       case SaveProject(): name(action.name);if(action.goal.length>2000||!['active','paused','done'].contains(action.status))throw const DomainFailure('invalid_action');if(action.dueOn!=null)date(action.dueOn!);

@@ -112,7 +112,8 @@ class MainActivity : FlutterActivity() {
                             if (cursor.moveToFirst()) name = cursor.getString(0)
                         }
                         val bytes = readDocument(uri, 5 * 1024 * 1024)
-                        val value = if (name.endsWith(".xlsx", true)) mapOf("name" to name, "sheets" to StatementReader.sheets(bytes)) else if (name.endsWith(".xml", true)) mapOf("name" to name, "sheets" to StatementReader.statementXml(bytes)) else mapOf("name" to name, "bytes" to bytes)
+                        val sourceKey = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 0xff) }
+                        val value = if (name.endsWith(".xlsx", true)) mapOf("name" to name, "sourceKey" to sourceKey, "sheets" to StatementReader.sheets(bytes)) else if (name.endsWith(".xml", true)) mapOf("name" to name, "sourceKey" to sourceKey, "sheets" to StatementReader.statementXml(bytes)) else mapOf("name" to name, "sourceKey" to sourceKey, "bytes" to bytes)
                         runOnUiThread { result.success(value); bytes.fill(0) }
                     } catch (e: Exception) { runOnUiThread { result.error("statement_failed", e.javaClass.simpleName, null) } }
                 }.start()

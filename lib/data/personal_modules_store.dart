@@ -1,7 +1,7 @@
 part of 'local_store.dart';
 extension PersonalModulesPersistence on LocalStore {
   Future<void> _guardModuleCalendar(sql.Transaction tx,String id) async {
-    for(final table in ['habits','study_items','debts','planned_payments']){if((await tx.query(table,columns:['id'],where:'calendar_id=? AND deleted_at IS NULL',whereArgs:[id],limit:1)).isNotEmpty)throw const DomainFailure('module_calendar_owned');}
+    for(final table in ['projects','project_milestones','habits','study_items','debts','planned_payments']){if((await tx.query(table,columns:['id'],where:'calendar_id=? AND deleted_at IS NULL',whereArgs:[id],limit:1)).isNotEmpty)throw const DomainFailure('module_calendar_owned');}
   }
 
   Future<String?> _moduleCalendar(sql.Transaction tx,OfflineAction action,String table,String title,ScheduleSpec? schedule,String now,{bool paused=false}) async {
@@ -18,18 +18,30 @@ extension PersonalModulesPersistence on LocalStore {
   Future<void> _optional(sql.Transaction tx,String table,String? id) async {if(id!=null)await _scoped(tx,table,id);}
   Future<void> _applyPersonal(sql.Transaction tx,OfflineAction action,String now) async {
     switch(action) {
+      case CopyChecklist():
+        final source=await _scoped(tx,'checklists',action.sourceId);
+        if(source['revision']!=action.sourceRevision)throw const DomainFailure('revision_conflict');
+        await _writeEntity(tx,'checklists',action,{'name':action.name.trim(),'kind':source['kind'],'project_id':source['project_id'],'note_id':null},now);
+        for(final item in await tx.query('checklist_items',where:'checklist_id=? AND deleted_at IS NULL',whereArgs:[action.sourceId])){
+          if(item['owner_id']!=ownerId||item['workspace_id']!=workspaceId)throw const DomainFailure('record_missing');
+          await tx.insert('checklist_items',{'id':LocalStore._uuid.v4(),'owner_id':ownerId,'workspace_id':workspaceId,'checklist_id':action.id,'name':item['name'],'quantity':item['quantity'],'completed':0,'task_id':null,'created_at':now,'updated_at':now});
+        }
       case SaveProfile():
         if(action.id==ownerId&&(action.kind!='adult'||action.archived))throw const DomainFailure('owner_immutable');
         if(action.guardianId!=null){final guardian=await _scoped(tx,'local_profiles',action.guardianId!);if(guardian['kind']!='adult'||guardian['archived']==1)throw const DomainFailure('invalid_profile');}
-        if(action.expectedRevision>0&&action.kind!='adult'&&(await tx.query('local_profiles',columns:['id'],where:'guardian_id=?',whereArgs:[action.id],limit:1)).isNotEmpty)throw const DomainFailure('invalid_profile');
+        if(action.expectedRevision>0&&(action.kind!='adult'||action.archived)&&(await tx.query('local_profiles',columns:['id'],where:'guardian_id=?',whereArgs:[action.id],limit:1)).isNotEmpty)throw const DomainFailure('invalid_profile');
         await _writeEntity(tx,'local_profiles',action,{'name':action.name.trim(),'kind':action.kind,'guardian_id':action.guardianId,'archived':action.archived?1:0},now);
       case SaveMembership():
         await _scoped(tx,'local_profiles',action.profileId);
         if(action.profileId==ownerId)throw const DomainFailure('owner_immutable');
         if(action.expectedRevision>0&&(await _scoped(tx,'local_memberships',action.id))['role']=='owner')throw const DomainFailure('owner_immutable');
         await _writeEntity(tx,'local_memberships',action,{'profile_id':action.profileId,'role':action.role,'permissions':action.permissions},now);
-      case SaveProject():await _optional(tx,'budgets',action.budgetId);await _writeEntity(tx,'projects',action,{'name':action.name.trim(),'goal':action.goal.trim(),'status':action.status,'due_on':action.dueOn==null?null:dateOnly(action.dueOn!),'budget_id':action.budgetId},now);
-      case SaveMilestone():await _scoped(tx,'projects',action.projectId);await _writeEntity(tx,'project_milestones',action,{'project_id':action.projectId,'name':action.name.trim(),'due_on':action.dueOn==null?null:dateOnly(action.dueOn!),'completed':action.completed?1:0},now);
+      case SaveProject():
+        final calendar=await _moduleCalendar(tx,action,'projects',action.name,action.dueOn==null?null:ScheduleSpec(localStart:'${dateOnly(action.dueOn!)}T09:00:00',timezone:'device',allDay:true),now,paused:action.status=='done');
+        await _optional(tx,'budgets',action.budgetId);await _writeEntity(tx,'projects',action,{'name':action.name.trim(),'goal':action.goal.trim(),'status':action.status,'due_on':action.dueOn==null?null:dateOnly(action.dueOn!),'budget_id':action.budgetId,'calendar_id':calendar},now);
+      case SaveMilestone():
+        final calendar=await _moduleCalendar(tx,action,'project_milestones',action.name,action.dueOn==null?null:ScheduleSpec(localStart:'${dateOnly(action.dueOn!)}T09:00:00',timezone:'device',allDay:true),now,paused:action.completed);
+        await _scoped(tx,'projects',action.projectId);await _writeEntity(tx,'project_milestones',action,{'project_id':action.projectId,'name':action.name.trim(),'due_on':action.dueOn==null?null:dateOnly(action.dueOn!),'completed':action.completed?1:0,'calendar_id':calendar},now);
       case SetTaskPlacement():
         await _scoped(tx,'tasks',action.taskId);await _optional(tx,'projects',action.projectId);
         var parent=action.parentTaskId;final seen={action.taskId};
@@ -79,8 +91,8 @@ extension PersonalModulesPersistence on LocalStore {
     final members=await tx.query('local_memberships');
     if(members.where((m)=>m['role']=='owner'&&m['profile_id']==owner&&m['deleted_at']==null&&m['permissions']==7).length!=1||members.any((m)=>m['role']=='owner'&&m['profile_id']!=owner))throw const DomainFailure('backup_invalid');
     for(final m in members){await check('local_profiles',m['profile_id']);}
-    for(final p in await tx.query('projects')){await check('budgets',p['budget_id']);}
-    for(final m in await tx.query('project_milestones')){await check('projects',m['project_id']);}
+    for(final p in await tx.query('projects')){await check('budgets',p['budget_id']);await check('calendar_entries',p['calendar_id']);}
+    for(final m in await tx.query('project_milestones')){await check('projects',m['project_id']);await check('calendar_entries',m['calendar_id']);}
     for(final item in await tx.query('task_placements')) {
       await check('tasks',item['task_id']);await check('projects',item['project_id']);var parent=item['parent_task_id'] as String?;final seen={item['task_id']};
       while(parent!=null){if(!seen.add(parent))throw const DomainFailure('task_cycle');await check('tasks',parent);final row=await tx.query('task_placements',where:'task_id=? AND deleted_at IS NULL',whereArgs:[parent]);parent=row.firstOrNull?['parent_task_id'] as String?;}

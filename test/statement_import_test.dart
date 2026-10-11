@@ -24,4 +24,10 @@ void main(){
   test('content hashes are deterministic and do not depend on filenames',() async {
     expect(await importDigest(['row',1]),await importDigest(['row',1]));expect(await importDigest(['row',1]),isNot(await importDigest(['row',2])));
   });
+  test('JSON decimal numbers and ambiguous comma separators cannot silently round money',(){
+    expect(()=>read('[{"date":"2026-10-11","amount":12.50,"description":"Shop"}]','json'),throwsA(isA<DomainFailure>()));
+    expect(()=>const ImportMapping(date:0,amount:1,description:2,decimal:'.').normalize(['2026-10-11','12,50','Shop']),throwsA(isA<DomainFailure>()));
+    expect(const ImportMapping(date:0,amount:1,description:2,decimal:',',direction:'expense').normalize(['2026-10-11','12,50','Shop']).amountMinor,1250);
+  });
+
 }

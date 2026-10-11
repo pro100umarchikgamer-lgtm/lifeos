@@ -99,10 +99,10 @@ class LocalIdentitySchemaTests(unittest.TestCase):
         with self.assertRaises(sqlite3.IntegrityError):db.execute("INSERT INTO local_profiles(id,owner_id,workspace_id,name,kind,guardian_id,created_at,updated_at) VALUES('child','owner','space','Child','child','missing','2026-10-11','2026-10-11')")
         self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())
     def test_all_prior_versions_upgrade_preserving_records(self):
-        for version in range(1,9):
+        for version in range(1,10):
             db=expanded(version)
             db.execute("INSERT INTO notes(id,owner_id,workspace_id,body,created_at,updated_at) VALUES('note','owner','space','Keep me','2026-10-11','2026-10-11')");db.commit()
-            for n in range(version+1,10):db.executescript((ROOT/f'assets/migrations/{n:03}.sql').read_text())
+            for n in range(version+1,11):db.executescript((ROOT/f'assets/migrations/{n:03}.sql').read_text())
             self.assertEqual(db.execute('SELECT id,body FROM notes').fetchone(),('note','Keep me'))
             self.assertEqual(db.execute('SELECT id FROM local_profiles').fetchone(),('owner',))
             self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall());db.close()

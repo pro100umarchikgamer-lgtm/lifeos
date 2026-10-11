@@ -82,7 +82,7 @@ extension OfflinePersistence on LocalStore {
   }
   Future<String> _applyOffline(sql.Transaction tx,OfflineAction action,String now) async {
     switch(action) {
-      case SaveProfile()||SaveMembership()||SaveProject()||SaveMilestone()||SetTaskPlacement()||SaveHabit()||CheckHabit()||SaveSubject()||SaveStudyItem()||SaveChecklist()||SaveChecklistItem()||SetNoteMetadata()||SaveRecordLink()||SaveWellness()||SaveDashboard():await _applyPersonal(tx,action,now);
+      case CopyChecklist()||SaveProfile()||SaveMembership()||SaveProject()||SaveMilestone()||SetTaskPlacement()||SaveHabit()||CheckHabit()||SaveSubject()||SaveStudyItem()||SaveChecklist()||SaveChecklistItem()||SetNoteMetadata()||SaveRecordLink()||SaveWellness()||SaveDashboard():await _applyPersonal(tx,action,now);
       case ConfirmImport()||ReverseImport(): return _applyImport(tx,action,now);
       case SaveGoal()||SaveGoalEntry()||SaveDebt()||SaveDebtEntry()||SaveAsset()||SaveInvestmentEntry(): await _applyWealth(tx,action,now);
       case SaveAccount():
@@ -147,20 +147,22 @@ extension OfflinePersistence on LocalStore {
           final children=switch(table){OfflineTable.projects=>[('project_milestones','project_id'),('task_placements','project_id'),('learning_subjects','project_id'),('checklists','project_id')],OfflineTable.goals=>[('savings_entries','goal_id')],OfflineTable.debts=>[('debt_entries','debt_id')],OfflineTable.assets=>[('investment_entries','asset_id')],OfflineTable.subjects=>[('study_items','subject_id')],OfflineTable.checklists=>[('checklist_items','checklist_id')],_=> <(String,String)>[]};
           for(final (child,key) in children){if((await tx.query(child,columns:['id'],where:'$key=? AND deleted_at IS NULL',whereArgs:[action.id],limit:1)).isNotEmpty)throw const DomainFailure('has_active_children');}
           await _writeEntity(tx,table.sqlName,action,{'deleted_at':now},now);
-          if([OfflineTable.plannedPayments,OfflineTable.debts,OfflineTable.habits,OfflineTable.studyItems].contains(table)) {
+          if([OfflineTable.projects,OfflineTable.milestones,OfflineTable.plannedPayments,OfflineTable.debts,OfflineTable.habits,OfflineTable.studyItems].contains(table)) {
             final row=await _scoped(tx,table.sqlName,action.id,deleted:true);
             if(row['calendar_id']!=null) await tx.update('calendar_entries',{'deleted_at':now,'revision':((await _scoped(tx,'calendar_entries',row['calendar_id'] as String,deleted:true))['revision'] as int)+1,'updated_at':now},where:'id=?',whereArgs:[row['calendar_id']]);
           }
         } else {
-          if([OfflineTable.plannedPayments,OfflineTable.debts,OfflineTable.habits,OfflineTable.studyItems].contains(table)) throw const DomainFailure('undo_unavailable');
+          if([OfflineTable.projects,OfflineTable.milestones,OfflineTable.plannedPayments,OfflineTable.debts,OfflineTable.habits,OfflineTable.studyItems].contains(table)) throw const DomainFailure('undo_unavailable');
           final history=await tx.query('entity_changes',where:'table_name=? AND record_id=? AND revision=?',whereArgs:[table.sqlName,action.id,action.expectedRevision]);
           if(history.isEmpty||history.single['before_json']==null) throw const DomainFailure('undo_unavailable');
           final values=await _historySnapshot(tx,table.sqlName,jsonDecode(history.single['before_json'] as String),action.id);
           for(final key in ['id','owner_id','workspace_id','created_at','updated_at','revision']) { values.remove(key); }
           await _writeEntity(tx,table.sqlName,action,values,now,undo:true);
+          if(table==OfflineTable.categories){var parent=values['parent_id'] as String?;final seen={action.id};while(parent!=null){if(!seen.add(parent))throw const DomainFailure('invalid_action');parent=(await _scoped(tx,'categories',parent,deleted:true))['parent_id'] as String?;}}
+          if([OfflineTable.projects,OfflineTable.taskPlacements,OfflineTable.milestones,OfflineTable.subjects,OfflineTable.checklists,OfflineTable.checklistItems,OfflineTable.recordLinks].contains(table))await _validatePersonal(tx,ownerId,workspaceId);
         }
     }
-    if(action is! SaveProfile&&action is! SaveMembership&&action is! SaveProject&&action is! SaveMilestone&&action is! SetTaskPlacement&&action is! SaveHabit&&action is! CheckHabit&&action is! SaveSubject&&action is! SaveStudyItem&&action is! SaveChecklist&&action is! SaveChecklistItem&&action is! SetNoteMetadata&&action is! SaveRecordLink&&action is! SaveWellness&&action is! SaveDashboard)await _validateWealth(tx);
+    if(action is! CopyChecklist&&action is! SaveProfile&&action is! SaveMembership&&action is! SaveProject&&action is! SaveMilestone&&action is! SetTaskPlacement&&action is! SaveHabit&&action is! CheckHabit&&action is! SaveSubject&&action is! SaveStudyItem&&action is! SaveChecklist&&action is! SaveChecklistItem&&action is! SetNoteMetadata&&action is! SaveRecordLink&&action is! SaveWellness&&action is! SaveDashboard)await _validateWealth(tx);
     return action.id;
   }
 }

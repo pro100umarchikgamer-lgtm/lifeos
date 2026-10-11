@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 4,
+  "packVersion": 5,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -405,7 +405,24 @@
     "os_limitations": "Android limitations",
     "already_imported": "Already imported",
     "clear_habit_check": "Clear completion instead of deleting history",
-    "module_calendar_owned": "Edit the schedule in its module"
+    "module_calendar_owned": "Edit the schedule in its module",
+    "completed": "Completed",
+    "module_importBatches": "Import batches",
+    "reverse_import": "Reverse batch",
+    "reverse_import_help": "Only unchanged records from this import will be removed. Reversal stops if a record has been edited or linked to an obligation.",
+    "search_modules": "Find a module",
+    "new_copy": "New copy",
+    "use_template": "Create list from template",
+    "file_separator": "Column separator",
+    "automatic": "Automatic",
+    "amount_direction": "How to interpret income and expenses",
+    "sign_rules": "Negative means expense, positive means income",
+    "header_row": "Header row",
+    "opening_principal": "Opening outstanding principal",
+    "import_json_decimal": "JSON decimal amounts must be strings, for example \"12.50\", to prevent rounding.",
+    "import_number_ambiguous": "Ambiguous number separators. Check the selected decimal format.",
+    "linked_budget": "Linked budget limit",
+    "project_actual_all_time": "Project allocations, all time"
   },
   "plurals": {
     "record_count": {

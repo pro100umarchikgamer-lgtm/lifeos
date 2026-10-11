@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 4,
+  "packVersion": 5,
   "locale": "ru",
   "nativeName": "Русский",
   "strings": {
@@ -405,7 +405,24 @@
     "os_limitations": "Ограничения Android",
     "already_imported": "Уже импортировано",
     "clear_habit_check": "Снимите отметку выполнения вместо удаления истории",
-    "module_calendar_owned": "Измените расписание в соответствующем модуле"
+    "module_calendar_owned": "Измените расписание в соответствующем модуле",
+    "completed": "Выполнено",
+    "module_importBatches": "Пакеты импорта",
+    "reverse_import": "Отменить пакет",
+    "reverse_import_help": "Будут удалены только неизменённые записи этого импорта. Если запись изменена или связана с обязательством, отмена остановится.",
+    "search_modules": "Найти модуль",
+    "new_copy": "Новая копия",
+    "use_template": "Создать список по шаблону",
+    "file_separator": "Разделитель столбцов",
+    "automatic": "Автоматически",
+    "amount_direction": "Как определять доход и расход",
+    "sign_rules": "Минус — расход, плюс — доход",
+    "header_row": "Строка заголовков",
+    "opening_principal": "Основной долг на начало учёта",
+    "import_json_decimal": "В JSON суммы должны быть строками, например \"12.50\", чтобы исключить округление.",
+    "import_number_ambiguous": "Разделители числа неоднозначны. Проверьте выбранный десятичный формат.",
+    "linked_budget": "Лимит связанного бюджета",
+    "project_actual_all_time": "Распределено на проект за всё время"
   },
   "plurals": {
     "record_count": {

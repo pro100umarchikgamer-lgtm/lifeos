@@ -10,10 +10,12 @@ ScheduleSpec? storedSchedule(Map<String,Object?>? row) {
 int habitStreak(CalendarEntry entry,DateTime now,String deviceZone,Iterable<Map<String,Object?>> checks,{Iterable<Map<String,Object?>> pauses=const []}) {
   final zone=tz.getLocation(entry.schedule.timezone=='device'?deviceZone:entry.schedule.timezone);
   final today=tz.TZDateTime.from(now,zone),civil=DateTime.utc(today.year,today.month,today.day);
-  final from=tz.TZDateTime(zone,today.year-10,today.month,today.day);
+  final completed={for(final c in checks)if(c['completed']==1&&c['deleted_at']==null)c['local_date'] as String};
+  if(completed.isEmpty)return 0;
+  final earliest=DateTime.parse((completed.toList()..sort()).first);
+  final from=tz.TZDateTime(zone,earliest.year,earliest.month,earliest.day);
   final to=tz.TZDateTime(zone,today.year,today.month,today.day+1);
-  final dates=const CalendarEngine().between(entry,from,to,deviceZone).map((e)=>dateOnly(tz.TZDateTime.from(e.at,zone))).toSet().toList()..sort();
-  final completed={for(final c in checks)if(c['completed']==1&&c['deleted_at']==null)c['local_date']};
+  final dates=const CalendarEngine().between(entry,from,to,deviceZone,limit:civil.difference(DateTime.utc(earliest.year,earliest.month,earliest.day)).inDays.abs()+2).map((e)=>dateOnly(tz.TZDateTime.from(e.at,zone))).toSet().toList()..sort();
   var count=0;
   for(final d in dates.reversed){if(pauses.any((p)=>d.compareTo(p['start_on'] as String)>=0&&(p['end_on']==null||d.compareTo(p['end_on'] as String)<0)))continue;if(d==dateOnly(civil)&&!completed.contains(d))continue;if(!completed.contains(d))break;count++;}
   return count;

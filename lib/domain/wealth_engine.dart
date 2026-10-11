@@ -13,9 +13,9 @@ class WealthEngine {
   InvestmentSummary investment(String id,List<Map<String,Object?>> source) {
     final entries=source.where((e)=>e['asset_id']==id&&e['deleted_at']==null).toList()..sort((a,b){
       final date=(a['occurred_on'] as String).compareTo(b['occurred_on'] as String);if(date!=0)return date;
-      final at=(a['created_at'] as String).compareTo(b['created_at'] as String);return at!=0?at:(a['id'] as String).compareTo(b['id'] as String);
+      final at=DateTime.parse(a['created_at'] as String).compareTo(DateTime.parse(b['created_at'] as String));return at!=0?at:(a['id'] as String).compareTo(b['id'] as String);
     });
-    final lots=<List<BigInt>>[];var realized=BigInt.zero,distributions=BigInt.zero;BigInt? valuation;
+    final lots=<List<BigInt>>[];var realized=BigInt.zero,distributions=BigInt.zero;var head=0;BigInt? valuation;
     for(final e in entries) {
       final cash=BigInt.from(e['cash_minor'] as int),fee=BigInt.from(e['fee_minor'] as int),qty=BigInt.from(e['quantity_micros'] as int);
       switch(e['kind']) {
@@ -23,9 +23,9 @@ class WealthEngine {
         case 'sell':
           var left=qty,cost=BigInt.zero;
           while(left>BigInt.zero) {
-            if(lots.isEmpty)throw const DomainFailure('position_short');
-            final lot=lots.first,take=left<lot[0]?left:lot[0],allocated=lot[1]*take~/lot[0];
-            cost+=allocated;left-=take;lot[0]-=take;lot[1]-=allocated;if(lot[0]==BigInt.zero)lots.removeAt(0);
+            if(head>=lots.length)throw const DomainFailure('position_short');
+            final lot=lots[head],take=left<lot[0]?left:lot[0],allocated=lot[1]*take~/lot[0];
+            cost+=allocated;left-=take;lot[0]-=take;lot[1]-=allocated;if(lot[0]==BigInt.zero)head++;
           }
           realized+=cash-fee-cost;valuation=null;
         case 'dividend'||'distribution':distributions+=cash-fee;

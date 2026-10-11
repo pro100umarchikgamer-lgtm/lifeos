@@ -19,6 +19,7 @@ class WealthPage extends StatefulWidget {
 class _WealthPageState extends State<WealthPage> {
   AppController get c=>widget.controller;
   late OfflineTable table=widget.initial;
+  bool busy=false;
   static const parents=[OfflineTable.goals,OfflineTable.debts,OfflineTable.assets];
   OfflineTable children(OfflineTable t)=>switch(t){OfflineTable.goals=>OfflineTable.goalEntries,OfflineTable.debts=>OfflineTable.debtEntries,_=>OfflineTable.investmentEntries};
   String summary(Map<String,Object?> row) {
@@ -46,9 +47,9 @@ class _WealthPageState extends State<WealthPage> {
       Expanded(child:ListView.builder(padding:const EdgeInsets.all(16),itemCount:rows.isEmpty?1:rows.length,itemBuilder:(context,i){if(rows.isEmpty)return LifeCard(child:Text(c.pack.t('offline_empty')));final row=rows[i];return Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         ListTile(contentPadding:EdgeInsets.zero,title:Text(row['name'] as String? ?? row['occurred_on'] as String? ?? ''),subtitle:Text(summary(row)),onTap:()=>edit(row),trailing:const Icon(Icons.edit_outlined)),
         if(parents.contains(table))TextButton(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>WealthPage(controller:c,parent:row,initial:children(table)))),child:Text(c.pack.t('movements'))),
-        if(!parents.contains(table))TextButton(onPressed:()async{try{await c.execute(DeleteOffline(const Uuid().v4(),row['id'] as String,row['revision'] as int,table));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(c.pack.t(e is DomainFailure?e.key:'change_failed'))));}},child:Text(c.pack.t('delete'))),
+        TextButton(onPressed:busy?null:()async{final yes=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:Text(c.pack.t('delete')),content:Text(c.pack.t('delete_confirm')),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(c.pack.t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(context,true),child:Text(c.pack.t('delete')))]));if(yes!=true||!mounted)return;setState(()=>busy=true);try{await c.execute(DeleteOffline(const Uuid().v4(),row['id'] as String,row['revision'] as int,table));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(c.pack.t(e is DomainFailure?e.key:'change_failed'))));}finally{if(mounted)setState(()=>busy=false);}},child:Text(c.pack.t('delete'))),
       ])));})),
-    ])),floatingActionButton:FloatingActionButton(onPressed:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
+    ])),floatingActionButton:FloatingActionButton(onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
   });
 }
 class WealthEditor extends StatefulWidget {
@@ -92,7 +93,7 @@ class _WealthEditorState extends State<WealthEditor> {
   @override Widget build(BuildContext context){final isEntry=widget.parent!=null;return EntrySheet(saving:saving,saveLabel:c.pack.t(saving?'saving':'save'),onSave:save,children:[
     Row(children:[Expanded(child:Text(c.pack.t('module_${widget.table.name}'),style:Theme.of(context).textTheme.titleLarge)),IconButton(tooltip:c.pack.t('cancel'),onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.close))]),
     if(!isEntry)...[field(name,'name'),field(currency,'currency')],
-    if(widget.table!=OfflineTable.assets)field(amount,widget.table==OfflineTable.goals?'target_amount':widget.table==OfflineTable.debts||widget.table==OfflineTable.debtEntries?'principal':'amount',number:true),
+    if(widget.table!=OfflineTable.assets)field(amount,widget.table==OfflineTable.goals?'target_amount':widget.table==OfflineTable.debts?'opening_principal':widget.table==OfflineTable.debtEntries?'principal':'amount',number:true),
     if(widget.table==OfflineTable.goals)...[
       select('account',account,{'':c.pack.t('virtual_earmark'),for(final a in c.offline[OfflineTable.accounts]??[])a['id'] as String:a['name'] as String},(v)=>account=v),
       OutlinedButton(onPressed:()=>pick(target:true),child:Text(targetOn==null?c.pack.t('target_date'):MaterialLocalizations.of(context).formatMediumDate(targetOn!))),

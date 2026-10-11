@@ -31,7 +31,8 @@ void main(){
       expect(const FinanceEngine().accountBalance((await store.offlineData())[OfflineTable.accounts]!.singleWhere((a)=>a['id']=='a'),await store.records(),[]),BigInt.from(10000));
       await engine.execute(const SaveCategory('cat1-op','cat1',0,'Food'));
       await engine.execute(const SaveCategory('cat2-op','cat2',0,'Home'));
-      await engine.execute(const SaveProject('project-op','project',0,name:'Home'));
+      await engine.execute(SaveProject('project-op','project',0,name:'Home',dueOn:DateTime(2026,10,20)));
+      expect((await store.calendarEntries()).where((e)=>e.title=='Home').length,1);
       await engine.execute(SetMoneyDetails('split-op',money,1,accountId:'a',splits:const [ExpenseSplit('split1',600,categoryId:'cat1',projectId:'project'),ExpenseSplit('split2',400,categoryId:'cat2')]));
       await expectLater(engine.execute(SetMoneyDetails('bad-split',money,2,accountId:'a',splits:const [ExpenseSplit('bad',900)])),throwsA(isA<DomainFailure>()));
       expect((await store.records()).singleWhere((r)=>r.id==money).revision,2);
@@ -83,6 +84,10 @@ void main(){
       await engine.execute(SaveRecordLink('link-op','link',0,noteId:note,targetType:'task',targetId:task));
       await engine.execute(SaveChecklist('list-op','list',0,name:'Shopping',noteId:note));
       await engine.execute(const SaveChecklistItem('item-op','item',0,checklistId:'list',name:'Milk',quantity:'2'));
+      await engine.execute(const SaveChecklist('chore-op','chores',0,name:'Cleaning',kind:'chores'));
+      await engine.execute(const SaveChecklistItem('chore-item','chore-item',0,checklistId:'chores',name:'Sweep',completed:true));
+      await engine.execute(const CopyChecklist('copy-chores','copy',0,sourceId:'chores',sourceRevision:1,name:'Cleaning copy'));
+      expect((await store.offlineData())[OfflineTable.checklistItems]!.where((r)=>r['checklist_id']=='copy').single['completed'],0);
       await engine.execute(const SaveWellness('sleep-op','sleep',0,kind:'sleep',localDate:'2026-10-11',minutes:480));
       await engine.execute(const SaveProfile('profile1-op','person1',0,name:'Alex'));
       await engine.execute(const SaveProfile('profile2-op','person2',0,name:'Alex'));
