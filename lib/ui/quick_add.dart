@@ -13,6 +13,7 @@ Future<bool?> showEntryEditor(BuildContext context, AppController controller, En
     return Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => QuickAdd(controller: controller, kind: kind, record: record)));
   }
   return showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true,
+    sheetAnimationStyle: MediaQuery.disableAnimationsOf(context) ? AnimationStyle.noAnimation : null,
     isDismissible: false, enableDrag: false, builder: (_) => QuickAdd(controller: controller, kind: kind, record: record));
 }
 

@@ -19,6 +19,15 @@ class LifePalette {
   static const darkSurface = Color(0xff1c2a2d);
 }
 
+Color lifeAccent(BuildContext context, Color color) {
+  if (Theme.of(context).brightness != Brightness.dark) return color;
+  if (color == LifePalette.green) return const Color(0xff79d9b7);
+  if (color == LifePalette.red) return const Color(0xffff96a0);
+  if (color == LifePalette.blue) return const Color(0xff9cc4ff);
+  if (color == LifePalette.orange) return const Color(0xffffcb87);
+  return color;
+}
+
 class LifeSurfaces extends ThemeExtension<LifeSurfaces> {
   const LifeSurfaces(this.radius, this.treatment);
   final double radius;
@@ -59,7 +68,8 @@ ThemeData lifeTheme(Brightness brightness, {Appearance appearance = const Appear
     textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(minimumSize: const Size(48, 48))),
     chipTheme: ChipThemeData(shape: shape, side: BorderSide(color: scheme.outlineVariant), padding: const EdgeInsets.all(8)),
     bottomSheetTheme: BottomSheetThemeData(backgroundColor: scheme.surface, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(radius)))),
-    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    snackBarTheme: SnackBarThemeData(behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), elevation: 2),
   );
 }
 
@@ -138,7 +148,7 @@ class DailyBarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxValue = [...income, ...expense].fold<BigInt>(BigInt.one, (a,b) => a > b ? a : b);
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return SizedBox(height: 72, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+    return SizedBox(height: 88, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
       for (var i = 0; i < income.length; i++) Expanded(child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
         child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -150,5 +160,5 @@ class DailyBarChart extends StatelessWidget {
     ]));
   }
   Widget _bar(BigInt value, BigInt maxValue, Color color) => value == BigInt.zero ? const SizedBox.shrink() :
-    Container(height: math.max(2, value.toDouble() / maxValue.toDouble() * 64), decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(3))));
+    Container(height: math.max(2, value.toDouble() / maxValue.toDouble() * 80), decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(3))));
 }

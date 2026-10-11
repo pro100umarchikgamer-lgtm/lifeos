@@ -5,6 +5,7 @@ import '../domain/models.dart';
 import 'design.dart';
 import 'money_format.dart';
 import 'quick_add.dart';
+import 'notices.dart';
 
 class RecordDetail extends StatefulWidget {
   const RecordDetail({super.key, required this.controller, required this.id});
@@ -30,13 +31,12 @@ class _RecordDetailState extends State<RecordDetail> {
     try {
       await c.execute(DeleteRecord(const Uuid().v4(), record.id, record.kind, record.revision));
       if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
+      final notices = LifeNoticeScope.of(context);
+      FocusScope.of(context).unfocus();
       Navigator.pop(context);
-      messenger.showSnackBar(SnackBar(content: Text(c.pack.t('deleted')), duration: const Duration(seconds: 10),
-        action: SnackBarAction(label: c.pack.t('undo'), onPressed: () async {
-          try { await c.execute(UndoRecordChange(const Uuid().v4(), record.id, record.kind, record.revision + 1)); }
-          catch (e) { messenger.showSnackBar(SnackBar(content: Text(c.pack.t(e is DomainFailure ? e.key : 'change_failed')))); }
-        })));
+      notices.show(c.pack.t('deleted'), undoLabel: c.pack.t('undo'),
+        undo: () => c.execute(UndoRecordChange(const Uuid().v4(), record.id, record.kind, record.revision + 1)),
+        errorLabel: (e) => c.pack.t(e is DomainFailure ? e.key : 'change_failed'));
     } catch (e) {
       if (mounted) { setState(() => busy = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(c.pack.t(e is DomainFailure ? e.key : 'change_failed')))); }
     }

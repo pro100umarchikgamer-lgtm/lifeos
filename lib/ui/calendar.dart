@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../app_controller.dart';
 import '../domain/models.dart';
 import 'entry_sheet.dart';
+import 'selection.dart';
 
 class CalendarGrid extends StatelessWidget {
   const CalendarGrid({super.key, required this.month, required this.selected, required this.onDay,
@@ -150,14 +151,14 @@ class ScheduleEditor extends StatelessWidget {
         ExpansionTile(expansionAnimationStyle: AnimationStyle(duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180)), tilePadding: EdgeInsets.zero, childrenPadding: const EdgeInsets.only(bottom: 12),
           title: Text(p.t('repeat')), subtitle: Text(p.t('repeat_${value!.repeat.name}')),
           initiallyExpanded: false, children: [
-        DropdownButtonFormField<RepeatRule>(key: ValueKey('repeat_${value!.repeat}'), initialValue: value!.repeat, isExpanded: true,
-          decoration: InputDecoration(labelText: p.t('repeat')), items: [for (final r in RepeatRule.values) DropdownMenuItem(value: r, child: Text(p.t('repeat_${r.name}')))],
-          onChanged: (v) { if (v != null) onChanged(_copy(repeat: v, clearUntil: v == RepeatRule.none)); }),
+        LifeSelect<RepeatRule>(key: ValueKey('repeat_${value!.repeat}'), value: value!.repeat,
+          label: p.t('repeat'), choices: {for (final r in RepeatRule.values) r: p.t('repeat_${r.name}')},
+          onChanged: (v) => onChanged(_copy(repeat: v, clearUntil: v == RepeatRule.none))),
         if (value!.repeat != RepeatRule.none) ...[
           const SizedBox(height: 12),
-          DropdownButtonFormField<int>(key: ValueKey('interval_${value!.interval}'), initialValue: value!.interval, isExpanded: true,
-            decoration: InputDecoration(labelText: p.t('repeat_interval')), items: [for (final i in {1,2,3,4,6,12,value!.interval}) DropdownMenuItem(value: i, child: Text('$i'))],
-            onChanged: (v) { if (v != null) onChanged(_copy(interval: v)); }),
+          LifeSelect<int>(key: ValueKey('interval_${value!.interval}'), value: value!.interval,
+          label: p.t('repeat_interval'), choices: {for (final i in {1,2,3,4,6,12,value!.interval}) i: '$i'},
+          onChanged: (v) => onChanged(_copy(interval: v))),
           Row(children: [Expanded(child: TextButton(onPressed: () async {
             final end = await showDatePicker(context: context, initialDate: value!.until == null ? start : DateTime.parse(value!.until!), firstDate: DateTime(start.year,start.month,start.day), lastDate: DateTime(2200,12,31));
             if (end != null && context.mounted) onChanged(_copy(until: dateOnly(end)));
@@ -170,9 +171,9 @@ class ScheduleEditor extends StatelessWidget {
           if (controller.calendarEngine.next(CalendarEntry(id: 'preview', title: '', schedule: value!), DateTime.now(), controller.deviceZone, const []) == null)
             Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(p.t('reminder_no_future'), style: TextStyle(color: Theme.of(context).colorScheme.error))),
           ExpansionTile(expansionAnimationStyle: AnimationStyle(duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180)), tilePadding: EdgeInsets.zero, title: Text(p.t('reminder_mode')), subtitle: Text(p.t('mode_${value!.mode.name}')), children: [
-          DropdownButtonFormField<ReminderMode>(key: ValueKey('mode_${value!.mode}'), initialValue: value!.mode, isExpanded: true,
-            decoration: InputDecoration(labelText: p.t('reminder_mode')), items: [for (final m in ReminderMode.values) DropdownMenuItem(value: m, child: Text(p.t('mode_${m.name}')))],
-            onChanged: (v) { if (v != null) onChanged(_copy(mode: v)); }),
+          LifeSelect<ReminderMode>(key: ValueKey('mode_${value!.mode}'), value: value!.mode,
+          label: p.t('reminder_mode'), choices: {for (final m in ReminderMode.values) m: p.t('mode_${m.name}')},
+          onChanged: (v) => onChanged(_copy(mode: v))),
           const SizedBox(height: 8), Text(p.t('alarm_limits'), style: Theme.of(context).textTheme.bodyMedium),
           ]),
         ],
