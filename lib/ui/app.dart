@@ -15,6 +15,8 @@ import 'settings.dart';
 import 'finance_foundation.dart';
 import 'notices.dart';
 import 'selection.dart';
+import 'personal_modules.dart';
+import 'dashboard_editor.dart';
 
 class LifeOSApp extends StatefulWidget {
   const LifeOSApp({super.key, required this.controller, this.builder});
@@ -228,25 +230,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   List<Widget> _home() {
-    final now = c.now;
-    final tasks = c.records.where((r) => r.kind == EntryKind.task && !r.completed).take(3).toList();
-    final notes = c.records.where((r) => r.kind == EntryKind.note).take(2).toList();
-    return [
-      if (c.records.isEmpty) ..._emptyHome() else ...[
-        Text(c.pack.t(now.hour < 12 ? 'good_morning' : now.hour < 18 ? 'good_afternoon' : 'good_evening'),
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-        Text(MaterialLocalizations.of(context).formatMediumDate(now),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: LifePalette.muted)),
-        const SizedBox(height: 14),
-        _financeSummary(),
-        const SizedBox(height: 12),
-        _quickActions(),
-        const SizedBox(height: 12),
-        _tasksCard(tasks),
-        const SizedBox(height: 12),
-        _notesCard(notes),
-      ],
-    ];
+    final now=c.now;
+    if(c.records.isEmpty)return _emptyHome();
+    final config=[for(final key in dashboardWidgets)dashboardChoice(c,key)]..sort((a,b){final order=(a['position'] as int).compareTo(b['position'] as int);return order==0?(a['widget'] as String).compareTo(b['widget'] as String):order;});
+    final tasks=c.records.where((r)=>r.kind==EntryKind.task&&!r.completed),notes=c.records.where((r)=>r.kind==EntryKind.note);
+    Widget card(Map<String,Object?> row) {
+      final expanded=row['expanded']==1,key=row['widget'] as String;
+      if(key=='financial')return expanded?_financeSummary():LifeCard(child:Text('${c.pack.t('finances')} · $summaryCurrency',style:Theme.of(context).textTheme.titleMedium));
+      if(key=='tasks')return _tasksCard(tasks.take(expanded?3:1).toList());
+      if(key=='notes')return _notesCard(notes.take(expanded?2:1).toList());
+      final table=switch(key){'projects'=>OfflineTable.projects,'habits'=>OfflineTable.habits,_=>OfflineTable.checklists};
+      final rows=(c.offline[table]??[]).where((r)=>key!='shopping'||r['kind']=='shopping');
+      return LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('widget_$key')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table)))),for(final r in rows.take(expanded?3:1))Padding(padding:const EdgeInsets.symmetric(vertical:6),child:Text(r['name'] as String)),if(rows.isEmpty)Text(c.pack.t('offline_empty'))]));
+    }
+    var quick=false;
+    final content=<Widget>[Text(c.pack.t(now.hour<12?'good_morning':now.hour<18?'good_afternoon':'good_evening'),style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w800)),Text(MaterialLocalizations.of(context).formatMediumDate(now),style:Theme.of(context).textTheme.bodyMedium?.copyWith(color:LifePalette.muted)),const SizedBox(height:14)];
+    if(!config.any((r)=>r['widget']=='financial'&&r['visible']==1)){content.addAll([_quickActions(),const SizedBox(height:12)]);quick=true;}
+    for(final row in config){if(row['visible']!=1)continue;content.addAll([card(row),const SizedBox(height:12)]);if(!quick){content.addAll([_quickActions(),const SizedBox(height:12)]);quick=true;}}
+    return content;
   }
 
   List<Widget> _emptyHome() => [
@@ -540,6 +541,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   List<Widget> _modules() => [
     _pageTitle('modules'), const SizedBox(height: 14),
+    for(final table in personalModules) Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('module_${table.name}')),subtitle:Text(c.pack.t('offline_module_hint')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table)))))),
+    LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('dashboard_customize')),leading:const Icon(Icons.dashboard_customize_outlined),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>DashboardEditor(controller:c))))),
+    const SizedBox(height:12),
+
     LifeCard(child: Material(type: MaterialType.transparency, child: ListTile(contentPadding: EdgeInsets.zero,
       leading: const CircleAvatar(backgroundColor: LifePalette.cream,
         child: Icon(Icons.description_outlined, color: LifePalette.orange)),

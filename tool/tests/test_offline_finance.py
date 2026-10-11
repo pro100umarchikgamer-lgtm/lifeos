@@ -60,3 +60,25 @@ class ImportSchemaTests(unittest.TestCase):
         db.execute("UPDATE transactions SET deleted_at='2026-10-11' WHERE id IN (SELECT transaction_id FROM import_rows WHERE batch_id='batch')")
         self.assertEqual(db.execute("SELECT deleted_at FROM transactions WHERE id='manual'").fetchone(),(None,))
         self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())
+
+class PersonalModulesSchemaTests(unittest.TestCase):
+    def test_canonical_tasks_and_note_body_are_not_duplicated(self):
+        db=expanded(7);self.addCleanup(db.close)
+        db.execute("INSERT INTO projects(id,owner_id,workspace_id,name,status,created_at,updated_at) VALUES('p','owner','space','Study','active','2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO tasks(id,owner_id,workspace_id,title,created_at,updated_at) VALUES('t','owner','space','Read','2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO task_placements(id,owner_id,workspace_id,task_id,project_id,created_at,updated_at) VALUES('place','owner','space','t','p','2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO notes(id,owner_id,workspace_id,body,created_at,updated_at) VALUES('note','owner','space','Original body','2026-10-11','2026-10-11')")
+        db.execute("INSERT INTO note_metadata(id,owner_id,workspace_id,note_id,tags,created_at,updated_at) VALUES('tags','owner','space','note','study,reading','2026-10-11','2026-10-11')")
+        self.assertEqual(db.execute('SELECT COUNT(*) FROM tasks').fetchone()[0],1)
+        self.assertEqual(db.execute('SELECT body FROM notes').fetchone()[0],'Original body')
+        with self.assertRaises(sqlite3.IntegrityError):db.execute("UPDATE task_placements SET parent_task_id=task_id")
+        self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())
+    def test_migration_failure_rolls_back_without_losing_original_records(self):
+        db=expanded(6);self.addCleanup(db.close)
+        db.commit();db.execute('BEGIN')
+        with self.assertRaises(sqlite3.OperationalError):
+            for statement in ((ROOT/'assets/migrations/007.sql').read_text()+';INVALID SQL').split(';'):
+                if statement.strip():db.execute(statement)
+        db.rollback()
+        self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='projects'").fetchone())
+        self.assertEqual(db.execute('SELECT id FROM local_identity').fetchone(),('owner',))

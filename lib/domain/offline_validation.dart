@@ -7,9 +7,23 @@ class OfflineValidation {
   }
   static void name(String value) { if(value.trim().isEmpty || value.length>2000) throw const DomainFailure('required_text'); }
   static void date(DateTime value) { if(value.year<1900||value.year>2200) throw const DomainFailure('invalid_date'); }
+  static void civil(String text){final d=DateTime.tryParse(text);if(d==null||dateOnly(d)!=text)throw const DomainFailure('invalid_date');date(d);}
   static void validate(OfflineAction action) {
     if(action.id.isEmpty || action.expectedRevision<0) throw const DomainFailure('invalid_action');
     switch(action) {
+      case SaveProject(): name(action.name);if(action.goal.length>2000||!['active','paused','done'].contains(action.status))throw const DomainFailure('invalid_action');if(action.dueOn!=null)date(action.dueOn!);
+      case SaveMilestone():name(action.name);if(action.dueOn!=null)date(action.dueOn!);
+      case SetTaskPlacement():if(action.taskId==action.parentTaskId||action.priority<0||action.priority>3)throw const DomainFailure('invalid_action');
+      case SaveHabit():name(action.name);CalendarEngine.validate(action.schedule);if(action.schedule.repeat==RepeatRule.none)throw const DomainFailure('habit_repeat_required');
+      case CheckHabit(): civil(action.localDate);CalendarEngine.validate(ScheduleSpec(localStart:'${action.localDate}T09:00:00',timezone:action.timezone));
+      case SaveSubject():name(action.name);
+      case SaveStudyItem():name(action.name);if(action.schedule!=null)CalendarEngine.validate(action.schedule!);if(action.taskId!=null&&action.schedule!=null)throw const DomainFailure('single_schedule');
+      case SaveChecklist():name(action.name);if(!['note','shopping','chores'].contains(action.kind))throw const DomainFailure('invalid_action');
+      case SaveChecklistItem():name(action.name);if(action.quantity.length>100)throw const DomainFailure('invalid_action');
+      case SetNoteMetadata():if(action.tags.length>30||action.tags.toSet().length!=action.tags.length||action.tags.any((t)=>t.trim().isEmpty||t.length>50||t.contains(',')))throw const DomainFailure('invalid_action');
+      case SaveRecordLink():if(!['task','note','project','goal'].contains(action.targetType)||action.noteId==action.targetId)throw const DomainFailure('invalid_action');
+      case SaveWellness():civil(action.localDate);if(!['sleep','activity'].contains(action.kind)||action.minutes<0||action.minutes>1440||action.label.length>2000)throw const DomainFailure('invalid_action');
+      case SaveDashboard():if(!['financial','tasks','notes','projects','habits','shopping'].contains(action.widget)||action.position<0||action.position>100)throw const DomainFailure('invalid_action');
       case ConfirmImport():
         if(action.expectedRevision!=0||!RegExp(r'^[0-9a-f]{64}$').hasMatch(action.contentKey)||action.rows.isEmpty||action.rows.length>10000||action.rows.map((r)=>r.originKey).toSet().length!=action.rows.length)throw const DomainFailure('invalid_action');
         for(final r in action.rows){money(r.amountMinor);Currency.fromCode(r.currency);if(r.kind!=EntryKind.income&&r.kind!=EntryKind.expense||!RegExp(r'^[0-9a-f]{64}$').hasMatch(r.originKey)||r.label.length>2000)throw const DomainFailure('invalid_action');final d=DateTime.tryParse(r.date);if(d==null||dateOnly(d)!=r.date)throw const DomainFailure('invalid_date');date(d);}

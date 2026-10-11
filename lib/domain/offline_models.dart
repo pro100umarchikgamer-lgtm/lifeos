@@ -1,6 +1,6 @@
 part of 'models.dart';
 
-enum OfflineTable { accounts, categories, transfers, budgets, plannedPayments, goals, goalEntries, debts, debtEntries, assets, investmentEntries, projects, habits, habitChecks, subjects, studyItems, checklists, checklistItems, wellness, profiles, memberships, dashboard, importBatches }
+enum OfflineTable { accounts, categories, transfers, budgets, plannedPayments, goals, goalEntries, debts, debtEntries, assets, investmentEntries, projects, habits, habitChecks, subjects, studyItems, checklists, checklistItems, wellness, profiles, memberships, dashboard, importBatches, milestones, taskPlacements, noteMetadata, recordLinks }
 extension OfflineTableName on OfflineTable {
   String get sqlName => switch (this) {
     OfflineTable.plannedPayments => 'planned_payments', OfflineTable.goals => 'savings_goals',
@@ -9,7 +9,7 @@ extension OfflineTableName on OfflineTable {
     OfflineTable.habitChecks => 'habit_checks', OfflineTable.subjects => 'learning_subjects', OfflineTable.studyItems => 'study_items',
     OfflineTable.checklistItems => 'checklist_items', OfflineTable.wellness => 'wellness_entries',
     OfflineTable.profiles => 'local_profiles', OfflineTable.memberships => 'local_memberships',
-    OfflineTable.importBatches => 'import_batches', OfflineTable.dashboard => 'dashboard_configs', _ => name,
+    OfflineTable.milestones => 'project_milestones', OfflineTable.taskPlacements => 'task_placements', OfflineTable.noteMetadata => 'note_metadata', OfflineTable.recordLinks => 'record_links', OfflineTable.importBatches => 'import_batches', OfflineTable.dashboard => 'dashboard_configs', _ => name,
   };
 }
 
@@ -143,4 +143,70 @@ class ConfirmImport extends OfflineAction {
 class ReverseImport extends OfflineAction {
   const ReverseImport(super.operationId,super.id,super.expectedRevision);
   @override Map<String,Object?> get payload=>{...target,'action':'import.reverse'};
+}
+
+class SaveProject extends OfflineAction {
+  const SaveProject(super.operationId,super.id,super.expectedRevision,{required this.name,this.goal='',this.status='active',this.dueOn,this.budgetId});
+  final String name,goal,status;final DateTime? dueOn;final String? budgetId;
+  @override Map<String,Object?> get payload=>{...target,'action':'project.save','name':name.trim(),'goal':goal.trim(),'status':status,'due':dueOn==null?null:dateOnly(dueOn!),'budget':budgetId};
+}
+class SaveMilestone extends OfflineAction {
+  const SaveMilestone(super.operationId,super.id,super.expectedRevision,{required this.projectId,required this.name,this.dueOn,this.completed=false});
+  final String projectId,name;final DateTime? dueOn;final bool completed;
+  @override Map<String,Object?> get payload=>{...target,'action':'milestone.save','project':projectId,'name':name.trim(),'due':dueOn==null?null:dateOnly(dueOn!),'completed':completed};
+}
+class SetTaskPlacement extends OfflineAction {
+  const SetTaskPlacement(super.operationId,super.id,super.expectedRevision,{required this.taskId,this.projectId,this.parentTaskId,this.priority=0});
+  final String taskId;final String? projectId,parentTaskId;final int priority;
+  @override Map<String,Object?> get payload=>{...target,'action':'task.place','task':taskId,'project':projectId,'parent':parentTaskId,'priority':priority};
+}
+class SaveHabit extends OfflineAction {
+  const SaveHabit(super.operationId,super.id,super.expectedRevision,{required this.name,required this.schedule,this.paused=false});
+  final String name;final ScheduleSpec schedule;final bool paused;
+  @override Map<String,Object?> get payload=>{...target,'action':'habit.save','name':name.trim(),'schedule':schedule.toJson(),'paused':paused};
+}
+class CheckHabit extends OfflineAction {
+  const CheckHabit(super.operationId,super.id,super.expectedRevision,{required this.habitId,required this.localDate,required this.timezone,this.completed=true});
+  final String habitId,localDate,timezone;final bool completed;
+  @override Map<String,Object?> get payload=>{...target,'action':'habit.check','habit':habitId,'date':localDate,'timezone':timezone,'completed':completed};
+}
+class SaveSubject extends OfflineAction {
+  const SaveSubject(super.operationId,super.id,super.expectedRevision,{required this.name,this.projectId});
+  final String name;final String? projectId;
+  @override Map<String,Object?> get payload=>{...target,'action':'subject.save','name':name.trim(),'project':projectId};
+}
+class SaveStudyItem extends OfflineAction {
+  const SaveStudyItem(super.operationId,super.id,super.expectedRevision,{required this.subjectId,required this.name,this.taskId,this.schedule,this.completed=false});
+  final String subjectId,name;final String? taskId;final ScheduleSpec? schedule;final bool completed;
+  @override Map<String,Object?> get payload=>{...target,'action':'study.save','subject':subjectId,'name':name.trim(),'task':taskId,'schedule':schedule?.toJson(),'completed':completed};
+}
+class SaveChecklist extends OfflineAction {
+  const SaveChecklist(super.operationId,super.id,super.expectedRevision,{required this.name,this.kind='shopping',this.noteId,this.projectId});
+  final String name,kind;final String? noteId,projectId;
+  @override Map<String,Object?> get payload=>{...target,'action':'checklist.save','name':name.trim(),'kind':kind,'note':noteId,'project':projectId};
+}
+class SaveChecklistItem extends OfflineAction {
+  const SaveChecklistItem(super.operationId,super.id,super.expectedRevision,{required this.checklistId,required this.name,this.quantity='',this.completed=false,this.taskId});
+  final String checklistId,name,quantity;final bool completed;final String? taskId;
+  @override Map<String,Object?> get payload=>{...target,'action':'checklist.item','checklist':checklistId,'name':name.trim(),'quantity':quantity.trim(),'completed':completed,'task':taskId};
+}
+class SetNoteMetadata extends OfflineAction {
+  const SetNoteMetadata(super.operationId,super.id,super.expectedRevision,{required this.noteId,required this.tags});
+  final String noteId;final List<String> tags;
+  @override Map<String,Object?> get payload=>{...target,'action':'note.tags','note':noteId,'tags':tags};
+}
+class SaveRecordLink extends OfflineAction {
+  const SaveRecordLink(super.operationId,super.id,super.expectedRevision,{required this.noteId,required this.targetType,required this.targetId});
+  final String noteId,targetType,targetId;
+  @override Map<String,Object?> get payload=>{...target,'action':'note.link','note':noteId,'type':targetType,'target':targetId};
+}
+class SaveWellness extends OfflineAction {
+  const SaveWellness(super.operationId,super.id,super.expectedRevision,{required this.kind,required this.localDate,required this.minutes,this.label=''});
+  final String kind,localDate,label;final int minutes;
+  @override Map<String,Object?> get payload=>{...target,'action':'wellness.save','kind':kind,'date':localDate,'minutes':minutes,'label':label.trim()};
+}
+class SaveDashboard extends OfflineAction {
+  const SaveDashboard(super.operationId,super.id,super.expectedRevision,{required this.widget,required this.position,this.visible=true,this.expanded=false});
+  final String widget;final int position;final bool visible,expanded;
+  @override Map<String,Object?> get payload=>{...target,'action':'dashboard.save','widget':widget,'position':position,'visible':visible,'expanded':expanded};
 }
