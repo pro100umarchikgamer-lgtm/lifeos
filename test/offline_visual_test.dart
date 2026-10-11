@@ -44,11 +44,11 @@ void main(){
       if(screen=='habit')showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,builder:(_)=>PersonalModuleEditor(controller:c,table:OfflineTable.habits));
       if(screen=='import'){
         Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>StatementImportPage(controller:c)));await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text(c.pack.t('choose_file')));await tester.tap(find.text(c.pack.t('choose_file')));await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text(c.pack.t('choose_file')).hitTestable(),200,scrollable:find.descendant(of:find.byType(StatementImportPage),matching:find.byType(Scrollable)).first);await tester.tap(find.text(c.pack.t('choose_file')).hitTestable());await tester.pumpAndSettle();expect(find.text(c.pack.t('import_step_1')),findsOneWidget);
       }
       if(screen=='permissions'){
         Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(body:SafeArea(child:ListView(key:const Key('offline_test_settings'),children:[PersonalSettings(controller:c)])))));await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(find.text(c.pack.t('notification_details')),300,scrollable:find.descendant(of:find.byKey(const Key('offline_test_settings')),matching:find.byType(Scrollable)).first);await tester.tap(find.text(c.pack.t('notification_details')));
+        await tester.scrollUntilVisible(find.text(c.pack.t('notification_details')).hitTestable(),200,scrollable:find.descendant(of:find.byKey(const Key('offline_test_settings')),matching:find.byType(Scrollable)).first);await tester.tap(find.text(c.pack.t('notification_details')).hitTestable());await tester.pumpAndSettle();expect(find.text(c.pack.t('permissions_diagnostics')),findsOneWidget);
       }
       if(screen=='repeat'){
         showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,builder:(_)=>EventEditor(controller:c,date:DateTime(2026,10,11)));await tester.pumpAndSettle();
