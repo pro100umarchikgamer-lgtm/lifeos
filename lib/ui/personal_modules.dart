@@ -28,8 +28,7 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
     return row['name'] as String? ?? profileName ?? row['label'] as String? ?? row['local_date'] as String? ?? row['tags'] as String? ?? c.pack.t('module_${widget.table.name}');
   }
   Future<void> edit([Map<String,Object?>? row]) async {
-    await showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,isDismissible:false,enableDrag:false,
-      builder:(_)=>PersonalModuleEditor(controller:c,table:widget.table,row:row,parentId:widget.parentId,noteId:widget.noteId));
+    await Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(resizeToAvoidBottomInset:false,body:SafeArea(child:PersonalModuleEditor(controller:c,table:widget.table,row:row,parentId:widget.parentId,noteId:widget.noteId)))));
   }
   void open(OfflineTable table,String parent) {Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table,parentId:parent)));}
   Future<void> change(AppAction action) async {
@@ -37,6 +36,15 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
     try{await c.execute(action);}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(c.pack.t(e is DomainFailure?e.key:'change_failed'))));}
     finally{if(mounted)setState(()=>busy=false);}
   }
+  Widget checklistItem(Map<String,Object?> row) {
+    final linked=c.records.where((r)=>r.id==row['task_id']).firstOrNull;
+    return CheckboxListTile(contentPadding:EdgeInsets.zero,
+      title:Text(row['name'] as String),subtitle:(row['quantity'] as String? ?? '').isEmpty?null:Text(row['quantity'] as String),
+      value:linked?.completed??row['completed']==1,
+      onChanged:busy?null:(v)=>change(linked==null?SaveChecklistItem(const Uuid().v4(),row['id'] as String,row['revision'] as int,checklistId:row['checklist_id'] as String,name:row['name'] as String,quantity:row['quantity'] as String? ?? '',completed:v==true,taskId:row['task_id'] as String?):CompleteTask(const Uuid().v4(),linked.id,v==true,expectedRevision:linked.revision)));
+  }
+  IconData get moduleIcon=>switch(widget.table){OfflineTable.projects=>Icons.flag_outlined,OfflineTable.habits=>Icons.check_circle_outline,OfflineTable.subjects=>Icons.school_outlined,OfflineTable.checklists=>Icons.shopping_basket_outlined,OfflineTable.wellness=>Icons.favorite_outline,_=>Icons.view_list_outlined};
+  String get actionLabel=>c.pack.t('ux_add_${widget.table.name}');
   Widget details(Map<String,Object?> row) {
     final id=row['id'] as String;
     switch(widget.table) {
@@ -50,20 +58,27 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
         final budget=(c.offline[OfflineTable.budgets]??[]).where((b)=>b['id']==row['budget_id']).firstOrNull;
         return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[if(budget!=null)Text('${c.pack.t('linked_budget')}: ${budget['name']} · ${formatMoney(Currency.fromCode(budget['currency'] as String),budget['limit_minor'] as int,locale:c.region)}'),for(final total in actual.entries)Text('${c.pack.t('project_actual_all_time')}: ${formatMoney(Currency.fromCode(total.key),total.value,locale:c.region)}'),Text('${tasks.where((t)=>t.completed).length}/${tasks.length} · ${c.pack.t('status_${row['status']}')}'),
           if(tasks.isNotEmpty)LinearProgressIndicator(value:tasks.where((t)=>t.completed).length/tasks.length),
-          Wrap(spacing:8,children:[TextButton(onPressed:()=>open(OfflineTable.milestones,id),child:Text(c.pack.t('module_milestones'))),TextButton(onPressed:()=>open(OfflineTable.taskPlacements,id),child:Text(c.pack.t('project_tasks')))]),
+          Wrap(spacing:8,children:[TextButton(onPressed:()=>open(OfflineTable.milestones,id),child:Text(c.pack.t('module_milestones'))),TextButton(onPressed:()=>open(OfflineTable.taskPlacements,id),child:Text(c.pack.t('project_tasks'))),if(row['status']!='done')TextButton.icon(onPressed:busy?null:()=>change(SaveProject(const Uuid().v4(),id,row['revision'] as int,name:row['name'] as String,goal:row['goal'] as String? ?? '',status:'done',dueOn:row['due_on']==null?null:DateTime.parse(row['due_on'] as String),budgetId:row['budget_id'] as String?)),icon:const Icon(Icons.check_circle_outline),label:Text(c.pack.t('complete')))]),
         ]);
       case OfflineTable.habits:
         final spec=storedSchedule(row);final checks=(c.offline[OfflineTable.habitChecks]??[]).where((h)=>h['habit_id']==id).toList();
         final date=dateOnly(spec==null||spec.timezone=='device'?DateTime.now():tz.TZDateTime.now(tz.getLocation(spec.timezone))),today=checks.where((h)=>h['local_date']==date).firstOrNull;
         final streak=spec==null?0:habitStreak(CalendarEntry(id:id,title:title(row),schedule:spec),c.now,c.deviceZone,checks,pauses:[for(final p in row['__pauses'] as List? ?? [])Map<String,Object?>.from(p as Map)]);
-        return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(row['paused']==1?c.pack.t('status_paused'):'${c.pack.t('habit_streak')}: $streak'),
+        return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Wrap(spacing:6,runSpacing:6,children:[for(var offset=6;offset>=0;offset--) Semantics(label:'${dateOnly(c.now.subtract(Duration(days:offset)))}: ${checks.any((e)=>e['local_date']==dateOnly(c.now.subtract(Duration(days:offset)))&&e['completed']==1)?c.pack.t('complete'):c.pack.t('ux_pending')}',child:Icon(checks.any((e)=>e['local_date']==dateOnly(c.now.subtract(Duration(days:offset)))&&e['completed']==1)?Icons.check_circle:Icons.circle_outlined,color:Theme.of(context).colorScheme.primary))]),const SizedBox(height:8),Text(row['paused']==1?c.pack.t('status_paused'):'${c.pack.t('habit_streak')}: $streak'),
           CheckboxListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('check_today')),value:today?['completed']==1,onChanged:busy||row['paused']==1?null:(v)=>change(CheckHabit(const Uuid().v4(),today?['id'] as String? ?? const Uuid().v4(),today?['revision'] as int? ?? 0,habitId:id,localDate:date,timezone:spec==null||spec.timezone=='device'?c.deviceZone:spec.timezone,completed:v==true))),
           TextButton(onPressed:()=>open(OfflineTable.habitChecks,id),child:Text(c.pack.t('check_history')))]);
-      case OfflineTable.subjects:return TextButton(onPressed:()=>open(OfflineTable.studyItems,id),child:Text(c.pack.t('module_studyItems')));
-      case OfflineTable.checklists:return Wrap(spacing:8,children:[TextButton(onPressed:()=>open(OfflineTable.checklistItems,id),child:Text(c.pack.t('module_checklistItems'))),if(row['kind']=='chores')TextButton(onPressed:busy?null:()=>change(CopyChecklist(const Uuid().v4(),const Uuid().v4(),0,sourceId:id,sourceRevision:row['revision'] as int,name:'${row['name']} · ${c.pack.t('new_copy')}')),child:Text(c.pack.t('use_template')))]);
-      case OfflineTable.checklistItems:
-        final linked=c.records.where((r)=>r.id==row['task_id']).firstOrNull;
-        return CheckboxListTile(contentPadding:EdgeInsets.zero,title:Text(row['quantity'] as String),value:linked?.completed??row['completed']==1,onChanged:busy?null:(v)=>change(linked==null?SaveChecklistItem(const Uuid().v4(),id,row['revision'] as int,checklistId:row['checklist_id'] as String,name:row['name'] as String,quantity:row['quantity'] as String,completed:v==true,taskId:row['task_id'] as String?):CompleteTask(const Uuid().v4(),linked.id,v==true,expectedRevision:linked.revision)));
+      case OfflineTable.subjects:
+        final items=(c.offline[OfflineTable.studyItems]??[]).where((e)=>e['subject_id']==id).toList();
+        return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+          for(final item in items.take(3)) ListTile(contentPadding:EdgeInsets.zero,title:Text(item['name'] as String),subtitle:Text(storedSchedule(item)==null?c.pack.t('no_date'):MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(storedSchedule(item)!.localStart)))),
+          TextButton(onPressed:()=>open(OfflineTable.studyItems,id),child:Text(c.pack.t('module_studyItems')))]);
+      case OfflineTable.checklists:
+        final items=(c.offline[OfflineTable.checklistItems]??[]).where((e)=>e['checklist_id']==id).toList();
+        return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+          for(final item in items.take(5)) checklistItem(item),
+          TextButton.icon(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(resizeToAvoidBottomInset:false,body:SafeArea(child:PersonalModuleEditor(controller:c,table:OfflineTable.checklistItems,parentId:id))))),icon:const Icon(Icons.add),label:Text(c.pack.t('ux_add_item'))),
+          Wrap(spacing:8,children:[TextButton(onPressed:()=>open(OfflineTable.checklistItems,id),child:Text(c.pack.t('module_checklistItems'))),if(row['kind']=='chores')TextButton(onPressed:busy?null:()=>change(CopyChecklist(const Uuid().v4(),const Uuid().v4(),0,sourceId:id,sourceRevision:row['revision'] as int,name:'${row['name']} · ${c.pack.t('new_copy')}')),child:Text(c.pack.t('use_template')))])]);
+      case OfflineTable.checklistItems:return checklistItem(row);
       case OfflineTable.taskPlacements:
         final task=c.records.where((r)=>r.id==row['task_id']).firstOrNull;
         return task==null?Text(c.pack.t('record_missing')):ListTile(contentPadding:EdgeInsets.zero,title:Text(task.text),leading:Checkbox(value:task.completed,onChanged:busy?null:(v)=>change(CompleteTask(const Uuid().v4(),task.id,v==true,expectedRevision:task.revision))),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>RecordDetail(controller:c,id:task.id))));
@@ -78,17 +93,23 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
     final foreign=switch(widget.table){OfflineTable.milestones||OfflineTable.taskPlacements=>'project_id',OfflineTable.habitChecks=>'habit_id',OfflineTable.studyItems=>'subject_id',OfflineTable.checklistItems=>'checklist_id',_=>null};
     final rows=(c.offline[widget.table]??[]).where((r)=>(widget.parentId==null||(foreign==null?r['id']==widget.parentId:r[foreign]==widget.parentId))&&(widget.noteId==null||r['note_id']==widget.noteId)&&title(r).toLowerCase().contains(query.toLowerCase())).toList();
     return Scaffold(appBar:AppBar(title:Text(c.pack.t('module_${widget.table.name}'))),body:SafeArea(child:Column(children:[
-      Padding(padding:const EdgeInsets.all(16),child:TextField(decoration:InputDecoration(labelText:c.pack.t('search'),prefixIcon:const Icon(Icons.search)),onChanged:(v)=>setState((){query=v;shown=50;}))),
+      if(rows.length>8||query.isNotEmpty) Padding(padding:const EdgeInsets.all(16),child:TextField(decoration:InputDecoration(labelText:c.pack.t('search'),prefixIcon:const Icon(Icons.search)),onChanged:(v)=>setState((){query=v;shown=50;}))),
       if(widget.table==OfflineTable.taskPlacements) TextButton.icon(onPressed:()=>showEntryEditor(context,c,EntryKind.task),icon:const Icon(Icons.add),label:Text(c.pack.t('create_task'))),
-      Expanded(child:ListView.builder(padding:const EdgeInsets.all(16),itemCount:rows.isEmpty?1:(rows.length<shown?rows.length:shown)+(rows.length>shown?1:0),itemBuilder:(context,index) {
-        if(rows.isEmpty)return LifeCard(child:Text(c.pack.t('offline_empty')));
+      Expanded(child:ListView.builder(padding:const EdgeInsets.all(16),itemCount:rows.isEmpty?1:1+(rows.length<shown?rows.length:shown)+(rows.length>shown?1:0),itemBuilder:(context,index) {
+        if(rows.isEmpty){return LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+          Icon(moduleIcon,size:48,color:Theme.of(context).colorScheme.primary),const SizedBox(height:16),
+          Text(c.pack.t('module_${widget.table.name}'),style:Theme.of(context).textTheme.titleLarge),const SizedBox(height:8),
+          Text(c.pack.t(personalModules.contains(widget.table)?'ux_hint_${widget.table.name}':'offline_empty')),const SizedBox(height:20),
+          FilledButton.icon(key:const Key('module_create'),onPressed:busy?null:()=>edit(),icon:const Icon(Icons.add),label:Text(personalModules.contains(widget.table)||widget.table==OfflineTable.checklistItems?actionLabel:c.pack.t('add')))]));}
+        if(index==0)return Padding(padding:const EdgeInsets.only(bottom:16),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(moduleIcon,color:Theme.of(context).colorScheme.primary),const SizedBox(height:8),Text(c.pack.t(personalModules.contains(widget.table)?'ux_hint_${widget.table.name}':'module_${widget.table.name}')),const SizedBox(height:8),Text(c.pack.count('record_count',rows.length))])));
+        index--;
         if(index==shown)return TextButton(onPressed:()=>setState(()=>shown+=50),child:Text(c.pack.t('load_more')));
         final row=rows[index];return Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
           ListTile(contentPadding:EdgeInsets.zero,title:Text(title(row)),trailing:const Icon(Icons.edit_outlined),onTap:row['role']=='owner'?null:()=>edit(row)),details(row),
           if(![OfflineTable.profiles,OfflineTable.memberships,OfflineTable.habitChecks].contains(widget.table))TextButton.icon(onPressed:busy?null:() async {final yes=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:Text(c.pack.t('delete')),content:Text(c.pack.t('delete_confirm')),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(c.pack.t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(context,true),child:Text(c.pack.t('delete')))]));if(yes==true)await change(DeleteOffline(const Uuid().v4(),row['id'] as String,row['revision'] as int,widget.table));},icon:const Icon(Icons.delete_outline),label:Text(c.pack.t('delete'))),
         ])));
       })),
-    ])),floatingActionButton:FloatingActionButton(onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
+    ])),floatingActionButton:rows.isEmpty?null:FloatingActionButton(onPressed:busy?null:()=>edit(),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),elevation:2,tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
   });
 }
 class PersonalModuleEditor extends StatefulWidget {
@@ -152,7 +173,8 @@ class _PersonalModuleEditorState extends State<PersonalModuleEditor> {
     if(table==OfflineTable.profiles)...[Text(c.pack.t('profiles_local_only')),select('kind',kind,{'adult':c.pack.t('profile_adult'),'child':c.pack.t('profile_child')},(v)=>kind=v),if(kind=='child')select('guardian',guardian,{'':c.pack.t('unassigned'),for(final p in c.offline[OfflineTable.profiles]??[])if(p['kind']=='adult'&&p['archived']==0&&p['id']!=id)p['id'] as String:p['name'] as String},(v)=>guardian=v),SwitchListTile(title:Text(c.pack.t('archived')),value:archived,onChanged:(v)=>setState(()=>archived=v))],
     if(table==OfflineTable.memberships)...[Text(c.pack.t('membership_metadata')),select('local_profile',profile,choices(OfflineTable.profiles),(v)=>profile=v),select('role',role,{for(final r in ['viewer','contributor','manager'])r:c.pack.t('member_$r')},(v)=>role=v)],
     if(table==OfflineTable.projects)...[input(detail,'project_goal'),select('status',status,{for(final k in ['active','paused','done'])k:c.pack.t('status_$k')},(v)=>status=v),pick(true),select('module_budgets',budget,choices(OfflineTable.budgets),(v)=>budget=v)],
-    if([OfflineTable.milestones,OfflineTable.taskPlacements,OfflineTable.subjects,OfflineTable.checklists].contains(table))select('module_projects',project,choices(OfflineTable.projects),(v)=>project=v),
+    if([OfflineTable.milestones,OfflineTable.taskPlacements].contains(table))select('module_projects',project,choices(OfflineTable.projects),(v)=>project=v),
+    if([OfflineTable.subjects,OfflineTable.checklists].contains(table))ExpansionTile(title:Text(c.pack.t('details')),children:[select('module_projects',project,choices(OfflineTable.projects),(v)=>project=v),if(table==OfflineTable.checklists)select('note',note,records(EntryKind.note),(v)=>note=v)]),
     if(table==OfflineTable.milestones)pick(true),
     if(table==OfflineTable.taskPlacements)...[select('task',task,records(EntryKind.task),(v)=>task=v),select('parent_task',parent,{for(final e in records(EntryKind.task).entries)if(e.key!=task)e.key:e.value},(v)=>parent=v),select('priority',priority,{for(var i=0;i<=3;i++)i:c.pack.t('priority_$i')},(v)=>priority=v)],
     if(table==OfflineTable.habits)...[ScheduleEditor(controller:c,value:schedule,optional:false,onChanged:(v)=>setState(()=>schedule=v)),SwitchListTile(title:Text(c.pack.t('pause_habit')),value:paused,onChanged:(v)=>setState(()=>paused=v))],
@@ -160,7 +182,7 @@ class _PersonalModuleEditorState extends State<PersonalModuleEditor> {
     if(table==OfflineTable.habitChecks)pick(false),
     if([OfflineTable.studyItems,OfflineTable.checklistItems].contains(table))select('linked_task',task,records(EntryKind.task),(v){task=v;if(v.isNotEmpty)schedule=null;}),
     if(table==OfflineTable.studyItems&&task.isEmpty)ScheduleEditor(controller:c,value:schedule,optional:true,onChanged:(v)=>setState(()=>schedule=v)),
-    if(table==OfflineTable.checklists)...[select('kind',kind,{for(final k in ['note','shopping','chores'])k:c.pack.t('checklist_$k')},(v)=>kind=v),select('note',note,records(EntryKind.note),(v)=>note=v)],
+    if(table==OfflineTable.checklists)...[select('kind',kind,{for(final k in ['note','shopping','chores'])k:c.pack.t('checklist_$k')},(v)=>kind=v)],
     if(table==OfflineTable.checklistItems)input(detail,'quantity'),
     if(table==OfflineTable.noteMetadata)...[if(widget.noteId==null)select('note',note,records(EntryKind.note),(v)=>note=v),input(detail,'tags')],
     if(table==OfflineTable.recordLinks)...[if(widget.noteId==null)select('note',note,records(EntryKind.note),(v)=>note=v),select('link_type',targetType,{for(final k in ['task','note','project','goal'])k:c.pack.t(k=='project'?'module_projects':k=='goal'?'module_goals':k)},(v){targetType=v;target='';}),select('linked_record',target,targetType=='task'||targetType=='note'?records(targetType=='task'?EntryKind.task:EntryKind.note):choices(targetType=='project'?OfflineTable.projects:OfflineTable.goals),(v)=>target=v)],

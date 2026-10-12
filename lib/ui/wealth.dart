@@ -37,7 +37,7 @@ class _WealthPageState extends State<WealthPage> {
     final s=const WealthEngine().investment(row['id'] as String,c.offline[OfflineTable.investmentEntries]??[]);
     return '${c.pack.t('realized_gain')}: ${money(s.realizedMinor)}\n${c.pack.t('unrealized_gain')}: ${s.unrealizedMinor==null?c.pack.t('valuation_unknown'):money(s.unrealizedMinor!)}\n${c.pack.t('manual_estimate')}';
   }
-  Future<void> edit([Map<String,Object?>? row])=>showModalBottomSheet<void>(context:context,isScrollControlled:true,useSafeArea:true,isDismissible:false,enableDrag:false,builder:(_)=>WealthEditor(controller:c,table:table,row:row,parent:widget.parent));
+  Future<void> edit([Map<String,Object?>? row])=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(resizeToAvoidBottomInset:false,body:SafeArea(child:WealthEditor(controller:c,table:table,row:row,parent:widget.parent)))));
   @override Widget build(BuildContext context)=>ListenableBuilder(listenable:c,builder:(context,_) {
     final parentKey=switch(table){OfflineTable.goalEntries=>'goal_id',OfflineTable.debtEntries=>'debt_id',_=>'asset_id'};
     final rows=(c.offline[table]??[]).where((r)=>widget.parent==null||r[parentKey]==widget.parent!['id']).toList();
@@ -49,7 +49,7 @@ class _WealthPageState extends State<WealthPage> {
         if(parents.contains(table))TextButton(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>WealthPage(controller:c,parent:row,initial:children(table)))),child:Text(c.pack.t('movements'))),
         TextButton(onPressed:busy?null:()async{final yes=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:Text(c.pack.t('delete')),content:Text(c.pack.t('delete_confirm')),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(c.pack.t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(context,true),child:Text(c.pack.t('delete')))]));if(yes!=true||!mounted)return;setState(()=>busy=true);try{await c.execute(DeleteOffline(const Uuid().v4(),row['id'] as String,row['revision'] as int,table));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(c.pack.t(e is DomainFailure?e.key:'change_failed'))));}finally{if(mounted)setState(()=>busy=false);}},child:Text(c.pack.t('delete'))),
       ])));})),
-    ])),floatingActionButton:FloatingActionButton(onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
+    ])),floatingActionButton:FloatingActionButton(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),elevation:2,onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
   });
 }
 class WealthEditor extends StatefulWidget {

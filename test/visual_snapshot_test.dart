@@ -206,6 +206,7 @@ void main() {
         }
         if (screen == 'language') {
           await tester.tap(find.byKey(const Key('profile_button'))); await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const Key('settings_0'))); await tester.pumpAndSettle();
           await tester.tap(find.byType(LifeSelect<String>).first); await tester.pumpAndSettle();
         }
         if (screen == 'repeat') {

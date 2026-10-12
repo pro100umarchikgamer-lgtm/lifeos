@@ -55,7 +55,8 @@ void main(){
       }
       if(screen=='permissions'){
         Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(body:SafeArea(child:ListView(key:const Key('offline_test_settings'),children:[PersonalSettings(controller:c)])))));await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(find.text(c.pack.t('notification_details')).hitTestable(),200,scrollable:find.descendant(of:find.byKey(const Key('offline_test_settings')),matching:find.byType(Scrollable)).first);await tester.tap(find.text(c.pack.t('notification_details')).hitTestable());await tester.pumpAndSettle();expect(find.text(c.pack.t('permissions_diagnostics')),findsOneWidget);
+        await tester.tap(find.byKey(const Key('settings_1')));await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text(c.pack.t('notification_details')).hitTestable(),200,scrollable:find.descendant(of:find.byKey(const Key('settings_section_1')),matching:find.byType(Scrollable)).first);await tester.tap(find.text(c.pack.t('notification_details')).hitTestable());await tester.pumpAndSettle();expect(find.text(c.pack.t('permissions_diagnostics')),findsOneWidget);
       }
       if(screen=='repeat'){
         showModalBottomSheet<void>(context:context,useSafeArea:true,isScrollControlled:true,builder:(_)=>EventEditor(controller:c,date:DateTime(2026,10,11)));await tester.pumpAndSettle();

@@ -16,10 +16,22 @@ class LifeSelect<T> extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(button: true, enabled: onChanged != null,
     child: InkWell(borderRadius: BorderRadius.circular(20), onTap: onChanged == null ? null : () async {
       FocusScope.of(context).unfocus();
-      final selected = await showModalBottomSheet<T>(context: context, useSafeArea: true,
+      final T? selected;
+      if(choices.length<=8) {
+        final box=context.findRenderObject() as RenderBox;
+        final overlay=Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+        final origin=box.localToGlobal(Offset.zero,ancestor:overlay);
+        selected=await showMenu<T>(context:context,
+          position:RelativeRect.fromRect(origin&box.size,Offset.zero&overlay.size),
+          constraints:const BoxConstraints(minWidth:180,maxWidth:320,maxHeight:360),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),
+          items:[for(final entry in choices.entries)PopupMenuItem<T>(key:ValueKey('choice_${entry.key}'),value:entry.key,child:Text(entry.value))]);
+      } else {
+        selected = await showModalBottomSheet<T>(context: context, useSafeArea: true,
         isScrollControlled: true, showDragHandle: true,
         sheetAnimationStyle: MediaQuery.disableAnimationsOf(context) ? AnimationStyle.noAnimation : null,
         builder: (_) => _ChoiceSheet<T>(label: label, value: value, choices: choices, searchLabel: searchLabel));
+      }
       if (selected != null && context.mounted) onChanged?.call(selected);
     }, child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,mainAxisSize:MainAxisSize.min,children:[
       if(showLabel)...[Padding(padding:const EdgeInsets.only(left:4,bottom:6),child:Text(label,style:Theme.of(context).textTheme.bodyMedium)),],
