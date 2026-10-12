@@ -103,7 +103,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _add(EntryKind kind) async {
     final saved = await showEntryEditor(context, c, kind);
     if (saved == true) {
-      try { await c.refresh(); _message('saved'); } catch (_) { _message('read_failed'); }
+      try { await c.refresh(); } catch (_) { _message('read_failed'); }
     }
   }
 
@@ -547,7 +547,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     TextField(decoration:InputDecoration(labelText:c.pack.t('search_modules'),prefixIcon:const Icon(Icons.search)),onChanged:(v)=>setState(()=>_moduleQuery=v)),const SizedBox(height:12),
     if(c.pack.t('financial_foundation').toLowerCase().contains(_moduleQuery.toLowerCase()))LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('financial_foundation')),leading:const Icon(Icons.account_balance_wallet_outlined),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>FinanceFoundation(controller:c))))),
     const SizedBox(height:12),
-    for(final table in personalModules)if(c.pack.t('module_${table.name}').toLowerCase().contains(_moduleQuery.toLowerCase())) Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('module_${table.name}')),subtitle:Text(c.pack.t('offline_module_hint')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table)))))),
+    for(final table in personalModules)if(c.pack.t('module_${table.name}').toLowerCase().contains(_moduleQuery.toLowerCase())) Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('module_${table.name}')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table)))))),
     LifeCard(child:ListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('dashboard_customize')),leading:const Icon(Icons.dashboard_customize_outlined),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>DashboardEditor(controller:c))))),
     const SizedBox(height:12),
 

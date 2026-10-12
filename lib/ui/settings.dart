@@ -133,13 +133,6 @@ class _PersonalSettingsState extends State<PersonalSettings> {
   }
   @override
   Widget build(BuildContext context) => ListenableBuilder(listenable: c, builder: (context, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LifeCard(child:Column(children:[Text(c.pack.t('profiles_local_only')),for(final table in [OfflineTable.profiles,OfflineTable.memberships])ListTile(title:Text(c.pack.t('module_${table.name}')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table))))])),
-      const SizedBox(height:12),
-
-    LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(c.pack.t('local_profile'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8), Text(c.pack.t('local_privacy')),
-    ])), const SizedBox(height: 12),
     LifeCard(child: Column(children: [
       ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.palette_outlined),
         title: Text(c.pack.t('appearance')), subtitle: Text(c.pack.t('appearance_${c.appearance.palette}')),
@@ -169,9 +162,15 @@ class _PersonalSettingsState extends State<PersonalSettings> {
       }, icon: const Icon(Icons.notifications_outlined), label: Text(c.pack.t('test_notification'))),
     ])), const SizedBox(height: 12),
     LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(c.pack.t('data_privacy'), style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 8), Text(c.pack.t('backup_privacy')),
+      Text(c.pack.t('data_privacy'), style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 8), Text(c.pack.t('local_privacy')), const SizedBox(height: 8), Text(c.pack.t('backup_privacy')),
       const SizedBox(height: 12), FilledButton.icon(onPressed: busy || !c.native.supported || c.store is! PersonalStore ? null : backupGuide,
         icon: const Icon(Icons.lock_outline), label: Text(c.pack.t('backup_manage'))),
-    ])),
+    ])), const SizedBox(height: 12),
+    LifeCard(child: ExpansionTile(tilePadding: EdgeInsets.zero,
+      title: Text(c.pack.t('local_profile')),
+      children: [ListTile(title: Text(c.pack.t('module_profiles')),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push<void>(context, MaterialPageRoute(
+          builder: (_) => PersonalModulesPage(controller: c, table: OfflineTable.profiles))))])),
   ]));
 }
