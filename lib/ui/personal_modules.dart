@@ -95,14 +95,12 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
     return Scaffold(appBar:AppBar(title:Text(c.pack.t('module_${widget.table.name}'))),body:SafeArea(child:Column(children:[
       if(rows.length>8||query.isNotEmpty) Padding(padding:const EdgeInsets.all(16),child:TextField(decoration:InputDecoration(labelText:c.pack.t('search'),prefixIcon:const Icon(Icons.search)),onChanged:(v)=>setState((){query=v;shown=50;}))),
       if(widget.table==OfflineTable.taskPlacements) TextButton.icon(onPressed:()=>showEntryEditor(context,c,EntryKind.task),icon:const Icon(Icons.add),label:Text(c.pack.t('create_task'))),
-      Expanded(child:ListView.builder(padding:const EdgeInsets.all(16),itemCount:rows.isEmpty?1:1+(rows.length<shown?rows.length:shown)+(rows.length>shown?1:0),itemBuilder:(context,index) {
+      Expanded(child:ListView.builder(padding:EdgeInsets.fromLTRB(16,16,16,rows.isEmpty?16:104),itemCount:rows.isEmpty?1:(rows.length<shown?rows.length:shown)+(rows.length>shown?1:0),itemBuilder:(context,index) {
         if(rows.isEmpty){return LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
           Icon(moduleIcon,size:48,color:Theme.of(context).colorScheme.primary),const SizedBox(height:16),
           Text(c.pack.t('module_${widget.table.name}'),style:Theme.of(context).textTheme.titleLarge),const SizedBox(height:8),
           Text(c.pack.t(personalModules.contains(widget.table)?'ux_hint_${widget.table.name}':'offline_empty')),const SizedBox(height:20),
           FilledButton.icon(key:const Key('module_create'),onPressed:busy?null:()=>edit(),icon:const Icon(Icons.add),label:Text(personalModules.contains(widget.table)||widget.table==OfflineTable.checklistItems?actionLabel:c.pack.t('add')))]));}
-        if(index==0)return Padding(padding:const EdgeInsets.only(bottom:16),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(moduleIcon,color:Theme.of(context).colorScheme.primary),const SizedBox(height:8),Text(c.pack.t(personalModules.contains(widget.table)?'ux_hint_${widget.table.name}':'module_${widget.table.name}')),const SizedBox(height:8),Text(c.pack.count('record_count',rows.length))])));
-        index--;
         if(index==shown)return TextButton(onPressed:()=>setState(()=>shown+=50),child:Text(c.pack.t('load_more')));
         final row=rows[index];return Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
           ListTile(contentPadding:EdgeInsets.zero,title:Text(title(row)),trailing:const Icon(Icons.edit_outlined),onTap:row['role']=='owner'?null:()=>edit(row)),details(row),

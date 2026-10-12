@@ -173,10 +173,10 @@ class _PersonalSettingsState extends State<PersonalSettings> {
     if(widget.section!=null) return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[sections[widget.section!*2],if(widget.section==2)...[const SizedBox(height:12),sections.last]]);
     void open(int index,String title) {Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(appBar:AppBar(title:Text(c.pack.t(title))),body:SafeArea(child:ListView(key:Key('settings_section_$index'),padding:const EdgeInsets.all(16),children:[PersonalSettings(controller:c,section:index)])))));}
     return LifeCard(child:Column(children:[
-      ListTile(leading:const Icon(Icons.palette_outlined),title:Text(c.pack.t('appearance')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>AppearanceEditor(controller:c)))),
-      ListTile(key:const Key('settings_0'),leading:const Icon(Icons.language),title:Text(c.pack.t('language_region')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(0,'language_region')),
-      ListTile(key:const Key('settings_1'),leading:const Icon(Icons.notifications_outlined),title:Text(c.pack.t('notifications')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(1,'notifications')),
-      ListTile(key:const Key('settings_2'),leading:const Icon(Icons.lock_outline),title:Text(c.pack.t('data_privacy')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(2,'data_privacy')),
+      ListTile(contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.palette_outlined),title:Text(c.pack.t('appearance')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>AppearanceEditor(controller:c)))),
+      ListTile(key:const Key('settings_0'),contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.language),title:Text(c.pack.t('language_region')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(0,'language_region')),
+      ListTile(key:const Key('settings_1'),contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.notifications_outlined),title:Text(c.pack.t('notifications')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(1,'notifications')),
+      ListTile(key:const Key('settings_2'),contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.lock_outline),title:Text(c.pack.t('data_privacy')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(2,'data_privacy')),
     ]));
   });
 }

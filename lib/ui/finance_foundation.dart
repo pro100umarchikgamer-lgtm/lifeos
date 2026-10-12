@@ -57,10 +57,10 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
     final rows=c.offline[table]??[];
     return Scaffold(appBar:AppBar(title:Text(c.pack.t('financial_foundation'))),body:SafeArea(child:Column(children:[
       Padding(padding:const EdgeInsets.all(16),child:LifeSelect<int>(label:c.pack.t('finances'),value:group,choices:{0:c.pack.t('module_accounts'),1:c.pack.t('ux_operations'),2:c.pack.t('module_budgets'),3:c.pack.t('wealth')},onChanged:(v){if(v==3){Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>WealthPage(controller:c)));}else{setState((){group=v;table=groups[v].first;});}})),
-      if(groups[group].length>1) Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:LifeSelect<OfflineTable>(label:c.pack.t('ux_view'),value:table,choices:{for(final t in groups[group])t:c.pack.t('module_${t.name}')},onChanged:(v)=>setState(()=>table=v))),
-      Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:OutlinedButton.icon(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>WealthPage(controller:c))),icon:const Icon(Icons.savings_outlined),label:Text(c.pack.t('wealth')))),
+      if(group==0) Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:TextButton.icon(onPressed:()=>setState(()=>table=table==OfflineTable.accounts?OfflineTable.categories:OfflineTable.accounts),icon:const Icon(Icons.swap_horiz),label:Text(c.pack.t(table==OfflineTable.accounts?'module_categories':'module_accounts')))),
+      if(group==1) Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:LifeSelect<OfflineTable>(label:c.pack.t('ux_view'),value:table,choices:{for(final t in groups[group])t:c.pack.t('module_${t.name}')},onChanged:(v)=>setState(()=>table=v))),
       Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:OutlinedButton.icon(onPressed:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>StatementImportPage(controller:c))),icon:const Icon(Icons.file_open_outlined),label:Text(c.pack.t('import_file')))),
-      Expanded(child:ListView.builder(padding:const EdgeInsets.all(16),itemCount:rows.isEmpty?1:rows.length,itemBuilder:(context,index) {
+      Expanded(child:ListView.builder(padding:EdgeInsets.fromLTRB(16,16,16,rows.isEmpty?16:104),itemCount:rows.isEmpty?1:rows.length,itemBuilder:(context,index) {
         if(rows.isEmpty) { return LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(c.pack.t('module_${table.name}'),style:Theme.of(context).textTheme.titleLarge),const SizedBox(height:12),Text(c.pack.t('offline_empty')),const SizedBox(height:16),if(table!=OfflineTable.importBatches)FilledButton.icon(onPressed:busy?null:()=>edit(),icon:const Icon(Icons.add),label:Text(c.pack.t('add')))])); }
         final row=rows[index];
         return Padding(padding:const EdgeInsets.only(bottom:12),child:LifeCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
@@ -81,7 +81,7 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
           ]),
         ])));
       })),
-    ])),floatingActionButton:table==OfflineTable.importBatches?null:FloatingActionButton(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),elevation:2,onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
+    ])),floatingActionButton:rows.isEmpty||table==OfflineTable.importBatches?null:FloatingActionButton(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),elevation:2,onPressed:busy?null:()=>edit(),tooltip:c.pack.t('add'),child:const Icon(Icons.add)));
   });
 }
 

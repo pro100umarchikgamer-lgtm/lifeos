@@ -7,6 +7,7 @@ import 'package:lifeos/localization/language_pack.dart';
 import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/personal_modules.dart';
 import 'package:lifeos/ui/selection.dart';
+import 'package:lifeos/ui/finance_foundation.dart';
 import 'widget_test.dart' show UIStore;
 
 void main() {
@@ -53,6 +54,14 @@ void main() {
     expect(find.text('Домашние дела'),findsWidgets);
     await tester.tap(find.byKey(const Key('save')));await tester.pumpAndSettle();
     final action=store.actions.single as SaveChecklist;expect(action.id,'list-existing');expect(action.expectedRevision,3);expect(action.name,'Домашние дела');expect(action.kind,'chores');
+  });
+  testWidgets('empty finances has one create action and no floating obstruction', (tester) async {
+    final store=UIStore();final c=AppController(store,catalog,'ru');await c.load();
+    await tester.pumpWidget(MaterialApp(home:FinanceFoundation(controller:c)));await tester.pumpAndSettle();
+    expect(find.byType(FloatingActionButton),findsNothing);
+    final create=find.widgetWithText(FilledButton,c.pack.t('add'));
+    expect(create,findsOneWidget);await tester.ensureVisible(create);await tester.tap(create);await tester.pumpAndSettle();
+    expect(find.byType(FinanceEditor),findsOneWidget);expect(find.byType(BottomSheet),findsNothing);expect(store.actions,isEmpty);
   });
   testWidgets('profile offers human settings and no false family access controls', (tester) async {
     final store=UIStore();final c=AppController(store,catalog,'ru');await c.load();
