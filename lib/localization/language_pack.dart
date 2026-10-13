@@ -75,8 +75,9 @@ class PackCatalog {
     final packs = <String, LanguagePack>{};
     for (final path in paths) {
       final pack = LanguagePack.decode(await rootBundle.loadString(path));
-      if (packs.containsKey(pack.tag))
+      if (packs.containsKey(pack.tag)) {
         throw const FormatException('Duplicate locale');
+      }
       packs[pack.tag] = pack;
     }
     final base = packs['en'];
