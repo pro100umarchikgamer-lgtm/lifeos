@@ -44,12 +44,13 @@ class _FamilyPageState extends State<FamilyPage> {
     if (data['completed'] != null) {
       parts.add(t(data['completed'] == 1 ? 'complete' : 'family_task_undo'));
     }
-    if (data['items'] is List)
+    if (data['items'] is List) {
       for (final item in data['items'] as List) {
         parts.add(
           '${object(item)['completed'] == true ? '✓' : '○'} ${object(item)['name']}',
         );
       }
+    }
     return parts.join('\n');
   }
 
@@ -653,7 +654,10 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         text: '${dateOnly(DateTime.now())}T09:00:00',
       ),
       zone = TextEditingController(text: 'Europe/Moscow');
-  bool completed = false, saving = false, review = false;
+  bool completed = false, saving = false, review = false, allDay = false;
+  String repeat = 'none';
+  int interval = 1;
+  String? repeatUntil;
   final Map<String, bool> itemCompletion = {};
   Set<String> audience = {};
   String? error;
@@ -749,6 +753,10 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         final schedule = object(d['schedule']);
         start.text = schedule['localStart'] as String;
         zone.text = schedule['timezone'] as String;
+        allDay = schedule['allDay'] as bool;
+        repeat = schedule['repeat'] as String;
+        interval = schedule['interval'] as int;
+        repeatUntil = schedule['until'] as String?;
       }
     } else if (role == 'child') {
       if (!c.creatableKinds.contains(kind)) {
@@ -862,6 +870,10 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 : object(old['schedule'])),
             'localStart': start.text.trim(),
             'timezone': zone.text.trim(),
+            'allDay': allDay,
+            'repeat': repeat,
+            'interval': interval,
+            'until': repeat == 'none' ? null : repeatUntil,
           },
         };
       case 'shopping':
@@ -1024,6 +1036,37 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
     }
   }
 
+  Widget dateControl(
+    TextEditingController value,
+    String label, {
+    bool timestamp = false,
+  }) {
+    final current = DateTime.tryParse(value.text) ?? DateTime.now();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.calendar_today_outlined),
+        label: Text(
+          '${t(label)}: ${MaterialLocalizations.of(context).formatMediumDate(current)}',
+        ),
+        onPressed: () async {
+          final chosen = await showDatePicker(
+            context: context,
+            initialDate: current,
+            firstDate: DateTime(1900),
+            lastDate: DateTime(2200),
+          );
+          if (chosen != null && mounted)
+            setState(
+              () => value.text = timestamp
+                  ? '${dateOnly(chosen)}T${current.hour.toString().padLeft(2, '0')}:${current.minute.toString().padLeft(2, '0')}:00'
+                  : dateOnly(chosen),
+            );
+        },
+      ),
+    );
+  }
+
   Widget field(
     TextEditingController controller,
     String label, {
@@ -1071,7 +1114,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
               select('family_record_type', kind, choices, (v) => kind = v),
             if (!completionOnly) ...[
               if (kind != 'transfer')
-                field(title, 'family_name', lines: kind == 'note' ? 5 : 1),
+                field(
+                  title,
+                  ['transaction', 'request'].contains(kind)
+                      ? 'label_optional'
+                      : 'family_name',
+                  lines: kind == 'note' ? 5 : 1,
+                ),
               if ([
                 'account',
                 'transaction',
@@ -1082,7 +1131,10 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 field(amount, 'amount'),
               ],
               if (['transaction', 'budget', 'transfer'].contains(kind))
-                field(date, kind == 'budget' ? 'family_start' : 'family_date'),
+                dateControl(
+                  date,
+                  kind == 'budget' ? 'family_start' : 'family_date',
+                ),
               if (kind == 'transaction') ...[
                 if (role != 'child')
                   select('family_record_type', flow, {
@@ -1111,14 +1163,75 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                   for (final p in ['week', 'month', 'year', 'custom'])
                     p: t('family_$p'),
                 }, (v) => period = v),
-                if (period == 'custom') field(end, 'family_end'),
+                if (period == 'custom') dateControl(end, 'family_end'),
                 select('family_rollover', rollover, {
                   for (final p in ['none', 'positive', 'negative', 'both'])
                     p: t('family_roll_$p'),
                 }, (v) => rollover = v),
               ],
               if (kind == 'event') ...[
-                field(start, 'family_event_start'),
+                dateControl(start, 'family_date', timestamp: true),
+                if (!allDay)
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.schedule),
+                    label: Text(
+                      MaterialLocalizations.of(context).formatTimeOfDay(
+                        TimeOfDay.fromDateTime(DateTime.parse(start.text)),
+                      ),
+                    ),
+                    onPressed: () async {
+                      final before = DateTime.parse(start.text);
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(before),
+                      );
+                      if (time != null && mounted)
+                        setState(
+                          () => start.text =
+                              '${dateOnly(before)}T${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00',
+                        );
+                    },
+                  ),
+                SwitchListTile(
+                  title: Text(t('all_day')),
+                  value: allDay,
+                  onChanged: (v) => setState(() => allDay = v),
+                ),
+                select('repeat', repeat, {
+                  for (final r in [
+                    'none',
+                    'daily',
+                    'weekly',
+                    'monthly',
+                    'yearly',
+                  ])
+                    r: t('repeat_$r'),
+                }, (v) => repeat = v),
+                if (repeat != 'none') ...[
+                  select('repeat_interval', '$interval', {
+                    for (final i in {1, 2, 3, 4, 6, 12, interval}) '$i': '$i',
+                  }, (v) => interval = int.parse(v)),
+                  OutlinedButton(
+                    onPressed: () async {
+                      final chosen = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.parse(repeatUntil ?? start.text),
+                        firstDate: DateTime.parse(start.text),
+                        lastDate: DateTime(2200),
+                      );
+                      if (chosen != null && mounted)
+                        setState(() => repeatUntil = dateOnly(chosen));
+                    },
+                    child: Text(
+                      '${t('repeat_until')}: ${repeatUntil ?? t('no_limit')}',
+                    ),
+                  ),
+                  if (repeatUntil != null)
+                    TextButton(
+                      onPressed: () => setState(() => repeatUntil = null),
+                      child: Text(t('no_limit')),
+                    ),
+                ],
                 field(zone, 'family_timezone'),
               ],
               if (kind == 'shopping') field(items, 'family_items', lines: 8),

@@ -107,8 +107,9 @@ class _StatementImportPageState extends State<StatementImportPage> {
         format = detection.mapping.dateFormat;
         decimal = detection.mapping.decimal;
         await review();
-      } else if (mounted)
+      } else if (mounted) {
         setState(() => step = 1);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => error = e is DomainFailure ? e.key : 'import_format');

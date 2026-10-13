@@ -1120,10 +1120,11 @@ class LocalStore implements OfflineStore {
         });
       }
     }
-    if (version < 4)
+    if (version < 4) {
       for (final raw in tables['transactions'] as List) {
         (raw as Map)['category_id'] = null;
       }
+    }
     if (version < 8) {
       final identity = (tables['local_identity'] as List).single as Map;
       final meta = {

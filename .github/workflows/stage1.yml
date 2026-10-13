@@ -71,7 +71,7 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/ux_recovery_visual_test.dart
+      - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: python3 tool/verify_goldens.py
         if: steps.validation.outputs.full == 'true'
