@@ -4,6 +4,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      focused:
+        description: Run focused Flutter checks without full CI or APK
+        type: boolean
+        default: false
       build_apk:
         description: 'Build the final optimized test APK after all validation succeeds'
         type: boolean
@@ -19,7 +23,11 @@ permissions:
   contents: read
   actions: read
 jobs:
+  focused:
+    if: inputs.focused == true
+    uses: ./.github/workflows/family-focused.yml
   checks:
+    if: inputs.focused != true
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
