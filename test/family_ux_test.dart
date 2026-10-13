@@ -62,10 +62,19 @@ void main() {
       );
       expect(find.text(pack.t('ux3_cloud_unavailable')), findsOneWidget);
       final create = find.widgetWithText(ChoiceChip, pack.t('family_register'));
-      await tester.ensureVisible(create);
+      await tester.scrollUntilVisible(
+        create,
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(create);
       await tester.pumpAndSettle();
       expect(find.text(pack.t('repeat_password')), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byType(FilledButton),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(
         tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
         isNull,

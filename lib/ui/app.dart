@@ -1720,10 +1720,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   List<Widget> _profile() => [
-    LifeHero(
-      icon: Icons.person_outline,
-      title: c.pack.t('profile'),
-      body: c.pack.t('ux3_profile_body'),
+    _pageTitle('profile'),
+    const SizedBox(height: 6),
+    Text(
+      c.pack.t('ux3_profile_body'),
+      style: Theme.of(context).textTheme.bodyMedium
+          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
     ),
     const SizedBox(height: 14),
     if (c.family != null) ...[

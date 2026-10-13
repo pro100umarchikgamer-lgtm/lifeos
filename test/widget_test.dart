@@ -179,6 +179,7 @@ void main() {
       data:MediaQuery.of(context).copyWith(textScaler:const TextScaler.linear(1.5)),child:child!)));
     await tester.pumpAndSettle(); expect(tester.takeException(),isNull);
     await tester.tap(find.byKey(const Key('profile_button'))); await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const Key('settings_0')), 160, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.byKey(const Key('settings_0'))); await tester.pumpAndSettle(); expect(find.text(c.pack.t('language')),findsOneWidget); expect(tester.takeException(),isNull);
   });
 

@@ -379,6 +379,34 @@ class _FamilyPageState extends State<FamilyPage> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => Navigator.maybePop(context),
+                icon: const Icon(Icons.phone_android),
+                label: Text(t('ux3_continue_local')),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: Text(t('family_login')),
+                      selected: !register,
+                      onSelected: c.busy
+                          ? null
+                          : (_) => setState(() => register = false),
+                    ),
+                    ChoiceChip(
+                      label: Text(t('family_register')),
+                      selected: register,
+                      onSelected: c.busy
+                          ? null
+                          : (_) => setState(() => register = true),
+                    ),
+                  ],
+                ),
+              ),
               Text(t('family_email')),
               const SizedBox(height: 6),
               TextField(
@@ -466,29 +494,6 @@ class _FamilyPageState extends State<FamilyPage> {
                   ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: Text(t('family_login')),
-                      selected: !register,
-                      onSelected: c.busy
-                          ? null
-                          : (_) => setState(() => register = false),
-                    ),
-                    ChoiceChip(
-                      label: Text(t('family_register')),
-                      selected: register,
-                      onSelected: c.busy
-                          ? null
-                          : (_) => setState(() => register = true),
-                    ),
-                  ],
-                ),
-              ),
               FilledButton(
                 onPressed: c.busy || c.accountOrigin.isEmpty
                     ? null
@@ -508,11 +513,6 @@ class _FamilyPageState extends State<FamilyPage> {
                         passwordAgain.clear();
                       },
                 child: Text(t(register ? 'family_register' : 'family_login')),
-              ),
-              TextButton.icon(
-                onPressed: () => Navigator.maybePop(context),
-                icon: const Icon(Icons.phone_android),
-                label: Text(t('ux3_continue_local')),
               ),
             ] else ...[
               Text(
