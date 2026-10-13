@@ -10,3 +10,9 @@ ios/.symlinks/
 *.keystore
 __pycache__/
 *.pyc
+
+# Isolated backend identity/session/database data; never include in delivery.
+backend/.dev/
+*.db
+*.db-wal
+*.db-shm
