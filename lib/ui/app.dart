@@ -237,8 +237,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                         ? null
                         : () async {
                             await f.select(space['id'] as String);
-                            if (f.workspace == space['id'])
+                            if (f.workspace == space['id']) {
                               await c.preference('active_scope', 'family');
+                            }
                             if (ctx.mounted) Navigator.pop(ctx);
                           },
                   ),
@@ -639,8 +640,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           OfflineTable.checklists,
           OfflineTable.goals,
           OfflineTable.accounts,
-        ].every((t) => (c.offline[t] ?? []).isEmpty))
+        ].every((t) => (c.offline[t] ?? []).isEmpty)) {
       return _emptyHome();
+    }
     final config = [for (final key in dashboardWidgets) dashboardChoice(c, key)]
       ..sort((a, b) {
         final order = (a['position'] as int).compareTo(b['position'] as int);
@@ -654,7 +656,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         notes = c.records.where((r) => r.kind == EntryKind.note);
     Widget card(Map<String, Object?> row) {
       final expanded = row['expanded'] == 1, key = row['widget'] as String;
-      if (key == 'financial')
+      if (key == 'financial') {
         return expanded
             ? _financeSummary()
             : LifeCard(
@@ -671,10 +673,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   ],
                 ),
               );
-      if (key == 'tasks')
+      }
+      if (key == 'tasks') {
         return _tasksCard(tasks.take(expanded ? 3 : 1).toList());
-      if (key == 'notes')
+      }
+      if (key == 'notes') {
         return _notesCard(notes.take(expanded ? 2 : 1).toList());
+      }
       final table = switch (key) {
         'projects' => OfflineTable.projects,
         'habits' => OfflineTable.habits,
@@ -813,10 +818,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           )
           .inDays;
       final bucket = offset * days ~/ duration;
-      if (r.kind == EntryKind.income)
+      if (r.kind == EntryKind.income) {
         dailyIncome[bucket] += BigInt.from(r.amountMinor!);
-      if (r.kind == EntryKind.expense)
+      }
+      if (r.kind == EntryKind.expense) {
         dailyExpense[bucket] += BigInt.from(r.amountMinor!);
+      }
     }
     final wholeMonth =
         _period.start.day == 1 &&
@@ -839,8 +846,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     c,
                     _period,
                   );
-                  if (selected != null && mounted)
+                  if (selected != null && mounted) {
                     setState(() => _period = selected);
+                  }
                 },
                 child: _chip(
                   wholeMonth
@@ -1089,7 +1097,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   MediaQuery.textScalerOf(context).scale(1) <= 1.2
               ? 4
               : 2;
-          const kinds = EntryKind.values;
+          final kinds = EntryKind.values
+              .where(
+                (kind) =>
+                    !familyMode ||
+                    c.family!.roster?['space']?['role'] != 'child' ||
+                    kind != EntryKind.income &&
+                        c.family!.creatableKinds.contains(
+                          kind == EntryKind.expense ? 'transaction' : kind.name,
+                        ),
+              )
+              .toList();
           return Column(
             children: [
               for (var start = 0; start < kinds.length; start += columns) ...[

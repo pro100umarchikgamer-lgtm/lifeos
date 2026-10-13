@@ -35,8 +35,9 @@ extension EncryptedSyncStore on LocalStore {
       whereArgs: [scope, id],
     );
     if (prior.isNotEmpty) {
-      if (prior.single['payload'] != payload)
+      if (prior.single['payload'] != payload) {
         throw const SyncFailure('operation_conflict');
+      }
       return;
     }
     await tx.insert('sync_outbox', {
@@ -125,17 +126,19 @@ extension EncryptedSyncStore on LocalStore {
           where: 'scope=? AND workspace_id=?',
           whereArgs: [scope, workspace],
         )) {
-          if (!visible.contains(row['id']))
+          if (!visible.contains(row['id'])) {
             await tx.delete(
               'sync_records',
               where: 'scope=? AND workspace_id=? AND id=?',
               whereArgs: [scope, workspace, row['id']],
             );
+          }
         }
         for (final raw in page['records'] as List) {
           final record = object(raw);
-          if (record['workspace_id'] != workspace)
+          if (record['workspace_id'] != workspace) {
             throw const SyncFailure('invalid_sync_response');
+          }
           if (record['deleted'] == 0 && visible.contains(record['id'])) {
             await tx.insert('sync_records', {
               'scope': scope,
@@ -163,8 +166,9 @@ extension EncryptedSyncStore on LocalStore {
       whereArgs: [scope, workspace, operationId, 'pending'],
     );
     if (rows.length != 1) throw const SyncFailure('record_missing');
-    if (replacement != null)
+    if (replacement != null) {
       await _enqueueSync(tx, scope, workspace, replacement);
+    }
     await tx.delete(
       'sync_outbox',
       where: 'seq=?',

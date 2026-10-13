@@ -1,3 +1,6 @@
+// Standalone Dart protocol runner also works before Flutter dependency resolution.
+// ignore_for_file: avoid_relative_lib_imports
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -165,7 +168,7 @@ Future<void> main() async {
       (await store2.issues(s2, w)).isNotEmpty,
       'Revoked work retained for recovery',
     );
-    print(
+    stdout.writeln(
       'PASS: real two-client Dart HTTP sync, lost reply replay, conflict resolution, privacy, malformed reply, revocation',
     );
   } finally {

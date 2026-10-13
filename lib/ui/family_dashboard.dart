@@ -37,25 +37,31 @@ class FamilyDashboard extends StatelessWidget {
           ),
         );
         String detail(Json r) {
-          if (r['kind'] == 'account')
+          if (r['kind'] == 'account') {
             return formatMoney(
               Currency.fromCode(r['data']['currency'] as String),
               const FamilyFinance().accountBalance(r, rows),
               locale: c.region,
             );
-          if (r['kind'] == 'budget')
+          }
+          if (r['kind'] == 'budget') {
             return '${t('remaining')}: ${formatMoney(Currency.fromCode(r['data']['currency'] as String), const FamilyFinance().budgetRemaining(r, rows, c.now), locale: c.region)}';
-          if (r['kind'] == 'transaction' || r['kind'] == 'request')
+          }
+          if (r['kind'] == 'transaction' || r['kind'] == 'request') {
             return Currency.fromCode(r['data']['currency'] as String)
                 .format(r['data']['amount_minor'] as int);
-          if (r['kind'] == 'task')
+          }
+          if (r['kind'] == 'task') {
             return t(
               r['data']['completed'] == 1 ? 'completed' : 'family_task_undo',
             );
-          if (r['kind'] == 'shopping')
+          }
+          if (r['kind'] == 'shopping') {
             return '${(r['data']['items'] as List).where((i) => object(i)['completed'] == true).length}/${(r['data']['items'] as List).length}';
-          if (r['kind'] == 'event')
+          }
+          if (r['kind'] == 'event') {
             return r['data']['schedule']['localStart'] as String;
+          }
           return t('family_kind_${r['kind']}');
         }
 
@@ -102,7 +108,7 @@ class FamilyDashboard extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 12),
-            if (f.roster != null)
+            if (f.creatableKinds.isNotEmpty)
               FilledButton.icon(
                 onPressed: f.busy ? null : () => open(),
                 icon: const Icon(Icons.add),

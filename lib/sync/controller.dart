@@ -29,6 +29,33 @@ class FamilyController extends ChangeNotifier {
   int _generation = 0;
   String get scope => '${api!.base.origin}|${account!['user_id']}';
   bool get verified => account?['verified'] == true;
+  Set<String> get creatableKinds {
+    if (roster == null) return {};
+    if (roster!['space']['role'] != 'child') {
+      return {
+        'note',
+        'task',
+        'account',
+        'transaction',
+        'transfer',
+        'budget',
+        'event',
+        'shopping',
+        'request',
+      };
+    }
+    final profile = (roster!['profiles'] as List)
+        .map(object)
+        .where((p) => p['id'] == roster!['space']['profile_id'])
+        .firstOrNull;
+    final permissions = (profile?['permissions'] as List? ?? []).toSet();
+    return {
+      if (permissions.contains('record_spending')) 'transaction',
+      if (permissions.contains('create_tasks')) 'task',
+      if (permissions.contains('request_money')) 'request',
+    };
+  }
+
   bool get parent => ['parent', 'owner'].contains(roster?['space']?['role']);
   void publish() {
     if (!_disposed) notifyListeners();
@@ -42,8 +69,9 @@ class FamilyController extends ChangeNotifier {
       api!.token = await secure.read(key: 'lifeos.sync.token');
       // Identity is stored with the token; data never becomes another account's cache.
       final user = await secure.read(key: 'lifeos.sync.user');
-      if (user != null && api!.token != null)
+      if (user != null && api!.token != null) {
         account = {'user_id': user, 'verified': false};
+      }
       if (account != null) {
         account = await store.metadata(scope, 'account') ?? account;
         spaces =
@@ -174,8 +202,9 @@ class FamilyController extends ChangeNotifier {
   Future<void> _refresh() async {
     if (api == null || account == null) return;
     final me = await api!.request('/v1/me');
-    if (me['user_id'] != account!['user_id'])
+    if (me['user_id'] != account!['user_id']) {
       throw const SyncFailure('identity_mismatch');
+    }
     account = me;
     await store.saveMetadata(scope, 'account', me);
     if (!verified) return;
@@ -210,8 +239,9 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> select(String id) => run(() async {
-    if (!spaces.any((s) => s['id'] == id))
+    if (!spaces.any((s) => s['id'] == id)) {
       throw const SyncFailure('workspace_forbidden');
+    }
     workspace = id;
     _engine = null;
     roster = await store.metadata(scope, 'roster:$id');
@@ -254,14 +284,16 @@ class FamilyController extends ChangeNotifier {
     await _refresh();
   });
   Future<void> enqueue(Json operation) => run(() async {
-    if (workspace == null || !verified || roster == null)
+    if (workspace == null || !verified || roster == null) {
       throw const SyncFailure('verify_email');
+    }
     // A second local edit of the same record requires the first acknowledgement.
     if ([
       ...pending,
       ...issues.map((i) => object(i['operation'])),
-    ].any((p) => p['record_id'] == operation['record_id']))
+    ].any((p) => p['record_id'] == operation['record_id'])) {
       throw const SyncFailure('record_pending');
+    }
     await store.enqueue(scope, workspace!, operation);
     await reloadLocal();
     await _refresh();
@@ -270,8 +302,9 @@ class FamilyController extends ChangeNotifier {
     final op = object(issue['operation']), result = object(issue['result']);
     Json? replacement;
     if (keepLocal) {
-      if (result['status'] != 'conflict' || result['server'] == null)
+      if (result['status'] != 'conflict' || result['server'] == null) {
         throw const SyncFailure('record_forbidden');
+      }
       replacement = {
         ...op,
         'id': uuid.v4(),

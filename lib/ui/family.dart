@@ -31,21 +31,25 @@ class _FamilyPageState extends State<FamilyPage> {
           .toString(),
     ];
     if (data['currency'] is String) {
-      for (final field in ['amount_minor', 'opening_minor', 'limit_minor'])
-        if (data[field] is int)
+      for (final field in ['amount_minor', 'opening_minor', 'limit_minor']) {
+        if (data[field] is int) {
           parts.add(
             Currency.fromCode(data['currency'] as String)
                 .format(data[field] as int),
           );
+        }
+      }
     }
     if (data['date'] != null) parts.add(data['date'].toString());
-    if (data['completed'] != null)
+    if (data['completed'] != null) {
       parts.add(t(data['completed'] == 1 ? 'complete' : 'family_task_undo'));
+    }
     if (data['items'] is List)
-      for (final item in data['items'] as List)
+      for (final item in data['items'] as List) {
         parts.add(
           '${object(item)['completed'] == true ? '✓' : '○'} ${object(item)['name']}',
         );
+      }
     return parts.join('\n');
   }
 
@@ -147,7 +151,7 @@ class _FamilyPageState extends State<FamilyPage> {
         'profile_id': profile,
       });
     });
-    if (result != null && mounted)
+    if (result != null && mounted) {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -163,6 +167,7 @@ class _FamilyPageState extends State<FamilyPage> {
           ],
         ),
       );
+    }
   }
 
   Future<void> child([Json? profile]) async {
@@ -223,13 +228,14 @@ class _FamilyPageState extends State<FamilyPage> {
         ),
       ),
     );
-    if (save == true)
+    if (save == true) {
       await command('child.save', {
         'profile_id': profile?['id'] ?? FamilyController.uuid.v4(),
         'name': name.text.trim(),
         'permissions': permissions.toList(),
         'revision': profile?['revision'] ?? 0,
       });
+    }
     Future<void>.delayed(const Duration(seconds: 1), name.dispose);
   }
 
@@ -392,12 +398,13 @@ class _FamilyPageState extends State<FamilyPage> {
                 button('family_sync', () => c.refresh(), icon: Icons.sync),
                 button('family_create', () async {
                   final name = await ask(t('family_name'));
-                  if (name != null)
+                  if (name != null) {
                     await command('workspace.create', {
                       'name': name,
                       'kind': 'family',
                       'workspace_id': FamilyController.uuid.v4(),
                     });
+                  }
                 }),
                 button('family_accept', () async {
                   final value = await ask(t('family_invitation'));
@@ -733,17 +740,21 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
           itemCompletion[value['id'] as String] = value['completed'] as bool;
         }
       }
-      if (kind == 'shopping')
+      if (kind == 'shopping') {
         items.text = (d['items'] as List)
             .map((i) => object(i)['name'])
             .join('\n');
+      }
       if (kind == 'event') {
         final schedule = object(d['schedule']);
         start.text = schedule['localStart'] as String;
         zone.text = schedule['timezone'] as String;
       }
     } else if (role == 'child') {
-      kind = 'transaction';
+      if (!c.creatableKinds.contains(kind)) {
+        kind = c.creatableKinds.firstOrNull ?? 'transaction';
+      }
+      flow = 'expense';
       visibility = 'shared';
       audience = {c.roster!['space']['profile_id'] as String};
     }
@@ -774,11 +785,14 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         : object(widget.record!['data']);
     if (completionOnly) return {...old, 'completed': completed ? 1 : 0};
     final code = currency.text.trim().toUpperCase();
-    if (title.text.trim().isEmpty && kind != 'transfer')
+    if (title.text.trim().isEmpty &&
+        !['transaction', 'transfer', 'request'].contains(kind)) {
       throw const FormatException();
+    }
     if (['transaction', 'transfer', 'budget'].contains(kind)) {
-      if (dateOnly(DateTime.parse(date.text)) != date.text)
+      if (dateOnly(DateTime.parse(date.text)) != date.text) {
         throw const FormatException();
+      }
     }
     switch (kind) {
       case 'note':
@@ -915,8 +929,9 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         'audience': audience.toList(),
         'data': data(),
       });
-      if (mounted && (c.error == null || c.error == 'offline'))
+      if (mounted && (c.error == null || c.error == 'offline')) {
         Navigator.pop(context);
+      }
     } catch (_) {
       if (mounted) setState(() => error = 'invalid_input');
     } finally {
@@ -933,8 +948,9 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       'revision': r['revision'],
       ...extra,
     });
-    if (mounted && (c.error == null || c.error == 'offline'))
+    if (mounted && (c.error == null || c.error == 'offline')) {
       Navigator.pop(context);
+    }
   }
 
   Future<void> delete() async {
@@ -977,12 +993,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (target != null)
+    if (target != null) {
       await action('record.grant', {
         'user_id': target,
         'can_edit': false,
         'revoke': revoke,
       });
+    }
   }
 
   Future<void> fulfill() async {
@@ -1002,8 +1019,9 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (target != null)
+    if (target != null) {
       await action('request.fulfill', {'movement_id': target});
+    }
   }
 
   Widget field(
@@ -1015,6 +1033,9 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
     child: TextField(
       controller: controller,
       maxLines: lines,
+      keyboardType: ['amount', 'family_received'].contains(label)
+          ? const TextInputType.numberWithOptions(decimal: true, signed: true)
+          : TextInputType.text,
       decoration: InputDecoration(labelText: t(label)),
     ),
   );
@@ -1034,22 +1055,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   );
   @override
   Widget build(BuildContext context) {
-    final choices = {
-      for (final k
-          in role == 'child'
-              ? ['transaction', 'task', 'request']
-              : [
-                  'note',
-                  'task',
-                  'account',
-                  'transaction',
-                  'transfer',
-                  'budget',
-                  'event',
-                  'shopping',
-                ])
-        k: t('family_kind_$k'),
-    };
+    final choices = {for (final k in c.creatableKinds) k: t('family_kind_$k')};
     final accountChoices = {
       '': t('family_none'),
       for (final r in accounts)
@@ -1061,7 +1067,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            if (widget.record == null)
+            if (widget.record == null && choices.isNotEmpty)
               select('family_record_type', kind, choices, (v) => kind = v),
             if (!completionOnly) ...[
               if (kind != 'transfer')
@@ -1085,12 +1091,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                   }, (v) => flow = v),
                 select('family_account_select', account, accountChoices, (v) {
                   account = v;
-                  if (v.isNotEmpty)
+                  if (v.isNotEmpty) {
                     currency.text =
                         accounts.singleWhere(
                               (r) => r['id'] == v,
                             )['data']['currency']
                             as String;
+                  }
                 }),
               ],
               if (kind == 'transfer') ...[
@@ -1213,7 +1220,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
             if (c.error != null) Text(t('family_error_${c.error}')),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: saving || c.busy || !canEdit ? null : save,
+              onPressed:
+                  saving ||
+                      c.busy ||
+                      !canEdit ||
+                      widget.record == null && choices.isEmpty
+                  ? null
+                  : save,
               child: Text(t('save')),
             ),
             if (widget.record != null) ...[

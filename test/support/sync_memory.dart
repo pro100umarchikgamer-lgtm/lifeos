@@ -1,3 +1,6 @@
+// Standalone Dart protocol runner also works before Flutter dependency resolution.
+// ignore_for_file: avoid_relative_lib_imports
+
 import '../../lib/sync/contracts.dart';
 
 // A deterministic stand-in for the SQLCipher adapter, used only by protocol tests.
@@ -74,12 +77,13 @@ class MemorySyncStore implements SyncStore {
     );
     for (final raw in page['records'] as List) {
       final r = object(raw);
-      if (r['deleted'] == 0 && visible.contains(r['id']))
+      if (r['deleted'] == 0 && visible.contains(r['id'])) {
         mirror['${key(s, w)}|${r['id']}'] = {
           'scope': s,
           'workspace': w,
           'record': clone(r),
         };
+      }
     }
     cursors[key(s, w)] = page['cursor'] as int;
   }

@@ -110,8 +110,9 @@ class _StatementImportPageState extends State<StatementImportPage> {
       } else if (mounted)
         setState(() => step = 1);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = e is DomainFailure ? e.key : 'import_format');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -162,11 +163,12 @@ class _StatementImportPageState extends State<StatementImportPage> {
         errors.add(c.pack.t(e is DomainFailure ? e.key : 'import_format'));
       }
     }
-    if (mounted)
+    if (mounted) {
       setState(() {
         busy = false;
         step = 2;
       });
+    }
   }
 
   Future<void> confirm() async {
@@ -202,8 +204,9 @@ class _StatementImportPageState extends State<StatementImportPage> {
       preview.clear();
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = e is DomainFailure ? e.key : 'save_failed');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }

@@ -45,15 +45,17 @@ class SyncEngine {
         if (response['cursor'] is! int ||
             response['cursor'] < cursor ||
             response['more'] is! bool ||
-            response['more'] == true && response['cursor'] == cursor)
+            response['more'] == true && response['cursor'] == cursor) {
           throw const SyncFailure('invalid_sync_response');
+        }
         await store.receive(scope, workspace, response);
         if (response['more'] != true) break;
       }
     } on SyncFailure catch (error) {
       if (error.code == 'workspace_forbidden' ||
-          error.code == 'profile_forbidden')
+          error.code == 'profile_forbidden') {
         await store.forgetAccess(scope, workspace);
+      }
       rethrow;
     }
   }
