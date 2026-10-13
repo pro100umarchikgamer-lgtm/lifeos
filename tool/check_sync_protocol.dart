@@ -1,12 +1,9 @@
-// Standalone Dart protocol runner also works before Flutter dependency resolution.
-// ignore_for_file: avoid_relative_lib_imports
-
 import 'dart:convert';
 import 'dart:io';
 
-import '../lib/sync/api.dart';
-import '../lib/sync/contracts.dart';
-import '../lib/sync/engine.dart';
+import 'package:lifeos/sync/api.dart';
+import 'package:lifeos/sync/contracts.dart';
+import 'package:lifeos/sync/engine.dart';
 import '../test/support/sync_memory.dart';
 
 void check(bool condition, String description) {

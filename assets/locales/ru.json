@@ -616,7 +616,9 @@
     "family_recovery": "Забыли пароль?",
     "family_recovery_hint": "Запросите код. Затем введите код и новый пароль в поле выше. После сброса войдите снова.",
     "family_recovery_send": "Запросить код восстановления",
-    "family_recovery_reset": "Установить новый пароль"
+    "family_recovery_reset": "Установить новый пароль",
+    "family_grant_read": "Только просмотр",
+    "family_grant_edit": "Просмотр и изменение"
   },
   "plurals": {
     "record_count": {

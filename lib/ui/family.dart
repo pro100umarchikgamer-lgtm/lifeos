@@ -57,8 +57,10 @@ class _FamilyPageState extends State<FamilyPage> {
   final endpoint = TextEditingController(),
       email = TextEditingController(),
       password = TextEditingController(),
+      passwordAgain = TextEditingController(),
       code = TextEditingController();
   bool register = false;
+  String? formError;
   @override
   void initState() {
     super.initState();
@@ -67,7 +69,7 @@ class _FamilyPageState extends State<FamilyPage> {
 
   @override
   void dispose() {
-    for (final field in [endpoint, email, password, code]) {
+    for (final field in [endpoint, email, password, passwordAgain, code]) {
       field.dispose();
     }
     super.dispose();
@@ -308,12 +310,14 @@ class _FamilyPageState extends State<FamilyPage> {
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(labelText: t('family_endpoint')),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: email,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
                 decoration: InputDecoration(labelText: t('family_email')),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: password,
                 obscureText: true,
@@ -321,6 +325,21 @@ class _FamilyPageState extends State<FamilyPage> {
                 enableSuggestions: false,
                 decoration: InputDecoration(labelText: t('family_password')),
               ),
+              if (register) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordAgain,
+                  obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: InputDecoration(labelText: t('repeat_password')),
+                ),
+              ],
+              if (formError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(t(formError!)),
+                ),
               ExpansionTile(
                 title: Text(t('family_recovery')),
                 children: [
@@ -366,6 +385,11 @@ class _FamilyPageState extends State<FamilyPage> {
                 onPressed: c.busy
                     ? null
                     : () async {
+                        if (register && password.text != passwordAgain.text) {
+                          setState(() => formError = 'password_mismatch');
+                          return;
+                        }
+                        setState(() => formError = null);
                         await c.signIn(
                           endpoint.text.trim(),
                           email.text.trim(),
@@ -373,6 +397,7 @@ class _FamilyPageState extends State<FamilyPage> {
                           register: register,
                         );
                         password.clear();
+                        passwordAgain.clear();
                       },
                 child: Text(t(register ? 'family_register' : 'family_login')),
               ),
@@ -802,6 +827,12 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         throw const FormatException();
       }
     }
+    if (kind == 'budget' &&
+        period == 'custom' &&
+        (dateOnly(DateTime.parse(end.text)) != end.text ||
+            end.text.compareTo(date.text) < 0)) {
+      throw const FormatException();
+    }
     switch (kind) {
       case 'note':
         return {'body': title.text.trim()};
@@ -1005,10 +1036,29 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (target != null) {
+    if (target != null && mounted) {
+      final edit = revoke
+          ? false
+          : await showDialog<bool>(
+              context: context,
+              builder: (ctx) => SimpleDialog(
+                title: Text(t('family_grant')),
+                children: [
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(t('family_grant_read')),
+                  ),
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(t('family_grant_edit')),
+                  ),
+                ],
+              ),
+            );
+      if (edit == null) return;
       await action('record.grant', {
         'user_id': target,
-        'can_edit': false,
+        'can_edit': edit,
         'revoke': revoke,
       });
     }
@@ -1217,7 +1267,15 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                     onPressed: () async {
                       final chosen = await showDatePicker(
                         context: context,
-                        initialDate: DateTime.parse(repeatUntil ?? start.text),
+                        initialDate: DateTime.parse(
+                          repeatUntil != null &&
+                                  repeatUntil!.compareTo(
+                                        start.text.substring(0, 10),
+                                      ) >=
+                                      0
+                              ? repeatUntil!
+                              : start.text,
+                        ),
                         firstDate: DateTime.parse(start.text),
                         lastDate: DateTime(2200),
                       );

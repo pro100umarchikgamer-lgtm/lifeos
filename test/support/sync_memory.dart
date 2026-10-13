@@ -1,7 +1,4 @@
-// Standalone Dart protocol runner also works before Flutter dependency resolution.
-// ignore_for_file: avoid_relative_lib_imports
-
-import '../../lib/sync/contracts.dart';
+import 'package:lifeos/sync/contracts.dart';
 
 // A deterministic stand-in for the SQLCipher adapter, used only by protocol tests.
 class MemorySyncStore implements SyncStore {

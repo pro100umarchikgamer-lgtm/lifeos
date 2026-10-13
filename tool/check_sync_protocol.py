@@ -18,7 +18,9 @@ def main():
         server=ThreadingHTTPServer(('127.0.0.1',0),handler(backend));server.daemon_threads=True;thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             config={'endpoint':f'http://127.0.0.1:{server.server_port}','one':actors[0][1],'two':actors[1][1],'workspace':wid}
-            result=subprocess.run([args.dart,'tool/check_sync_protocol.dart'],input=json.dumps(config),text=True,timeout=60,capture_output=True)
+            packages=Path(folder)/'package_config.json'
+            packages.write_text(json.dumps({'configVersion':2,'packages':[{'name':'lifeos','rootUri':Path(__file__).resolve().parents[1].as_uri()+'/', 'packageUri':'lib/','languageVersion':'3.4'}]}))
+            result=subprocess.run([args.dart,'--packages='+str(packages),'tool/check_sync_protocol.dart'],input=json.dumps(config),text=True,timeout=60,capture_output=True)
             print(result.stdout,end='');print(result.stderr,end='');raise SystemExit(result.returncode)
         finally:server.shutdown();server.server_close();thread.join(timeout=5)
 if __name__=='__main__':main()

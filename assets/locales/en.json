@@ -616,7 +616,9 @@
     "family_recovery": "Forgot your password?",
     "family_recovery_hint": "Request a code, then enter the code and your new password above. Sign in after resetting.",
     "family_recovery_send": "Request recovery code",
-    "family_recovery_reset": "Set new password"
+    "family_recovery_reset": "Set new password",
+    "family_grant_read": "View only",
+    "family_grant_edit": "View and edit"
   },
   "plurals": {
     "record_count": {

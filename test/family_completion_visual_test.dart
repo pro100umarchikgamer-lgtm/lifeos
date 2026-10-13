@@ -113,6 +113,9 @@ void main() {
         'money',
         'child_money',
         'account',
+        'login',
+        'event',
+        'money_keyboard',
       ]) {
         testWidgets('completion_${screen}_${theme}_$width', (tester) async {
           tester.view.devicePixelRatio = 1;
@@ -122,6 +125,7 @@ void main() {
           final c = AppController(SnapshotStore([], theme), catalog, 'ru');
           await c.load();
           c.family = familyFixture(child: screen.startsWith('child'));
+          if (screen == 'login') c.family!.account = null;
           if (['family', 'child'].contains(screen)) {
             c.preferences['active_scope'] = 'family';
           }
@@ -132,6 +136,9 @@ void main() {
                 data: MediaQuery.of(context).copyWith(
                   textScaler: const TextScaler.linear(1.8),
                   disableAnimations: true,
+                  viewInsets: screen == 'money_keyboard'
+                      ? const EdgeInsets.only(bottom: 260)
+                      : EdgeInsets.zero,
                 ),
                 child: child!,
               ),
@@ -149,11 +156,19 @@ void main() {
               page = StatementImportPage(controller: c);
             case 'money':
             case 'child_money':
+            case 'money_keyboard':
               page = FamilyRecordEditor(
                 controller: c.family!,
                 pack: c.pack,
                 initialKind: 'transaction',
               );
+            case 'event':
+              page = FamilyRecordEditor(
+                controller: c.family!,
+                pack: c.pack,
+                initialKind: 'event',
+              );
+            case 'login':
             case 'account':
               page = FamilyPage(controller: c.family!, pack: c.pack);
           }
