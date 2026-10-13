@@ -24,6 +24,8 @@ expected.update({f'offline_{screen}_{theme}_{width}_scaled.png': (width,844) for
 
 expected.update({f'recovery_{screen}_{state}_{theme}_{width}.png': (width,844) for screen in ('projects','habits','subjects','checklists','wellness','profile','finance') for state in ('empty','active') for theme in ('light','dark') for width in (320,390,430)})
 
+expected.update({f'completion_{screen}_{theme}_{width}.png': (width,844) for screen in ('today','modules','search','import','family','child','money','child_money','account') for theme in ('light','dark') for width in (320,430)})
+
 for name, dimensions in expected.items():
     path = root / name
     data = path.read_bytes()

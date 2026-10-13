@@ -1056,12 +1056,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
             firstDate: DateTime(1900),
             lastDate: DateTime(2200),
           );
-          if (chosen != null && mounted)
+          if (chosen != null && mounted) {
             setState(
               () => value.text = timestamp
                   ? '${dateOnly(chosen)}T${current.hour.toString().padLeft(2, '0')}:${current.minute.toString().padLeft(2, '0')}:00'
                   : dateOnly(chosen),
             );
+          }
         },
       ),
     );
@@ -1185,11 +1186,12 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                         context: context,
                         initialTime: TimeOfDay.fromDateTime(before),
                       );
-                      if (time != null && mounted)
+                      if (time != null && mounted) {
                         setState(
                           () => start.text =
                               '${dateOnly(before)}T${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00',
                         );
+                      }
                     },
                   ),
                 SwitchListTile(
@@ -1219,8 +1221,9 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                         firstDate: DateTime.parse(start.text),
                         lastDate: DateTime(2200),
                       );
-                      if (chosen != null && mounted)
+                      if (chosen != null && mounted) {
                         setState(() => repeatUntil = dateOnly(chosen));
+                      }
                     },
                     child: Text(
                       '${t('repeat_until')}: ${repeatUntil ?? t('no_limit')}',

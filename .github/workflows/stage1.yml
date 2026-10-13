@@ -102,7 +102,7 @@ jobs:
           target: google_apis
           profile: pixel_2
           disable-animations: true
-          script: flutter test integration_test/offline_storage_test.dart integration_test/offline_expansion_test.dart integration_test/family_sync_storage_test.dart -d emulator-5554
+          script: bash tool/check_android_family.sh
       - name: Save evidence after all mandatory validation succeeds
         if: steps.validation.outputs.full == 'true'
         uses: actions/upload-artifact@v4

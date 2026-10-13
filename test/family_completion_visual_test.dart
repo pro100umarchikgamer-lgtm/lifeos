@@ -122,8 +122,9 @@ void main() {
           final c = AppController(SnapshotStore([], theme), catalog, 'ru');
           await c.load();
           c.family = familyFixture(child: screen.startsWith('child'));
-          if (['family', 'child'].contains(screen))
+          if (['family', 'child'].contains(screen)) {
             c.preferences['active_scope'] = 'family';
+          }
           await tester.pumpWidget(
             LifeOSApp(
               controller: c,
@@ -156,11 +157,12 @@ void main() {
             case 'account':
               page = FamilyPage(controller: c.family!, pack: c.pack);
           }
-          if (page != null)
+          if (page != null) {
             Navigator.push<void>(
               context,
               MaterialPageRoute(builder: (_) => page!),
             );
+          }
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           await expectLater(
