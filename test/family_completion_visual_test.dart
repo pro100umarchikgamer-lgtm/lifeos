@@ -185,6 +185,12 @@ void main() {
             await tester.scrollUntilVisible(
               find.text(c.pack.t('family_register')),
               180,
+              scrollable: find
+                  .descendant(
+                    of: find.byType(FamilyPage),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
             );
             await tester.tap(find.text(c.pack.t('family_register')));
             await tester.pumpAndSettle();
