@@ -77,6 +77,8 @@ class Backend:
         require(row is not None,'unauthorized',401);return dict(row)
     def _session(self,db,uid):
         token=secrets.token_urlsafe(32);db.execute('INSERT INTO sessions VALUES(?,?,?)',(token_hash(token),uid,int(self.clock())+86400));return token
+    def _deliver(self,db,email,code,purpose):
+        self.deliver(email,code)
     def register(self,email,password):
         require(isinstance(email,str) and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) and len(email)<=254)
         require(isinstance(password,str) and 12<=len(password)<=256,'password_length')
@@ -89,7 +91,7 @@ class Backend:
             db.execute('INSERT INTO users VALUES(?,?,?,?,0,?)',(uid,email.casefold(),encoded,salt,now))
             db.execute('INSERT INTO verification VALUES(?,?,?)',(token_hash(verify),uid,now+3600))
             session=self._session(db,uid)
-        self.deliver(email.casefold(),verify)
+            self._deliver(db,email.casefold(),verify,'verification')
         return {'user_id':uid,'token':session,'verified':False}
     def verify(self,actor,code):
         require(isinstance(code,str) and len(code)==43)
@@ -103,7 +105,7 @@ class Backend:
             key=token_hash(email.casefold());now=int(self.clock());limit=db.execute('SELECT * FROM auth_limits WHERE key=?',(key,)).fetchone()
             require(limit is None or limit['until_at']<=now or limit['count']<10,'rate_limited',429)
             count=limit['count']+1 if limit and limit['until_at']>now else 1
-            db.execute('INSERT OR REPLACE INTO auth_limits VALUES(?,?,?)',(key,count,now+900))
+            db.execute('INSERT INTO auth_limits VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at',(key,count,now+900))
             row=db.execute('SELECT * FROM users WHERE email=?',(email.casefold(),)).fetchone()
             salt=bytes.fromhex(row['salt']) if row else bytes(16)
             actual=hashlib.pbkdf2_hmac('sha256',password.encode(),salt,600000).hex()
@@ -119,12 +121,12 @@ class Backend:
             now=int(self.clock());key='recovery:'+token_hash(email.casefold())
             limit=db.execute('SELECT * FROM auth_limits WHERE key=?',(key,)).fetchone()
             require(limit is None or limit['until_at']<=now,'rate_limited',429)
-            db.execute('INSERT OR REPLACE INTO auth_limits VALUES(?,1,?)',(key,now+60))
+            db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at',(key,now+60))
             row=db.execute('SELECT id FROM users WHERE email=?',(email.casefold(),)).fetchone()
             if row:
                 code=secrets.token_urlsafe(32);db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
                 db.execute('INSERT INTO password_recovery VALUES(?,?,?)',(token_hash(code),row['id'],now+900))
-        if code:self.deliver(email.casefold(),code)
+                self._deliver(db,email.casefold(),code,'recovery')
         return {'recovery_requested':True}
     def reset_password(self,email,code,password):
         require(isinstance(email,str) and isinstance(code,str) and len(code)==43)

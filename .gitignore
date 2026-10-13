@@ -16,3 +16,10 @@ backend/.dev/
 *.db
 *.db-wal
 *.db-shm
+
+# Production credentials and backups never belong in source control.
+.env
+.env.*
+!.env.example
+.secrets/
+backups/

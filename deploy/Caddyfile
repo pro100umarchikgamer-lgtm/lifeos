@@ -1,0 +1,20 @@
+{
+    email {$ACME_EMAIL}
+}
+{$LIFEOS_DOMAIN} {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        -Server
+    }
+    @private path /metrics
+    respond @private 404
+    request_body {
+        max_size 2MB
+    }
+    reverse_proxy api:8000 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto https
+    }
+}

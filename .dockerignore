@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+!.env.example
+.secrets
+backups
+.dart_tool
+build
+backend/.dev
+*.db
+*.db-wal
+*.db-shm

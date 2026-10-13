@@ -1,0 +1,15 @@
+groups:
+  - name: lifeos
+    rules:
+      - alert: LifeOSAPIUnavailable
+        expr: up{job="lifeos"} == 0
+        for: 2m
+        labels: {severity: critical}
+      - alert: LifeOSEmailDeliveryDelayed
+        expr: lifeos_email_oldest_seconds > 300
+        for: 2m
+        labels: {severity: warning}
+      - alert: LifeOSMailWorkerStopped
+        expr: lifeos_mail_worker_age_seconds > 120
+        for: 2m
+        labels: {severity: critical}

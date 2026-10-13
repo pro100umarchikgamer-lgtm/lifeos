@@ -1,0 +1,110 @@
+name: lifeos
+x-api: &api
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: [/tmp:size=64m,mode=1777]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  environment: &environment
+    DATABASE_URL: postgresql://${APP_DB_USER:-lifeos}:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}@db:5432/${POSTGRES_DB:-lifeos}
+    EMAIL_QUEUE_KEY: ${EMAIL_QUEUE_KEY:?Set EMAIL_QUEUE_KEY}
+    RATE_LIMIT_KEY: ${RATE_LIMIT_KEY:?Set RATE_LIMIT_KEY}
+    SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST}
+    SMTP_PORT: ${SMTP_PORT:-587}
+    SMTP_TLS: ${SMTP_TLS:-starttls}
+    SMTP_USERNAME: ${SMTP_USERNAME:-}
+    SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM}
+    DB_POOL_SIZE: ${DB_POOL_SIZE:-4}
+    REQUIRE_HTTPS: 'true'
+    TRUSTED_PROXY_CIDRS: 172.30.30.0/24
+  networks: [database, edge]
+  ulimits:
+    core: 0
+  logging: &logging
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lifeos}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?Set DB_ADMIN_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:-lifeos}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+    command: [postgres, -c, shared_buffers=256MB, -c, max_connections=32, -c, work_mem=4MB, -c, log_statement=none]
+    volumes: [pgdata:/var/lib/postgresql/data, ./deploy/initdb/10-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro]
+    networks: [database]
+    mem_limit: 1536m
+    logging: *logging
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  migrate:
+    <<: *api
+    restart: 'no'
+    command: [python, -m, backend.production, migrate]
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    <<: *api
+    mem_limit: 512m
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+  mail:
+    <<: *api
+    command: [python, -m, backend.mail]
+    mem_limit: 192m
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import pathlib,time; assert time.time()-pathlib.Path('/tmp/lifeos-mail.heartbeat').stat().st_mtime < 120"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ['80:80', '443:443', '443:443/udp']
+    environment:
+      LIFEOS_DOMAIN: ${LIFEOS_DOMAIN:?Set LIFEOS_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+    volumes: [./deploy/Caddyfile:/etc/caddy/Caddyfile:ro, caddy_data:/data, caddy_config:/config]
+    networks: [edge]
+    mem_limit: 192m
+    depends_on:
+      api: {condition: service_healthy}
+    logging: *logging
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: [monitoring]
+    restart: unless-stopped
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=7d, --storage.tsdb.retention.size=512MB]
+    volumes: [./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro, ./deploy/alerts.yml:/etc/prometheus/alerts.yml:ro, prometheus_data:/prometheus]
+    networks: [edge]
+    ports: ['127.0.0.1:9090:9090']
+    mem_limit: 256m
+    logging: *logging
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+  prometheus_data:
+networks:
+  database: {internal: true}
+  edge:
+    ipam:
+      config: [{subnet: 172.30.30.0/24}]

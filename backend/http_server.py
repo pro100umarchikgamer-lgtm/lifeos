@@ -9,6 +9,27 @@ from .service import Backend, Failure
 
 MAX_BODY=2*1024*1024
 
+def dispatch(backend,method,path,body,auth):
+    split=urllib.parse.urlsplit(path);route=split.path;query=urllib.parse.parse_qs(split.query)
+    if route=='/v1/auth/register' and method=='POST':result=backend.register(body.get('email'),body.get('password'))
+    elif route=='/v1/auth/recovery' and method=='POST':result=backend.recover(body.get('email'))
+    elif route=='/v1/auth/reset' and method=='POST':result=backend.reset_password(body.get('email'),body.get('code'),body.get('password'))
+    elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'))
+    else:
+        token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
+        if route=='/v1/auth/verify' and method=='POST':result=backend.verify(actor,body.get('code'))
+        elif route=='/v1/auth/password' and method=='POST':result=backend.password(actor,body.get('old_password'),body.get('new_password'))
+        elif route=='/v1/auth/logout' and method=='POST':result=backend.logout(token)
+        elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
+        elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}
+        elif route=='/v1/family' and method=='POST':result=backend.family(actor,body)
+        elif route=='/v1/invitations/accept' and method=='POST':result=backend.accept(actor,body)
+        elif route=='/v1/roster' and method=='GET':result=backend.roster(actor,query['workspace'][0])
+        elif route=='/v1/sync/push' and method=='POST':result=backend.batch(actor,body.get('workspace_id'),body.get('operations'))
+        elif route=='/v1/sync/pull' and method=='GET':result=backend.pull(actor,query['workspace'][0],int(query.get('cursor',['0'])[0]))
+        else:raise Failure('not_found',404)
+    return result
+
 def handler(backend):
     class API(BaseHTTPRequestHandler):
         def log_message(self,*args): pass # Never log passwords, invitation codes, source data or bearer tokens.
@@ -31,23 +52,7 @@ def handler(backend):
                         return value
                     body=json.loads(self.rfile.read(length),object_pairs_hook=unique)
                     if not isinstance(body,dict):raise Failure('invalid_input')
-                if route=='/v1/auth/register' and method=='POST':result=backend.register(body.get('email'),body.get('password'))
-                elif route=='/v1/auth/recovery' and method=='POST':result=backend.recover(body.get('email'))
-                elif route=='/v1/auth/reset' and method=='POST':result=backend.reset_password(body.get('email'),body.get('code'),body.get('password'))
-                elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'))
-                else:
-                    auth=self.headers.get('Authorization','');token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
-                    if route=='/v1/auth/verify' and method=='POST':result=backend.verify(actor,body.get('code'))
-                    elif route=='/v1/auth/password' and method=='POST':result=backend.password(actor,body.get('old_password'),body.get('new_password'))
-                    elif route=='/v1/auth/logout' and method=='POST':result=backend.logout(token)
-                    elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
-                    elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}
-                    elif route=='/v1/family' and method=='POST':result=backend.family(actor,body)
-                    elif route=='/v1/invitations/accept' and method=='POST':result=backend.accept(actor,body)
-                    elif route=='/v1/roster' and method=='GET':result=backend.roster(actor,query['workspace'][0])
-                    elif route=='/v1/sync/push' and method=='POST':result=backend.batch(actor,body.get('workspace_id'),body.get('operations'))
-                    elif route=='/v1/sync/pull' and method=='GET':result=backend.pull(actor,query['workspace'][0],int(query.get('cursor',['0'])[0]))
-                    else:raise Failure('not_found',404)
+                result=dispatch(backend,method,self.path,body,self.headers.get('Authorization',''))
                 self.respond(200,result)
             except Failure as error:self.respond(error.status,{'error':error.code})
             except (ValueError,TypeError,KeyError):self.respond(400,{'error':'invalid_input'})

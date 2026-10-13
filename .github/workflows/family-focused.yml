@@ -23,6 +23,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze
+      - run: python3 -m pip install -r backend/requirements.txt
       - run: python3 -m unittest discover -s backend/tests -v
       - run: PYTHONPATH=. python3 tool/check_sync_protocol.py
       - run: flutter test test/controller_test.dart test/ux_recovery_test.dart test/widget_test.dart test/family_ux_test.dart

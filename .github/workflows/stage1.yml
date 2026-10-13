@@ -23,10 +23,14 @@ permissions:
   contents: read
   actions: read
 jobs:
+  production_backend:
+    uses: ./.github/workflows/backend-production.yml
   focused:
+    needs: production_backend
     if: inputs.focused == true || (github.ref == 'refs/heads/feature/family-sync' && inputs.build_apk != true)
     uses: ./.github/workflows/family-focused.yml
   checks:
+    needs: production_backend
     if: inputs.focused != true && (github.ref != 'refs/heads/feature/family-sync' || inputs.build_apk == true)
     runs-on: ubuntu-latest
     timeout-minutes: 55
@@ -60,6 +64,8 @@ jobs:
           FORCE_FULL_VALIDATION: ${{ inputs.force_full_validation || false }}
         run: python3 tool/ci_validation.py
       - run: python3 -m unittest discover -s tool/tests -v
+        if: steps.validation.outputs.full == 'true'
+      - run: python3 -m pip install -r backend/requirements.txt
         if: steps.validation.outputs.full == 'true'
       - run: python3 -m unittest discover -s backend/tests -v
         if: steps.validation.outputs.full == 'true'
