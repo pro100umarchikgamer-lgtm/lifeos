@@ -12,6 +12,7 @@ import 'package:lifeos/ui/personal_modules.dart';
 import 'package:lifeos/ui/global_search.dart';
 
 import 'widget_test.dart' show UIStore;
+import 'family_completion_visual_test.dart' show familyFixture;
 
 class PersistentViewStore extends UIStore {
   final saved = <String, String>{};
@@ -124,8 +125,11 @@ void main() {
   testWidgets('module view persists and search scopes personal records', (
     tester,
   ) async {
-    final store = PersistentViewStore(),
-        c = AppController(PersistentViewStore(), catalog, 'ru');
+    final store = PersistentViewStore();
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final controller = AppController(store, catalog, 'ru');
     await controller.load();
     await controller.preference('modules_view', 'list');
@@ -142,9 +146,59 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(GlobalSearchPage), findsOneWidget);
     expect(find.byKey(const Key('global_search_input')), findsOneWidget);
-    c.dispose();
+    await tester.pumpWidget(const SizedBox.shrink());
     controller.dispose();
   });
+  testWidgets(
+    'family search cannot expose personal records and personal search includes module rows',
+    (tester) async {
+      final c = AppController(UIStore(), catalog, 'ru');
+      await c.load();
+      c.family = familyFixture();
+      c.records = [
+        Record(
+          id: 'private',
+          kind: EntryKind.note,
+          text: 'Личная тайна',
+          createdAt: DateTime(2026),
+        ),
+      ];
+      c.offline[OfflineTable.projects] = [
+        {'id': 'project', 'name': 'Ремонт кухни', 'goal': 'Удобнее дома'},
+      ];
+      await tester.pumpWidget(
+        MaterialApp(home: GlobalSearchPage(controller: c, family: true)),
+      );
+      await tester.enterText(
+        find.byKey(const Key('global_search_input')),
+        'Личная',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Личная тайна'), findsNothing);
+      expect(find.text(c.pack.t('search_empty')), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('global_search_input')),
+        'Планы',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Планы на выходные'), findsOneWidget);
+      await tester.pumpWidget(
+        MaterialApp(
+          key: const Key('personal'),
+          home: GlobalSearchPage(controller: c, family: false),
+        ),
+      );
+      await tester.enterText(
+        find.byKey(const Key('global_search_input')),
+        'Ремонт',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Ремонт кухни'), findsOneWidget);
+      expect(find.text('Планы на выходные'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      c.dispose();
+    },
+  );
   testWidgets('activity and sleep controls fit narrow large-text screen', (
     tester,
   ) async {

@@ -20,9 +20,21 @@ class GlobalSearchPage extends StatefulWidget {
 
 class _GlobalSearchPageState extends State<GlobalSearchPage> {
   String query = '', filter = 'all';
+  final input = TextEditingController();
+  @override
+  void dispose() {
+    input.dispose();
+    super.dispose();
+  }
+
   AppController get c => widget.controller;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.family ? c.family! : c,
+    builder: (context, _) => results(context),
+  );
+
+  Widget results(BuildContext context) {
     final needle = query.trim().toLowerCase();
     final own = c.records.where(
       (r) =>
@@ -30,12 +42,26 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
           (r.text.toLowerCase().contains(needle) ||
               r.date?.contains(needle) == true),
     );
+    final modules = [
+      for (final table in personalModules)
+        for (final row in c.offline[table] ?? <Map<String, Object?>>[])
+          if (filter == 'all' &&
+              ['name', 'label', 'goal', 'text'].any(
+                (key) =>
+                    (row[key] as String? ?? '').toLowerCase().contains(needle),
+              ))
+            (table, row),
+    ];
     final shared =
         c.family?.records
             .where(
               (r) =>
                   (filter == 'all' || r['kind'] == filter) &&
-                  r['data'].toString().toLowerCase().contains(needle),
+                  ['body', 'title', 'name', 'label', 'date'].any(
+                    (key) => (r['data'][key] as String? ?? '')
+                        .toLowerCase()
+                        .contains(needle),
+                  ),
             )
             .toList() ??
         [];
@@ -48,10 +74,21 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               padding: const EdgeInsets.all(16),
               child: TextField(
                 key: const Key('global_search_input'),
+                controller: input,
                 autofocus: true,
                 decoration: InputDecoration(
                   labelText: c.pack.t('search_hint'),
                   prefixIcon: const Icon(Icons.search),
+                  suffixIcon: query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: c.pack.t('clear'),
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            input.clear();
+                            setState(() => query = '');
+                          },
+                        ),
                 ),
                 onChanged: (v) => setState(() => query = v),
               ),
@@ -142,6 +179,28 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                           ),
                         ),
                       ),
+                    for (final match in modules)
+                      ListTile(
+                        leading: const Icon(Icons.grid_view_outlined),
+                        title: Text(
+                          (match.$2['name'] ??
+                                  match.$2['label'] ??
+                                  match.$2['text'] ??
+                                  c.pack.t('module_${match.$1.name}'))
+                              .toString(),
+                          maxLines: 2,
+                        ),
+                        subtitle: Text(c.pack.t('module_${match.$1.name}')),
+                        onTap: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PersonalModulesPage(
+                              controller: c,
+                              table: match.$1,
+                            ),
+                          ),
+                        ),
+                      ),
                     if (filter == 'all')
                       for (final table in personalModules)
                         if (c.pack
@@ -162,6 +221,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                             ),
                           ),
                     if (own.isEmpty &&
+                        modules.isEmpty &&
                         !personalModules.any(
                           (t) =>
                               filter == 'all' &&
