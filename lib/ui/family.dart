@@ -345,7 +345,7 @@ class _FamilyPageState extends State<FamilyPage> {
                   obscureText: true,
                   autocorrect: false,
                   enableSuggestions: false,
-                  decoration: InputDecoration(labelText: t('repeat_password')),
+                  decoration: const InputDecoration(),
                 ),
               ],
               if (formError != null)

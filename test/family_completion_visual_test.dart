@@ -182,8 +182,13 @@ void main() {
           }
           await tester.pumpAndSettle();
           if (screen == 'register') {
+            await tester.scrollUntilVisible(
+              find.text(c.pack.t('family_register')),
+              180,
+            );
             await tester.tap(find.text(c.pack.t('family_register')));
             await tester.pumpAndSettle();
+            expect(find.text(c.pack.t('repeat_password')), findsOneWidget);
           }
           expect(tester.takeException(), isNull);
           await expectLater(
