@@ -1,0 +1,34 @@
+name: Family focused checks
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: family-focused-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: python3 -m unittest discover -s backend/tests -v
+      - run: PYTHONPATH=. python3 tool/check_sync_protocol.py
+      - run: flutter test test/controller_test.dart test/ux_recovery_test.dart test/widget_test.dart
+      - run: flutter test --update-goldens test/ux_recovery_visual_test.dart
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: family-focused-screenshots-${{ github.run_number }}
+          path: test/goldens/*.png
+          if-no-files-found: warn
