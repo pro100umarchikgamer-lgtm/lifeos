@@ -636,7 +636,8 @@
     "ux3_finance_body": "Understand your money, from daily spending to goals and savings.",
     "ux3_modules_body": "Choose what helps you every day. Your view is remembered on this device.",
     "ux3_today_body": "Focus on what matters. LifeOS keeps the rest within reach.",
-    "ux3_settings_body": "Make LifeOS yours"
+    "ux3_settings_body": "Make LifeOS yours",
+    "ux3_resend_verification": "Send another verification code"
   },
   "plurals": {
     "record_count": {

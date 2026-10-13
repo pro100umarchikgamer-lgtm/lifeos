@@ -10,6 +10,11 @@ import 'package:lifeos/localization/language_pack.dart';
 import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/personal_modules.dart';
 import 'package:lifeos/ui/global_search.dart';
+import 'package:lifeos/ui/family.dart';
+import 'package:lifeos/ui/design.dart';
+import 'package:lifeos/sync/controller.dart';
+
+import 'support/sync_memory.dart';
 
 import 'widget_test.dart' show UIStore;
 import 'family_completion_visual_test.dart' show familyFixture;
@@ -31,6 +36,45 @@ void main() {
   setUpAll(() async {
     catalog = await PackCatalog.load();
   });
+  testWidgets(
+    'account welcome has no server field and unconfigured cloud stays disabled',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final family = FamilyController(MemorySyncStore());
+      final pack = catalog.packs['ru']!;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: lifeTheme(Brightness.dark),
+          home: FamilyPage(controller: family, pack: pack),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(pack.t('family_endpoint')), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField && widget.keyboardType == TextInputType.url,
+        ),
+        findsNothing,
+      );
+      expect(find.text(pack.t('ux3_cloud_unavailable')), findsOneWidget);
+      final create = find.widgetWithText(ChoiceChip, pack.t('family_register'));
+      await tester.ensureVisible(create);
+      await tester.tap(create);
+      await tester.pumpAndSettle();
+      expect(find.text(pack.t('repeat_password')), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      family.dispose();
+    },
+  );
   test('detect safe headers and require manual adjustment for ambiguous slash dates', () {
     final detected = StatementDetection.detect(
       StatementTable.checked([

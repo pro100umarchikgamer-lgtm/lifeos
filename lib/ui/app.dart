@@ -1283,7 +1283,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         Expanded(
           child: Text(
             c.pack.t(key),
-            style: const TextStyle(fontSize: 12, color: LifePalette.muted),
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         IconButton(
@@ -1523,7 +1526,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       Text(
         c.pack.t('no_account_hint'),
         style: Theme.of(context).textTheme.bodySmall
-            ?.copyWith(color: LifePalette.muted),
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       const SizedBox(height: 12),
       if (records.isEmpty) LifeCard(child: Text(c.pack.t('empty_money'))),

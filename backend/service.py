@@ -99,6 +99,17 @@ class Backend:
             row=db.execute('SELECT * FROM verification WHERE hash=? AND user_id=? AND expires_at>?',(token_hash(code),actor['id'],int(self.clock()))).fetchone()
             require(row is not None,'verification_invalid');db.execute('UPDATE users SET verified=1 WHERE id=?',(actor['id'],));db.execute('DELETE FROM verification WHERE user_id=?',(actor['id'],))
         return {'verified':True}
+    def resend_verification(self,actor):
+        if actor['verified']:return {'verified':True}
+        now=int(self.clock());key=token_hash('verify:'+actor['id'])
+        with self.transaction() as db:
+            limit=db.execute('SELECT * FROM auth_limits WHERE key=?',(key,)).fetchone()
+            require(limit is None or limit['until_at']<=now,'rate_limited',429)
+            db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at',(key,now+60))
+            code=secrets.token_urlsafe(32)
+            db.execute('INSERT INTO verification VALUES(?,?,?)',(token_hash(code),actor['id'],now+3600))
+            self._deliver(db,actor['email'],code,'verification')
+        return {'sent':True}
     def login(self,email,password):
         require(isinstance(email,str) and isinstance(password,str) and len(password)<=256)
         with self.transaction() as db:

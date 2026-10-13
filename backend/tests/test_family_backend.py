@@ -64,6 +64,17 @@ class FamilyBackendTests(unittest.TestCase):
             previous=page['cursor'];page=self.backend.pull_incremental(self.p2,self.wid,previous,page['epoch'],limit=2)
             self.assertGreater(page['cursor'],previous);self.assertFalse(page['reset']);records.extend(page['records'])
         self.assertEqual(len(records),4)
+
+    def test_verification_resend_is_account_bound_and_rate_limited(self):
+        result=self.backend.register('unverified@example.test','a-valid-long-passphrase')
+        actor=self.backend.authenticate(result['token'])
+        old=self.mail[actor['email']]
+        self.assertEqual(self.backend.resend_verification(actor),{'sent':True})
+        resent=self.mail[actor['email']];self.assertNotEqual(old,resent)
+        with self.assertRaises(Failure):self.backend.resend_verification(actor)
+        with self.assertRaises(Failure):self.backend.verify(self.p2,resent)
+        self.backend.verify(actor,resent)
+        with self.assertRaises(Failure):self.backend.verify(actor,old)
     def test_independent_additions_idempotency_and_concurrent_conflict(self):
         first,res=self.put(self.p1,'note',{'body':'First offline change'});self.put(self.p2,'note',{'body':'Independent addition'})
         self.backend.batch(self.p1,self.wid,[first]);self.assertEqual(len(self.backend.pull(self.p2,self.wid,0)['records']),2)

@@ -4,6 +4,8 @@ import os
 import threading
 import unittest
 import uuid
+import tempfile
+from pathlib import Path
 from urllib.parse import urlsplit
 import psycopg
 from psycopg import sql
@@ -13,6 +15,8 @@ from backend.postgres import PostgresBackend
 from backend.mail import deliver_one
 from backend.production import Application
 from backend.config import Settings
+from backend.import_sqlite import import_server
+from backend.service import Backend,Failure
 
 DSN=os.environ.get('LIFEOS_TEST_DATABASE_URL','')
 
@@ -47,6 +51,30 @@ class PostgresTests(fixtures.FamilyBackendTests):
         with self.backend.connect() as db:
             row=db.execute('SELECT rolsuper,rolcreatedb,rolcreaterole FROM pg_roles WHERE rolname=current_user').fetchone()
             self.assertEqual(list(row.values()),[False,False,False])
+    def test_server_import_preserves_uuid_history_and_refuses_overwrite(self):
+        target_schema='import_'+uuid.uuid4().hex
+        with psycopg.connect(DSN,autocommit=True) as db:db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(target_schema)))
+        target=PostgresBackend(DSN,self.cipher,schema=target_schema,migrate=True)
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                source=Path(folder)/'old.db';mail={}
+                old=Backend(source,deliver=lambda email,code:mail.update({email:code}))
+                result=old.register('migration@example.test','a-valid-long-passphrase')
+                actor=old.authenticate(result['token']);old.verify(actor,mail[actor['email']]);actor=old.authenticate(result['token'])
+                wid=fixtures.uid();old.family(actor,{'id':fixtures.uid(),'workspace_id':wid,'action':'workspace.create','name':'Preserved','kind':'personal'})
+                operation={'id':fixtures.uid(),'record_id':fixtures.uid(),'action':'record.put','revision':0,'kind':'account','visibility':'private','audience':[],
+                    'data':{'name':'History','currency':'RUB','opening_minor':9223372036854775806}}
+                old.batch(actor,wid,[operation])
+                preview=import_server(target,source);self.assertEqual(preview['users'],1)
+                self.assertEqual(import_server(target,source,True),preview)
+                imported=target.authenticate(result['token']);self.assertEqual(imported['id'],actor['id'])
+                row=target.pull(imported,wid,0)['records'][0]
+                self.assertEqual(row['id'],operation['record_id']);self.assertEqual(row['data']['opening_minor'],9223372036854775806)
+                self.assertEqual(target.batch(imported,wid,[operation]),old.batch(actor,wid,[operation]))
+                with self.assertRaises(Failure):import_server(target,source,True)
+        finally:
+            target.close()
+            with psycopg.connect(DSN,autocommit=True) as db:db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(target_schema)))
     def test_mail_queue_encrypted_retry_and_restart(self):
         with self.backend.connect() as db:
             row=db.execute('SELECT * FROM email_jobs ORDER BY id LIMIT 1').fetchone()

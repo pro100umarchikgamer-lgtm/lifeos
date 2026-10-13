@@ -26,4 +26,6 @@ Run `scripts/restore.sh /absolute/path/backup.aesgcm /absolute/path/backup.key l
 
 ## Mobile deployment
 
+For an existing development SERVER SQLite database, stop its writers and make an independent backup first. `python -m backend.import_sqlite --source /protected/server.db` previews only table counts. With a NEW, migrated, empty PostgreSQL target, add `--apply` to import atomically; existing targets are refused. UUIDs, integer money, operation receipts, audit cursors and credentials are preserved, and the next sequence is advanced. Verify identity, history and replay before switching the same server origin. This tool does not open Android SQLCipher or upload personal local records. Existing unverified accounts can request another verification email after migration.
+
 The server origin must be selected by the app distributor at build time, after deploying and validating this backend. There is no production origin configured by this infrastructure checkpoint. Signing identity, applicationId, local SQLCipher storage and private/shared record boundaries remain unchanged. Final Android release validation is a separate mandatory gate.

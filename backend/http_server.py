@@ -18,6 +18,7 @@ def dispatch(backend,method,path,body,auth):
     else:
         token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
         if route=='/v1/auth/verify' and method=='POST':result=backend.verify(actor,body.get('code'))
+        elif route=='/v1/auth/verification/resend' and method=='POST':result=backend.resend_verification(actor)
         elif route=='/v1/auth/password' and method=='POST':result=backend.password(actor,body.get('old_password'),body.get('new_password'))
         elif route=='/v1/auth/logout' and method=='POST':result=backend.logout(token)
         elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}

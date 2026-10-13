@@ -37,7 +37,7 @@ def decrypt(source,target,password):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('mode',choices=['encrypt','decrypt']);parser.add_argument('--key-file',required=True);parser.add_argument('--input')
-    args=parser.parse_args();password=Path(args.key_file).read_bytes().strip()
+    args=parser.parse_args();password=Path(args.key_file).read_bytes()
     if args.mode=='encrypt':encrypt(sys.stdin.buffer,sys.stdout.buffer,password)
     else:
         if not args.input:raise SystemExit('--input is required for authenticated seekable decryption')

@@ -533,6 +533,11 @@ class _FamilyPageState extends State<FamilyPage> {
                   decoration: InputDecoration(labelText: t('family_code')),
                 ),
                 button('family_verify', () => c.verify(code.text.trim())),
+                button(
+                  'ux3_resend_verification',
+                  () => c.resendVerification(),
+                  icon: Icons.mark_email_unread_outlined,
+                ),
               ] else ...[
                 LifeHero(
                   icon: Icons.people_outline,

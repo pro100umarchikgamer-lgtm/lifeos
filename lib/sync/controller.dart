@@ -200,6 +200,9 @@ class FamilyController extends ChangeNotifier {
     account!['verified'] = true;
     await _refresh();
   });
+  Future<void> resendVerification() => run(() async {
+    await api!.request('/v1/auth/verification/resend', body: {});
+  });
   Future<void> refresh() => run(_refresh);
   Future<void> _refresh() async {
     if (api == null || account == null) return;
