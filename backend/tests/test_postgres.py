@@ -124,3 +124,15 @@ class PostgresTests(fixtures.FamilyBackendTests):
         self.assertEqual(request('/v1/me'),200)
         for i in range(240):last=request('/v1/me')
         self.assertEqual(last,429)
+
+    def test_concurrent_http_clients_share_rate_counter_without_failures(self):
+        app=Application(self.backend,self.settings());statuses=[]
+        def request():
+            app({'REQUEST_METHOD':'GET','PATH_INFO':'/v1/me','REMOTE_ADDR':'172.30.30.2',
+                'HTTP_X_FORWARDED_PROTO':'https','HTTP_X_FORWARDED_FOR':'198.51.100.9',
+                'HTTP_AUTHORIZATION':'Bearer '+self.p1['token'],'wsgi.input':io.BytesIO()},
+                lambda status,headers:statuses.append(int(status.split()[0])))
+        threads=[threading.Thread(target=request) for i in range(12)]
+        for thread in threads:thread.start()
+        for thread in threads:thread.join(15)
+        self.assertEqual(statuses,[200]*12)

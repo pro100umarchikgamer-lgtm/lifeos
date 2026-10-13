@@ -747,26 +747,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   List<Widget> _emptyHome() => [
-    Text(c.pack.t('today'), style: Theme.of(context).textTheme.headlineSmall),
+    _pageTitle('today'),
     const SizedBox(height: 12),
-    LifeCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            c.pack.t('welcome_title'),
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(c.pack.t('welcome_body')),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _chooseAdd,
-            icon: const Icon(Icons.add),
-            label: Text(c.pack.t('add_first_record')),
-          ),
-        ],
-      ),
+    LifeHero(
+      icon: Icons.home_outlined,
+      title: c.pack.t('welcome_title'),
+      body: c.pack.t('welcome_body'),
+    ),
+    const SizedBox(height: 16),
+    FilledButton.icon(
+      onPressed: _chooseAdd,
+      icon: const Icon(Icons.add),
+      label: Text(c.pack.t('add_first_record')),
     ),
     const SizedBox(height: 16),
     _quickActions(),

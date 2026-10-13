@@ -44,8 +44,12 @@ class Application:
         category='auth' if path.startswith('/v1/auth/') else 'api'
         maximum=30 if category=='auth' else 240
         key=hmac.new(self.settings.rate_limit_key.encode(),(category+'|'+self.client(environ)).encode(),hashlib.sha256).hexdigest()
-        with self.backend.connect() as db:
+        # A single autocommit UPSERT avoids repeatable-read serialization failures
+        # when two phones behind the same NAT hit the limit counter together.
+        db=self.backend.connect()
+        try:
             row=db.execute('INSERT INTO http_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN http_limits.until_at<=? THEN 1 ELSE http_limits.count+1 END,until_at=CASE WHEN http_limits.until_at<=? THEN excluded.until_at ELSE http_limits.until_at END RETURNING count',(key,now+60,now,now)).fetchone()
+        finally:db.close()
         if row['count']>maximum:raise Failure('rate_limited',429)
     def __call__(self,environ,start_response):
         status=200
@@ -57,7 +61,9 @@ class Application:
             if method not in ('GET','POST'):raise Failure('method_not_allowed',405)
             if path=='/health/live' and method=='GET':value={'status':'ok'}
             elif path=='/health/ready' and method=='GET':
-                with self.backend.connect() as db:db.execute('SELECT 1').fetchone()
+                with self.backend.connect() as db:
+                    if not db.execute('SELECT version FROM schema_migrations LIMIT 1').fetchone():
+                        raise Failure('schema_not_ready',503)
                 value={'status':'ready'}
             elif path=='/metrics' and method=='GET':
                 headers['Content-Type']='text/plain; version=0.0.4'
