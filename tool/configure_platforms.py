@@ -35,7 +35,7 @@ if android.exists():
         for file in native.glob('*.kt'):
             shutil.copyfile(file, target / file.name)
         source = android.read_text()
-        permissions = ['POST_NOTIFICATIONS', 'SCHEDULE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED', 'VIBRATE', 'WAKE_LOCK', 'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_MEDIA_PLAYBACK']
+        permissions = ['INTERNET', 'POST_NOTIFICATIONS', 'SCHEDULE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED', 'VIBRATE', 'WAKE_LOCK', 'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_MEDIA_PLAYBACK']
         for permission in permissions:
             if f'android.permission.{permission}' not in source:
                 source = source.replace('<application', f'<uses-permission android:name="android.permission.{permission}"/>\n    <application', 1)

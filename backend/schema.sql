@@ -22,3 +22,4 @@ CREATE TABLE IF NOT EXISTS operations(user_id TEXT NOT NULL REFERENCES users(id)
 CREATE TABLE IF NOT EXISTS changes(seq INTEGER PRIMARY KEY AUTOINCREMENT,workspace_id TEXT NOT NULL REFERENCES workspaces(id),record_id TEXT,actor_id TEXT NOT NULL,operation_id TEXT NOT NULL,kind TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS auth_limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,until_at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS scoped_records ON records(workspace_id,seq);
+CREATE TABLE IF NOT EXISTS task_progress(task_id TEXT NOT NULL REFERENCES tasks(id),profile_id TEXT NOT NULL REFERENCES profiles(id),completed INTEGER NOT NULL DEFAULT 0,approved INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(task_id,profile_id));

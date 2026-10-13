@@ -50,13 +50,18 @@ def civil(value):
 def canonical(value): return json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False)
 def token_hash(value): return hashlib.sha256(value.encode()).hexdigest()
 
+class ManagedConnection(sqlite3.Connection):
+    def __exit__(self,*args):
+        try:return super().__exit__(*args)
+        finally:self.close()
+
 class Backend:
     def __init__(self,path,deliver=None,clock=time.time):
         self.path,self.deliver,self.clock=str(path),deliver,clock
         with self.connect() as db: db.executescript(Path(__file__).with_name('schema.sql').read_text())
         os.chmod(self.path,0o600)
     def connect(self):
-        db=sqlite3.connect(self.path,timeout=10);db.row_factory=sqlite3.Row
+        db=sqlite3.connect(self.path,timeout=10,factory=ManagedConnection);db.row_factory=sqlite3.Row
         db.execute('PRAGMA foreign_keys=ON');return db
     @contextlib.contextmanager
     def transaction(self):
@@ -106,6 +111,18 @@ class Backend:
             # Commit failed-attempt counters rather than rolling them back with the error.
             result={'user_id':row['id'],'token':self._session(db,row['id']),'verified':bool(row['verified'])} if valid else None
         require(valid,'invalid_credentials',401);return result
+    def password(self,actor,old_password,new_password):
+        require(isinstance(old_password,str) and len(old_password)<=256)
+        require(isinstance(new_password,str) and 12<=len(new_password)<=256,'password_length')
+        with self.transaction() as db:
+            row=db.execute('SELECT * FROM users WHERE id=?',(actor['id'],)).fetchone()
+            digest=hashlib.pbkdf2_hmac('sha256',old_password.encode(),bytes.fromhex(row['salt']),600000).hex()
+            require(hmac.compare_digest(digest,row['password_hash']),'invalid_credentials',401)
+            salt=secrets.token_hex(16)
+            encoded=hashlib.pbkdf2_hmac('sha256',new_password.encode(),bytes.fromhex(salt),600000).hex()
+            db.execute('UPDATE users SET salt=?,password_hash=? WHERE id=?',(salt,encoded,actor['id']))
+            db.execute('DELETE FROM sessions WHERE user_id=?',(actor['id'],))
+        return {'signed_out':True}
     def logout(self,token):
         with self.transaction() as db:db.execute('DELETE FROM sessions WHERE hash=?',(token_hash(token),))
         return {'signed_out':True}
@@ -147,7 +164,11 @@ class Backend:
                 if role=='parent':require(db.execute("SELECT COUNT(*) FROM memberships WHERE workspace_id=? AND role='parent' AND active=1",(wid,)).fetchone()[0]<2,'parent_slots_full')
                 invite=secrets.token_urlsafe(32);db.execute('INSERT INTO invitations VALUES(?,?,?,?,?,?,?,NULL)',(token_hash(invite),wid,email,role,profile,actor['id'],int(self.clock())+86400))
                 # Code is returned only to its issuing parent; the issuer shares it explicitly.
-                result={'workspace_id':wid,'invitation':invite,'expires_in':86400}
+                result={'workspace_id':wid,'invitation':invite,'invitation_id':token_hash(invite),'expires_in':86400}
+            elif kind=='invite.revoke':
+                invite=op.get('invitation_id');require(isinstance(invite,str) and re.fullmatch('[a-f0-9]{64}',invite))
+                require(db.execute('SELECT 1 FROM invitations WHERE hash=? AND workspace_id=?',(invite,wid)).fetchone() is not None,'invitation_invalid')
+                db.execute('DELETE FROM invitations WHERE hash=? AND workspace_id=?',(invite,wid));result={'revoked':True}
             elif kind=='child.save':
                 pid=identifier(op.get('profile_id'));text(op.get('name'),100);perms=op.get('permissions');require(isinstance(perms,list) and len(perms)==len(set(perms)) and set(perms)<=PERMISSIONS)
                 row=db.execute('SELECT * FROM profiles WHERE id=? AND workspace_id=?',(pid,wid)).fetchone()
@@ -203,7 +224,9 @@ class Backend:
             profiles=[dict(r) for r in db.execute('SELECT * FROM profiles WHERE workspace_id=? AND archived=0',(wid,))]
             if space['role']=='child':profiles=[p for p in profiles if p['id']==space['profile_id']]
             for p in profiles:p['permissions']=json.loads(p['permissions'])
-            return {'members':members,'profiles':profiles,'space':space}
+            changes=[dict(r) for r in db.execute('SELECT id,target_id,requested_by,revision FROM parent_changes WHERE workspace_id=? AND approved_by IS NULL',(wid,))] if space['role']=='parent' else []
+            invites=[dict(r) for r in db.execute('SELECT hash AS id,email,role,expires_at FROM invitations WHERE workspace_id=? AND used_by IS NULL AND expires_at>?',(wid,int(self.clock())))] if space['role']=='parent' else []
+            return {'members':members,'profiles':profiles,'space':space,'parent_changes':changes,'invitations':invites}
     def _permissions(self,db,space):
         if space['role']!='child':return PERMISSIONS
         row=db.execute('SELECT permissions FROM profiles WHERE id=? AND workspace_id=? AND archived=0',(space['profile_id'],space['id'])).fetchone()
@@ -225,7 +248,9 @@ class Backend:
     def _data(self,db,row):
         result=dict(row);result['audience']=json.loads(result['audience']);data=dict(db.execute('SELECT * FROM '+TABLES[row['kind']]+' WHERE id=?',(row['id'],)).fetchone());data.pop('id')
         for key in JSON_FIELDS & data.keys(): data[key]=json.loads(data[key])
-        result['data']=data;return result
+        result['data']=data
+        if row['kind']=='task':result['progress']=[dict(p) for p in db.execute('SELECT profile_id,completed,approved FROM task_progress WHERE task_id=?',(row['id'],))]
+        return result
     def _validate_data(self,db,wid,kind,data,audience,actor,space):
         require(isinstance(data,dict) and set(data)==FIELDS[kind],'invalid_fields')
         for pid in audience: require(db.execute('SELECT id FROM profiles WHERE id=? AND workspace_id=? AND archived=0',(pid,wid)).fetchone() is not None,'invalid_participant')
@@ -252,6 +277,7 @@ class Backend:
         if kind=='task':
             require(type(data['completed']) is int and data['completed'] in (0,1) and type(data['review']) is int and data['review'] in (0,1))
             require(data['assignment'] in ('single','each','joint','any') and isinstance(data['assignees'],list) and len(set(data['assignees']))==len(data['assignees']) and set(data['assignees'])<=set(audience))
+            if data['assignment']=='single':require(len(data['assignees'])==1,'invalid_participant')
         if kind=='event':
             s=data['schedule'];require(isinstance(s,dict) and set(s)=={'localStart','timezone','allDay','repeat','interval','until'})
             require(s['repeat'] in ('none','daily','weekly','monthly','yearly') and type(s['interval']) is int and 1<=s['interval']<=365 and type(s['allDay']) is bool)
@@ -279,11 +305,14 @@ class Backend:
         results=[]
         # Each operation is atomic; the batch may resume after any acknowledged prefix.
         for op in ops:
+            if not isinstance(op,dict):
+                results.append({'id':None,'status':'rejected','error':'invalid_input'});continue
             try: results.append(self._record_operation(actor,wid,op))
             except Failure as error: results.append({'id':op.get('id'),'status':'rejected','error':error.code})
         return {'results':results}
     def _record_operation(self,actor,wid,op):
-        require(isinstance(op,dict));action=op.get('action');require(action in ('record.put','record.delete','record.grant','request.fulfill'))
+        require(isinstance(op,dict));action=op.get('action');require(action in ('record.put','record.delete','record.grant','request.fulfill','task.complete','task.review'))
+        identifier(op.get('id'))
         rid=identifier(op.get('record_id'))
         with self.transaction() as db:
             space=self._workspace(db,actor,wid);row=db.execute('SELECT * FROM records WHERE id=?',(rid,)).fetchone()
@@ -295,25 +324,48 @@ class Backend:
             expected=op.get('revision');require(type(expected) is int and expected>=0)
             if (row['revision'] if row else 0)!=expected:
                 return {'id':op['id'],'status':'conflict','record_id':rid,'server':self._data(db,row) if row else None}
-            if action=='record.put':
+            if action in ('task.complete','task.review'):
+                require(row is not None and row['kind']=='task' and not row['deleted'],'record_missing')
+                task=self._data(db,row)['data'];assignees=task['assignees'];pid=op.get('profile_id')
+                require(pid in assignees,'invalid_participant');require(type(op.get('completed')) is bool)
+                if action=='task.review':require(space['role'] in ('parent','owner'),'parent_required',403)
+                elif space['role']=='child':require(pid==space['profile_id'] and 'complete_tasks' in self._permissions(db,space),'child_permission',403)
+                else:require(space['role'] in ('parent','owner','adult'),'record_forbidden',403)
+                done=int(op['completed']);approved=int(done and (not task['review'] or space['role'] in ('parent','owner')))
+                db.execute('INSERT INTO task_progress VALUES(?,?,?,?) ON CONFLICT(task_id,profile_id) DO UPDATE SET completed=excluded.completed,approved=excluded.approved',(rid,pid,done,approved))
+                marks={p['profile_id']:bool(p['completed'] and p['approved']) for p in db.execute('SELECT * FROM task_progress WHERE task_id=?',(rid,))}
+                complete=any(marks.get(p,False) for p in assignees) if task['assignment'] in ('single','any') else all(marks.get(p,False) for p in assignees)
+                db.execute('UPDATE tasks SET completed=? WHERE id=?',(int(complete),rid))
+                seq=self._audit(db,wid,actor,op['id'],action,rid);db.execute('UPDATE records SET revision=revision+1,seq=? WHERE id=?',(seq,rid))
+            elif action=='record.put':
                 kind=op.get('kind');visibility=op.get('visibility');audience=op.get('audience')
                 require(kind in TABLES and visibility in ('private','shared') and isinstance(audience,list) and len(audience)<=50 and len(set(audience))==len(audience))
                 if row:
                     require(row['kind']==kind and row['deleted']==0)
                     if row['owner_id']!=actor['id']:require(row['visibility']==visibility and json.loads(row['audience'])==audience,'owner_controls_visibility',403)
                 if space['role']=='child':
-                    p=self._permissions(db,space);require(visibility=='shared' and audience==[space['profile_id']],'child_scope',403)
+                    p=self._permissions(db,space);require(visibility=='shared' and (audience==[space['profile_id']] if row is None else audience==json.loads(row['audience'])),'child_scope',403)
                     if row is None:require(kind=='transaction' and 'record_spending' in p and op['data'].get('kind')=='expense' or kind=='request' and 'request_money' in p and op['data'].get('profile_id')==space['profile_id'] or kind=='task' and 'create_tasks' in p,'child_permission',403)
                     elif row['owner_id']!=actor['id'] or 'edit_own' not in p:
-                        old=self._data(db,row)['data'];require(kind=='task' and all(op['data'].get(k)==v for k,v in old.items() if k!='completed'),'completion_only',403)
+                        old=self._data(db,row)['data'];require(kind=='task' and all(op['data'].get(k)==v for k,v in old.items()),'completion_only',403)
+                if row and kind=='task' and space['role']=='child':require(op['data'].get('completed')==self._data(db,row)['data']['completed'],'completion_only',403)
                 self._validate_data(db,wid,kind,op.get('data'),audience,actor,space)
                 if row and kind=='request':require(self._data(db,row)['data']['state']=='pending','request_closed',409)
                 if row and kind=='account' and self._data(db,row)['data']['currency']!=op['data']['currency']:
                     require(not db.execute('SELECT 1 FROM transactions WHERE account_id=? UNION ALL SELECT 1 FROM transfers WHERE from_id=? OR to_id=? LIMIT 1',(rid,rid,rid)).fetchone(),'currency_mismatch')
+                old_task=self._data(db,row)['data'] if row and kind=='task' else None
                 data=op['data'];seq=self._audit(db,wid,actor,op['id'],action,rid)
-                if row:db.execute('UPDATE records SET visibility=?,audience=?,revision=revision+1,seq=? WHERE id=?',(visibility,canonical(audience),seq,rid));db.execute('DELETE FROM '+TABLES[kind]+' WHERE id=?',(rid,))
+                if row:db.execute('UPDATE records SET visibility=?,audience=?,revision=revision+1,seq=? WHERE id=?',(visibility,canonical(audience),seq,rid))
                 else:db.execute('INSERT INTO records VALUES(?,?,?,?,?,?,1,0,?)',(rid,wid,actor['id'],kind,visibility,canonical(audience),seq))
-                columns=list(data);db.execute('INSERT INTO '+TABLES[kind]+'(id,'+','.join(columns)+') VALUES('+','.join('?' for _ in range(len(columns)+1))+')',[rid]+[canonical(data[k]) if k in JSON_FIELDS else data[k] for k in columns])
+                columns=list(data);db.execute('INSERT INTO '+TABLES[kind]+'(id,'+','.join(columns)+') VALUES('+','.join('?' for _ in range(len(columns)+1))+') ON CONFLICT(id) DO UPDATE SET '+','.join(k+'=excluded.'+k for k in columns),[rid]+[canonical(data[k]) if k in JSON_FIELDS else data[k] for k in columns])
+                if kind=='task' and not row and data['completed']:
+                    for pid in data['assignees']:db.execute('INSERT INTO task_progress VALUES(?,?,1,1)',(rid,pid))
+                if kind=='task' and row:
+                    previous=self._data(db,row)['progress']
+                    for mark in previous:
+                        if mark['profile_id'] not in data['assignees']:db.execute('DELETE FROM task_progress WHERE task_id=? AND profile_id=?',(rid,mark['profile_id']))
+                    if space['role']!='child' and old_task['completed']!=data['completed']:
+                        for pid in data['assignees']:db.execute('INSERT INTO task_progress VALUES(?,?,?,?) ON CONFLICT(task_id,profile_id) DO UPDATE SET completed=excluded.completed,approved=excluded.approved',(rid,pid,data['completed'],data['completed']))
             else:
                 require(row is not None and not row['deleted'],'record_missing')
                 if action=='record.delete':
@@ -328,7 +380,7 @@ class Backend:
                     if not op['revoke']:db.execute('INSERT INTO grants VALUES(?,?,?)',(rid,uid,int(op['can_edit'])))
                 elif action=='request.fulfill':
                     require(space['role'] in ('parent','owner'),'parent_required',403);require(row['kind']=='request');request=self._data(db,row)['data'];require(request['state']=='pending','request_closed',409)
-                    movement=identifier(op.get('movement_id'));transfer=self._reference(db,wid,movement,'transfer',actor=actor,space=space);account=self._reference(db,wid,transfer['to_id'],'account',currency=request['currency'],actor=actor,space=space)
+                    movement=identifier(op.get('movement_id'));require(not db.execute("SELECT 1 FROM requests WHERE movement_id=? AND state='fulfilled'",(movement,)).fetchone(),'movement_already_used',409);transfer=self._reference(db,wid,movement,'transfer',actor=actor,space=space);account=self._reference(db,wid,transfer['to_id'],'account',currency=request['currency'],actor=actor,space=space)
                     target=db.execute('SELECT audience FROM records WHERE id=?',(transfer['to_id'],)).fetchone();require(request['profile_id'] in json.loads(target['audience']) and transfer['received_minor']==request['amount_minor'],'fulfillment_mismatch')
                     db.execute("UPDATE requests SET state='fulfilled',movement_id=? WHERE id=?",(movement,rid))
                 seq=self._audit(db,wid,actor,op['id'],action,rid);db.execute('UPDATE records SET revision=revision+1,seq=? WHERE id=?',(seq,rid))
@@ -345,4 +397,4 @@ class Backend:
             changed=[r for r in visible if r['seq']>cursor][:limit]
             maximum=db.execute('SELECT COALESCE(MAX(seq),0) FROM changes WHERE workspace_id=?',(wid,)).fetchone()[0]
             more=any(r['seq']>(changed[-1]['seq'] if changed else cursor) for r in visible)
-            return {'records':[self._data(db,r) for r in changed],'cursor':changed[-1]['seq'] if more else max(cursor,maximum),'more':more,'visible_ids':[r['id'] for r in visible if not r['deleted']],'membership':space}
+            return {'records':[{**self._data(db,r),'editable':bool(self._editable(db,actor,space,r))} for r in changed],'cursor':changed[-1]['seq'] if more else max(cursor,maximum),'more':more,'visible_ids':[r['id'] for r in visible if not r['deleted']],'membership':space}

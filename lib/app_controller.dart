@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'sync/controller.dart';
 import 'package:flutter/foundation.dart';
 import 'domain/appearance.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -12,6 +13,7 @@ import 'platform/native_bridge.dart';
 class AppController extends ChangeNotifier {
   AppController(this.store, this.catalog, this.deviceLanguage, {NativeBridge? platform}) : native = platform ?? NativeBridge();
   final ActionStore store;
+  FamilyController? family;
   final PackCatalog catalog;
   final String deviceLanguage;
   List<Record> records = [];
@@ -32,7 +34,7 @@ class AppController extends ChangeNotifier {
   Appearance get appearance => appearancePreview ?? Appearance.decode(preferences['appearance_v1']);
   void previewAppearance(Appearance? value) { if (_disposed) return; appearancePreview = value; presentation.notifyListeners(); }
   @override
-  void dispose() { _disposed = true; presentation.dispose(); super.dispose(); }
+  void dispose() { family?.dispose(); _disposed = true; presentation.dispose(); super.dispose(); }
   final calendarEngine = const CalendarEngine();
   List<CalendarEntry> calendar = [];
   List<OccurrenceState> occurrences = [];

@@ -6,6 +6,7 @@ import 'data/local_store.dart';
 import 'domain/models.dart';
 import 'localization/language_pack.dart';
 import 'ui/app.dart';
+import 'sync/controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,9 @@ Future<void> launch(PackCatalog catalog) async {
     store = await LocalStore.open();
     final controller = AppController(store, catalog, language);
     await controller.load();
+    controller.family=FamilyController(LocalSyncStore(store));
+    // Cloud availability never gates the existing offline application.
+    controller.family!.initialize();
     runApp(LifeOSApp(controller: controller));
   } catch (error) {
     await store?.close();

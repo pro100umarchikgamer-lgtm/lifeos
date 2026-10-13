@@ -1,3 +1,4 @@
+import '../sync/contracts.dart';
 import '../domain/offline_validation.dart';
 import '../domain/statement_import.dart';
 import 'dart:convert';
@@ -22,6 +23,7 @@ part 'wealth_store.dart';
 part 'import_store.dart';
 part 'personal_modules_store.dart';
 part 'history_validation.dart';
+part 'sync_store.dart';
 
 class LocalStore implements OfflineStore {
   LocalStore._(this._db, this.ownerId, this.workspaceId);
@@ -29,7 +31,7 @@ class LocalStore implements OfflineStore {
   String ownerId;
   String workspaceId;
   static const _uuid = Uuid();
-  static const schemaVersion = 10;
+  static const schemaVersion = 11;
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) throw const DomainFailure('invalid_action');
@@ -409,7 +411,7 @@ class LocalStore implements OfflineStore {
 
   Map<String,Object?> _upgradeBackup(Map<String,Object?> data) {
     if(data['schemaVersion']==schemaVersion) return data;
-    if(![1,2,3,4,5,6,7,8,9].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
+    if(![1,2,3,4,5,6,7,8,9,10].contains(data['schemaVersion'])||data['tables'] is! Map) throw const DomainFailure('backup_invalid');
     final tables=Map<String,Object?>.from(jsonDecode(jsonEncode(data['tables'])) as Map);
     final version=data['schemaVersion'] as int;
     final legacy=['local_identity','workspaces','accounts','transactions','tasks','notes','settings','operations',if(version>=2)'record_changes',if(version>=3)...['calendar_entries','calendar_occurrences'],if(version>=4)...['categories','transfers','transaction_splits','budgets','planned_payments','planned_confirmations','entity_changes'],if(version>=5)...['savings_goals','savings_entries','debts','debt_entries','investment_assets','investment_entries'],if(version>=6)...['import_batches','import_rows'],if(version>=7)...['projects','project_milestones','task_placements','habits','habit_checks','learning_subjects','study_items','checklists','checklist_items','note_metadata','record_links','wellness_entries','dashboard_configs'],if(version>=8)...['local_profiles','local_memberships'],if(version>=9)'habit_pauses'];

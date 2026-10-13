@@ -83,3 +83,76 @@ class FamilyBackendTests(unittest.TestCase):
             self.assertEqual(fetch('bad','/v1/spaces')[0],401)
             self.backend.logout(self.p2['token']);self.assertEqual(fetch(self.p2['token'],'/v1/me')[0],401)
         finally:server.shutdown();server.server_close();thread.join(timeout=5)
+
+    def test_password_change_revokes_all_sessions_and_wrong_password_keeps_account(self):
+        other=self.backend.login(self.p1['email'],'a-valid-long-passphrase')['token']
+        with self.assertRaises(Failure):self.backend.password(self.p1,'wrong','a-different-valid-password')
+        self.assertEqual(self.backend.authenticate(other)['id'],self.p1['id'])
+        self.backend.password(self.p1,'a-valid-long-passphrase','a-different-valid-password')
+        for token in [other,self.p1['token']]:
+            with self.assertRaises(Failure):self.backend.authenticate(token)
+        with self.assertRaises(Failure):self.backend.login(self.p1['email'],'a-valid-long-passphrase')
+        self.assertEqual(self.backend.authenticate(self.backend.login(self.p1['email'],'a-different-valid-password')['token'])['id'],self.p1['id'])
+
+    def test_malformed_batch_does_not_abort_valid_operation(self):
+        op,_=self.put(self.p1,'note',{'body':'valid'})
+        result=self.backend.batch(self.p1,self.wid,[None,{'record_id':op['record_id'],'action':'record.put'},op])['results']
+        self.assertEqual([r['status'] for r in result],['rejected','rejected','accepted'])
+        self.assertEqual(result[1]['error'],'invalid_id')
+
+    def test_another_family_cannot_read_or_reference_records(self):
+        account,_=self.put(self.p1,'account',{'name':'Private cash','currency':'RUB','opening_minor':0})
+        outsider=self.user('outsider@example.test');wid=uid()
+        self.backend.family(outsider,{'id':uid(),'workspace_id':wid,'action':'workspace.create','name':'Other','kind':'family'})
+        with self.assertRaises(Failure):self.backend.pull(outsider,self.wid,0)
+        edit={**account,'id':uid(),'revision':1}
+        self.assertEqual(self.backend.batch(outsider,wid,[edit])['results'][0]['error'],'record_forbidden')
+        op={'id':uid(),'action':'record.put','record_id':uid(),'revision':0,'kind':'transaction','visibility':'shared','audience':[],'data':{'kind':'expense','amount_minor':1,'currency':'RUB','date':'2026-10-13','label':'spoof','account_id':account['record_id']}}
+        self.assertEqual(self.backend.batch(outsider,wid,[op])['results'][0]['error'],'invalid_reference')
+
+    def test_child_can_complete_multi_audience_task_but_not_change_assignment(self):
+        pid=self.child_profile();other=uid()
+        self.backend.family(self.p1,self.op('child.save',profile_id=other,name='Sibling',permissions=['view_shared'],revision=0))
+        task,_=self.put(self.p1,'task',{'title':'Together','completed':0,'assignment':'joint','assignees':[pid,other],'review':0},audience=[pid,other])
+        changed={'id':uid(),'action':'task.complete','record_id':task['record_id'],'revision':1,'profile_id':pid,'completed':True}
+        self.assertEqual(self.backend.batch(self.child,self.wid,[changed])['results'][0]['status'],'accepted')
+        self.assertEqual(self.backend.pull(self.p1,self.wid,0)['records'][0]['data']['completed'],0)
+        forged={**task,'id':uid(),'revision':2,'data':{**task['data'],'title':'Changed by child'}}
+        self.assertEqual(self.backend.batch(self.child,self.wid,[forged])['results'][0]['error'],'completion_only')
+
+    def test_transfer_cannot_fulfill_two_requests(self):
+        pid=self.child_profile()
+        a,_=self.put(self.p1,'account',{'name':'Parent','currency':'RUB','opening_minor':0})
+        b,_=self.put(self.p1,'account',{'name':'Child','currency':'RUB','opening_minor':0},audience=[pid])
+        movement,_=self.put(self.p1,'transfer',{'from_id':a['record_id'],'to_id':b['record_id'],'sent_minor':100,'received_minor':100,'date':'2026-10-13'})
+        for index in range(2):
+            request,_=self.put(self.child,'request',{'profile_id':pid,'amount_minor':100,'currency':'RUB','label':'Books','state':'pending','movement_id':None},audience=[pid])
+            result=self.backend.batch(self.p1,self.wid,[{'id':uid(),'action':'request.fulfill','record_id':request['record_id'],'revision':1,'movement_id':movement['record_id']}])['results'][0]
+            self.assertEqual(result['status'],'accepted' if index==0 else 'rejected')
+            if index:self.assertEqual(result['error'],'movement_already_used')
+
+    def test_either_parent_can_revoke_invitation_before_acceptance(self):
+        invitation=self.backend.family(self.p1,self.op('invite.create',email='new@example.test',role='adult',profile_id=None))
+        self.backend.family(self.p2,self.op('invite.revoke',invitation_id=invitation['invitation_id']))
+        actor=self.user('new@example.test')
+        with self.assertRaises(Failure):self.backend.accept(actor,{'id':uid(),'invitation':invitation['invitation']})
+        self.assertEqual(self.backend.roster(self.p2,self.wid)['invitations'],[])
+
+    def test_joint_task_requires_each_completion_review_and_title_edit_preserves_progress(self):
+        pid=self.child_profile();sibling=self.user('sibling@example.test');other=uid()
+        self.backend.family(self.p1,self.op('child.save',profile_id=other,name='Sibling',permissions=['complete_tasks','view_shared'],revision=0))
+        invitation=self.backend.family(self.p2,self.op('invite.create',email=sibling['email'],role='child',profile_id=other))
+        self.backend.accept(sibling,{'id':uid(),'invitation':invitation['invitation']})
+        task,_=self.put(self.p1,'task',{'title':'Joint','completed':0,'assignment':'joint','assignees':[pid,other],'review':1},audience=[pid,other])
+        def complete(actor,profile,revision,action='task.complete'):
+            result=self.backend.batch(actor,self.wid,[{'id':uid(),'record_id':task['record_id'],'action':action,'revision':revision,'profile_id':profile,'completed':True}])['results'][0]
+            self.assertEqual(result['status'],'accepted');return result['revision']
+        complete(self.child,pid,1)
+        changed={**task,'id':uid(),'revision':2,'data':{**task['data'],'title':'New title'}}
+        self.assertEqual(self.backend.batch(self.p1,self.wid,[changed])['results'][0]['status'],'accepted')
+        current=self.backend.pull(self.p1,self.wid,0)['records'][0]
+        self.assertEqual(current['progress'][0]['completed'],1);self.assertEqual(current['data']['completed'],0)
+        complete(self.p2,pid,3,'task.review');complete(sibling,other,4)
+        current=self.backend.pull(self.p1,self.wid,0)['records'][0];self.assertEqual(current['data']['completed'],0)
+        complete(self.p1,other,5,'task.review')
+        self.assertEqual(self.backend.pull(self.p2,self.wid,0)['records'][0]['data']['completed'],1)

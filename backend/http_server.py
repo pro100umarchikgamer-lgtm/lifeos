@@ -36,6 +36,7 @@ def handler(backend):
                 else:
                     auth=self.headers.get('Authorization','');token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
                     if route=='/v1/auth/verify' and method=='POST':result=backend.verify(actor,body.get('code'))
+                    elif route=='/v1/auth/password' and method=='POST':result=backend.password(actor,body.get('old_password'),body.get('new_password'))
                     elif route=='/v1/auth/logout' and method=='POST':result=backend.logout(token)
                     elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
                     elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}

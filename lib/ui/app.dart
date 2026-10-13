@@ -18,6 +18,7 @@ import 'selection.dart';
 import 'personal_modules.dart';
 import 'dashboard_editor.dart';
 import 'module_calendar_route.dart';
+import 'family.dart';
 
 class LifeOSApp extends StatefulWidget {
   const LifeOSApp({super.key, required this.controller, this.builder});
@@ -564,7 +565,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _notesOpen = kind == EntryKind.note;
   }); }
 
-  List<Widget> _profile() => [_pageTitle('profile'), const SizedBox(height: 14), PersonalSettings(controller: c)];
+  List<Widget> _profile() => [_pageTitle('profile'), const SizedBox(height: 14), if(c.family!=null) ...[LifeCard(child:ListTile(leading:const Icon(Icons.people_outline),title:Text(c.pack.t('family_account')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>FamilyPage(controller:c.family!,pack:c.pack))))),const SizedBox(height:12)], PersonalSettings(controller: c)];
 
   Widget _pageTitle(String key) => Text(c.pack.t(key),
     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800));
