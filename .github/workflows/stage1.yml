@@ -121,6 +121,7 @@ jobs:
         if: steps.validation.outputs.build == 'true'
         env:
           LIFEOS_TEST_KEYSTORE_BASE64: ${{ secrets.LIFEOS_TEST_KEYSTORE_BASE64 }}
+          LIFEOS_API_ORIGIN: ${{ vars.LIFEOS_API_ORIGIN }}
         run: bash tool/ci_signing.sh
       - name: Save public signing diagnostics on failure
         if: failure() && steps.validation.outputs.build == 'true'

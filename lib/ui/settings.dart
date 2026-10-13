@@ -32,9 +32,10 @@ class _PersonalSettingsState extends State<PersonalSettings> {
   }
 
   void message(String key) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(c.pack.t(key))));
+    }
   }
 
   Future<void> preference(String key, String value) async {
@@ -721,7 +722,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
           ),
         ),
       ];
-      if (widget.section != null)
+      if (widget.section != null) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -732,6 +733,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
             ],
           ],
         );
+      }
       void open(int index, String title) {
         Navigator.push<void>(
           context,

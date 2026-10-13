@@ -44,7 +44,12 @@ LIFEOS_GRADLE_SIGNING
 [[ "${GITHUB_RUN_ATTEMPT}" -lt 1000 ]]
 version_code=$((GITHUB_RUN_NUMBER * 1000 + GITHUB_RUN_ATTEMPT))
 [[ "$version_code" -gt 1 && "$version_code" -le 2147483647 ]]
-flutter build apk --release --build-number "$version_code"
+build_args=(--release --build-number "$version_code")
+if [[ -n "${LIFEOS_API_ORIGIN:-}" ]]; then
+    python3 tool/validate_api_origin.py
+    build_args+=(--dart-define "LIFEOS_API_ORIGIN=$LIFEOS_API_ORIGIN")
+fi
+flutter build apk "${build_args[@]}"
 apk=build/app/outputs/flutter-apk/app-release.apk
 sdk_root=${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Android SDK unavailable}}
 apksigner=$(find "$sdk_root/build-tools" -mindepth 2 -maxdepth 2 -name apksigner | sort -V | tail -n 1)

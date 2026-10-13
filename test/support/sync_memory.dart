@@ -88,8 +88,9 @@ class MemorySyncStore implements SyncStore {
       }
     }
     cursors[key(s, w)] = page['cursor'] as int;
-    if (incremental)
+    if (incremental) {
       await saveMetadata(s, 'epoch:$w', {'value': page['epoch']});
+    }
   }
 
   @override
