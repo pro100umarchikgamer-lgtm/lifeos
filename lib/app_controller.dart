@@ -159,6 +159,8 @@ class AppController extends ChangeNotifier {
   }
   Future<void> preference(String key, String value) async {
     switch (key) {
+      case 'modules_view': if(!['grid','list'].contains(value))throw const DomainFailure('invalid_setting');
+      case 'active_scope': if(!['personal','family'].contains(value))throw const DomainFailure('invalid_setting');
       case 'currency': Currency.fromCode(value);
       case 'language': if (!catalog.packs.containsKey(value)) throw const DomainFailure('invalid_setting');
       case 'appearance_v1':

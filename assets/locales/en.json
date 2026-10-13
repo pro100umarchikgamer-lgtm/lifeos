@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 6,
+  "packVersion": 7,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -605,7 +605,18 @@
     "family_review_required": "Co-parent review is required",
     "family_review_pending": "Waiting for completion or review",
     "family_task_undo": "Mark incomplete",
-    "family_error_client_busy": "Synchronization is busy. Wait for it to finish and retry."
+    "family_error_client_busy": "Synchronization is busy. Wait for it to finish and retry.",
+    "ux_grid": "Grid",
+    "ux_list": "List",
+    "ux_all": "All",
+    "ux_import_advanced": "Advanced file settings",
+    "ux_import_adjust": "Adjust detection",
+    "import_encoding_required": "Encoding could not be safely detected. Choose it in advanced settings and select the file again.",
+    "family_visible_totals": "Calculated from records you can access. Queued changes are shown separately.",
+    "family_recovery": "Forgot your password?",
+    "family_recovery_hint": "Request a code, then enter the code and your new password above. Sign in after resetting.",
+    "family_recovery_send": "Request recovery code",
+    "family_recovery_reset": "Set new password"
   },
   "plurals": {
     "record_count": {

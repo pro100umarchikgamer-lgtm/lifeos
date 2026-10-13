@@ -33,7 +33,7 @@ proof = {'inputs': inputs('HEAD'), 'lock': lock, 'flutter': sdk, 'sha': command(
 Path('validation-proof.json').write_text(json.dumps(proof, sort_keys=True) + '\n')
 reuse = False
 apk_exists = False
-trusted = os.environ['GITHUB_REF'] == 'refs/heads/main' and os.environ['GITHUB_EVENT_NAME'] != 'pull_request'
+trusted = (os.environ['GITHUB_REF'] == 'refs/heads/main' or os.environ['GITHUB_REF'] == 'refs/heads/feature/family-sync' and os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch') and os.environ['GITHUB_EVENT_NAME'] != 'pull_request'
 try:
     runs = api(f'{API}/workflows/stage1.yml/runs?branch=main&status=success&per_page=100')['workflow_runs'] if trusted else []
     for run in runs:

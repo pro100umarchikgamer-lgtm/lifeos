@@ -111,6 +111,31 @@ class Backend:
             # Commit failed-attempt counters rather than rolling them back with the error.
             result={'user_id':row['id'],'token':self._session(db,row['id']),'verified':bool(row['verified'])} if valid else None
         require(valid,'invalid_credentials',401);return result
+    def recover(self,email):
+        require(isinstance(email,str) and len(email)<=254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email))
+        require(self.deliver is not None,'verification_delivery_unconfigured',503)
+        code=None
+        with self.transaction() as db:
+            now=int(self.clock());key='recovery:'+token_hash(email.casefold())
+            limit=db.execute('SELECT * FROM auth_limits WHERE key=?',(key,)).fetchone()
+            require(limit is None or limit['until_at']<=now,'rate_limited',429)
+            db.execute('INSERT OR REPLACE INTO auth_limits VALUES(?,1,?)',(key,now+60))
+            row=db.execute('SELECT id FROM users WHERE email=?',(email.casefold(),)).fetchone()
+            if row:
+                code=secrets.token_urlsafe(32);db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
+                db.execute('INSERT INTO password_recovery VALUES(?,?,?)',(token_hash(code),row['id'],now+900))
+        if code:self.deliver(email.casefold(),code)
+        return {'recovery_requested':True}
+    def reset_password(self,email,code,password):
+        require(isinstance(email,str) and isinstance(code,str) and len(code)==43)
+        require(isinstance(password,str) and 12<=len(password)<=256,'password_length')
+        with self.transaction() as db:
+            row=db.execute('SELECT u.id FROM password_recovery r JOIN users u ON u.id=r.user_id WHERE r.hash=? AND u.email=? AND r.expires_at>?',(token_hash(code),email.casefold(),int(self.clock()))).fetchone()
+            require(row is not None,'verification_invalid')
+            salt=secrets.token_hex(16);encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
+            db.execute('UPDATE users SET salt=?,password_hash=?,verified=1 WHERE id=?',(salt,encoded,row['id']))
+            db.execute('DELETE FROM sessions WHERE user_id=?',(row['id'],));db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
+        return {'password_reset':True}
     def password(self,actor,old_password,new_password):
         require(isinstance(old_password,str) and len(old_password)<=256)
         require(isinstance(new_password,str) and 12<=len(new_password)<=256,'password_length')

@@ -13,6 +13,10 @@ class StatementTable {
     if(!const {'csv','tsv','txt','json','ofx','qif'}.contains(extension.toLowerCase())) {
       throw const DomainFailure('import_format');
     }
+    if(encoding=='auto'){
+      if(bytes.length>=2 && (bytes[0]==0xff&&bytes[1]==0xfe||bytes[0]==0xfe&&bytes[1]==0xff)){encoding='utf16';}
+      else{try{utf8.decode(bytes);encoding='utf8';}on FormatException{throw const DomainFailure('import_encoding_required');}}
+    }
     String decode() {
       if(encoding=='utf16') {
         if(bytes.length<2||bytes.length.isOdd)throw const DomainFailure('import_format');

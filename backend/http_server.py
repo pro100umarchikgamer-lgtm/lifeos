@@ -32,6 +32,8 @@ def handler(backend):
                     body=json.loads(self.rfile.read(length),object_pairs_hook=unique)
                     if not isinstance(body,dict):raise Failure('invalid_input')
                 if route=='/v1/auth/register' and method=='POST':result=backend.register(body.get('email'),body.get('password'))
+                elif route=='/v1/auth/recovery' and method=='POST':result=backend.recover(body.get('email'))
+                elif route=='/v1/auth/reset' and method=='POST':result=backend.reset_password(body.get('email'),body.get('code'),body.get('password'))
                 elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'))
                 else:
                     auth=self.headers.get('Authorization','');token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)

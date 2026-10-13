@@ -156,3 +156,12 @@ class FamilyBackendTests(unittest.TestCase):
         current=self.backend.pull(self.p1,self.wid,0)['records'][0];self.assertEqual(current['data']['completed'],0)
         complete(self.p1,other,5,'task.review')
         self.assertEqual(self.backend.pull(self.p2,self.wid,0)['records'][0]['data']['completed'],1)
+
+    def test_recovery_is_email_bound_single_use_and_revokes_sessions(self):
+        self.assertEqual(self.backend.recover('unknown@example.test'),{'recovery_requested':True})
+        self.backend.recover(self.p1['email']);code=self.mail[self.p1['email']]
+        with self.assertRaises(Failure):self.backend.reset_password(self.p2['email'],code,'a-new-valid-long-password')
+        self.backend.reset_password(self.p1['email'],code,'a-new-valid-long-password')
+        with self.assertRaises(Failure):self.backend.authenticate(self.p1['token'])
+        with self.assertRaises(Failure):self.backend.reset_password(self.p1['email'],code,'a-new-valid-long-password')
+        self.assertTrue(self.backend.login(self.p1['email'],'a-new-valid-long-password')['verified'])

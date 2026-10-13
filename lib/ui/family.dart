@@ -314,6 +314,42 @@ class _FamilyPageState extends State<FamilyPage> {
                 enableSuggestions: false,
                 decoration: InputDecoration(labelText: t('family_password')),
               ),
+              ExpansionTile(
+                title: Text(t('family_recovery')),
+                children: [
+                  Text(t('family_recovery_hint')),
+                  TextField(
+                    controller: code,
+                    decoration: InputDecoration(labelText: t('family_code')),
+                  ),
+                  TextButton(
+                    onPressed: c.busy
+                        ? null
+                        : () => c.recover(
+                            endpoint.text.trim(),
+                            email.text.trim(),
+                          ),
+                    child: Text(t('family_recovery_send')),
+                  ),
+                  TextButton(
+                    onPressed: c.busy
+                        ? null
+                        : () async {
+                            await c.resetPassword(
+                              endpoint.text.trim(),
+                              email.text.trim(),
+                              code.text.trim(),
+                              password.text,
+                            );
+                            if (c.error == null) {
+                              password.clear();
+                              code.clear();
+                            }
+                          },
+                    child: Text(t('family_recovery_reset')),
+                  ),
+                ],
+              ),
               SwitchListTile(
                 title: Text(t('family_register')),
                 value: register,
@@ -575,10 +611,13 @@ class FamilyRecordEditor extends StatefulWidget {
     required this.controller,
     required this.pack,
     this.record,
+    this.initialKind,
+    this.initialFlow,
   });
   final FamilyController controller;
   final LanguagePack pack;
   final Json? record;
+  final String? initialKind, initialFlow;
   @override
   State<FamilyRecordEditor> createState() => _FamilyRecordEditorState();
 }
@@ -639,6 +678,8 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   void initState() {
     super.initState();
     c.addListener(changed);
+    kind = widget.initialKind ?? kind;
+    flow = widget.initialFlow ?? flow;
     role = c.roster?['space']?['role'] as String? ?? 'adult';
     final r = widget.record;
     if (r != null) {

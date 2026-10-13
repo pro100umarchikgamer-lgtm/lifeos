@@ -184,7 +184,7 @@ class _PersonalModuleEditorState extends State<PersonalModuleEditor> {
     if(table==OfflineTable.checklistItems)input(detail,'quantity'),
     if(table==OfflineTable.noteMetadata)...[if(widget.noteId==null)select('note',note,records(EntryKind.note),(v)=>note=v),input(detail,'tags')],
     if(table==OfflineTable.recordLinks)...[if(widget.noteId==null)select('note',note,records(EntryKind.note),(v)=>note=v),select('link_type',targetType,{for(final k in ['task','note','project','goal'])k:c.pack.t(k=='project'?'module_projects':k=='goal'?'module_goals':k)},(v){targetType=v;target='';}),select('linked_record',target,targetType=='task'||targetType=='note'?records(targetType=='task'?EntryKind.task:EntryKind.note):choices(targetType=='project'?OfflineTable.projects:OfflineTable.goals),(v)=>target=v)],
-    if(table==OfflineTable.wellness)...[select('kind',kind,{'activity':c.pack.t('wellness_activity'),'sleep':c.pack.t('wellness_sleep')},(v)=>kind=v),pick(false),TextField(controller:minutes,keyboardType:TextInputType.number,decoration:InputDecoration(labelText:c.pack.t('minutes'))),Text(c.pack.t('wellness_nonmedical'))],
+    if(table==OfflineTable.wellness)...[select('kind',kind,{'activity':c.pack.t('wellness_activity'),'sleep':c.pack.t('wellness_sleep')},(v)=>kind=v),pick(false),const SizedBox(height:16),Padding(padding:const EdgeInsets.only(bottom:16),child:TextField(controller:minutes,keyboardType:TextInputType.number,decoration:InputDecoration(labelText:c.pack.t('minutes')))),Text(c.pack.t('wellness_nonmedical'))],
     if(error!=null)Text(c.pack.t(error!),style:TextStyle(color:Theme.of(context).colorScheme.error)),
   ]);
 }

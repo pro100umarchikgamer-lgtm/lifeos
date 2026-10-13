@@ -141,6 +141,30 @@ class FamilyController extends ChangeNotifier {
       rethrow;
     }
   });
+  Future<void> recover(String endpoint, String email) => run(() async {
+    final candidate = FamilyApi(endpoint);
+    try {
+      await candidate.request('/v1/auth/recovery', body: {'email': email});
+    } finally {
+      candidate.close();
+    }
+  });
+  Future<void> resetPassword(
+    String endpoint,
+    String email,
+    String code,
+    String password,
+  ) => run(() async {
+    final candidate = FamilyApi(endpoint);
+    try {
+      await candidate.request(
+        '/v1/auth/reset',
+        body: {'email': email, 'code': code, 'password': password},
+      );
+    } finally {
+      candidate.close();
+    }
+  });
   Future<void> verify(String code) => run(() async {
     await api!.request('/v1/auth/verify', body: {'code': code});
     account!['verified'] = true;
@@ -190,7 +214,7 @@ class FamilyController extends ChangeNotifier {
       throw const SyncFailure('workspace_forbidden');
     workspace = id;
     _engine = null;
-    roster = null;
+    roster = await store.metadata(scope, 'roster:$id');
     await secure.write(key: 'lifeos.sync.workspace', value: id);
     await reloadLocal();
     await _refresh();

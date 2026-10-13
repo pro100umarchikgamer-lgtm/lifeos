@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'contracts.dart';
 
 class SyncEngine {
@@ -12,7 +14,15 @@ class SyncEngine {
     try {
       // Push before pull: a lost reply is replayed with the original operation UUID.
       while (true) {
-        final operations = await store.pending(scope, workspace);
+        final waiting = await store.pending(scope, workspace);
+        final operations = <Json>[];
+        var bytes = 512;
+        for (final operation in waiting) {
+          final size = utf8.encode(jsonEncode(operation)).length + 1;
+          if (operations.isNotEmpty && bytes + size > 1500000) break;
+          operations.add(operation);
+          bytes += size;
+        }
         if (operations.isEmpty) break;
         final response = await api.request(
           '/v1/sync/push',
