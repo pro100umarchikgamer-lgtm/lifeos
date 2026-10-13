@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 7,
+  "packVersion": 8,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -618,7 +618,25 @@
     "family_recovery_send": "Request recovery code",
     "family_recovery_reset": "Set new password",
     "family_grant_read": "View only",
-    "family_grant_edit": "View and edit"
+    "family_grant_edit": "View and edit",
+    "ux3_account_title": "Keep what matters close",
+    "ux3_account_body": "Plans, money and family care in one place. Your private records stay private.",
+    "ux3_cloud_unavailable": "Your personal space is ready",
+    "ux3_cloud_unavailable_body": "Family connection is not configured for this build yet. Keep using LifeOS on this device; your records are saved.",
+    "ux3_continue_local": "Continue on this device",
+    "ux3_show_password": "Show password",
+    "ux3_hide_password": "Hide password",
+    "ux3_family_title": "Closer together",
+    "ux3_family_steps": "1. Create your family space.\n2. Invite an equal co-parent.\n3. Add children and choose their access.",
+    "ux3_child_presets": "Start with an access preset",
+    "ux3_preset_simple": "Simple tasks",
+    "ux3_preset_allowance": "Allowance",
+    "ux3_preset_independent": "More independence",
+    "ux3_profile_body": "Your account, family and preferences. Under your control.",
+    "ux3_finance_body": "Understand your money, from daily spending to goals and savings.",
+    "ux3_modules_body": "Choose what helps you every day. Your view is remembered on this device.",
+    "ux3_today_body": "Focus on what matters. LifeOS keeps the rest within reach.",
+    "ux3_settings_body": "Make LifeOS yours"
   },
   "plurals": {
     "record_count": {

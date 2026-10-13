@@ -54,22 +54,21 @@ class _FamilyPageState extends State<FamilyPage> {
     return parts.join('\n');
   }
 
-  final endpoint = TextEditingController(),
-      email = TextEditingController(),
+  final email = TextEditingController(),
       password = TextEditingController(),
       passwordAgain = TextEditingController(),
       code = TextEditingController();
   bool register = false;
+  bool showPassword = false;
   String? formError;
   @override
   void initState() {
     super.initState();
-    endpoint.text = c.api?.base.origin ?? '';
   }
 
   @override
   void dispose() {
-    for (final field in [endpoint, email, password, passwordAgain, code]) {
+    for (final field in [email, password, passwordAgain, code]) {
       field.dispose();
     }
     super.dispose();
@@ -193,6 +192,47 @@ class _FamilyPageState extends State<FamilyPage> {
                     controller: name,
                     decoration: InputDecoration(labelText: t('family_name')),
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    t('ux3_child_presets'),
+                    style: Theme.of(ctx).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final preset in {
+                        'ux3_preset_simple': ['view_shared', 'complete_tasks'],
+                        'ux3_preset_allowance': [
+                          'view_shared',
+                          'view_budget',
+                          'record_spending',
+                          'request_money',
+                          'complete_tasks',
+                          'edit_own',
+                        ],
+                        'ux3_preset_independent': [
+                          'view_shared',
+                          'view_budget',
+                          'record_spending',
+                          'request_money',
+                          'create_tasks',
+                          'complete_tasks',
+                          'edit_own',
+                        ],
+                      }.entries)
+                        ActionChip(
+                          label: Text(t(preset.key)),
+                          onPressed: () => set(() {
+                            permissions
+                              ..clear()
+                              ..addAll(preset.value);
+                          }),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   for (final p in [
                     'view_budget',
                     'record_spending',
@@ -296,7 +336,12 @@ class _FamilyPageState extends State<FamilyPage> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.sizeOf(context).width > 720
+                ? (MediaQuery.sizeOf(context).width - 640) / 2
+                : 20,
+            vertical: 20,
+          ),
           children: [
             if (c.busy) const LinearProgressIndicator(),
             if (c.error != null)
@@ -308,14 +353,30 @@ class _FamilyPageState extends State<FamilyPage> {
                 ),
               ),
             if (c.account == null) ...[
-              Text(t('family_optional')),
+              LifeHero(
+                icon: Icons.favorite_outline,
+                title: t('ux3_account_title'),
+                body: t('ux3_account_body'),
+              ),
               const SizedBox(height: 16),
-              Text(t('family_endpoint')),
-              const SizedBox(height: 6),
-              TextField(
-                controller: endpoint,
-                keyboardType: TextInputType.url,
-                decoration: const InputDecoration(),
+              if (c.accountOrigin.isEmpty)
+                LifeCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t('ux3_cloud_unavailable'),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(t('ux3_cloud_unavailable_body')),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                t('family_optional'),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
               Text(t('family_email')),
@@ -323,6 +384,8 @@ class _FamilyPageState extends State<FamilyPage> {
               TextField(
                 controller: email,
                 keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                textInputAction: TextInputAction.next,
                 autocorrect: false,
                 decoration: const InputDecoration(),
               ),
@@ -331,10 +394,27 @@ class _FamilyPageState extends State<FamilyPage> {
               const SizedBox(height: 6),
               TextField(
                 controller: password,
-                obscureText: true,
+                obscureText: !showPassword,
                 autocorrect: false,
                 enableSuggestions: false,
-                decoration: const InputDecoration(),
+                autofillHints: [
+                  register ? AutofillHints.newPassword : AutofillHints.password,
+                ],
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    tooltip: t(
+                      showPassword ? 'ux3_hide_password' : 'ux3_show_password',
+                    ),
+                    onPressed: () =>
+                        setState(() => showPassword = !showPassword),
+                    icon: Icon(
+                      showPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                  ),
+                ),
               ),
               if (register) ...[
                 const SizedBox(height: 12),
@@ -362,20 +442,17 @@ class _FamilyPageState extends State<FamilyPage> {
                     decoration: InputDecoration(labelText: t('family_code')),
                   ),
                   TextButton(
-                    onPressed: c.busy
+                    onPressed: c.busy || c.accountOrigin.isEmpty
                         ? null
-                        : () => c.recover(
-                            endpoint.text.trim(),
-                            email.text.trim(),
-                          ),
+                        : () => c.recover(c.accountOrigin, email.text.trim()),
                     child: Text(t('family_recovery_send')),
                   ),
                   TextButton(
-                    onPressed: c.busy
+                    onPressed: c.busy || c.accountOrigin.isEmpty
                         ? null
                         : () async {
                             await c.resetPassword(
-                              endpoint.text.trim(),
+                              c.accountOrigin,
                               email.text.trim(),
                               code.text.trim(),
                               password.text,
@@ -389,13 +466,31 @@ class _FamilyPageState extends State<FamilyPage> {
                   ),
                 ],
               ),
-              SwitchListTile(
-                title: Text(t('family_register')),
-                value: register,
-                onChanged: c.busy ? null : (v) => setState(() => register = v),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: Text(t('family_login')),
+                      selected: !register,
+                      onSelected: c.busy
+                          ? null
+                          : (_) => setState(() => register = false),
+                    ),
+                    ChoiceChip(
+                      label: Text(t('family_register')),
+                      selected: register,
+                      onSelected: c.busy
+                          ? null
+                          : (_) => setState(() => register = true),
+                    ),
+                  ],
+                ),
               ),
               FilledButton(
-                onPressed: c.busy
+                onPressed: c.busy || c.accountOrigin.isEmpty
                     ? null
                     : () async {
                         if (register && password.text != passwordAgain.text) {
@@ -404,7 +499,7 @@ class _FamilyPageState extends State<FamilyPage> {
                         }
                         setState(() => formError = null);
                         await c.signIn(
-                          endpoint.text.trim(),
+                          c.accountOrigin,
                           email.text.trim(),
                           password.text,
                           register: register,
@@ -413,6 +508,11 @@ class _FamilyPageState extends State<FamilyPage> {
                         passwordAgain.clear();
                       },
                 child: Text(t(register ? 'family_register' : 'family_login')),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.maybePop(context),
+                icon: const Icon(Icons.phone_android),
+                label: Text(t('ux3_continue_local')),
               ),
             ] else ...[
               Text(
@@ -434,6 +534,12 @@ class _FamilyPageState extends State<FamilyPage> {
                 ),
                 button('family_verify', () => c.verify(code.text.trim())),
               ] else ...[
+                LifeHero(
+                  icon: Icons.people_outline,
+                  title: t('ux3_family_title'),
+                  body: t('ux3_family_steps'),
+                ),
+                const SizedBox(height: 16),
                 button('family_sync', () => c.refresh(), icon: Icons.sync),
                 button('family_create', () async {
                   final name = await ask(t('family_name'));

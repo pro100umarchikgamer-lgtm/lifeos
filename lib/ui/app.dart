@@ -717,23 +717,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     var quick = false;
     final content = <Widget>[
-      Text(
-        c.pack.t(
+      LifeHero(
+        icon: Icons.wb_sunny_outlined,
+        title: c.pack.t(
           now.hour < 12
               ? 'good_morning'
               : now.hour < 18
               ? 'good_afternoon'
               : 'good_evening',
         ),
-        style: Theme.of(context).textTheme.headlineSmall
-            ?.copyWith(fontWeight: FontWeight.w800),
+        body:
+            '${MaterialLocalizations.of(context).formatMediumDate(now)} · ${c.pack.t('ux3_today_body')}',
       ),
-      Text(
-        MaterialLocalizations.of(context).formatMediumDate(now),
-        style: Theme.of(context).textTheme.bodyMedium
-            ?.copyWith(color: LifePalette.muted),
-      ),
-      const SizedBox(height: 14),
+      const SizedBox(height: 16),
     ];
     if (!config.any((r) => r['widget'] == 'financial' && r['visible'] == 1)) {
       content.addAll([_quickActions(), const SizedBox(height: 12)]);
@@ -1494,7 +1490,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       currency: summaryCurrency,
     )..sort((a, b) => b.date!.compareTo(a.date!));
     return [
-      _pageTitle('finances'),
+      LifeHero(
+        icon: Icons.account_balance_wallet_outlined,
+        title: c.pack.t('finances'),
+        body: c.pack.t('ux3_finance_body'),
+      ),
       const SizedBox(height: 14),
       LifeCard(
         child: ListTile(
@@ -1655,7 +1655,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ),
         ],
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
+      Text(
+        c.pack.t('ux3_modules_body'),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+      const SizedBox(height: 16),
       TextField(
         decoration: InputDecoration(
           labelText: c.pack.t('search_modules'),
@@ -1719,7 +1725,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   List<Widget> _profile() => [
-    _pageTitle('profile'),
+    LifeHero(
+      icon: Icons.person_outline,
+      title: c.pack.t('profile'),
+      body: c.pack.t('ux3_profile_body'),
+    ),
     const SizedBox(height: 14),
     if (c.family != null) ...[
       LifeCard(
