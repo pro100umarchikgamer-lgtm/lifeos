@@ -604,7 +604,8 @@
     "family_invite_revoke": "Отменить это приглашение?",
     "family_review_required": "Нужно подтверждение родителя",
     "family_review_pending": "Ожидает выполнения или подтверждения",
-    "family_task_undo": "Отметить невыполненной"
+    "family_task_undo": "Отметить невыполненной",
+    "family_error_client_busy": "Идёт синхронизация. Дождитесь окончания и повторите действие."
   },
   "plurals": {
     "record_count": {

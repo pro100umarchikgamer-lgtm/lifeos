@@ -604,7 +604,8 @@
     "family_invite_revoke": "Cancel this invitation?",
     "family_review_required": "Co-parent review is required",
     "family_review_pending": "Waiting for completion or review",
-    "family_task_undo": "Mark incomplete"
+    "family_task_undo": "Mark incomplete",
+    "family_error_client_busy": "Synchronization is busy. Wait for it to finish and retry."
   },
   "plurals": {
     "record_count": {

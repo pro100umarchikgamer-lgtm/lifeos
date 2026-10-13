@@ -584,6 +584,10 @@ class FamilyRecordEditor extends StatefulWidget {
 }
 
 class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
+  void changed() {
+    if (mounted) setState(() {});
+  }
+
   String kind = 'note',
       visibility = 'private',
       role = 'adult',
@@ -634,6 +638,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   @override
   void initState() {
     super.initState();
+    c.addListener(changed);
     role = c.roster?['space']?['role'] as String? ?? 'adult';
     final r = widget.record;
     if (r != null) {
@@ -705,6 +710,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
 
   @override
   void dispose() {
+    c.removeListener(changed);
     for (final field in [
       title,
       amount,

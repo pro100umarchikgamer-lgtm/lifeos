@@ -257,7 +257,7 @@ class Backend:
         for key in ('name','title','body'):
             if key in data:text(data[key],20000 if key=='body' else 2000)
         if 'currency' in data:require(isinstance(data['currency'],str) and re.fullmatch(r'[A-Z]{3}',data['currency']))
-        for key in ('amount_minor','sent_minor','received_minor'): 
+        for key in ('amount_minor','sent_minor','received_minor'):
             if key in data:minor(data[key])
         if 'opening_minor' in data:minor(data['opening_minor'],signed=True)
         if 'limit_minor' in data:minor(data['limit_minor'],zero=True)

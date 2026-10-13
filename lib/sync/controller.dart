@@ -72,7 +72,11 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> run(Future<void> Function() action) async {
-    if (busy) return;
+    if (busy) {
+      error = "client_busy";
+      publish();
+      return;
+    }
     busy = true;
     error = null;
     publish();
