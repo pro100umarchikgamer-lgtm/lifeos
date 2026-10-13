@@ -63,8 +63,11 @@ class PostgresTests(fixtures.FamilyBackendTests):
                 actor=old.authenticate(result['token']);old.verify(actor,mail[actor['email']]);actor=old.authenticate(result['token'])
                 wid=fixtures.uid();old.family(actor,{'id':fixtures.uid(),'workspace_id':wid,'action':'workspace.create','name':'Preserved','kind':'personal'})
                 operation={'id':fixtures.uid(),'record_id':fixtures.uid(),'action':'record.put','revision':0,'kind':'account','visibility':'private','audience':[],
-                    'data':{'name':'History','currency':'RUB','opening_minor':9223372036854775806}}
-                old.batch(actor,wid,[operation])
+                    'data':{'name':'History','currency':'RUB','opening_minor':999999999999998}}
+                self.assertEqual(old.batch(actor,wid,[operation])['results'][0]['status'],'accepted')
+                # Historical SQL storage can contain the full signed 64-bit range.
+                # Import must preserve it without reinterpreting an old operation receipt.
+                with old.connect() as db:db.execute('UPDATE accounts SET opening_minor=? WHERE id=?',(9223372036854775806,operation['record_id']))
                 preview=import_server(target,source);self.assertEqual(preview['users'],1)
                 self.assertEqual(import_server(target,source,True),preview)
                 imported=target.authenticate(result['token']);self.assertEqual(imported['id'],actor['id'])
