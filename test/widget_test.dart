@@ -147,7 +147,7 @@ void main() {
     final store = UIStore()..items = [Record(id: 'original-note', kind: EntryKind.note, text: 'Записанная заметка', createdAt: DateTime(2026,10,11), revision: 4)];
     final c = AppController(store, catalog, 'ru'); await c.load();
     await tester.pumpWidget(LifeOSApp(controller: c)); await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Записанная заметка'), 300); await tester.tap(find.text('Записанная заметка')); await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Записанная заметка').hitTestable(), 200); expect(find.text('Записанная заметка').hitTestable(), findsOneWidget); await tester.tap(find.text('Записанная заметка').hitTestable()); await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('edit_record'))); await tester.pumpAndSettle();
     expect(find.text('Записанная заметка'), findsWidgets);
     await tester.enterText(find.byKey(const Key('entry_text')), 'Исправленная заметка');
@@ -179,7 +179,7 @@ void main() {
       data:MediaQuery.of(context).copyWith(textScaler:const TextScaler.linear(1.5)),child:child!)));
     await tester.pumpAndSettle(); expect(tester.takeException(),isNull);
     await tester.tap(find.byKey(const Key('profile_button'))); await tester.pumpAndSettle();
-    expect(find.text(c.pack.t('language')),findsOneWidget); expect(tester.takeException(),isNull);
+    await tester.tap(find.byKey(const Key('settings_0'))); await tester.pumpAndSettle(); expect(find.text(c.pack.t('language')),findsOneWidget); expect(tester.takeException(),isNull);
   });
 
   testWidgets('deletion undo targets committed revision and restores the same record', (tester) async {

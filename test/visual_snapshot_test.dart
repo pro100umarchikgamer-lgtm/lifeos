@@ -132,7 +132,7 @@ void main() {
         await tester.pumpAndSettle();
       }
       if (page == 'notes') {
-        await tester.tap(find.text(controller.pack.t('recent_notes')).last);
+        await tester.scrollUntilVisible(find.text(controller.pack.t('recent_notes')).hitTestable(),200,scrollable:find.descendant(of:find.byKey(const Key('modules')),matching:find.byType(Scrollable)).first); expect(find.text(controller.pack.t('recent_notes')).hitTestable(), findsOneWidget); await tester.tap(find.text(controller.pack.t('recent_notes')).hitTestable());
         await tester.pumpAndSettle();
         await tester.tap(find.text('Идеи на выходные').first);
         await tester.pumpAndSettle();
@@ -206,6 +206,7 @@ void main() {
         }
         if (screen == 'language') {
           await tester.tap(find.byKey(const Key('profile_button'))); await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const Key('settings_0'))); await tester.pumpAndSettle();
           await tester.tap(find.byType(LifeSelect<String>).first); await tester.pumpAndSettle();
         }
         if (screen == 'repeat') {

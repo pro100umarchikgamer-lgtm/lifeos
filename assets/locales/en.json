@@ -422,7 +422,22 @@
     "import_json_decimal": "JSON decimal amounts must be strings, for example \"12.50\", to prevent rounding.",
     "import_number_ambiguous": "Ambiguous number separators. Check the selected decimal format.",
     "linked_budget": "Linked budget limit",
-    "project_actual_all_time": "Project allocations, all time"
+    "project_actual_all_time": "Project allocations, all time",
+    "ux_operations": "Transfers and payments",
+    "ux_view": "Section",
+    "ux_add_item": "Add an item",
+    "ux_hint_projects": "Move toward a goal with milestones, tasks and deadlines.",
+    "ux_hint_habits": "Check in today and follow your weekly progress.",
+    "ux_hint_subjects": "Subjects, assignments and upcoming deadlines together.",
+    "ux_hint_checklists": "Shopping and chores: add items and check them off.",
+    "ux_hint_wellness": "Log activity or sleep and review your recent entries.",
+    "ux_add_projects": "Create a project",
+    "ux_add_habits": "Add a habit",
+    "ux_add_subjects": "Add a subject",
+    "ux_add_checklists": "Create a list",
+    "ux_add_wellness": "Log activity or sleep",
+    "ux_add_checklistItems": "Add an item",
+    "ux_pending": "Not checked"
   },
   "plurals": {
     "record_count": {

@@ -48,8 +48,8 @@ class OfflineValidation {
       case SaveBudget(): name(action.name); Currency.fromCode(action.currency); money(action.limitMinor,zero:true); date(action.start);
         if(!['week','month','year','custom'].contains(action.period)||!['none','positive','negative','both'].contains(action.rollover)||
           action.period=='month'&&action.start.day!=1 || action.period=='year'&&(action.start.day!=1||action.start.month!=1)||
-          action.period=='custom'&&(action.end==null||action.end!.isBefore(action.start))) throw const DomainFailure('invalid_date');
-        if(action.end!=null) date(action.end!);
+          action.period=='custom'&&(action.end==null||action.end!.isBefore(action.start))) { throw const DomainFailure('invalid_date'); }
+        if(action.end!=null) { date(action.end!); }
       case SavePlannedPayment(): name(action.name); Currency.fromCode(action.currency); money(action.amountMinor); CalendarEngine.validate(action.schedule);
         if(action.kind!=EntryKind.expense&&action.kind!=EntryKind.income) throw const DomainFailure('invalid_action');
       case ConfirmPlannedPayment(): final value=DateTime.tryParse(action.occurrence);

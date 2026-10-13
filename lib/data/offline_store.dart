@@ -76,7 +76,7 @@ extension OfflinePersistence on LocalStore {
       for(final field in ['before_json','after_json']) {
         if(change[field]==null) continue;
         final v=await _historySnapshot(tx,change['table_name'] as String,jsonDecode(change[field] as String),change['record_id'] as String,owner:owner,space:space);
-        if(v is! Map||v['id']!=change['record_id']||v['owner_id']!=owner||v['workspace_id']!=space||v['revision'] is! int) throw const DomainFailure('backup_invalid');
+        if(v['id']!=change['record_id']||v['owner_id']!=owner||v['workspace_id']!=space||v['revision'] is! int) throw const DomainFailure('backup_invalid');
       }
     }
   }

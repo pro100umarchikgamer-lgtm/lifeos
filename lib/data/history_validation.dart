@@ -31,7 +31,7 @@ extension HistoryValidation on LocalStore {
     };
     // Preserve large, historically valid opening balances from v1; no new floating amounts.
     if(action is SaveAccount){OfflineValidation.name(action.name);Currency.fromCode(action.currency);if(!['cash','card','wallet','deposit','custom'].contains(action.kind))throw const DomainFailure('backup_invalid');}
-    else if(action!=null)OfflineValidation.validate(action);
+    else if(action!=null){OfflineValidation.validate(action);}
   }
   /// Validate embedded snapshots before they can ever become SQL mutation columns.
   Future<Map<String,Object?>> _historySnapshot(sql.Transaction tx,String table,Object? value,String id,{String? owner,String? space}) async {

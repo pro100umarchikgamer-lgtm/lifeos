@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:lifeos/platform/native_bridge.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -118,9 +117,9 @@ void main(){
     final sheets=await decode(base64Decode('UEsDBBQAAAAIAAOaS11UfQFd2AAAALYBAAAYAAAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sdZFBjsIwDEWvUmVfnEQaFiiNNMANOEFUAo2mSarElNnPQeYKrFnAFcKNSNGoYqR2Z3/720+2OPvwFRutsfi2rYsVaRC7FUCsG21VXPhOu1w5+GAV5jQcIXZBq/3LZFvglC7BKuOIFC9tq1BJEfy5CBVhWa2H4JORAitiXGuc3mHIuolSoNwr1AJQChhyqP/613P9yvqTwwnHZnaDjnUwHRrv/tsgQ46kfCTlM3M45cuS0ZKxKd7B38uS8cUHFdC/g80NTL/plq6Pn3RP13SZYoO3i8L4KvkEUEsBAhQDFAAAAAgAA5pLXVR9AV3YAAAAtgEAABgAAAAAAAAAAAAAAIABAAAAAHhsL3dvcmtzaGVldHMvc2hlZXQxLnhtbFBLBQYAAAAAAQABAEYAAAAOAQAAAAA='),'xlsx');
     expect((sheets!['sheet1'] as List)[1],['2026-10-11','-12.50','Покупка']);
     await expectLater(decode(base64Decode('UEsDBBQAAAAIAAOaS12+UJkC4AAAAMABAAAYAAAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sdZFRTsMwDIavUuUVdU6C2ANKLQG7ASeIupRGNEmVmG3vHIQr8LwHuEK4EemEqiG1b/Zv//YnWx1DfE29MVSd3OBTw3qi8R4gtb1xOm3CaHypdCE6TSWNL5DGaPT+YnIDSM634LT1DNVF22nSqGI4VrFhoqjtFDwIVlHDrB+sN88Ui24TKsK9JqOAUMGUQ/vX/7jWr11487TgeFrdYFIb7Ug2+P82KJAzqZxJ5cocyeW2FrwWYol38ncob24VdKgOWAu5ueMKDteIa6PzR/7K55/3/J3P+XOJEq5uC/PT8BdQSwECFAMUAAAACAADmktdvlCZAuAAAADAAQAAGAAAAAAAAAAAAAAAgAEAAAAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sUEsFBgAAAAABAAEARgAAABYBAAAAAA=='),'xlsx'),throwsA(isA<PlatformException>()));
-    final xml='<statement><transaction><date>2026-10-11</date><amount>-12.50</amount><description>Shop</description><currency>RUB</currency></transaction></statement>';
+    const xml='<statement><transaction><date>2026-10-11</date><amount>-12.50</amount><description>Shop</description><currency>RUB</currency></transaction></statement>';
     expect((await decode(Uint8List.fromList(utf8.encode(xml)),'xml'))!['statement'],isA<List>());
-    await expectLater(decode(Uint8List.fromList(utf8.encode('<!DOCTYPE statement [<!ENTITY x "bad">]>'+xml)),'xml'),throwsA(isA<PlatformException>()));
+    await expectLater(decode(Uint8List.fromList(utf8.encode('<!DOCTYPE statement [<!ENTITY x "bad">]>$xml')),'xml'),throwsA(isA<PlatformException>()));
   });
 
 }

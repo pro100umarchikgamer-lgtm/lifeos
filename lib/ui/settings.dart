@@ -11,7 +11,8 @@ import 'selection.dart';
 import 'personal_modules.dart';
 
 class PersonalSettings extends StatefulWidget {
-  const PersonalSettings({super.key, required this.controller});
+  const PersonalSettings({super.key, required this.controller, this.section});
+  final int? section;
   final AppController controller;
   @override
   State<PersonalSettings> createState() => _PersonalSettingsState();
@@ -132,20 +133,9 @@ class _PersonalSettingsState extends State<PersonalSettings> {
       )))));
   }
   @override
-  Widget build(BuildContext context) => ListenableBuilder(listenable: c, builder: (context, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LifeCard(child:Column(children:[Text(c.pack.t('profiles_local_only')),for(final table in [OfflineTable.profiles,OfflineTable.memberships])ListTile(title:Text(c.pack.t('module_${table.name}')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>PersonalModulesPage(controller:c,table:table))))])),
-      const SizedBox(height:12),
-
-    LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(c.pack.t('local_profile'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8), Text(c.pack.t('local_privacy')),
-    ])), const SizedBox(height: 12),
+  Widget build(BuildContext context) => ListenableBuilder(listenable: c, builder: (context, _) {
+    final sections=<Widget>[
     LifeCard(child: Column(children: [
-      ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.palette_outlined),
-        title: Text(c.pack.t('appearance')), subtitle: Text(c.pack.t('appearance_${c.appearance.palette}')),
-        trailing: const Icon(Icons.chevron_right), onTap: busy ? null : () => Navigator.push<void>(context,
-          MaterialPageRoute(builder: (_) => AppearanceEditor(controller: c)))),
-      const Divider(),
       Text(c.pack.t('language_region'), style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 16),
       select('language', c.pack.tag, {for (final p in c.catalog.packs.values) p.tag: p.name}),
       select('currency', c.currency, {for (final code in {'USD','EUR','RUB','KZT','UZS','UAH','GBP','GEL','AZN','AMD','TJS','KGS',c.currency}) code: code}),
@@ -169,9 +159,24 @@ class _PersonalSettingsState extends State<PersonalSettings> {
       }, icon: const Icon(Icons.notifications_outlined), label: Text(c.pack.t('test_notification'))),
     ])), const SizedBox(height: 12),
     LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(c.pack.t('data_privacy'), style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 8), Text(c.pack.t('backup_privacy')),
+      Text(c.pack.t('data_privacy'), style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 8), Text(c.pack.t('local_privacy')), const SizedBox(height: 8), Text(c.pack.t('backup_privacy')),
       const SizedBox(height: 12), FilledButton.icon(onPressed: busy || !c.native.supported || c.store is! PersonalStore ? null : backupGuide,
         icon: const Icon(Icons.lock_outline), label: Text(c.pack.t('backup_manage'))),
-    ])),
-  ]));
+    ])), const SizedBox(height: 12),
+    LifeCard(child: ExpansionTile(tilePadding: EdgeInsets.zero,
+      title: Text(c.pack.t('local_profile')),
+      children: [ListTile(title: Text(c.pack.t('module_profiles')),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push<void>(context, MaterialPageRoute(
+          builder: (_) => PersonalModulesPage(controller: c, table: OfflineTable.profiles))))])),
+  ];
+    if(widget.section!=null) return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[sections[widget.section!*2],if(widget.section==2)...[const SizedBox(height:12),sections.last]]);
+    void open(int index,String title) {Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>Scaffold(appBar:AppBar(title:Text(c.pack.t(title))),body:SafeArea(child:ListView(key:Key('settings_section_$index'),padding:const EdgeInsets.all(16),children:[PersonalSettings(controller:c,section:index)])))));}
+    return LifeCard(child:Column(children:[
+      ListTile(contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.palette_outlined),title:Text(c.pack.t('appearance')),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>AppearanceEditor(controller:c)))),
+      ListTile(key:const Key('settings_0'),contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.language),title:Text(c.pack.t('language_region')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(0,'language_region')),
+      ListTile(key:const Key('settings_1'),contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.notifications_outlined),title:Text(c.pack.t('notifications')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(1,'notifications')),
+      ListTile(key:const Key('settings_2'),contentPadding:EdgeInsets.zero,minLeadingWidth:24,horizontalTitleGap:8,leading:const Icon(Icons.lock_outline),title:Text(c.pack.t('data_privacy')),trailing:const Icon(Icons.chevron_right),onTap:()=>open(2,'data_privacy')),
+    ]));
+  });
 }
