@@ -370,6 +370,8 @@ class Backend:
                 if row:
                     require(row['kind']==kind and row['deleted']==0)
                     if row['owner_id']!=actor['id']:require(row['visibility']==visibility and json.loads(row['audience'])==audience,'owner_controls_visibility',403)
+                    if row['visibility']!=visibility or json.loads(row['audience'])!=audience:
+                        self._audit(db,wid,actor,op['id'],'access.changed',rid)
                 if space['role']=='child':
                     p=self._permissions(db,space);require(visibility=='shared' and (audience==[space['profile_id']] if row is None else audience==json.loads(row['audience'])),'child_scope',403)
                     if row is None:require(kind=='transaction' and 'record_spending' in p and op['data'].get('kind')=='expense' or kind=='request' and 'request_money' in p and op['data'].get('profile_id')==space['profile_id'] or kind=='task' and 'create_tasks' in p,'child_permission',403)
@@ -425,3 +427,24 @@ class Backend:
             maximum=db.execute('SELECT COALESCE(MAX(seq),0) FROM changes WHERE workspace_id=?',(wid,)).fetchone()[0]
             more=any(r['seq']>(changed[-1]['seq'] if changed else cursor) for r in visible)
             return {'records':[{**self._data(db,r),'editable':bool(self._editable(db,actor,space,r))} for r in changed],'cursor':changed[-1]['seq'] if more else max(cursor,maximum),'more':more,'visible_ids':[r['id'] for r in visible if not r['deleted']],'membership':space}
+    def pull_incremental(self,actor,wid,cursor,epoch='',limit=100):
+        """Bounded indexed pages; permissions changes rebuild only the readable mirror.
+
+        No full list of visible UUIDs is transmitted on an ordinary delta. A mirror
+        reset never deletes private local records or the durable operation outbox.
+        """
+        require(type(cursor) is int and cursor>=0 and type(limit) is int and 1<=limit<=100)
+        require(isinstance(epoch,str) and len(epoch)<=64)
+        with self.connect() as db:
+            space=self._workspace(db,actor,wid)
+            maximum=db.execute('SELECT COALESCE(MAX(seq),0) FROM changes WHERE workspace_id=?',(wid,)).fetchone()[0]
+            access=db.execute("SELECT COALESCE(MAX(seq),0) FROM changes WHERE workspace_id=? AND (record_id IS NULL OR kind IN ('record.grant','access.changed'))",(wid,)).fetchone()[0]
+            current=token_hash(canonical([wid,actor['id'],access]))
+            reset=epoch!=current or cursor>maximum
+            start=0 if reset else cursor
+            candidates=db.execute('SELECT * FROM records WHERE workspace_id=? AND seq>? ORDER BY seq LIMIT ?',(wid,start,limit+1)).fetchall()
+            more=len(candidates)>limit;candidates=candidates[:limit]
+            rows=[row for row in candidates if self._readable(db,actor,space,row)]
+            next_cursor=candidates[-1]['seq'] if more else maximum
+            return {'protocol':2,'epoch':current,'reset':reset,'records':[{**self._data(db,r),'editable':bool(self._editable(db,actor,space,r))} for r in rows],
+                'cursor':next_cursor,'more':more,'membership':space}

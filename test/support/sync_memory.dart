@@ -65,24 +65,31 @@ class MemorySyncStore implements SyncStore {
 
   @override
   Future<void> receive(String s, String w, Json page) async {
-    final visible = (page['visible_ids'] as List).toSet();
+    final incremental = page['protocol'] == 2;
+    final visible = incremental ? null : (page['visible_ids'] as List).toSet();
     mirror.removeWhere(
       (_, v) =>
           v['scope'] == s &&
           v['workspace'] == w &&
-          !visible.contains(v['record']['id']),
+          (incremental
+              ? page['reset'] == true
+              : !visible!.contains(v['record']['id'])),
     );
     for (final raw in page['records'] as List) {
       final r = object(raw);
-      if (r['deleted'] == 0 && visible.contains(r['id'])) {
+      if (r['deleted'] == 0 && (incremental || visible!.contains(r['id']))) {
         mirror['${key(s, w)}|${r['id']}'] = {
           'scope': s,
           'workspace': w,
           'record': clone(r),
         };
+      } else if (r['deleted'] == 1) {
+        mirror.remove('${key(s, w)}|${r['id']}');
       }
     }
     cursors[key(s, w)] = page['cursor'] as int;
+    if (incremental)
+      await saveMetadata(s, 'epoch:$w', {'value': page['epoch']});
   }
 
   @override

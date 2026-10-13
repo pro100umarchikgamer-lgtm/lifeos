@@ -39,13 +39,22 @@ class SyncEngine {
       }
       while (true) {
         final cursor = await store.cursor(scope, workspace);
+        final epoch =
+            (await store.metadata(scope, 'epoch:$workspace'))?['value']
+                as String? ??
+            '';
         final response = await api.request(
-          '/v1/sync/pull?workspace=${Uri.encodeQueryComponent(workspace)}&cursor=$cursor',
+          '/v1/sync/pull?workspace=${Uri.encodeQueryComponent(workspace)}&cursor=$cursor&protocol=2&epoch=${Uri.encodeQueryComponent(epoch)}',
         );
         if (response['cursor'] is! int ||
-            response['cursor'] < cursor ||
+            response['cursor'] < 0 ||
+            response['cursor'] < cursor && response['reset'] != true ||
             response['more'] is! bool ||
-            response['more'] == true && response['cursor'] == cursor) {
+            response['more'] == true &&
+                response['cursor'] == cursor &&
+                response['reset'] != true ||
+            response['protocol'] == 2 &&
+                (response['epoch'] is! String || response['reset'] is! bool)) {
           throw const SyncFailure('invalid_sync_response');
         }
         await store.receive(scope, workspace, response);

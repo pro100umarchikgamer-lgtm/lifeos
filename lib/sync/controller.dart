@@ -18,6 +18,8 @@ class FamilyController extends ChangeNotifier {
   final SyncStore store;
   final FlutterSecureStorage secure;
   static const uuid = Uuid();
+  static const configuredOrigin = String.fromEnvironment('LIFEOS_API_ORIGIN');
+  String get accountOrigin => api?.base.origin ?? configuredOrigin;
   FamilyApi? api;
   Json? account, roster;
   List<Json> spaces = [], records = [], pending = [], issues = [];

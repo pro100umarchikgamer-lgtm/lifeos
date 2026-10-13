@@ -26,7 +26,9 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/invitations/accept' and method=='POST':result=backend.accept(actor,body)
         elif route=='/v1/roster' and method=='GET':result=backend.roster(actor,query['workspace'][0])
         elif route=='/v1/sync/push' and method=='POST':result=backend.batch(actor,body.get('workspace_id'),body.get('operations'))
-        elif route=='/v1/sync/pull' and method=='GET':result=backend.pull(actor,query['workspace'][0],int(query.get('cursor',['0'])[0]))
+        elif route=='/v1/sync/pull' and method=='GET':
+            if query.get('protocol')==['2']:result=backend.pull_incremental(actor,query['workspace'][0],int(query.get('cursor',['0'])[0]),query.get('epoch',[''])[0])
+            else:result=backend.pull(actor,query['workspace'][0],int(query.get('cursor',['0'])[0]))
         else:raise Failure('not_found',404)
     return result
 

@@ -45,6 +45,25 @@ class FamilyBackendTests(unittest.TestCase):
         self.backend.batch(self.p1,self.wid,[grant]);self.assertEqual(len(self.backend.pull(self.p2,self.wid,0)['records']),1)
         grant={**grant,'id':uid(),'revision':2,'revoke':True};self.backend.batch(self.p1,self.wid,[grant]);pull=self.backend.pull(self.p2,self.wid,0)
         self.assertEqual(pull['visible_ids'],[]);self.assertEqual(pull['records'],[])
+
+    def test_incremental_pages_visibility_changes_and_server_recovery(self):
+        op,_=self.put(self.p1,'note',{'body':'shared'})
+        first=self.backend.pull_incremental(self.p2,self.wid,0)
+        self.assertTrue(first['reset']);self.assertNotIn('visible_ids',first)
+        next_page=self.backend.pull_incremental(self.p2,self.wid,first['cursor'],first['epoch'])
+        self.assertFalse(next_page['reset']);self.assertEqual(next_page['records'],[])
+        self.backend.batch(self.p1,self.wid,[{**op,'id':uid(),'revision':1,'visibility':'private'}])
+        revoked=self.backend.pull_incremental(self.p2,self.wid,next_page['cursor'],next_page['epoch'])
+        self.assertTrue(revoked['reset']);self.assertEqual(revoked['records'],[])
+        restored=self.backend.pull_incremental(self.p1,self.wid,999999,revoked['epoch'])
+        self.assertTrue(restored['reset']);self.assertLess(restored['cursor'],999999)
+        for i in range(4):self.put(self.p1,'note',{'body':str(i)})
+        page=self.backend.pull_incremental(self.p2,self.wid,0,limit=2)
+        records=list(page['records'])
+        while page['more']:
+            previous=page['cursor'];page=self.backend.pull_incremental(self.p2,self.wid,previous,page['epoch'],limit=2)
+            self.assertGreater(page['cursor'],previous);self.assertFalse(page['reset']);records.extend(page['records'])
+        self.assertEqual(len(records),4)
     def test_independent_additions_idempotency_and_concurrent_conflict(self):
         first,res=self.put(self.p1,'note',{'body':'First offline change'});self.put(self.p2,'note',{'body':'Independent addition'})
         self.backend.batch(self.p1,self.wid,[first]);self.assertEqual(len(self.backend.pull(self.p2,self.wid,0)['records']),2)

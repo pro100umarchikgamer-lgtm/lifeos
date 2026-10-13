@@ -119,14 +119,19 @@ extension EncryptedSyncStore on LocalStore {
   });
   Future<void> syncReceive(String scope, String workspace, Json page) =>
       _db.transaction((tx) async {
-        final visible = (page['visible_ids'] as List).cast<String>().toSet();
+        final incremental = page['protocol'] == 2;
+        final visible = incremental
+            ? null
+            : (page['visible_ids'] as List).cast<String>().toSet();
         // Revoked grants purge readable mirrors, but preserve unsent work for explicit recovery.
         for (final row in await tx.query(
           'sync_records',
           where: 'scope=? AND workspace_id=?',
           whereArgs: [scope, workspace],
         )) {
-          if (!visible.contains(row['id'])) {
+          if (incremental
+              ? page['reset'] == true
+              : !visible!.contains(row['id'])) {
             await tx.delete(
               'sync_records',
               where: 'scope=? AND workspace_id=? AND id=?',
@@ -139,13 +144,20 @@ extension EncryptedSyncStore on LocalStore {
           if (record['workspace_id'] != workspace) {
             throw const SyncFailure('invalid_sync_response');
           }
-          if (record['deleted'] == 0 && visible.contains(record['id'])) {
+          if (record['deleted'] == 0 &&
+              (incremental || visible!.contains(record['id']))) {
             await tx.insert('sync_records', {
               'scope': scope,
               'workspace_id': workspace,
               'id': record['id'],
               'payload': jsonEncode(record),
             }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+          } else if (record['deleted'] == 1) {
+            await tx.delete(
+              'sync_records',
+              where: 'scope=? AND workspace_id=? AND id=?',
+              whereArgs: [scope, workspace, record['id']],
+            );
           }
         }
         await tx.insert('sync_cursors', {
@@ -153,6 +165,13 @@ extension EncryptedSyncStore on LocalStore {
           'workspace_id': workspace,
           'cursor': page['cursor'],
         }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+        if (incremental) {
+          await tx.insert('sync_metadata', {
+            'scope': scope,
+            'key': 'epoch:$workspace',
+            'payload': jsonEncode({'value': page['epoch']}),
+          }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+        }
       });
   Future<void> syncResolve(
     String scope,

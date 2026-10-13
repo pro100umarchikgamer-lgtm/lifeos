@@ -99,6 +99,31 @@ void main() {
           'cursor': 2,
         });
         expect((await store.records('server|one', 'family')).length, 1);
+        await store.receive('server|one', 'family', {
+          'protocol': 2,
+          'epoch': 'initial-access',
+          'reset': false,
+          'records': [],
+          'cursor': 3,
+        });
+        expect((await store.records('server|one', 'family')).length, 1);
+        await store.receive('server|one', 'family', {
+          'protocol': 2,
+          'epoch': 'revoked-access',
+          'reset': true,
+          'records': [],
+          'cursor': 1,
+        });
+        expect(await store.records('server|one', 'family'), isEmpty);
+        expect(await store.cursor('server|one', 'family'), 1);
+        expect(
+          (await store.metadata('server|one', 'epoch:family'))!['value'],
+          'revoked-access',
+        );
+        expect(
+          (await store.pending('server|one', 'family')).single['id'],
+          'replacement',
+        );
         await store.forgetAccess('server|one', 'family');
         expect(await store.records('server|one', 'family'), isEmpty);
         expect(

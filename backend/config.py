@@ -22,6 +22,7 @@ class Settings:
     @classmethod
     def load(cls, env=None):
         e = os.environ if env is None else env
+        if e.get('REQUIRE_HTTPS','true') not in ('true','false'):raise ValueError('Invalid REQUIRE_HTTPS')
         def required(name):
             value = e.get(name, '')
             if not value.strip(): raise ValueError('Missing configuration: '+name)

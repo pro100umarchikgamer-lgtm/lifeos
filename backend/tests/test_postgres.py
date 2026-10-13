@@ -43,6 +43,10 @@ class PostgresTests(fixtures.FamilyBackendTests):
         return Settings.load({'DATABASE_URL':DSN,'EMAIL_QUEUE_KEY':Fernet.generate_key().decode(),
             'RATE_LIMIT_KEY':'synthetic-test-only-key-123456789012345','SMTP_HOST':'127.0.0.1',
             'SMTP_TLS':'none','EMAIL_FROM':'LifeOS <test@example.test>'})
+    def test_application_database_role_has_no_admin_privileges(self):
+        with self.backend.connect() as db:
+            row=db.execute('SELECT rolsuper,rolcreatedb,rolcreaterole FROM pg_roles WHERE rolname=current_user').fetchone()
+            self.assertEqual(list(row.values()),[False,False,False])
     def test_mail_queue_encrypted_retry_and_restart(self):
         with self.backend.connect() as db:
             row=db.execute('SELECT * FROM email_jobs ORDER BY id LIMIT 1').fetchone()

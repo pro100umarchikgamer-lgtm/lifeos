@@ -19,7 +19,7 @@ jobs:
           --health-cmd "pg_isready -U postgres -d lifeos_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      LIFEOS_TEST_DATABASE_URL: postgresql://postgres:synthetic-ci-only-password@localhost:5432/lifeos_test
+      LIFEOS_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-ci-only-password@localhost:5432/lifeos_test
       LIFEOS_DOMAIN: localhost
       ACME_EMAIL: test@example.test
       APP_DB_PASSWORD: synthetic-ci-only-password
@@ -34,9 +34,35 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r backend/requirements.txt
+      - name: Test with a non-superuser database role
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('postgresql://postgres:synthetic-ci-only-password@localhost:5432/lifeos_test',autocommit=True) as db:
+              db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-ci-only-password'")
+              db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
+          PY
       - run: python -m unittest discover -s backend/tests -v
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Two actual Dart clients against production WSGI and PostgreSQL
+        run: PYTHONPATH=. python tool/check_sync_protocol.py --postgres
       - run: docker compose config --quiet
       - run: docker build -f backend/Dockerfile -t lifeos-backend-ci .
+      - name: Boot actual Compose API, migration and mail services
+        run: |
+          set -euo pipefail
+          docker compose up -d --build db api mail
+          for attempt in $(seq 1 30); do
+            if docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready',timeout=3)"; then break; fi
+            sleep 2
+          done
+          docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready',timeout=3)"
+          docker compose exec -T api python -c "import os,psycopg; db=psycopg.connect(os.environ['DATABASE_URL']); assert db.execute('SELECT rolsuper FROM pg_roles WHERE rolname=current_user').fetchone()==(False,)"
+          docker compose exec -T mail python -c "import pathlib,time; assert time.time()-pathlib.Path('/tmp/lifeos-mail.heartbeat').stat().st_mtime<120"
       - name: Validate HTTPS proxy configuration
         run: docker run --rm -e LIFEOS_DOMAIN -e ACME_EMAIL -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Real PostgreSQL backup and restore into a second database
@@ -53,3 +79,9 @@ jobs:
           docker exec "$PG_CONTAINER" createdb -U postgres lifeos_restore_test
           docker exec -i "$PG_CONTAINER" pg_restore -U postgres -d lifeos_restore_test --single-transaction --exit-on-error < /tmp/lifeos-test-restored.dump
           test "$(docker exec "$PG_CONTAINER" psql -U postgres -d lifeos_restore_test -Atc "SELECT id||':'||amount FROM backup_probe")" = 'preserved-uuid:9223372036854775806'
+      - name: Save sanitized service diagnostics if a check failed
+        if: failure()
+        run: docker compose logs --tail=80 migrate api mail
+      - name: Remove disposable CI services
+        if: always()
+        run: docker compose down --volumes
