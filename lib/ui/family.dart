@@ -542,7 +542,11 @@ class _FamilyPageState extends State<FamilyPage> {
                 LifeHero(
                   icon: Icons.people_outline,
                   title: t('ux3_family_title'),
-                  body: t('ux3_family_steps'),
+                  body: t(
+                    c.spaces.isEmpty
+                        ? 'ux3_family_steps'
+                        : 'ux3_family_manage_body',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 button('family_sync', () => c.refresh(), icon: Icons.sync),

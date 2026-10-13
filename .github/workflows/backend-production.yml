@@ -63,6 +63,22 @@ jobs:
           docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready',timeout=3)"
           docker compose exec -T api python -c "import os,psycopg; db=psycopg.connect(os.environ['DATABASE_URL']); assert db.execute('SELECT rolsuper FROM pg_roles WHERE rolname=current_user').fetchone()==(False,)"
           docker compose exec -T mail python -c "import pathlib,time; assert time.time()-pathlib.Path('/tmp/lifeos-mail.heartbeat').stat().st_mtime<120"
+      - name: Exercise operator backup and safe restore scripts
+        run: |
+          set -euo pipefail
+          umask 077
+          python -c "from pathlib import Path; Path('/tmp/lifeos-operator-test.key').write_bytes(b'synthetic-operator-backup-test-only-1234567')"
+          docker compose exec -T db psql -U postgres -d lifeos -c "CREATE TABLE backup_probe(id text PRIMARY KEY, amount bigint); INSERT INTO backup_probe VALUES('preserved-uuid',9223372036854775806)"
+          bash scripts/backup.sh /tmp/lifeos-operator-test.key /tmp/lifeos-ci-backups
+          archives=(/tmp/lifeos-ci-backups/*.aesgcm)
+          test "${#archives[@]}" = 1
+          sha256sum --check "${archives[0]}.sha256"
+          bash scripts/restore.sh "${archives[0]}" /tmp/lifeos-operator-test.key lifeos_operator_restore
+          test "$(docker compose exec -T db psql -U postgres -d lifeos_operator_restore -Atc "SELECT id||':'||amount FROM backup_probe")" = 'preserved-uuid:9223372036854775806'
+          if bash scripts/restore.sh "${archives[0]}" /tmp/lifeos-operator-test.key lifeos; then
+            echo 'Critical: restore overwrote an existing database'; exit 1
+          fi
+          bash scripts/monitor.sh
       - name: Validate HTTPS proxy configuration
         run: docker run --rm -e LIFEOS_DOMAIN -e ACME_EMAIL -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Real PostgreSQL backup and restore into a second database
