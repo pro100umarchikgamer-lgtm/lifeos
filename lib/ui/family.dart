@@ -22,12 +22,31 @@ class _FamilyPageState extends State<FamilyPage> {
     if (raw == null) return t('family_empty_version');
     final value = object(raw),
         data = value['data'] == null ? value : object(value['data']);
-    return (data['body'] ??
-            data['title'] ??
-            data['name'] ??
-            data['label'] ??
-            t('family_change'))
-        .toString();
+    final parts = <String>[
+      (data['body'] ??
+              data['title'] ??
+              data['name'] ??
+              data['label'] ??
+              t('family_change'))
+          .toString(),
+    ];
+    if (data['currency'] is String) {
+      for (final field in ['amount_minor', 'opening_minor', 'limit_minor'])
+        if (data[field] is int)
+          parts.add(
+            Currency.fromCode(data['currency'] as String)
+                .format(data[field] as int),
+          );
+    }
+    if (data['date'] != null) parts.add(data['date'].toString());
+    if (data['completed'] != null)
+      parts.add(t(data['completed'] == 1 ? 'complete' : 'family_task_undo'));
+    if (data['items'] is List)
+      for (final item in data['items'] as List)
+        parts.add(
+          '${object(item)['completed'] == true ? '✓' : '○'} ${object(item)['name']}',
+        );
+    return parts.join('\n');
   }
 
   final endpoint = TextEditingController(),
@@ -66,7 +85,8 @@ class _FamilyPageState extends State<FamilyPage> {
             child: Text(t('cancel')),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, field.text.trim()),
+            onPressed: () =>
+                Navigator.pop(context, secret ? field.text : field.text.trim()),
             child: Text(t('save')),
           ),
         ],
@@ -929,7 +949,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, r['id'] as String),
               child: Text(
-                '${r['data']['date']} · ${r['data']['received_minor']}',
+                '${r['data']['date']} · ${Currency.fromCode(accounts.where((a) => a['id'] == r['data']['to_id']).firstOrNull?['data']?['currency'] as String? ?? 'RUB').format(r['data']['received_minor'] as int)}',
               ),
             ),
         ],
