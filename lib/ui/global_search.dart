@@ -77,7 +77,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                 controller: input,
                 autofocus: true,
                 decoration: InputDecoration(
-                  labelText: c.pack.t('search_hint'),
+                  labelText: c.pack.t('search'),
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: query.isEmpty
                       ? null

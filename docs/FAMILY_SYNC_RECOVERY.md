@@ -1,6 +1,8 @@
-# Family sync recovery checkpoint
+# Historical family sync recovery checkpoint
 
-This is an integrated **source candidate**, not a validated Android release.
+This document preserves the earlier recovery evidence. For the current integrated implementation and publication route, see [FAMILY_SYNC_IMPLEMENTATION.md](FAMILY_SYNC_IMPLEMENTATION.md).
+
+At this historical checkpoint this was an integrated **source candidate**, not a validated Android release.
 
 ## Recovery and history
 

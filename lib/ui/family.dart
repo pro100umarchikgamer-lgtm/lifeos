@@ -288,7 +288,12 @@ class _FamilyPageState extends State<FamilyPage> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: c,
     builder: (context, _) => Scaffold(
-      appBar: AppBar(title: Text(t('family_account'))),
+      appBar: AppBar(
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 28
+            ? 96
+            : null,
+        title: Text(t('family_account'), maxLines: 2),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -305,28 +310,36 @@ class _FamilyPageState extends State<FamilyPage> {
             if (c.account == null) ...[
               Text(t('family_optional')),
               const SizedBox(height: 16),
+              Text(t('family_endpoint')),
+              const SizedBox(height: 6),
               TextField(
                 controller: endpoint,
                 keyboardType: TextInputType.url,
-                decoration: InputDecoration(labelText: t('family_endpoint')),
+                decoration: const InputDecoration(),
               ),
               const SizedBox(height: 12),
+              Text(t('family_email')),
+              const SizedBox(height: 6),
               TextField(
                 controller: email,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
-                decoration: InputDecoration(labelText: t('family_email')),
+                decoration: const InputDecoration(),
               ),
               const SizedBox(height: 12),
+              Text(t('family_password')),
+              const SizedBox(height: 6),
               TextField(
                 controller: password,
                 obscureText: true,
                 autocorrect: false,
                 enableSuggestions: false,
-                decoration: InputDecoration(labelText: t('family_password')),
+                decoration: const InputDecoration(),
               ),
               if (register) ...[
                 const SizedBox(height: 12),
+                Text(t('repeat_password')),
+                const SizedBox(height: 6),
                 TextField(
                   controller: passwordAgain,
                   obscureText: true,
@@ -1124,13 +1137,23 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
     int lines = 1,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: TextField(
-      controller: controller,
-      maxLines: lines,
-      keyboardType: ['amount', 'family_received'].contains(label)
-          ? const TextInputType.numberWithOptions(decimal: true, signed: true)
-          : TextInputType.text,
-      decoration: InputDecoration(labelText: t(label)),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(t(label), style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          maxLines: lines,
+          keyboardType: ['amount', 'family_received'].contains(label)
+              ? const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                )
+              : TextInputType.text,
+          decoration: const InputDecoration(),
+        ),
+      ],
     ),
   );
   Widget select(
@@ -1156,7 +1179,12 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         r['id'] as String: '${r['data']['name']} (${r['data']['currency']})',
     };
     return Scaffold(
-      appBar: AppBar(title: Text(t('family_record_add'))),
+      appBar: AppBar(
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 28
+            ? 96
+            : null,
+        title: Text(t('family_record_add'), maxLines: 2),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),

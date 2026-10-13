@@ -114,6 +114,7 @@ void main() {
         'child_money',
         'account',
         'login',
+        'register',
         'event',
         'money_keyboard',
       ]) {
@@ -125,7 +126,7 @@ void main() {
           final c = AppController(SnapshotStore([], theme), catalog, 'ru');
           await c.load();
           c.family = familyFixture(child: screen.startsWith('child'));
-          if (screen == 'login') c.family!.account = null;
+          if (['login', 'register'].contains(screen)) c.family!.account = null;
           if (['family', 'child'].contains(screen)) {
             c.preferences['active_scope'] = 'family';
           }
@@ -168,6 +169,7 @@ void main() {
                 pack: c.pack,
                 initialKind: 'event',
               );
+            case 'register':
             case 'login':
             case 'account':
               page = FamilyPage(controller: c.family!, pack: c.pack);
@@ -179,6 +181,10 @@ void main() {
             );
           }
           await tester.pumpAndSettle();
+          if (screen == 'register') {
+            await tester.tap(find.text(c.pack.t('family_register')));
+            await tester.pumpAndSettle();
+          }
           expect(tester.takeException(), isNull);
           await expectLater(
             find.byType(MaterialApp),

@@ -481,7 +481,7 @@
     "family_record_type": "Тип записи",
     "family_minor_hint": "Сумма в минимальных единицах: 1250 означает 12,50 ₽.",
     "family_amount_minor": "Сумма в минимальных единицах",
-    "family_date": "Дата (ГГГГ-ММ-ДД)",
+    "family_date": "Дата",
     "family_visibility": "Кто видит запись",
     "family_private": "Личная",
     "family_shared": "Общая для семьи",

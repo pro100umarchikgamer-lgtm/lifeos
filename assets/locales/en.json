@@ -481,7 +481,7 @@
     "family_record_type": "Record type",
     "family_minor_hint": "Enter money in minor units: 1250 means 12.50 RUB.",
     "family_amount_minor": "Amount in minor units",
-    "family_date": "Date (YYYY-MM-DD)",
+    "family_date": "Date",
     "family_visibility": "Who can see this record",
     "family_private": "Private",
     "family_shared": "Shared with the family",

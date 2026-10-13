@@ -527,7 +527,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                                 as String? ??
                             c.pack.t('family_account'))
                       : c.pack.t('personal_space'),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
