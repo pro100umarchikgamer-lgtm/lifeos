@@ -108,6 +108,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   bool _profileOpen = false;
   bool _notesOpen = false;
   String _moduleQuery = '';
+  bool _homeFinanceExpanded = false;
   DateTimeRange _period = DateTimeRange(
     start: DateTime(DateTime.now().year, DateTime.now().month),
     end: DateTime(DateTime.now().year, DateTime.now().month + 1, 0),
@@ -657,22 +658,44 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     Widget card(Map<String, Object?> row) {
       final expanded = row['expanded'] == 1, key = row['widget'] as String;
       if (key == 'financial') {
-        return expanded
-            ? _financeSummary()
-            : LifeCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      c.pack.t('finances'),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      '${c.pack.t('difference')}: ${formatMoney(Currency.fromCode(summaryCurrency), financialPeriod.total(c.records, EntryKind.income, summaryCurrency) - financialPeriod.total(c.records, EntryKind.expense, summaryCurrency), locale: c.region)}',
-                    ),
-                  ],
+        final balance =
+            financialPeriod.total(
+              c.records,
+              EntryKind.income,
+              summaryCurrency,
+            ) -
+            financialPeriod.total(
+              c.records,
+              EntryKind.expense,
+              summaryCurrency,
+            );
+        return LifeCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                key: const Key('home_financial_summary'),
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: Text(c.pack.t('finances')),
+                subtitle: Text(
+                  formatMoney(
+                    Currency.fromCode(summaryCurrency),
+                    balance,
+                    locale: c.region,
+                  ),
                 ),
-              );
+                trailing: Icon(
+                  _homeFinanceExpanded ? Icons.expand_less : Icons.expand_more,
+                ),
+                onTap: () => setState(
+                  () => _homeFinanceExpanded = !_homeFinanceExpanded,
+                ),
+              ),
+              if (_homeFinanceExpanded) _financeSummary(),
+            ],
+          ),
+        );
       }
       if (key == 'tasks') {
         return _tasksCard(tasks.take(expanded ? 3 : 1).toList());
@@ -715,53 +738,56 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
     }
 
-    var quick = false;
     final content = <Widget>[
-      LifeHero(
-        icon: Icons.wb_sunny_outlined,
-        title: c.pack.t(
-          now.hour < 12
-              ? 'good_morning'
-              : now.hour < 18
-              ? 'good_afternoon'
-              : 'good_evening',
-        ),
-        body:
-            '${MaterialLocalizations.of(context).formatMediumDate(now)} · ${c.pack.t('ux3_today_body')}',
+      _pageTitle('today'),
+      const SizedBox(height: 4),
+      Text(
+        MaterialLocalizations.of(context).formatMediumDate(now),
+        style: Theme.of(context).textTheme.bodyMedium,
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
     ];
-    if (!config.any((r) => r['widget'] == 'financial' && r['visible'] == 1)) {
-      content.addAll([_quickActions(), const SizedBox(height: 12)]);
-      quick = true;
-    }
-    for (final row in config) {
-      if (row['visible'] != 1) continue;
+    for (final row in config.where(
+      (r) => r['widget'] == 'tasks' && r['visible'] == 1,
+    )) {
       content.addAll([card(row), const SizedBox(height: 12)]);
-      if (!quick) {
-        content.addAll([_quickActions(), const SizedBox(height: 12)]);
-        quick = true;
-      }
+    }
+    content.addAll([_compactQuickActions(), const SizedBox(height: 12)]);
+    for (final row in config.where(
+      (r) => r['widget'] != 'tasks' && r['visible'] == 1,
+    )) {
+      content.addAll([card(row), const SizedBox(height: 12)]);
     }
     return content;
   }
 
+  Widget _compactQuickActions() => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final kind in EntryKind.values)
+        OutlinedButton.icon(
+          key: Key('quick_${kind.name}'),
+          onPressed: () => _add(kind),
+          icon: Icon(_kindIcon(kind), size: 20),
+          label: Text(c.pack.t(kind.name)),
+        ),
+    ],
+  );
+
   List<Widget> _emptyHome() => [
     _pageTitle('today'),
+    const SizedBox(height: 8),
+    Text(
+      c.pack.t('welcome_title'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
     const SizedBox(height: 12),
-    LifeHero(
-      icon: Icons.home_outlined,
-      title: c.pack.t('welcome_title'),
-      body: c.pack.t('welcome_body'),
-    ),
-    const SizedBox(height: 16),
-    FilledButton.icon(
-      onPressed: _chooseAdd,
-      icon: const Icon(Icons.add),
-      label: Text(c.pack.t('add_first_record')),
-    ),
-    const SizedBox(height: 16),
-    _quickActions(),
+    _tasksCard(const []),
+    const SizedBox(height: 12),
+    _compactQuickActions(),
+    const SizedBox(height: 12),
+    Text(c.pack.t('offline_ready')),
   ];
 
   Widget _financeSummary() {
@@ -1246,7 +1272,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               onTap: onTap,
               borderRadius: BorderRadius.circular(12),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
+                constraints: const BoxConstraints(minHeight: 48),
                 child: Row(
                   children: [
                     Text(
@@ -1485,12 +1511,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       currency: summaryCurrency,
     )..sort((a, b) => b.date!.compareTo(a.date!));
     return [
-      LifeHero(
-        icon: Icons.account_balance_wallet_outlined,
-        title: c.pack.t('finances'),
-        body: c.pack.t('ux3_finance_body'),
+      _pageTitle('finances'),
+      const SizedBox(height: 6),
+      Text(
+        c.pack.t('ux3_finance_body'),
+        style: Theme.of(context).textTheme.bodyMedium,
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: 12),
       LifeCard(
         child: ListTile(
           leading: const Icon(Icons.account_balance_wallet_outlined),
@@ -1590,51 +1617,104 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   List<Widget> _modules() {
     final grid = c.preferences['modules_view'] != 'list';
-    final tiles = <Widget>[
-      if (c.pack
-          .t('financial_foundation')
-          .toLowerCase()
-          .contains(_moduleQuery.toLowerCase()))
-        _moduleTile(
-          Icons.account_balance_wallet_outlined,
-          c.pack.t('financial_foundation'),
-          () => Navigator.push<void>(
-            context,
-            MaterialPageRoute(builder: (_) => FinanceFoundation(controller: c)),
-          ),
-        ),
-      for (final table in personalModules)
-        if (c.pack
-            .t('module_${table.name}')
-            .toLowerCase()
-            .contains(_moduleQuery.toLowerCase()))
-          _moduleTile(
-            switch (table) {
-              OfflineTable.projects => Icons.flag_outlined,
-              OfflineTable.habits => Icons.check_circle_outline,
-              OfflineTable.subjects => Icons.school_outlined,
-              OfflineTable.checklists => Icons.shopping_basket_outlined,
-              _ => Icons.favorite_outline,
-            },
-            c.pack.t('module_${table.name}'),
-            () => Navigator.push<void>(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    PersonalModulesPage(controller: c, table: table),
+    final modules =
+        <({IconData icon, String title, String body, VoidCallback open})>[
+              (
+                icon: Icons.account_balance_wallet_outlined,
+                title: c.pack.t('financial_foundation'),
+                body: c.pack.t('ux_modules_finance'),
+                open: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FinanceFoundation(controller: c),
+                  ),
+                ),
               ),
-            ),
-          ),
-      if (c.pack
-          .t('recent_notes')
-          .toLowerCase()
-          .contains(_moduleQuery.toLowerCase()))
-        _moduleTile(
-          Icons.notes_outlined,
-          c.pack.t('recent_notes'),
-          () => _entriesPage(EntryKind.note),
+              for (final table in personalModules)
+                (
+                  icon: switch (table) {
+                    OfflineTable.projects => Icons.flag_outlined,
+                    OfflineTable.habits => Icons.check_circle_outline,
+                    OfflineTable.subjects => Icons.school_outlined,
+                    OfflineTable.checklists => Icons.shopping_basket_outlined,
+                    _ => Icons.favorite_outline,
+                  },
+                  title: c.pack.t('module_${table.name}'),
+                  body: c.pack.t('ux_modules_${table.name}'),
+                  open: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          PersonalModulesPage(controller: c, table: table),
+                    ),
+                  ),
+                ),
+              (
+                icon: Icons.notes_outlined,
+                title: c.pack.t('recent_notes'),
+                body: c.pack.t('notes_module_hint'),
+                open: () => _entriesPage(EntryKind.note),
+              ),
+            ]
+            .where(
+              (m) => '${m.title} ${m.body}'.toLowerCase().contains(
+                _moduleQuery.toLowerCase(),
+              ),
+            )
+            .toList();
+    final theme = Theme.of(context);
+    Widget tile(int i) {
+      final m = modules[i];
+      return Material(
+        color: theme.colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
-    ];
+        child: InkWell(
+          key: ValueKey('module_card_$i'),
+          borderRadius: BorderRadius.circular(18),
+          onTap: m.open,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: grid
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(m.icon, color: theme.colorScheme.primary, size: 26),
+                      const SizedBox(height: 10),
+                      Text(
+                        m.title,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(m.body, style: theme.textTheme.bodyMedium),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Icon(m.icon, color: theme.colorScheme.primary),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(m.title, style: theme.textTheme.titleMedium),
+                            const SizedBox(height: 4),
+                            Text(m.body, style: theme.textTheme.bodyMedium),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+          ),
+        ),
+      );
+    }
+
     return [
       Row(
         children: [
@@ -1650,13 +1730,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ),
         ],
       ),
-      const SizedBox(height: 8),
-      Text(
-        c.pack.t('ux3_modules_body'),
-        style: Theme.of(context).textTheme.bodyMedium
-            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
       TextField(
         decoration: InputDecoration(
           labelText: c.pack.t('search_modules'),
@@ -1667,27 +1741,48 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       const SizedBox(height: 12),
       if (grid)
         LayoutBuilder(
-          builder: (context, box) => Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              for (final tile in tiles)
-                SizedBox(
-                  width:
-                      box.maxWidth < 330 ||
-                          MediaQuery.textScalerOf(context).scale(1) > 1.3
-                      ? box.maxWidth
-                      : (box.maxWidth - 12) / 2,
-                  child: tile,
-                ),
-            ],
-          ),
+          builder: (context, box) {
+            final columns =
+                box.maxWidth >= 280 &&
+                    MediaQuery.textScalerOf(context).scale(1) <= 1.3
+                ? 2
+                : 1;
+            final width = (box.maxWidth - 12 * (columns - 1)) / columns;
+            double height = 48;
+            for (final m in modules) {
+              double textHeight(String text, TextStyle? style) => (TextPainter(
+                text: TextSpan(text: text, style: style),
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout(maxWidth: width - 28)).height;
+              final measured =
+                  28 +
+                  26 +
+                  10 +
+                  6 +
+                  textHeight(
+                    m.title,
+                    theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ) +
+                  textHeight(m.body, theme.textTheme.bodyMedium);
+              if (measured > height) height = measured;
+            }
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (var i = 0; i < modules.length; i++)
+                  SizedBox(width: width, height: height, child: tile(i)),
+              ],
+            );
+          },
         )
-      else
-        ...tiles.map(
-          (tile) =>
-              Padding(padding: const EdgeInsets.only(bottom: 12), child: tile),
-        ),
+      else ...[
+        for (var i = 0; i < modules.length; i++)
+          Padding(padding: const EdgeInsets.only(bottom: 10), child: tile(i)),
+      ],
       const SizedBox(height: 12),
       TextButton.icon(
         onPressed: () => Navigator.push<void>(
@@ -1699,16 +1794,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
     ];
   }
-
-  Widget _moduleTile(IconData icon, String title, VoidCallback open) =>
-      LifeCard(
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(icon),
-          title: Text(title),
-          onTap: open,
-        ),
-      );
 
   void _entriesPage(EntryKind kind) {
     LifeNoticeScope.of(context).clear();

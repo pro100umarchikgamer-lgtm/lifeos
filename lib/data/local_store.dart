@@ -209,7 +209,10 @@ class LocalStore implements OfflineStore {
           'minor_digits': currency.digits,
           'label': action.label.trim(),
           'occurred_on': dateOnly(action.date),
+          'account_id': action.accountId,
+          'category_id': action.categoryId,
         });
+        await _moneyRelations(tx, id);
       case CreateTask():
         await tx.insert('tasks', {...metadata, 'title': action.title.trim()});
         if (action.schedule != null) {
@@ -277,6 +280,10 @@ class LocalStore implements OfflineStore {
               'minor_digits': currency.digits,
               'label': action.label.trim(),
               'occurred_on': dateOnly(action.date),
+              if (action.updateDetails) ...{
+                'account_id': action.accountId,
+                'category_id': action.categoryId,
+              },
             });
           case EditTask():
             values['title'] = action.title.trim();
@@ -1205,7 +1212,9 @@ class LocalStore implements OfflineStore {
       throw const DomainFailure('backup_invalid');
     }
     for (final value in tables.values) {
-      if (value is! List || value.length > 50000 || value.any((r) => r is! Map)) {
+      if (value is! List ||
+          value.length > 50000 ||
+          value.any((r) => r is! Map)) {
         throw const DomainFailure('backup_invalid');
       }
     }
@@ -1218,7 +1227,8 @@ class LocalStore implements OfflineStore {
       throw const DomainFailure('backup_invalid');
     }
     final workspaces = tables['workspaces'] as List;
-    if (workspaces.length != 1 || (workspaces.single as Map)['id'] != newSpace) {
+    if (workspaces.length != 1 ||
+        (workspaces.single as Map)['id'] != newSpace) {
       throw const DomainFailure('backup_invalid');
     }
     await _db.transaction((tx) async {

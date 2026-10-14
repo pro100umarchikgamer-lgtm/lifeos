@@ -7,6 +7,7 @@ import '../domain/finance_engine.dart';
 import 'design.dart';
 import 'entry_sheet.dart';
 import 'selection.dart';
+import 'preference_choices.dart';
 import 'calendar.dart';
 import 'money_format.dart';
 import 'wealth.dart';
@@ -124,44 +125,50 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
         body: SafeArea(
           child: Column(
             children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.all(16),
-                child: Row(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: LifeSelect<OfflineTable>(
+                  label: c.pack.t('finances'),
+                  showLabel: false,
+                  dialog: true,
+                  value: table,
+                  choices: {
+                    for (final t in destinations)
+                      t: c.pack.t('module_${t.name}'),
+                  },
+                  onChanged: (v) => setState(() => table = v),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
-                    for (final target in destinations)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          key: ValueKey('finance_section_${target.name}'),
-                          label: Text(c.pack.t('module_${target.name}')),
-                          selected: table == target,
-                          onSelected: (_) => setState(() => table = target),
+                    TextButton.icon(
+                      onPressed: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StatementImportPage(controller: c),
                         ),
                       ),
-                    ActionChip(
-                      label: Text(c.pack.t('wealth')),
+                      icon: const Icon(Icons.file_open_outlined),
+                      label: Text(c.pack.t('import_file')),
+                    ),
+                    TextButton.icon(
                       onPressed: () => Navigator.push<void>(
                         context,
                         MaterialPageRoute(
                           builder: (_) => WealthPage(controller: c),
                         ),
                       ),
+                      icon: const Icon(Icons.savings_outlined),
+                      label: Text(c.pack.t('wealth')),
                     ),
                   ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => StatementImportPage(controller: c),
-                    ),
-                  ),
-                  icon: const Icon(Icons.file_open_outlined),
-                  label: Text(c.pack.t('import_file')),
                 ),
               ),
               Expanded(
@@ -184,7 +191,16 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
                             const SizedBox(height: 12),
-                            Text(c.pack.t('offline_empty')),
+                            const SizedBox(height: 8),
+                            Icon(
+                              table == OfflineTable.accounts
+                                  ? Icons.account_balance_wallet_outlined
+                                  : Icons.receipt_long_outlined,
+                              size: 36,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(c.pack.t('ux_empty_${table.name}')),
                             const SizedBox(height: 16),
                             if (table != OfflineTable.importBatches)
                               FilledButton.icon(
@@ -210,12 +226,29 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                                     row['label'] as String? ??
                                     c.pack.t('module_${table.name}'),
                               ),
-                              subtitle: Text(summary(row)),
+                              leading: Icon(
+                                table == OfflineTable.accounts
+                                    ? Icons.account_balance_wallet_outlined
+                                    : table == OfflineTable.budgets
+                                    ? Icons.pie_chart_outline
+                                    : Icons.receipt_long_outlined,
+                              ),
+                              subtitle: table == OfflineTable.accounts
+                                  ? Text(c.pack.t('account_${row['kind']}'))
+                                  : Text(summary(row)),
                               trailing: const Icon(Icons.edit_outlined),
                               onTap: table == OfflineTable.importBatches
                                   ? null
                                   : () => edit(row),
                             ),
+                            if (table == OfflineTable.accounts) ...[
+                              Text(
+                                summary(row),
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
                             if (table == OfflineTable.importBatches)
                               TextButton.icon(
                                 onPressed: busy
@@ -628,25 +661,35 @@ class _FinanceEditorState extends State<FinanceEditor> {
     saving: saving,
     saveLabel: c.pack.t(saving ? 'saving' : 'save'),
     onSave: save,
+    header: Row(
+      children: [
+        Expanded(
+          child: Text(
+            c.pack.t('module_${widget.table.name}'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        IconButton(
+          tooltip: c.pack.t('cancel'),
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.close),
+        ),
+      ],
+    ),
     children: [
-      Row(
-        children: [
-          Expanded(
-            child: Text(
-              c.pack.t('module_${widget.table.name}'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          IconButton(
-            tooltip: c.pack.t('cancel'),
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close),
-          ),
-        ],
-      ),
       input(name, 'name'),
       if (widget.table == OfflineTable.accounts) ...[
-        input(currency, 'currency'),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: LifeSelect<String>(
+            label: c.pack.t('currency'),
+            value: currency.text,
+            choices: currencyChoices(c.pack, current: currency.text),
+            dialog: true,
+            searchLabel: c.pack.t('search'),
+            onChanged: (v) => setState(() => currency.text = v),
+          ),
+        ),
         input(amount, 'opening_balance', money: true),
         select('account_kind', kind, {
           for (final k in ['cash', 'card', 'wallet', 'deposit', 'custom'])
@@ -686,7 +729,17 @@ class _FinanceEditorState extends State<FinanceEditor> {
       ],
       if (widget.table == OfflineTable.budgets ||
           widget.table == OfflineTable.plannedPayments) ...[
-        input(currency, 'currency'),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: LifeSelect<String>(
+            label: c.pack.t('currency'),
+            value: currency.text,
+            choices: currencyChoices(c.pack, current: currency.text),
+            dialog: true,
+            searchLabel: c.pack.t('search'),
+            onChanged: (v) => setState(() => currency.text = v),
+          ),
+        ),
         input(
           amount,
           widget.table == OfflineTable.budgets ? 'budget_limit' : 'amount',

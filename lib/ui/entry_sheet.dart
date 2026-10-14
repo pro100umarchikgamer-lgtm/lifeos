@@ -10,11 +10,15 @@ class EntrySheet extends StatelessWidget {
     required this.saving,
     required this.saveLabel,
     required this.onSave,
+    this.header,
+    this.canSave = true,
   });
   final List<Widget> children;
   final bool saving;
   final String saveLabel;
   final VoidCallback onSave;
+  final Widget? header;
+  final bool canSave;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
@@ -35,6 +39,7 @@ class EntrySheet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (header != null) ...[header!, const SizedBox(height: 12)],
                 Flexible(
                   fit: FlexFit.loose,
                   child: SingleChildScrollView(
@@ -53,7 +58,7 @@ class EntrySheet extends StatelessWidget {
                 const SizedBox(height: 12),
                 FilledButton(
                   key: const Key('save'),
-                  onPressed: saving ? null : onSave,
+                  onPressed: saving || !canSave ? null : onSave,
                   child: saving
                       ? Row(
                           mainAxisSize: MainAxisSize.min,

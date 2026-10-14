@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class LanguagePack {
   LanguagePack._(this.tag, this.name, this.strings, this.plurals);
@@ -63,6 +64,7 @@ class PackCatalog {
   PackCatalog(this.packs);
   final Map<String, LanguagePack> packs;
   static Future<PackCatalog> load() async {
+    await initializeDateFormatting();
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
     final paths =
         manifest

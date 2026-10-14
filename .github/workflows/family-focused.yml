@@ -26,7 +26,7 @@ jobs:
       - run: python3 -m pip install -r backend/requirements.txt
       - run: python3 -m unittest discover -s backend/tests -v
       - run: PYTHONPATH=. python3 tool/check_sync_protocol.py
-      - run: flutter test test/controller_test.dart test/ux_recovery_test.dart test/widget_test.dart test/family_ux_test.dart
+      - run: flutter test test/controller_test.dart test/ux_recovery_test.dart test/widget_test.dart test/family_ux_test.dart test/ux31_test.dart
       - run: flutter test --update-goldens test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart test/offline_visual_test.dart
       - uses: actions/upload-artifact@v4
         if: always()

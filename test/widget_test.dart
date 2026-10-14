@@ -233,7 +233,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: LifeSelect<String>(label: 'Язык', value: selected,
       choices: values, searchLabel: 'Поиск', onChanged: (v) => selected = v))));
     await tester.tap(find.byType(LifeSelect<String>)); await tester.pumpAndSettle();
-    expect(tester.getSize(find.byType(BottomSheet)).height, lessThan(844 * .8));
+    expect(tester.getSize(find.byType(Dialog)).height, lessThanOrEqualTo(480));
     await tester.enterText(find.byKey(const Key('selection_search')), 'Ўзбек');
     tester.view.viewInsets = const FakeViewPadding(bottom: 300); addTearDown(tester.view.resetViewInsets);
     await tester.pumpAndSettle();

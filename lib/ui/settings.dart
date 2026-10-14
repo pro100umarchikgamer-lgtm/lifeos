@@ -9,6 +9,7 @@ import '../services/backup_service.dart';
 import 'design.dart';
 import 'appearance_editor.dart';
 import 'selection.dart';
+import 'preference_choices.dart';
 import 'personal_modules.dart';
 
 class PersonalSettings extends StatefulWidget {
@@ -58,7 +59,12 @@ class _PersonalSettingsState extends State<PersonalSettings> {
       value: value,
       label: c.pack.t(label ?? key),
       choices: choices,
-      searchLabel: key == 'language' || choices.length > 10
+      dialog: key == 'currency' || key == 'region' || key == 'language',
+      searchLabel:
+          key == 'language' ||
+              key == 'currency' ||
+              key == 'region' ||
+              choices.length > 10
           ? c.pack.t('search')
           : null,
       onChanged: busy ? null : (v) => preference(key, v),
@@ -524,45 +530,12 @@ class _PersonalSettingsState extends State<PersonalSettings> {
               select('language', c.pack.tag, {
                 for (final p in c.catalog.packs.values) p.tag: p.name,
               }),
-              select('currency', c.currency, {
-                for (final code in {
-                  'USD',
-                  'EUR',
-                  'RUB',
-                  'KZT',
-                  'UZS',
-                  'UAH',
-                  'GBP',
-                  'GEL',
-                  'AZN',
-                  'AMD',
-                  'TJS',
-                  'KGS',
-                  c.currency,
-                })
-                  code: code,
-              }),
-              select('region', c.region, {
-                for (final code in {
-                  'ru',
-                  'en',
-                  'de',
-                  'fr',
-                  'es',
-                  'it',
-                  'pt',
-                  'kk',
-                  'uz',
-                  'uk',
-                  'ka',
-                  'az',
-                  'hy',
-                  'tg',
-                  'ky',
-                  c.region,
-                })
-                  code: code.toUpperCase(),
-              }),
+              select(
+                'currency',
+                c.currency,
+                currencyChoices(c.pack, current: c.currency),
+              ),
+              select('region', c.region, formatChoices(c.catalog, c.region)),
               const Divider(height: 24),
               Text(
                 c.pack.t('calendar_preferences'),
