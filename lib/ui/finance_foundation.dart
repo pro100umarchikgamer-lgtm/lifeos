@@ -151,7 +151,11 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
       }).toList();
       return Scaffold(
         appBar: AppBar(
-          title: Text(c.pack.t('finances')),
+          toolbarHeight: (56 * MediaQuery.textScalerOf(context).scale(1)).clamp(
+            56.0,
+            112.0,
+          ),
+          title: Text(c.pack.t('finances'), overflow: TextOverflow.visible),
           actions: [
             IconButton(
               tooltip: c.pack.t('search'),
@@ -272,7 +276,18 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                                   : c.pack.t('ux_empty_${table.name}'),
                             ),
                             const SizedBox(height: 16),
-                            if (table != OfflineTable.importBatches)
+                            if (allRows.isNotEmpty)
+                              FilledButton.icon(
+                                onPressed: () => setState(() {
+                                  query = '';
+                                  searchOpen = false;
+                                  includeArchived = true;
+                                }),
+                                icon: const Icon(Icons.filter_alt_off_outlined),
+                                label: Text(c.pack.t('clear')),
+                              ),
+                            if (allRows.isEmpty &&
+                                table != OfflineTable.importBatches)
                               FilledButton.icon(
                                 onPressed: busy ? null : () => edit(),
                                 icon: const Icon(Icons.add),
@@ -615,6 +630,56 @@ class _FinanceEditorState extends State<FinanceEditor> {
         accountCurrency(to),
       );
     }
+    for (final field in [name, currency, amount, received]) {
+      field.addListener(_draftChanged);
+    }
+  }
+
+  void _draftChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool get validDraft {
+    try {
+      if (widget.table != OfflineTable.transfers && name.text.trim().isEmpty) {
+        return false;
+      }
+      if (widget.table == OfflineTable.categories) {
+        return true;
+      }
+      if (widget.table == OfflineTable.accounts) {
+        Currency.fromCode(currency.text);
+        if (amount.text.trim().isNotEmpty) {
+          signedMinor(amount.text, currency.text);
+        }
+        return true;
+      }
+      if (widget.table == OfflineTable.transfers) {
+        if (from.isEmpty || to.isEmpty || from == to) {
+          return false;
+        }
+        final sent = Currency.fromCode(accountCurrency(from))
+            .parse(amount.text);
+        final got = Currency.fromCode(accountCurrency(to)).parse(received.text);
+        return sent > 0 &&
+            got > 0 &&
+            (accountCurrency(from) != accountCurrency(to) || sent == got);
+      }
+      if (widget.table == OfflineTable.budgets) {
+        return amount.text.trim().isNotEmpty &&
+            signedMinor(amount.text, currency.text) >= 0 &&
+            (period != 'custom' || !end.isBefore(date));
+      }
+      if (widget.table == OfflineTable.plannedPayments) {
+        return Currency.fromCode(currency.text).parse(amount.text) > 0 &&
+            (account.isEmpty || accountCurrency(account) == currency.text);
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   String accountCurrency(String id) =>
@@ -687,7 +752,7 @@ class _FinanceEditorState extends State<FinanceEditor> {
     ),
   );
   Future<void> save() async {
-    if (saving) return;
+    if (saving || !validDraft) return;
     setState(() {
       saving = true;
       error = null;
@@ -773,6 +838,7 @@ class _FinanceEditorState extends State<FinanceEditor> {
 
   @override
   Widget build(BuildContext context) => EntrySheet(
+    canSave: validDraft,
     saving: saving,
     saveLabel: c.pack.t(saving ? 'saving' : 'save'),
     onSave: save,
