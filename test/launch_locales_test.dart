@@ -39,6 +39,10 @@ void main() {
     }
     expect(formatChoices(catalog, 'tg').length, 15);
     expect(catalog.resolve('uz_Cyrl').tag, 'uz-Cyrl');
+    expect(catalog.resolve('uz_Cyrl_UZ').tag, 'uz-Cyrl');
+    expect(catalog.resolve('uz-Latn-UZ').tag, 'uz-Latn');
+    expect(catalog.resolve('UZ_latn_uz').tag, 'uz-Latn');
+    expect(catalog.resolve('uz-UZ').tag, 'uz-Latn');
     expect(catalog.resolve('uz').tag, 'uz-Latn');
     expect(catalog.resolve('unknown').tag, 'en');
     expect(catalog.packs['ru']!.count('record_count', 21), '21 запись');

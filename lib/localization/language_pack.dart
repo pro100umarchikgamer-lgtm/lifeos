@@ -106,10 +106,30 @@ class PackCatalog {
   }
 
   LanguagePack resolve(String? tag) {
-    tag = tag?.replaceAll('_', '-');
+    final parts = tag?.replaceAll('_', '-').split('-');
+    tag = parts
+        ?.asMap()
+        .entries
+        .map((entry) {
+          final value = entry.value;
+          if (entry.key == 0) return value.toLowerCase();
+          if (value.length == 4) {
+            return '${value[0].toUpperCase()}${value.substring(1).toLowerCase()}';
+          }
+          return value.toUpperCase();
+        })
+        .join('-');
     if (tag != null && packs.containsKey(tag)) return packs[tag]!;
-    if (tag == 'uz' && packs.containsKey('uz-Latn')) return packs['uz-Latn']!;
-    final language = tag?.split(RegExp('[-_]')).first;
+    final language = tag?.split('-').first;
+    final script = tag
+        ?.split('-')
+        .where((part) => part.length == 4)
+        .firstOrNull;
+    final scripted = packs['$language-$script'];
+    if (scripted != null) return scripted;
+    if (language == 'uz' && packs.containsKey('uz-Latn')) {
+      return packs['uz-Latn']!;
+    }
     return packs[language] ??
         packs.values
             .where((p) => p.locale.languageCode == language)

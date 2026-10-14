@@ -181,14 +181,29 @@ class _ChoiceDialogState<T> extends State<_ChoiceDialog<T>> {
               if (widget.searchLabel != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: TextField(
-                    key: const Key('selection_search'),
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      labelText: widget.searchLabel,
-                      prefixIcon: const Icon(Icons.search_rounded),
-                    ),
-                    onChanged: (v) => setState(() => query = v),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (MediaQuery.textScalerOf(context).scale(1) > 1.3) ...[
+                        Text(widget.searchLabel!),
+                        const SizedBox(height: 8),
+                      ],
+                      Semantics(
+                        label: widget.searchLabel,
+                        child: TextField(
+                          key: const Key('selection_search'),
+                          textInputAction: TextInputAction.search,
+                          decoration: InputDecoration(
+                            labelText:
+                                MediaQuery.textScalerOf(context).scale(1) > 1.3
+                                ? null
+                                : widget.searchLabel,
+                            prefixIcon: const Icon(Icons.search_rounded),
+                          ),
+                          onChanged: (v) => setState(() => query = v),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               Expanded(
