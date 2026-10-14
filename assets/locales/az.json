@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "az",
   "nativeName": "Azərbaycan dili",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Ödənişi planlaşdırın və baş verəndə təsdiqləyin.",
     "ux_empty_budgets": "Xərc limiti təyin edin və qalan məbləği izləyin.",
     "ux_empty_categories": "Xərclərinizi faydalı kateqoriyalara ayırın.",
-    "ux_empty_importBatches": "Təsdiqlənmiş çıxarış idxalları burada görünəcək."
+    "ux_empty_importBatches": "Təsdiqlənmiş çıxarış idxalları burada görünəcək.",
+    "search_options": "Siyahıda axtarış"
   },
   "plurals": {
     "record_count": {

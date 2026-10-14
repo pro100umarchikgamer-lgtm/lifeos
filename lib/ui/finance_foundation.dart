@@ -725,7 +725,10 @@ class _FinanceEditorState extends State<FinanceEditor> {
       value: value,
       choices: choices,
       onChanged: (v) => setState(() => changed(v)),
-      searchLabel: c.pack.t('search'),
+      searchLabel: c.pack.t('search_options'),
+      queryChoices: key == 'currency'
+          ? (query) => currencyQueryChoice(c.pack, query)
+          : null,
     ),
   );
   Map<String, String> choices(OfflineTable table, {bool optional = true}) => {

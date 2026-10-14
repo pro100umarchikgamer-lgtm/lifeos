@@ -9,6 +9,7 @@ class LifeSelect<T> extends StatelessWidget {
     required this.choices,
     required this.onChanged,
     this.searchLabel,
+    this.queryChoices,
     this.showLabel = true,
     this.dialog = false,
   });
@@ -18,6 +19,7 @@ class LifeSelect<T> extends StatelessWidget {
   final Map<T, String> choices;
   final ValueChanged<T>? onChanged;
   final String? searchLabel;
+  final Map<T, String> Function(String)? queryChoices;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -70,6 +72,7 @@ class LifeSelect<T> extends StatelessWidget {
                     value: value,
                     choices: choices,
                     searchLabel: searchLabel,
+                    queryChoices: queryChoices,
                   ),
                 );
               }
@@ -120,11 +123,13 @@ class _ChoiceDialog<T> extends StatefulWidget {
     required this.value,
     required this.choices,
     this.searchLabel,
+    this.queryChoices,
   });
   final String label;
   final T value;
   final Map<T, String> choices;
   final String? searchLabel;
+  final Map<T, String> Function(String)? queryChoices;
   @override
   State<_ChoiceDialog<T>> createState() => _ChoiceDialogState<T>();
 }
@@ -133,7 +138,12 @@ class _ChoiceDialogState<T> extends State<_ChoiceDialog<T>> {
   String query = '';
   @override
   Widget build(BuildContext context) {
-    final entries = widget.choices.entries
+    final candidates = <T, String>{...widget.choices};
+    final extra = widget.queryChoices?.call(query);
+    if (extra != null) {
+      candidates.addAll(extra);
+    }
+    final entries = candidates.entries
         .where(
           (e) => '${e.value} ${e.key}'.toLowerCase().contains(
             query.trim().toLowerCase(),

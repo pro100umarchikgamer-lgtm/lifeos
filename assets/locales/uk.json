@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "uk",
   "nativeName": "Українська",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Заплануйте платіж і підтвердьте його після оплати.",
     "ux_empty_budgets": "Установіть ліміт витрат і стежте за залишком.",
     "ux_empty_categories": "Об’єднайте витрати в зручні категорії.",
-    "ux_empty_importBatches": "Тут з’являться підтверджені імпорти виписок."
+    "ux_empty_importBatches": "Тут з’являться підтверджені імпорти виписок.",
+    "search_options": "Пошук у списку"
   },
   "plurals": {
     "record_count": {

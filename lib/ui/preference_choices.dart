@@ -33,3 +33,21 @@ Map<String, String> formatChoices(PackCatalog catalog, String current) => {
     code:
         '${catalog.resolve(code).name}\n${NumberFormat.decimalPattern(code).format(12345.67)} · ${DateFormat.yMd(code).format(DateTime(2026, 10, 14))}',
 };
+
+// Preserve legacy/custom three-letter currencies without requiring a novice
+// to type codes in the money form. Exact-code search offers the choice.
+Map<String, String> currencyQueryChoice(LanguagePack pack, String query) {
+  final code = query.trim().toUpperCase();
+  if (!RegExp(r'^[A-Z]{3}$').hasMatch(code)) {
+    return {};
+  }
+  if (primaryCurrencies.contains(code)) {
+    return {};
+  }
+  final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
+  return {
+    code:
+        pack.strings['currency_$code'] ??
+        '${pack.t('currency')}: $code${symbol == code ? '' : ' · $symbol'}',
+  };
+}

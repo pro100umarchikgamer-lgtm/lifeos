@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "uz-Cyrl",
   "nativeName": "Ўзбекча",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Тўловни режаланг ва амалга ошганда тасдиқланг.",
     "ux_empty_budgets": "Харажат чегарасини белгиланг ва қолдиқни кузатинг.",
     "ux_empty_categories": "Харажатларингизни қулай тоифаларга ажратинг.",
-    "ux_empty_importBatches": "Тасдиқланган кўчирма импортлари шу ерда кўринади."
+    "ux_empty_importBatches": "Тасдиқланган кўчирма импортлари шу ерда кўринади.",
+    "search_options": "Рўйхатдан қидириш"
   },
   "plurals": {
     "record_count": {

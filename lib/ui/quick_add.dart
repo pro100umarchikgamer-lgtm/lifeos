@@ -372,11 +372,12 @@ class _QuickAddState extends State<QuickAdd> {
           const SizedBox(height: 12),
           LifeSelect<String>(
             key: const Key('entry_currency'),
+            queryChoices: (query) => currencyQueryChoice(pack, query),
             label: pack.t('currency'),
             value: _currency.text,
             choices: currencyChoices(pack, current: _currency.text),
             dialog: true,
-            searchLabel: pack.t('search'),
+            searchLabel: pack.t('search_options'),
             onChanged: _saving
                 ? null
                 : (v) => setState(() {
@@ -472,7 +473,7 @@ class _QuickAddState extends State<QuickAdd> {
               label: pack.t('account'),
               value: _account,
               choices: _choices(OfflineTable.accounts),
-              searchLabel: pack.t('search'),
+              searchLabel: pack.t('search_options'),
               dialog: true,
               onChanged: _saving ? null : (v) => setState(() => _account = v),
             ),
@@ -481,7 +482,7 @@ class _QuickAddState extends State<QuickAdd> {
               label: pack.t('category'),
               value: _category,
               choices: _choices(OfflineTable.categories),
-              searchLabel: pack.t('search'),
+              searchLabel: pack.t('search_options'),
               dialog: true,
               onChanged: _saving ? null : (v) => setState(() => _category = v),
             ),

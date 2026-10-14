@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "fr",
   "nativeName": "Français",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Prévoyez un paiement et confirmez-le lorsqu’il a lieu.",
     "ux_empty_budgets": "Fixez un plafond de dépenses et voyez ce qu’il reste.",
     "ux_empty_categories": "Regroupez vos dépenses en catégories utiles.",
-    "ux_empty_importBatches": "Vos imports de relevés confirmés apparaîtront ici."
+    "ux_empty_importBatches": "Vos imports de relevés confirmés apparaîtront ici.",
+    "search_options": "Rechercher dans la liste"
   },
   "plurals": {
     "record_count": {

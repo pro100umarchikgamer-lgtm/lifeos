@@ -149,4 +149,33 @@ void main() {
     expect(value, 'USD');
     expect(tester.takeException(), isNull);
   });
+  testWidgets('exact currency search preserves three-decimal currency entry', (
+    tester,
+  ) async {
+    final store = UIStore();
+    final c = AppController(store, catalog, 'ru');
+    await c.load();
+    await tester.pumpWidget(LifeOSApp(controller: c));
+    await tester.pumpAndSettle();
+    showEntryEditor(
+      tester.element(find.byType(HomeShell)),
+      c,
+      EntryKind.expense,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('entry_currency')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('selection_search')), 'KWD');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('choice_KWD')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('amount')), '12,345');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('save')));
+    await tester.pumpAndSettle();
+    final action = store.actions.single as CreateMoney;
+    expect(action.currencyCode, 'KWD');
+    expect(Currency.fromCode(action.currencyCode).parse(action.amount), 12345);
+    expect(tester.takeException(), isNull);
+  });
 }

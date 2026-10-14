@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "es",
   "nativeName": "Español",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Planifica un pago y confírmalo cuando se realice.",
     "ux_empty_budgets": "Establece un límite de gasto y consulta lo que queda.",
     "ux_empty_categories": "Agrupa tus gastos en categorías útiles.",
-    "ux_empty_importBatches": "Aquí aparecerán tus importaciones de extractos confirmadas."
+    "ux_empty_importBatches": "Aquí aparecerán tus importaciones de extractos confirmadas.",
+    "search_options": "Buscar en la lista"
   },
   "plurals": {
     "record_count": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "ky",
   "nativeName": "Кыргызча",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Төлөмдү пландап, төлөнгөндө ырастагыла.",
     "ux_empty_budgets": "Чыгаша чегин коюп, калганын көзөмөлдөңүз.",
     "ux_empty_categories": "Чыгашаларды пайдалуу категорияларга бөлүңүз.",
-    "ux_empty_importBatches": "Ырасталган көчүрмө импорттору ушул жерде көрүнөт."
+    "ux_empty_importBatches": "Ырасталган көчүрмө импорттору ушул жерде көрүнөт.",
+    "search_options": "Тизмеден издөө"
   },
   "plurals": {
     "record_count": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "ka",
   "nativeName": "ქართული",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "დაგეგმეთ გადახდა და შესრულების შემდეგ დაადასტურეთ.",
     "ux_empty_budgets": "დააწესეთ ხარჯვის ლიმიტი და ნახეთ დარჩენილი თანხა.",
     "ux_empty_categories": "დააჯგუფეთ ხარჯები სასარგებლო კატეგორიებად.",
-    "ux_empty_importBatches": "აქ გამოჩნდება ამონაწერების დადასტურებული იმპორტები."
+    "ux_empty_importBatches": "აქ გამოჩნდება ამონაწერების დადასტურებული იმპორტები.",
+    "search_options": "სიაში ძიება"
   },
   "plurals": {
     "record_count": {

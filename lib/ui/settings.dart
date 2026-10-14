@@ -59,13 +59,16 @@ class _PersonalSettingsState extends State<PersonalSettings> {
       value: value,
       label: c.pack.t(label ?? key),
       choices: choices,
+      queryChoices: key == 'currency'
+          ? (query) => currencyQueryChoice(c.pack, query)
+          : null,
       dialog: key == 'currency' || key == 'region' || key == 'language',
       searchLabel:
           key == 'language' ||
               key == 'currency' ||
               key == 'region' ||
               choices.length > 10
-          ? c.pack.t('search')
+          ? c.pack.t('search_options')
           : null,
       onChanged: busy ? null : (v) => preference(key, v),
     ),
@@ -269,7 +272,9 @@ class _PersonalSettingsState extends State<PersonalSettings> {
               child: Column(
                 children: [
                   TextField(
-                    decoration: InputDecoration(labelText: c.pack.t('search')),
+                    decoration: InputDecoration(
+                      labelText: c.pack.t('search_options'),
+                    ),
                     onChanged: (v) => set(() => query = v),
                   ),
                   Expanded(

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "tg",
   "nativeName": "Тоҷикӣ",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Пардохтро ба нақша гирифта, баъд аз анҷом тасдиқ кунед.",
     "ux_empty_budgets": "Ҳадди хароҷотро гузошта, бақияро бинед.",
     "ux_empty_categories": "Хароҷотро ба категорияҳои муфид гурӯҳбандӣ кунед.",
-    "ux_empty_importBatches": "Воридоти тасдиқшудаи иқтибосҳо ин ҷо пайдо мешаванд."
+    "ux_empty_importBatches": "Воридоти тасдиқшудаи иқтибосҳо ин ҷо пайдо мешаванд.",
+    "search_options": "Ҷустуҷӯ дар рӯйхат"
   },
   "plurals": {
     "record_count": {

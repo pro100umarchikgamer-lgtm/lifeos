@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 9,
+  "packVersion": 10,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -666,7 +666,8 @@
     "ux_empty_plannedPayments": "Plan a payment and confirm it when it happens.",
     "ux_empty_budgets": "Set a spending limit and see what remains.",
     "ux_empty_categories": "Group your spending into useful categories.",
-    "ux_empty_importBatches": "Your confirmed statement imports will appear here."
+    "ux_empty_importBatches": "Your confirmed statement imports will appear here.",
+    "search_options": "Search options"
   },
   "plurals": {
     "record_count": {
