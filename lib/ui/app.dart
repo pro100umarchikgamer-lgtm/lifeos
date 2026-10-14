@@ -1393,41 +1393,80 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ),
   );
 
-  Widget _sectionTitle(String key, {String? action, VoidCallback? onTap}) =>
-      Row(
-        children: [
-          Expanded(
-            child: Text(
-              c.pack.t(key),
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+  Widget _sectionTitle(
+    String key, {
+    String? action,
+    VoidCallback? onTap,
+  }) => LayoutBuilder(
+    builder: (context, bounds) {
+      const titleStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w800);
+      final actionStyle = TextStyle(
+        fontSize: 13,
+        color: Theme.of(context).colorScheme.primary,
+      );
+      final title = Text(c.pack.t(key), style: titleStyle);
+      if (action == null) return title;
+      double textWidth(String text, TextStyle style) {
+        final painter = TextPainter(
+          text: TextSpan(
+            text: text,
+            style: DefaultTextStyle.of(context).style.merge(style),
+          ),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout();
+        final width = painter.width;
+        painter.dispose();
+        return width;
+      }
+
+      final actionLabel = c.pack.t(action);
+      final stacked =
+          textWidth(c.pack.t(key), titleStyle) +
+              textWidth(actionLabel, actionStyle) +
+              23 >
+          bounds.maxWidth;
+      final actionButton = Semantics(
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: 48,
+              maxWidth: bounds.maxWidth,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(child: Text(actionLabel, style: actionStyle)),
+                Icon(
+                  Icons.chevron_right,
+                  size: 15,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
             ),
           ),
-          if (action != null)
-            InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(12),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Row(
-                  children: [
-                    Text(
-                      c.pack.t(action),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right,
-                      size: 15,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
+        ),
       );
+      return stacked
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                title,
+                Align(alignment: Alignment.centerRight, child: actionButton),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(child: title),
+                const SizedBox(width: 8),
+                actionButton,
+              ],
+            );
+    },
+  );
 
   Widget _cardEmpty(String key, EntryKind kind) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 7),

@@ -313,6 +313,10 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          await snapshot('today_large_text');
+          final allTasks = tester.getRect(find.text(pack.t('all_tasks')));
+          expect(allTasks.left, greaterThanOrEqualTo(0));
+          expect(allTasks.right, lessThanOrEqualTo(width));
           showEntryEditor(
             tester.element(find.byType(HomeShell)),
             c,
