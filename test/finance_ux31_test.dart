@@ -84,7 +84,10 @@ void main() {
         'Кошелёк',
       );
       await tester.pumpAndSettle();
-      expect(find.text('Кошелёк'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.data == 'Кошелёк'),
+        findsOneWidget,
+      );
       await tester.tap(find.byType(LifeSelect<OfflineTable>));
       await tester.pumpAndSettle();
       await tester.tap(find.text(c.pack.t('module_budgets')));
