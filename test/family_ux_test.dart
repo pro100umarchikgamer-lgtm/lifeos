@@ -67,7 +67,16 @@ void main() {
         160,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(create);
+      await tester.pumpAndSettle();
       await tester.tap(create);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text(pack.t('repeat_password')),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       expect(find.text(pack.t('repeat_password')), findsOneWidget);
       await tester.scrollUntilVisible(
@@ -75,6 +84,7 @@ void main() {
         160,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
       expect(
         tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
         isNull,

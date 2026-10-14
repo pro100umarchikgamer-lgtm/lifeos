@@ -192,6 +192,7 @@ void main() {
                   )
                   .first,
             );
+            await tester.pumpAndSettle();
             await tester.tap(find.text(c.pack.t('family_register')));
             await tester.pumpAndSettle();
             expect(find.text(c.pack.t('repeat_password')), findsOneWidget);
