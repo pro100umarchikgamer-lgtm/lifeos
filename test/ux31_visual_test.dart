@@ -1,0 +1,193 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:timezone/data/latest.dart' as timezone;
+import 'package:lifeos/app_controller.dart';
+import 'package:lifeos/domain/models.dart';
+import 'package:lifeos/localization/language_pack.dart';
+import 'package:lifeos/ui/app.dart';
+import 'package:lifeos/ui/finance_foundation.dart';
+import 'package:lifeos/ui/design.dart';
+import 'package:lifeos/ui/preference_choices.dart';
+import 'package:lifeos/ui/quick_add.dart';
+import 'package:lifeos/ui/selection.dart';
+
+import 'visual_snapshot_test.dart' show SnapshotStore;
+
+class LaunchSnapshotStore extends SnapshotStore {
+  LaunchSnapshotStore(super.items, super.mode, this.language);
+  final String language;
+  @override
+  Future<Map<String, String>> settings() async => {
+    'language': language,
+    'currency': 'RUB',
+    'theme': mode,
+  };
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  timezone.initializeTimeZones();
+  late PackCatalog catalog;
+  setUpAll(() async {
+    for (final entry in {
+      'Roboto': 'test/fonts/NotoSans-Regular.ttf',
+      'NotoSansGeorgian': 'assets/fonts/NotoSansGeorgian.ttf',
+      'NotoSansArmenian': 'assets/fonts/NotoSansArmenian.ttf',
+    }.entries) {
+      final bytes = await File(entry.value).readAsBytes();
+      await (FontLoader(
+        entry.key,
+      )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+    }
+    await (FontLoader(
+      'MaterialIcons',
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+    catalog = await PackCatalog.load();
+  });
+  for (final tag in [
+    'en',
+    'ru',
+    'kk',
+    'uz-Latn',
+    'uz-Cyrl',
+    'uk',
+    'de',
+    'fr',
+    'es',
+    'it',
+    'pt',
+    'ka',
+    'az',
+    'hy',
+    'tg',
+    'ky',
+  ]) {
+    for (final width in [320.0, 390.0, 430.0]) {
+      for (final theme in ['light', 'dark']) {
+        testWidgets('launch $tag $width $theme', (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = Size(width, 844);
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetViewInsets);
+          final pack = catalog.packs[tag]!;
+          final records = [
+            Record(
+              id: 'synthetic-task',
+              kind: EntryKind.task,
+              text: pack.t('example_task'),
+              createdAt: DateTime(2026, 10, 14),
+            ),
+          ];
+          final c = AppController(
+            LaunchSnapshotStore(records, theme, tag),
+            catalog,
+            tag,
+          );
+          await c.load();
+          await tester.pumpWidget(LifeOSApp(controller: c));
+          await tester.pumpAndSettle();
+          final prefix = 'ux31_goldens/${tag}_${theme}_${width.toInt()}';
+          Future<void> snapshot(String name) async {
+            expect(tester.takeException(), isNull);
+            await expectLater(
+              find.byType(MaterialApp),
+              matchesGoldenFile('${prefix}_$name.png'),
+            );
+          }
+
+          expect(
+            tester.getRect(find.text(pack.t('example_task'))).bottom,
+            lessThan(600),
+          );
+          await snapshot('today');
+          showEntryEditor(
+            tester.element(find.byType(HomeShell)),
+            c,
+            EntryKind.expense,
+          );
+          await tester.pumpAndSettle();
+          await snapshot('expense');
+          tester.view.viewInsets = const FakeViewPadding(bottom: 330);
+          await tester.pumpAndSettle();
+          expect(
+            tester.getRect(find.text(pack.t('create_expense'))).top,
+            greaterThanOrEqualTo(0),
+          );
+          expect(
+            tester.getRect(find.byKey(const Key('save'))).bottom,
+            lessThanOrEqualTo(514),
+          );
+          await snapshot('expense_keyboard');
+          Navigator.of(tester.element(find.byKey(const Key('save')))).pop();
+          tester.view.viewInsets = const FakeViewPadding();
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const Key('nav_modules')));
+          await tester.pumpAndSettle();
+          await snapshot('modules');
+          final context = tester.element(find.byType(HomeShell));
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => FinanceFoundation(controller: c),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await snapshot('accounts');
+          Navigator.of(tester.element(find.byType(FinanceFoundation))).pop();
+          await tester.pumpAndSettle();
+          await tester.pumpWidget(
+            LifeOSApp(
+              controller: c,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(1.8)),
+                child: child!,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await snapshot('modules_large_text');
+          await tester.pumpWidget(
+            MaterialApp(
+              locale: pack.locale,
+              supportedLocales: [pack.locale],
+              localizationsDelegates: const [
+                MaterialFallbackDelegate(),
+                WidgetsFallbackDelegate(),
+                CupertinoFallbackDelegate(),
+              ],
+              theme: lifeTheme(
+                theme == 'dark' ? Brightness.dark : Brightness.light,
+              ),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(1.8)),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: Center(
+                  child: LifeSelect<String>(
+                    label: pack.t('currency'),
+                    value: 'RUB',
+                    choices: currencyChoices(pack),
+                    dialog: true,
+                    searchLabel: pack.t('search'),
+                    onChanged: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.byType(LifeSelect<String>));
+          await tester.pumpAndSettle();
+          await snapshot('currency_dialog_large_text');
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+  }
+}

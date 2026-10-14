@@ -61,15 +61,15 @@ class _LifeOSAppState extends State<LifeOSApp> {
                 .disableAnimations
             ? Duration.zero
             : const Duration(milliseconds: 180),
-        locale: Locale(controller.region),
+        locale: controller.pack.locale,
         supportedLocales: {
           for (final p in controller.catalog.packs.values) p.locale,
           Locale(controller.region),
         }.toList(),
-        localizationsDelegates: const [
-          MaterialFallbackDelegate(),
-          WidgetsFallbackDelegate(),
-          CupertinoFallbackDelegate(),
+        localizationsDelegates: [
+          MaterialFallbackDelegate(formatLocale: controller.region),
+          const WidgetsFallbackDelegate(),
+          const CupertinoFallbackDelegate(),
         ],
         theme: lifeTheme(
           Brightness.light,
@@ -591,18 +591,55 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget _bottomBar() {
     final surface = Theme.of(context).colorScheme.surface;
     final inactive = Theme.of(context).colorScheme.onSurfaceVariant;
+    final width = MediaQuery.sizeOf(context).width;
+    final scaler = MediaQuery.textScalerOf(context);
+    double labelWidth = 0;
+    double labelHeight = 0;
+    for (final tab in _tabs) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: c.pack.t(tab),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        ),
+        textDirection: Directionality.of(context),
+        textScaler: scaler,
+      )..layout();
+      if (painter.width > labelWidth) labelWidth = painter.width;
+      if (painter.height > labelHeight) labelHeight = painter.height;
+      painter.dispose();
+    }
+    // Give labels a whole row before they would wrap inside a single word.
+    final roomy = labelWidth + 12 > (width - 64) / 4;
+    final rowHeight = (labelHeight + 34).clamp(56.0, 100.0);
     return BottomAppBar(
-      height: MediaQuery.textScalerOf(context).scale(1) > 1.3 ? 112 : 80,
+      height: roomy ? rowHeight * 2 + 64 : 80,
       padding: EdgeInsets.zero,
       color: surface,
-
-      child: Row(
-        children: [
-          for (var i = 0; i < 2; i++) Expanded(child: _navItem(i, inactive)),
-          SizedBox(width: 64, child: Center(child: _addButton())),
-          for (var i = 2; i < 4; i++) Expanded(child: _navItem(i, inactive)),
-        ],
-      ),
+      child: roomy
+          ? Column(
+              children: [
+                for (var row = 0; row < 2; row++)
+                  SizedBox(
+                    height: rowHeight,
+                    child: Row(
+                      children: [
+                        for (var i = row * 2; i < row * 2 + 2; i++)
+                          Expanded(child: _navItem(i, inactive)),
+                      ],
+                    ),
+                  ),
+                SizedBox(height: 64, child: Center(child: _addButton())),
+              ],
+            )
+          : Row(
+              children: [
+                for (var i = 0; i < 2; i++)
+                  Expanded(child: _navItem(i, inactive)),
+                SizedBox(width: 64, child: Center(child: _addButton())),
+                for (var i = 2; i < 4; i++)
+                  Expanded(child: _navItem(i, inactive)),
+              ],
+            ),
     );
   }
 

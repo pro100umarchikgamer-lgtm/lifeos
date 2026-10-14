@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'launch_formats.dart';
+import 'launch_material.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -46,6 +49,10 @@ class LanguagePack {
           : key);
   String count(String key, int value) {
     final forms = plurals[key]!;
+    if (locale.languageCode == 'tg') {
+      return (forms[value == 1 ? 'one' : 'other'] ?? forms['other']!)
+          .replaceAll('{count}', value.toString());
+    }
     final result = Intl.plural(
       value,
       zero: forms['zero'],
@@ -65,6 +72,7 @@ class PackCatalog {
   final Map<String, LanguagePack> packs;
   static Future<PackCatalog> load() async {
     await initializeDateFormatting();
+    initializeLaunchFormats();
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
     final paths =
         manifest
@@ -97,7 +105,9 @@ class PackCatalog {
   }
 
   LanguagePack resolve(String? tag) {
+    tag = tag?.replaceAll('_', '-');
     if (tag != null && packs.containsKey(tag)) return packs[tag]!;
+    if (tag == 'uz' && packs.containsKey('uz-Latn')) return packs['uz-Latn']!;
     final language = tag?.split(RegExp('[-_]')).first;
     return packs[language] ??
         packs.values
@@ -108,21 +118,28 @@ class PackCatalog {
 }
 
 // Some launch languages do not yet have Flutter's built-in Material translations.
-// App text always uses the selected pack; built-in picker text falls back to English.
+// Launch languages use built-in or app-owned picker translations. Unknown languages
+// retain an explicit English fallback.
 class MaterialFallbackDelegate
     extends LocalizationsDelegate<MaterialLocalizations> {
-  const MaterialFallbackDelegate();
+  const MaterialFallbackDelegate({this.formatLocale});
+  final String? formatLocale;
   @override
   bool isSupported(Locale locale) => true;
   @override
-  Future<MaterialLocalizations> load(Locale locale) =>
-      GlobalMaterialLocalizations.delegate.load(
-        GlobalMaterialLocalizations.delegate.isSupported(locale)
-            ? locale
-            : const Locale('en'),
-      );
+  Future<MaterialLocalizations> load(Locale locale) async {
+    final custom = launchMaterial(locale, formatLocale: formatLocale);
+    if (custom != null) return custom;
+    return GlobalMaterialLocalizations.delegate.load(
+      GlobalMaterialLocalizations.delegate.isSupported(locale)
+          ? locale
+          : const Locale('en'),
+    );
+  }
+
   @override
-  bool shouldReload(MaterialFallbackDelegate old) => false;
+  bool shouldReload(MaterialFallbackDelegate old) =>
+      old.formatLocale != formatLocale;
 }
 
 class WidgetsFallbackDelegate

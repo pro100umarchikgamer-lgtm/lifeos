@@ -28,3 +28,12 @@ flutter:
   assets:
     - assets/locales/
     - assets/migrations/
+    - assets/fonts/NotoSansGeorgian-OFL.txt
+    - assets/fonts/NotoSansArmenian-OFL.txt
+  fonts:
+    - family: NotoSansGeorgian
+      fonts:
+        - asset: assets/fonts/NotoSansGeorgian.ttf
+    - family: NotoSansArmenian
+      fonts:
+        - asset: assets/fonts/NotoSansArmenian.ttf

@@ -91,8 +91,11 @@ ThemeData lifeTheme(
               ? LifePalette.darkBackground
               : LifePalette.background
         : scheme.surfaceContainerLowest,
-    textTheme: ThemeData(brightness: brightness).textTheme
-        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface),
+    textTheme: ThemeData(brightness: brightness).textTheme.apply(
+      bodyColor: scheme.onSurface,
+      displayColor: scheme.onSurface,
+      fontFamilyFallback: const ['NotoSansGeorgian', 'NotoSansArmenian'],
+    ),
     dividerColor: scheme.outlineVariant,
     inputDecorationTheme: InputDecorationTheme(
       filled: true,

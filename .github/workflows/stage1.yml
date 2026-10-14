@@ -93,13 +93,13 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: PYTHONPATH=. python3 tool/check_sync_protocol.py
         if: steps.validation.outputs.full == 'true'
-      - run: python3 tool/validate_packs.py
+      - run: python3 tool/validate_packs.py --release
         if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart
+      - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart test/ux31_visual_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: python3 tool/verify_goldens.py
         if: steps.validation.outputs.full == 'true'
@@ -107,7 +107,9 @@ jobs:
         if: always() && steps.validation.outputs.full == 'true'
         with:
           name: lifeos-ui-screenshots-${{ github.run_number }}
-          path: test/goldens/*.png
+          path: |
+            test/goldens/*.png
+            test/ux31_goldens/*.png
           if-no-files-found: warn
           retention-days: 14
       - name: Compile native Android code without creating an APK
