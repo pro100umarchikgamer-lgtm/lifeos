@@ -4,6 +4,7 @@ import 'launch_formats.dart';
 import 'launch_material.dart';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -127,9 +128,9 @@ class MaterialFallbackDelegate
   @override
   bool isSupported(Locale locale) => true;
   @override
-  Future<MaterialLocalizations> load(Locale locale) async {
+  Future<MaterialLocalizations> load(Locale locale) {
     final custom = launchMaterial(locale, formatLocale: formatLocale);
-    if (custom != null) return custom;
+    if (custom != null) return SynchronousFuture(custom);
     return GlobalMaterialLocalizations.delegate.load(
       GlobalMaterialLocalizations.delegate.isSupported(locale)
           ? locale
