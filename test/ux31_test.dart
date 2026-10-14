@@ -135,7 +135,10 @@ void main() {
     await tester.tap(find.byType(LifeSelect<String>));
     await tester.pumpAndSettle();
     expect(find.byType(BottomSheet), findsNothing);
-    expect(tester.getSize(find.byType(Dialog)).height, lessThanOrEqualTo(480));
+    expect(
+      tester.getSize(find.byKey(const Key('selection_dialog_body'))).height,
+      lessThanOrEqualTo(480),
+    );
     await tester.enterText(find.byKey(const Key('selection_search')), 'USD');
     tester.view.viewInsets = const FakeViewPadding(bottom: 330);
     await tester.pumpAndSettle();

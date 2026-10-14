@@ -144,6 +144,7 @@ class _ChoiceDialogState<T> extends State<_ChoiceDialog<T>> {
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: LayoutBuilder(
         builder: (context, box) => SizedBox(
+          key: const Key('selection_dialog_body'),
           width: 440,
           height: box.maxHeight.clamp(0.0, 480.0),
           child: Column(

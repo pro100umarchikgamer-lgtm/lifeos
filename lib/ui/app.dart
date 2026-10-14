@@ -592,7 +592,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final surface = Theme.of(context).colorScheme.surface;
     final inactive = Theme.of(context).colorScheme.onSurfaceVariant;
     return BottomAppBar(
-      height: 76,
+      height: MediaQuery.textScalerOf(context).scale(1) > 1.3 ? 112 : 80,
       padding: EdgeInsets.zero,
       color: surface,
 
@@ -619,11 +619,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           const SizedBox(height: 3),
           Text(
             c.pack.t(_tabs[i]),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: color,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
@@ -1319,11 +1318,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     child: Row(
       children: [
         SizedBox(
-          width: 44,
+          width: 48,
           child: Checkbox(
             key: Key('task_${task.id}'),
             value: task.completed,
-            visualDensity: VisualDensity.compact,
+            visualDensity: VisualDensity.standard,
             onChanged: c.pendingTasks.contains(task.id)
                 ? null
                 : (value) => _complete(task, value!),
