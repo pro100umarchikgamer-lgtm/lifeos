@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../app_controller.dart';
@@ -359,7 +360,13 @@ class _QuickAddState extends State<QuickAdd> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: pack.t('amount'),
-              suffixText: _currency.text.toUpperCase(),
+              hintText: Currency.fromCode(_currency.text).digits == 0
+                  ? '0'
+                  : '0${NumberFormat.decimalPattern(widget.controller.region).symbols.DECIMAL_SEP}${List.filled(Currency.fromCode(_currency.text).digits, '0').join()}',
+              suffixText: NumberFormat.simpleCurrency(
+                name: _currency.text.toUpperCase(),
+                locale: widget.controller.region,
+              ).currencySymbol,
             ),
           ),
           const SizedBox(height: 12),

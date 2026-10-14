@@ -327,7 +327,9 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                                 ),
                               ),
                               subtitle: table == OfflineTable.accounts
-                                  ? Text(c.pack.t('account_${row['kind']}'))
+                                  ? Text(
+                                      '${c.pack.t('account_${row['kind']}')} · ${row['currency']}',
+                                    )
                                   : Text(summary(row)),
                               trailing: const Icon(Icons.edit_outlined),
                               onTap: table == OfflineTable.importBatches
@@ -345,7 +347,6 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                                 spacing: 8,
                                 runSpacing: 4,
                                 children: [
-                                  Chip(label: Text(row['currency'] as String)),
                                   if (row['archived'] == 1)
                                     Chip(label: Text(c.pack.t('archived'))),
                                 ],

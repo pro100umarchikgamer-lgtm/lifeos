@@ -103,6 +103,12 @@ void main() {
             tester.getRect(find.text(pack.t('example_task'))).bottom,
             lessThan(600),
           );
+          for (final tab in ['today', 'plans', 'finances', 'modules']) {
+            expect(
+              tester.getRect(find.byKey(Key('nav_$tab'))).height,
+              greaterThanOrEqualTo(48),
+            );
+          }
           await snapshot('today');
           showEntryEditor(
             tester.element(find.byType(HomeShell)),
@@ -213,9 +219,16 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          for (final tab in ['today', 'plans', 'finances', 'modules']) {
+            expect(
+              tester.getRect(find.byKey(Key('nav_$tab'))).height,
+              greaterThanOrEqualTo(48),
+            );
+          }
           await snapshot('modules_large_text');
           await tester.pumpWidget(
             MaterialApp(
+              debugShowCheckedModeBanner: false,
               locale: pack.locale,
               supportedLocales: [pack.locale],
               localizationsDelegates: const [
@@ -253,6 +266,7 @@ void main() {
           await tester.pumpAndSettle();
           await tester.pumpWidget(
             MaterialApp(
+              debugShowCheckedModeBanner: false,
               locale: pack.locale,
               supportedLocales: [pack.locale],
               localizationsDelegates: const [
@@ -284,6 +298,39 @@ void main() {
           tester.view.viewInsets = const FakeViewPadding(bottom: 330);
           await tester.pumpAndSettle();
           await snapshot('format_dialog_keyboard');
+          Navigator.of(tester.element(find.byType(Dialog))).pop();
+          tester.view.viewInsets = const FakeViewPadding();
+          await tester.pumpAndSettle();
+          await tester.pumpWidget(
+            LifeOSApp(
+              key: const Key('large_money_fixture'),
+              controller: c,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: const TextScaler.linear(1.8)),
+                child: child!,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          showEntryEditor(
+            tester.element(find.byType(HomeShell)),
+            c,
+            EntryKind.expense,
+          );
+          await tester.pumpAndSettle();
+          tester.view.viewInsets = const FakeViewPadding(bottom: 330);
+          await tester.pumpAndSettle();
+          expect(
+            tester.getRect(find.text(pack.t('create_expense'))).top,
+            greaterThanOrEqualTo(0),
+          );
+          expect(
+            tester.getRect(find.byKey(const Key('save'))).bottom,
+            lessThanOrEqualTo(514),
+          );
+          await snapshot('expense_keyboard_large_text');
+
           expect(tester.takeException(), isNull);
         });
       }

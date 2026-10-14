@@ -1,4 +1,4 @@
-"""Reuse successful main validation only for identical application/dependency inputs."""
+"""Reuse successful branch validation only for identical application/dependency inputs."""
 import hashlib
 import io
 import json
@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 import subprocess
 import zipfile
+from urllib.parse import urlencode
+from release_policy import permits_signed_build
 
 REPO = os.environ['GITHUB_REPOSITORY']
 API = f'repos/{REPO}/actions'
@@ -33,9 +35,11 @@ proof = {'inputs': inputs('HEAD'), 'lock': lock, 'flutter': sdk, 'sha': command(
 Path('validation-proof.json').write_text(json.dumps(proof, sort_keys=True) + '\n')
 reuse = False
 apk_exists = False
-trusted = (os.environ['GITHUB_REF'] == 'refs/heads/main' or os.environ['GITHUB_REF'] in ('refs/heads/feature/family-sync', 'refs/heads/feature/lifeos-3-production') and os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch') and os.environ['GITHUB_EVENT_NAME'] != 'pull_request'
+trusted = permits_signed_build(os.environ['GITHUB_REF'], os.environ['GITHUB_EVENT_NAME'])
+branch = os.environ['GITHUB_REF'].removeprefix('refs/heads/')
+run_query = urlencode({'branch': branch, 'status': 'success', 'per_page': 100})
 try:
-    runs = api(f'{API}/workflows/stage1.yml/runs?branch=main&status=success&per_page=100')['workflow_runs'] if trusted else []
+    runs = api(f'{API}/workflows/stage1.yml/runs?{run_query}')['workflow_runs'] if trusted else []
     for run in runs:
         if run['event'] not in ('push', 'workflow_dispatch'):
             continue

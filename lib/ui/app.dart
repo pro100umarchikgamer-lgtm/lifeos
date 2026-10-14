@@ -599,7 +599,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final painter = TextPainter(
         text: TextSpan(
           text: c.pack.t(tab),
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
         ),
         textDirection: Directionality.of(context),
         textScaler: scaler,
@@ -610,7 +611,39 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     // Give labels a whole row before they would wrap inside a single word.
     final roomy = labelWidth + 12 > (width - 64) / 4;
-    final rowHeight = (labelHeight + 34).clamp(56.0, 100.0);
+    final rowHeight = (labelHeight + 41).clamp(64.0, 160.0);
+    if (roomy && labelWidth + 44 <= (width - 64) / 2) {
+      final compactHeight = (labelHeight + 24).clamp(48.0, 140.0);
+      return BottomAppBar(
+        height: compactHeight * 2,
+        padding: EdgeInsets.zero,
+        color: surface,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  for (var row = 0; row < 2; row++)
+                    SizedBox(
+                      height: compactHeight,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = row * 2; i < row * 2 + 2; i++)
+                            Expanded(
+                              child: _navItem(i, inactive, horizontal: true),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(width: 64, child: Center(child: _addButton())),
+          ],
+        ),
+      );
+    }
     return BottomAppBar(
       height: roomy ? rowHeight * 2 + 64 : 80,
       padding: EdgeInsets.zero,
@@ -643,27 +676,43 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
   }
 
-  Widget _navItem(int i, Color inactive) {
+  Widget _navItem(int i, Color inactive, {bool horizontal = false}) {
     final active = !_profileOpen && _tab == i;
     final color = active ? Theme.of(context).colorScheme.primary : inactive;
-    return InkWell(
-      key: Key('nav_${_tabs[i]}'),
-      onTap: () => _navigate(i),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(_icons[i], size: 22, color: color),
-          const SizedBox(height: 3),
-          Text(
-            c.pack.t(_tabs[i]),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
+    final label = Text(
+      c.pack.t(_tabs[i]),
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+        color: color,
+        fontSize: 12,
+        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+      ),
+    );
+    return Semantics(
+      selected: active,
+      button: true,
+      child: InkWell(
+        key: Key('nav_${_tabs[i]}'),
+        onTap: () => _navigate(i),
+        child: horizontal
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Icon(_icons[i], size: 22, color: color),
+                    const SizedBox(width: 6),
+                    Expanded(child: label),
+                  ],
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(_icons[i], size: 22, color: color),
+                  const SizedBox(height: 3),
+                  label,
+                ],
+              ),
       ),
     );
   }
@@ -1799,28 +1848,38 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
     }
 
+    final viewToggle = IconButton(
+      key: const Key('modules_view_toggle'),
+      tooltip: c.pack.t(grid ? 'ux_list' : 'ux_grid'),
+      onPressed: () => c.preference('modules_view', grid ? 'list' : 'grid'),
+      icon: Icon(grid ? Icons.view_list_outlined : Icons.grid_view_outlined),
+    );
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
     return [
-      Row(
-        children: [
-          Expanded(child: _pageTitle('modules')),
-          IconButton(
-            key: const Key('modules_view_toggle'),
-            tooltip: c.pack.t(grid ? 'ux_list' : 'ux_grid'),
-            onPressed: () =>
-                c.preference('modules_view', grid ? 'list' : 'grid'),
-            icon: Icon(
-              grid ? Icons.view_list_outlined : Icons.grid_view_outlined,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      TextField(
-        decoration: InputDecoration(
-          labelText: c.pack.t('search_modules'),
-          prefixIcon: const Icon(Icons.search),
+      if (largeText) ...[
+        _pageTitle('modules'),
+        Align(alignment: Alignment.centerRight, child: viewToggle),
+      ] else
+        Row(
+          children: [
+            Expanded(child: _pageTitle('modules')),
+            viewToggle,
+          ],
         ),
-        onChanged: (v) => setState(() => _moduleQuery = v),
+      const SizedBox(height: 12),
+      if (largeText) ...[
+        Text(c.pack.t('search_modules'), style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 8),
+      ],
+      Semantics(
+        label: largeText ? c.pack.t('search_modules') : null,
+        child: TextField(
+          decoration: InputDecoration(
+            labelText: largeText ? null : c.pack.t('search_modules'),
+            prefixIcon: const Icon(Icons.search),
+          ),
+          onChanged: (v) => setState(() => _moduleQuery = v),
+        ),
       ),
       const SizedBox(height: 12),
       if (grid)
