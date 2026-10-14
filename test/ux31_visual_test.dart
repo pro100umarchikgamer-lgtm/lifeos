@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as timezone;
@@ -117,6 +118,14 @@ void main() {
           );
           await tester.pumpAndSettle();
           await snapshot('expense');
+          expect(
+            tester
+                .renderObject<RenderParagraph>(
+                  find.text(pack.t('label_optional')),
+                )
+                .didExceedMaxLines,
+            isFalse,
+          );
           tester.view.viewInsets = const FakeViewPadding(bottom: 330);
           await tester.pumpAndSettle();
           expect(
@@ -334,6 +343,14 @@ void main() {
             lessThanOrEqualTo(514),
           );
           await snapshot('expense_keyboard_large_text');
+          expect(
+            tester
+                .renderObject<RenderParagraph>(
+                  find.text(pack.t('label_optional')),
+                )
+                .didExceedMaxLines,
+            isFalse,
+          );
 
           expect(tester.takeException(), isNull);
         });

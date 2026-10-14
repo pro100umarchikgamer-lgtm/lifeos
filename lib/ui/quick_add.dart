@@ -390,27 +390,38 @@ class _QuickAddState extends State<QuickAdd> {
           ),
           const SizedBox(height: 12),
         ],
-        TextField(
-          key: const Key('entry_text'),
-          controller: _text,
-          autofocus: !_money,
-          enabled: !_saving,
-          focusNode: _descriptionFocus,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) {
-            if (_valid) _save();
-          },
-          minLines: 1,
-          maxLines: 2,
-          style: Theme.of(context).textTheme.bodyLarge,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            labelText: pack.t(
-              _money
-                  ? 'label_optional'
-                  : widget.kind == EntryKind.task
-                  ? 'task_title'
-                  : 'note_text',
+        if (_money)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              pack.t('label_optional'),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        Semantics(
+          label: _money ? pack.t('label_optional') : null,
+          child: TextField(
+            key: const Key('entry_text'),
+            controller: _text,
+            autofocus: !_money,
+            enabled: !_saving,
+            focusNode: _descriptionFocus,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (_valid) _save();
+            },
+            minLines: 1,
+            maxLines: 2,
+            style: Theme.of(context).textTheme.bodyLarge,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: _money
+                  ? null
+                  : pack.t(
+                      widget.kind == EntryKind.task
+                          ? 'task_title'
+                          : 'note_text',
+                    ),
             ),
           ),
         ),
