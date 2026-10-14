@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:timezone/data/latest.dart' as timezone;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos/app_controller.dart';
 import 'package:lifeos/domain/models.dart';
@@ -10,6 +11,7 @@ import 'package:lifeos/ui/selection.dart';
 import 'widget_test.dart' show UIStore;
 
 void main() {
+  timezone.initializeTimeZones();
   TestWidgetsFlutterBinding.ensureInitialized();
   late PackCatalog catalog;
   setUpAll(() async {
@@ -119,7 +121,7 @@ void main() {
           body: LifeSelect<String>(
             label: 'Валюта',
             value: value,
-            choices: {
+            choices: const {
               'RUB': 'Российский рубль · RUB',
               'USD': 'Доллар США · USD',
             },

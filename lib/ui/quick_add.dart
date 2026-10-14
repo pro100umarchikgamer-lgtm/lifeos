@@ -374,8 +374,10 @@ class _QuickAddState extends State<QuickAdd> {
                 ? null
                 : (v) => setState(() {
                     _currency.text = v;
-                    if (!_choices(OfflineTable.accounts).containsKey(_account))
+                    if (!_choices(OfflineTable.accounts)
+                        .containsKey(_account)) {
                       _account = '';
+                    }
                   }),
           ),
           const SizedBox(height: 12),
@@ -440,8 +442,9 @@ class _QuickAddState extends State<QuickAdd> {
                       cancelText: pack.t('cancel'),
                       confirmText: pack.t('save'),
                     );
-                    if (selected != null && mounted)
+                    if (selected != null && mounted) {
                       setState(() => _date = selected);
+                    }
                   },
             icon: const Icon(Icons.calendar_today_outlined),
             label: Text(

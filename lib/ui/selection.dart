@@ -73,8 +73,9 @@ class LifeSelect<T> extends StatelessWidget {
                   ),
                 );
               }
-              if (selected != null && context.mounted)
+              if (selected != null && context.mounted) {
                 onChanged?.call(selected);
+              }
             },
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 48),

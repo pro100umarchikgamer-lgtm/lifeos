@@ -1093,15 +1093,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ],
   );
 
-  Widget _quickActions() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _sectionTitle('quick_add'),
-      const SizedBox(height: 12),
-      _actionGrid(detailed: false),
-    ],
-  );
-
   Widget _actionGrid({required bool detailed, BuildContext? sheetContext}) =>
       LayoutBuilder(
         builder: (context, constraints) {

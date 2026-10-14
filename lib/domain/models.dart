@@ -50,8 +50,9 @@ class Currency {
     final match = RegExp(r'^(\d+)(?:\.(\d+))?$').firstMatch(value);
     if (match == null) throw const DomainFailure('invalid_amount');
     final fractional = match.group(2) ?? '';
-    if (fractional.length > digits)
+    if (fractional.length > digits) {
       throw const DomainFailure('amount_precision');
+    }
     final minor = int.tryParse(
       '${match.group(1)}${fractional.padRight(digits, '0')}',
     );
