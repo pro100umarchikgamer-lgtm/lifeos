@@ -324,8 +324,8 @@ class _QuickAddState extends State<QuickAdd> {
       header: Row(
         children: [
           CircleAvatar(
-            backgroundColor: accent.withValues(alpha: .12),
-            child: Icon(icon, color: accent),
+            backgroundColor: lifeAccent(context, accent).withValues(alpha: .12),
+            child: Icon(icon, color: lifeAccent(context, accent)),
           ),
           const SizedBox(width: 10),
           Expanded(

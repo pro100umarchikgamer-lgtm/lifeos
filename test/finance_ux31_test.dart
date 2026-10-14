@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:timezone/data/latest.dart' as timezone;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos/app_controller.dart';
 import 'package:lifeos/domain/models.dart';
@@ -10,6 +11,7 @@ import 'widget_test.dart' show UIStore;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  timezone.initializeTimeZones();
   late PackCatalog catalog;
   setUpAll(() async {
     catalog = await PackCatalog.load();

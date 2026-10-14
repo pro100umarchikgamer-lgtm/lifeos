@@ -125,6 +125,18 @@ void main() {
           Navigator.of(tester.element(find.byKey(const Key('save')))).pop();
           tester.view.viewInsets = const FakeViewPadding();
           await tester.pumpAndSettle();
+          showEntryEditor(
+            tester.element(find.byType(HomeShell)),
+            c,
+            EntryKind.income,
+          );
+          await tester.pumpAndSettle();
+          tester.view.viewInsets = const FakeViewPadding(bottom: 330);
+          await tester.pumpAndSettle();
+          await snapshot('income_keyboard');
+          Navigator.of(tester.element(find.byKey(const Key('save')))).pop();
+          tester.view.viewInsets = const FakeViewPadding();
+          await tester.pumpAndSettle();
           await tester.tap(find.byKey(const Key('nav_modules')));
           await tester.pumpAndSettle();
           await snapshot('modules');
@@ -136,6 +148,58 @@ void main() {
           );
           await tester.pumpAndSettle();
           await snapshot('accounts');
+          Navigator.of(tester.element(find.byType(FinanceFoundation))).pop();
+          await tester.pumpAndSettle();
+          c.offline = {
+            OfflineTable.accounts: [
+              {
+                'id': 'demo-cash',
+                'name': pack.t('account_cash'),
+                'currency': 'RUB',
+                'kind': 'cash',
+                'opening_minor': 10000,
+                'archived': 0,
+                'revision': 1,
+              },
+            ],
+            OfflineTable.budgets: [
+              {
+                'id': 'demo-budget',
+                'name': pack.t('purpose_food'),
+                'currency': 'RUB',
+                'limit_minor': 5000,
+                'period': 'month',
+                'rollover': 'none',
+                'start_on': dateOnly(DateTime(c.now.year, c.now.month)),
+                'category_id': null,
+                'revision': 1,
+              },
+            ],
+          };
+          c.records.add(
+            Record(
+              id: 'demo-expense',
+              kind: EntryKind.expense,
+              text: pack.t('purpose_food'),
+              createdAt: c.now,
+              amountMinor: 1250,
+              currency: const Currency('RUB', 2),
+              date: dateOnly(c.now),
+              accountId: 'demo-cash',
+            ),
+          );
+          Navigator.of(tester.element(find.byType(HomeShell))).push(
+            MaterialPageRoute<void>(
+              builder: (_) => FinanceFoundation(controller: c),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await snapshot('accounts_populated');
+          await tester.tap(find.byType(LifeSelect<OfflineTable>));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(pack.t('module_budgets')));
+          await tester.pumpAndSettle();
+          await snapshot('budgets_populated');
           Navigator.of(tester.element(find.byType(FinanceFoundation))).pop();
           await tester.pumpAndSettle();
           await tester.pumpWidget(
@@ -185,6 +249,41 @@ void main() {
           await tester.tap(find.byType(LifeSelect<String>));
           await tester.pumpAndSettle();
           await snapshot('currency_dialog_large_text');
+          Navigator.of(tester.element(find.byType(Dialog))).pop();
+          await tester.pumpAndSettle();
+          await tester.pumpWidget(
+            MaterialApp(
+              locale: pack.locale,
+              supportedLocales: [pack.locale],
+              localizationsDelegates: const [
+                MaterialFallbackDelegate(),
+                WidgetsFallbackDelegate(),
+                CupertinoFallbackDelegate(),
+              ],
+              theme: lifeTheme(
+                theme == 'dark' ? Brightness.dark : Brightness.light,
+              ),
+              home: Scaffold(
+                body: Center(
+                  child: LifeSelect<String>(
+                    key: const Key('format_fixture'),
+                    label: pack.t('region'),
+                    value: c.region,
+                    choices: formatChoices(catalog, c.region),
+                    dialog: true,
+                    searchLabel: pack.t('search'),
+                    onChanged: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.byType(LifeSelect<String>));
+          await tester.pumpAndSettle();
+          tester.view.viewInsets = const FakeViewPadding(bottom: 330);
+          await tester.pumpAndSettle();
+          await snapshot('format_dialog_keyboard');
           expect(tester.takeException(), isNull);
         });
       }
