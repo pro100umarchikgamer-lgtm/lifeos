@@ -106,7 +106,29 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           if (populated) {
+            // Today starts with tasks and a collapsed, accurate net balance.
+            expect(find.text('71 800 ₽'), findsOneWidget);
+            expect(find.byKey(const Key('financial_period')), findsNothing);
+            expect(tester.getRect(find.text('Разобрать почту')).bottom, lessThan(600));
+            final summary = find.byKey(const Key('home_financial_summary'));
+            await tester.ensureVisible(summary);
+            await tester.pumpAndSettle();
+            await tester.tap(summary.hitTestable());
+            await tester.pumpAndSettle();
+            // Preserve the original income assertion and also verify expenses.
             expect(find.text('122 500 ₽'), findsOneWidget);
+            expect(find.text('50 700 ₽'), findsOneWidget);
+            expect(find.byKey(const Key('financial_period')), findsOneWidget);
+            await tester.tap(summary.hitTestable());
+            await tester.pumpAndSettle();
+            expect(find.text('122 500 ₽'), findsNothing);
+            expect(find.byKey(const Key('financial_period')), findsNothing);
+            final scrollable = find.descendant(
+              of: find.byKey(const Key('today')),
+              matching: find.byType(Scrollable),
+            ).first;
+            tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+            await tester.pumpAndSettle();
           } else {
             expect(find.text(controller.pack.t('welcome_title')), findsOneWidget);
           }
