@@ -143,7 +143,7 @@ void main() {
               controller: c,
               builder: (context, child) => MediaQuery(
                 data: MediaQuery.of(context)
-                    .copyWith(textScaler: TextScaler.linear(1.8)),
+                    .copyWith(textScaler: const TextScaler.linear(1.8)),
                 child: child!,
               ),
             ),
@@ -164,7 +164,7 @@ void main() {
               ),
               builder: (context, child) => MediaQuery(
                 data: MediaQuery.of(context)
-                    .copyWith(textScaler: TextScaler.linear(1.8)),
+                    .copyWith(textScaler: const TextScaler.linear(1.8)),
                 child: child!,
               ),
               home: Scaffold(

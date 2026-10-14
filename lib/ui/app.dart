@@ -668,6 +668,67 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
   }
 
+  List<Record> _dailyTasks() {
+    final now = c.now;
+    final tasks = c.records
+        .where((r) => r.kind == EntryKind.task && !r.completed)
+        .toList();
+    final dates = <String, DateTime?>{};
+    for (final task in tasks) {
+      final entry = c.scheduleFor(task);
+      if (entry == null) {
+        dates[task.id] = null;
+        continue;
+      }
+      final occurrences = c.calendarEngine
+          .between(
+            entry,
+            now.subtract(const Duration(days: 370)),
+            now.add(const Duration(days: 370)),
+            c.deviceZone,
+          )
+          .where(
+            (o) => !c.occurrences.any(
+              (s) =>
+                  s.entryId == entry.id &&
+                  s.revision == entry.revision &&
+                  s.epoch == o.at.millisecondsSinceEpoch,
+            ),
+          )
+          .toList();
+      dates[task.id] =
+          (occurrences.where((o) => !o.at.isAfter(now)).lastOrNull ??
+                  occurrences.firstOrNull)
+              ?.at;
+    }
+    int priority(Record record) {
+      final at = dates[record.id];
+      if (at == null) {
+        return 2;
+      }
+      if (!at.isAfter(now)) {
+        return 0;
+      }
+      if (dateOnly(at.toLocal()) == dateOnly(now)) {
+        return 1;
+      }
+      return 3;
+    }
+
+    tasks.sort((a, b) {
+      final order = priority(a).compareTo(priority(b));
+      if (order != 0) {
+        return order;
+      }
+      final left = dates[a.id], right = dates[b.id];
+      if (left != null && right != null) {
+        return left.compareTo(right);
+      }
+      return a.createdAt.compareTo(b.createdAt);
+    });
+    return tasks;
+  }
+
   List<Widget> _home() {
     final now = c.now;
     if (c.records.isEmpty &&
@@ -687,10 +748,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ? (a['widget'] as String).compareTo(b['widget'] as String)
             : order;
       });
-    final tasks = c.records.where(
-          (r) => r.kind == EntryKind.task && !r.completed,
-        ),
-        notes = c.records.where((r) => r.kind == EntryKind.note);
+    final tasks = _dailyTasks();
+    final notes = c.records.where((r) => r.kind == EntryKind.note);
     Widget card(Map<String, Object?> row) {
       final expanded = row['expanded'] == 1, key = row['widget'] as String;
       if (key == 'financial') {
@@ -1376,8 +1435,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 children: [
                   Text(
                     task.text,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 15,
                       decoration: task.completed

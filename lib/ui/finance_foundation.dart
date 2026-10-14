@@ -46,6 +46,9 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
     OfflineTable.importBatches,
   ];
   bool busy = false;
+  bool includeArchived = true;
+  bool searchOpen = false;
+  String query = '';
   Future<void> edit([Map<String, Object?>? row]) async {
     if (table == OfflineTable.importBatches) return;
     await Navigator.push<void>(
@@ -115,13 +118,70 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
     return c.pack.t(row['archived'] == 1 ? 'archived' : 'category');
   }
 
+  double _budgetProgress(Map<String, Object?> row) {
+    final limit = BigInt.from(row['limit_minor'] as int);
+    if (limit == BigInt.zero) {
+      return 0;
+    }
+    final remaining = const FinanceEngine().budgetRemaining(
+      row,
+      c.now,
+      c.records,
+      c.allocations,
+      c.offline[OfflineTable.categories] ?? [],
+    );
+    return ((limit - remaining).toDouble() / limit.toDouble())
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: c,
     builder: (context, _) {
-      final rows = c.offline[table] ?? [];
+      final allRows = c.offline[table] ?? [];
+      final rows = allRows.where((row) {
+        if (!includeArchived && row['archived'] == 1) {
+          return false;
+        }
+        final text =
+            '${row['name'] ?? ''} ${row['label'] ?? ''} ${row['currency'] ?? ''}'
+                .toLowerCase();
+        return text.contains(query.trim().toLowerCase());
+      }).toList();
       return Scaffold(
-        appBar: AppBar(title: Text(c.pack.t('financial_foundation'))),
+        appBar: AppBar(
+          title: Text(c.pack.t('finances')),
+          actions: [
+            IconButton(
+              tooltip: c.pack.t('search'),
+              icon: const Icon(Icons.search),
+              onPressed: () => setState(() {
+                searchOpen = !searchOpen;
+                if (!searchOpen) query = '';
+              }),
+            ),
+            PopupMenuButton<String>(
+              tooltip: c.pack.t('details'),
+              icon: const Icon(Icons.more_horiz),
+              onSelected: (action) => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => action == 'import'
+                      ? StatementImportPage(controller: c)
+                      : WealthPage(controller: c),
+                ),
+              ),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'import',
+                  child: Text(c.pack.t('import_file')),
+                ),
+                PopupMenuItem(value: 'wealth', child: Text(c.pack.t('wealth'))),
+              ],
+            ),
+          ],
+        ),
         body: SafeArea(
           child: Column(
             children: [
@@ -136,38 +196,44 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                     for (final t in destinations)
                       t: c.pack.t('module_${t.name}'),
                   },
-                  onChanged: (v) => setState(() => table = v),
+                  onChanged: (v) => setState(() {
+                    table = v;
+                    query = '';
+                    searchOpen = false;
+                  }),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+              if (searchOpen)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: TextField(
+                    key: const Key('finance_search'),
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: c.pack.t('search'),
+                      prefixIcon: const Icon(Icons.search),
+                    ),
+                    onChanged: (value) => setState(() => query = value),
+                  ),
                 ),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
                   children: [
-                    TextButton.icon(
-                      onPressed: () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => StatementImportPage(controller: c),
-                        ),
+                    Expanded(
+                      child: Text(
+                        c.pack.count('record_count', rows.length),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      icon: const Icon(Icons.file_open_outlined),
-                      label: Text(c.pack.t('import_file')),
                     ),
-                    TextButton.icon(
-                      onPressed: () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => WealthPage(controller: c),
-                        ),
+                    if (allRows.any((row) => row['archived'] == 1))
+                      FilterChip(
+                        key: const Key('finance_archive_filter'),
+                        label: Text(c.pack.t('archived')),
+                        selected: includeArchived,
+                        onSelected: (value) =>
+                            setState(() => includeArchived = value),
                       ),
-                      icon: const Icon(Icons.savings_outlined),
-                      label: Text(c.pack.t('wealth')),
-                    ),
                   ],
                 ),
               ),
@@ -200,7 +266,11 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                               color: Theme.of(context).colorScheme.primary,
                             ),
                             const SizedBox(height: 12),
-                            Text(c.pack.t('ux_empty_${table.name}')),
+                            Text(
+                              query.isNotEmpty
+                                  ? c.pack.t('search_empty')
+                                  : c.pack.t('ux_empty_${table.name}'),
+                            ),
                             const SizedBox(height: 16),
                             if (table != OfflineTable.importBatches)
                               FilledButton.icon(
@@ -226,12 +296,20 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                                     row['label'] as String? ??
                                     c.pack.t('module_${table.name}'),
                               ),
-                              leading: Icon(
-                                table == OfflineTable.accounts
-                                    ? Icons.account_balance_wallet_outlined
-                                    : table == OfflineTable.budgets
-                                    ? Icons.pie_chart_outline
-                                    : Icons.receipt_long_outlined,
+                              leading: CircleAvatar(
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer,
+                                foregroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
+                                child: Icon(
+                                  table == OfflineTable.accounts
+                                      ? Icons.account_balance_wallet_outlined
+                                      : table == OfflineTable.budgets
+                                      ? Icons.pie_chart_outline
+                                      : Icons.receipt_long_outlined,
+                                ),
                               ),
                               subtitle: table == OfflineTable.accounts
                                   ? Text(c.pack.t('account_${row['kind']}'))
@@ -248,6 +326,43 @@ class _FinanceFoundationState extends State<FinanceFoundation> {
                                     ?.copyWith(fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  Chip(label: Text(row['currency'] as String)),
+                                  if (row['archived'] == 1)
+                                    Chip(label: Text(c.pack.t('archived'))),
+                                ],
+                              ),
+                            ],
+                            if (table == OfflineTable.budgets) ...[
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 16,
+                                runSpacing: 8,
+                                children: [
+                                  Text(
+                                    '${c.pack.t('budget_limit')}: ${formatMoney(Currency.fromCode(row['currency'] as String), row['limit_minor'] as int, locale: c.region)}',
+                                  ),
+                                  Text(c.pack.t('period_${row['period']}')),
+                                  if (row['rollover'] != 'none')
+                                    Text(
+                                      '${c.pack.t('rollover')}: ${c.pack.t('rollover_${row['rollover']}')}',
+                                    ),
+                                ],
+                              ),
+                              if (row['rollover'] == 'none') ...[
+                                const SizedBox(height: 12),
+                                Semantics(
+                                  label: summary(row),
+                                  child: LinearProgressIndicator(
+                                    minHeight: 8,
+                                    borderRadius: BorderRadius.circular(4),
+                                    value: _budgetProgress(row),
+                                  ),
+                                ),
+                              ],
                             ],
                             if (table == OfflineTable.importBatches)
                               TextButton.icon(

@@ -576,7 +576,7 @@ MaterialLocalizations? launchMaterial(Locale locale, {String? formatLocale}) {
       ? (tag ?? locale.languageCode)
       : formatLocale;
   final argsYear = DateFormat.y(dateTag);
-  if (tag == 'tg')
+  if (tag == 'tg') {
     return TajikMaterialLocalizations(
       fullYearFormat: argsYear,
       compactDateFormat: DateFormat.yMd(dateTag),
@@ -588,7 +588,8 @@ MaterialLocalizations? launchMaterial(Locale locale, {String? formatLocale}) {
       decimalFormat: NumberFormat.decimalPattern(dateTag),
       twoDigitZeroPaddedFormat: NumberFormat('00', dateTag),
     );
-  if (tag == 'uz_Cyrl')
+  }
+  if (tag == 'uz_Cyrl') {
     return UzbekCyrillicMaterialLocalizations(
       fullYearFormat: argsYear,
       compactDateFormat: DateFormat.yMd(dateTag),
@@ -600,16 +601,17 @@ MaterialLocalizations? launchMaterial(Locale locale, {String? formatLocale}) {
       decimalFormat: NumberFormat.decimalPattern(dateTag),
       twoDigitZeroPaddedFormat: NumberFormat('00', dateTag),
     );
+  }
   return getMaterialTranslation(
     locale,
-    fullYearFormat: argsYear,
-    compactDateFormat: DateFormat.yMd(dateTag),
-    shortDateFormat: DateFormat.yMMMd(dateTag),
-    mediumDateFormat: DateFormat.MMMEd(dateTag),
-    longDateFormat: DateFormat.yMMMMEEEEd(dateTag),
-    yearMonthFormat: DateFormat.yMMMM(dateTag),
-    shortMonthDayFormat: DateFormat.MMMd(dateTag),
-    decimalFormat: NumberFormat.decimalPattern(dateTag),
-    twoDigitZeroPaddedFormat: NumberFormat('00', dateTag),
+    argsYear,
+    DateFormat.yMd(dateTag),
+    DateFormat.yMMMd(dateTag),
+    DateFormat.MMMEd(dateTag),
+    DateFormat.yMMMMEEEEd(dateTag),
+    DateFormat.yMMMM(dateTag),
+    DateFormat.MMMd(dateTag),
+    NumberFormat.decimalPattern(dateTag),
+    NumberFormat('00', dateTag),
   );
 }
