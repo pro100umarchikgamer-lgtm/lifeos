@@ -324,11 +324,16 @@ class _QuickAddState extends State<QuickAdd> {
       canSave: _valid,
       header: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: lifeAccent(context, accent).withValues(alpha: .12),
-            child: Icon(icon, color: lifeAccent(context, accent)),
-          ),
-          const SizedBox(width: 10),
+          if (MediaQuery.textScalerOf(context).scale(1) <= 1.3) ...[
+            CircleAvatar(
+              backgroundColor: lifeAccent(
+                context,
+                accent,
+              ).withValues(alpha: .12),
+              child: Icon(icon, color: lifeAccent(context, accent)),
+            ),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Text(
               pack.t(

@@ -343,6 +343,24 @@ void main() {
             lessThanOrEqualTo(514),
           );
           await snapshot('expense_keyboard_large_text');
+          if (tag == 'ky' && width == 320) {
+            final heading = pack.t('create_expense');
+            final paragraph = tester.renderObject<RenderParagraph>(
+              find.text(heading),
+            );
+            expect(
+              paragraph
+                  .getBoxesForSelection(
+                    TextSelection(
+                      baseOffset: 0,
+                      extentOffset: heading.indexOf(' '),
+                    ),
+                  )
+                  .length,
+              1,
+              reason: 'The first word of the money heading must stay whole',
+            );
+          }
           expect(
             tester
                 .renderObject<RenderParagraph>(
