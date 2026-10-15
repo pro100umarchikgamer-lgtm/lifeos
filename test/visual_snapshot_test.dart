@@ -416,11 +416,12 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 300));
           expect(find.byType(SnackBar), findsOneWidget);
-          if (screen == 'undo_keyboard')
+          if (screen == 'undo_keyboard') {
             expect(
               tester.getRect(find.byType(SnackBar)).bottom,
               lessThanOrEqualTo(544),
             );
+          }
         }
         expect(tester.takeException(), isNull);
         await expectLater(

@@ -430,27 +430,6 @@ class _QuickAddState extends State<QuickAdd> {
         ),
         if (_money) ...[
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              for (final purpose
-                  in widget.kind == EntryKind.income
-                      ? ['salary', 'gift', 'other']
-                      : ['food', 'transport', 'home', 'other'])
-                ActionChip(
-                  label: Text(pack.t('purpose_$purpose')),
-                  onPressed: () {
-                    final label = pack.t('purpose_$purpose');
-                    _text.value = TextEditingValue(
-                      text: label,
-                      selection: TextSelection.collapsed(offset: label.length),
-                    );
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _saving
                 ? null

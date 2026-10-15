@@ -43,7 +43,7 @@ android {
 LIFEOS_GRADLE_SIGNING
 [[ "${GITHUB_RUN_ATTEMPT}" -lt 1000 ]]
 version_code=$((GITHUB_RUN_NUMBER * 1000 + GITHUB_RUN_ATTEMPT))
-[[ "$version_code" -gt 83001 && "$version_code" -le 2147483647 ]]
+[[ "$version_code" -gt 85001 && "$version_code" -le 2147483647 ]]
 build_args=(--release --build-number "$version_code")
 if [[ -n "${LIFEOS_API_ORIGIN:-}" ]]; then
     python3 tool/validate_api_origin.py

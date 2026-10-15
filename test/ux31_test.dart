@@ -60,7 +60,7 @@ void main() {
       },
     );
     testWidgets(
-      'tasks precede compact money and module grid aligns at $width',
+      'visible finance precedes tasks and module grid aligns at $width',
       (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = Size(width, 844);

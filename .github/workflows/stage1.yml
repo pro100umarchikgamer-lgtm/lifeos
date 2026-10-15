@@ -147,6 +147,7 @@ jobs:
           retention-days: 90
           if-no-files-found: error
       - name: Build and verify one APK with the persistent test identity
+        id: signing
         if: steps.validation.outputs.build == 'true'
         env:
           LIFEOS_TEST_KEYSTORE_BASE64: ${{ secrets.LIFEOS_TEST_KEYSTORE_BASE64 }}
@@ -184,7 +185,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Upload signed APK and public certificate evidence
-        if: steps.validation.outputs.build == 'true'
+        if: always() && steps.signing.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: lifeos-release-test-apk-${{ steps.validation.outputs.sha }}

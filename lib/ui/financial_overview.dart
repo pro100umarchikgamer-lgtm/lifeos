@@ -112,6 +112,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                     width: 106,
                     child: LifeSelect<String>(
                       label: t('currency'),
+                      showLabel: false,
                       value: widget.currency,
                       choices: {for (final code in currencies) code: code},
                       dialog: true,
@@ -128,7 +129,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                 style: Theme.of(context).textTheme.headlineMedium
                     ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
               ),
-              if (!data.hasAccounts)
+              if (!data.hasAccounts && !widget.compact)
                 Text(
                   t('insight_no_accounts'),
                   style: Theme.of(context).textTheme.bodySmall,
@@ -189,7 +190,9 @@ class _FinancialOverviewState extends State<FinancialOverview> {
               ],
               if (data.records.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    vertical: widget.compact ? 6 : 12,
+                  ),
                   child: Text(t('empty_money')),
                 )
               else
@@ -245,22 +248,23 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                   ),
                 ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => widget.onAdd(EntryKind.expense),
-                    icon: const Icon(Icons.remove_circle_outline),
-                    label: Text(t('expense')),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => widget.onAdd(EntryKind.income),
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: Text(t('income')),
-                  ),
-                ],
-              ),
+              if (!widget.compact)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => widget.onAdd(EntryKind.expense),
+                      icon: const Icon(Icons.remove_circle_outline),
+                      label: Text(t('expense')),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => widget.onAdd(EntryKind.income),
+                      icon: const Icon(Icons.add_circle_outline),
+                      label: Text(t('income')),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -281,6 +285,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                 else ...[
                   Center(
                     child: SizedBox(
+                      key: const Key('expense_categories_chart'),
                       width: 160,
                       height: 160,
                       child: Semantics(

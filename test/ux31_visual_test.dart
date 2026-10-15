@@ -102,7 +102,7 @@ void main() {
 
           expect(
             tester.getRect(find.text(pack.t('example_task'))).bottom,
-            lessThan(600),
+            lessThan(740),
           );
           for (final tab in ['today', 'plans', 'finances', 'modules']) {
             expect(
@@ -110,6 +110,10 @@ void main() {
               greaterThanOrEqualTo(48),
             );
           }
+          expect(
+            tester.getRect(find.byKey(const Key('insight_balance'))).top,
+            lessThan(tester.getRect(find.text(pack.t('example_task'))).top),
+          );
           await snapshot('today');
           showEntryEditor(
             tester.element(find.byType(HomeShell)),
@@ -217,6 +221,46 @@ void main() {
           await snapshot('budgets_populated');
           Navigator.of(tester.element(find.byType(FinanceFoundation))).pop();
           await tester.pumpAndSettle();
+          c.offline[OfflineTable.categories] = [
+            {'id': 'food', 'name': pack.t('purpose_food')},
+            {'id': 'home', 'name': pack.t('purpose_home')},
+          ];
+          c.allocations = [
+            {
+              'transaction_id': 'demo-expense',
+              'category_id': 'food',
+              'amount_minor': 1000,
+            },
+            {
+              'transaction_id': 'demo-expense',
+              'category_id': 'home',
+              'amount_minor': 250,
+            },
+          ];
+          c.records.add(
+            Record(
+              id: 'demo-income',
+              kind: EntryKind.income,
+              text: pack.t('purpose_salary'),
+              createdAt: c.now,
+              amountMinor: 10000,
+              currency: const Currency('RUB', 2),
+              date: dateOnly(DateTime(c.now.year, c.now.month, 1)),
+              accountId: 'demo-cash',
+            ),
+          );
+          await tester.tap(find.byKey(const Key('nav_finances')));
+          await tester.pumpAndSettle();
+          await snapshot('finance_insights');
+          await tester.tap(find.byKey(const Key('cashflow_chart')));
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(
+            find.byKey(const Key('expense_categories_chart')),
+          );
+          await tester.pumpAndSettle();
+          await snapshot('category_insights');
+          await tester.tap(find.byKey(const Key('nav_modules')));
+          await tester.pumpAndSettle();
           await tester.pumpWidget(
             LifeOSApp(
               controller: c,
@@ -323,6 +367,16 @@ void main() {
           );
           await tester.pumpAndSettle();
           await snapshot('today_large_text');
+          await tester.scrollUntilVisible(
+            find.text(pack.t('all_tasks')),
+            180,
+            scrollable: find
+                .descendant(
+                  of: find.byKey(const Key('today')),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
           final allTasks = tester.getRect(find.text(pack.t('all_tasks')));
           expect(allTasks.left, greaterThanOrEqualTo(0));
           expect(allTasks.right, lessThanOrEqualTo(width));
