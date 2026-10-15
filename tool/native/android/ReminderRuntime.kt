@@ -56,7 +56,7 @@ object ReminderRuntime {
         if (Build.VERSION.SDK_INT < 26) return
         for ((id, priority) in listOf("standard" to NotificationManager.IMPORTANCE_DEFAULT, "important" to NotificationManager.IMPORTANCE_HIGH, "alarm" to NotificationManager.IMPORTANCE_HIGH)) {
             if (names == null && notifications(c).getNotificationChannel("lifeos.$id") != null) continue
-            notifications(c).createNotificationChannel(NotificationChannel("lifeos.$id", names?.optString(id) ?: "LifeOS · $id", priority).apply {
+            notifications(c).createNotificationChannel(NotificationChannel("lifeos.$id", names?.optString(id) ?: "ULADIM · $id", priority).apply {
                 enableVibration(id != "standard")
                 if (id == "alarm") setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM), AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
             })

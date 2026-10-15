@@ -35,7 +35,7 @@ class _AppearanceEditorState extends State<AppearanceEditor> {
     appBar: AppBar(title: Text(c.pack.t('appearance'))),
     body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
       LifeCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('LifeOS', style: Theme.of(context).textTheme.headlineSmall), const SizedBox(height: 8),
+        Text('ULADIM', style: Theme.of(context).textTheme.headlineSmall), const SizedBox(height: 8),
         Text(c.pack.t('appearance_preview')), const SizedBox(height: 12),
         Row(children: [Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary), const SizedBox(width: 12), Text(c.pack.t('today'), style: Theme.of(context).textTheme.titleMedium)]),
       ])), const SizedBox(height: 24),

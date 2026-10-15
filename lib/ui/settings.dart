@@ -430,7 +430,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
                       : () async {
                           try {
                             await c.native.testNotification({
-                              'title': 'LifeOS',
+                              'title': 'ULADIM',
                               'message': c.pack.t('test_message'),
                               'doneLabel': c.pack.t('complete'),
                               'dismissLabel': c.pack.t('dismiss'),
@@ -636,7 +636,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
                     : () async {
                         try {
                           await c.native.testNotification({
-                            'title': 'LifeOS',
+                            'title': 'ULADIM',
                             'message': c.pack.t('test_message'),
                             'doneLabel': c.pack.t('complete'),
                             'dismissLabel': c.pack.t('dismiss'),

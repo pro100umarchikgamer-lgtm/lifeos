@@ -115,7 +115,7 @@ class AppController extends ChangeNotifier {
           (s.snoozedUntil ?? 0) > now.millisecondsSinceEpoch).toList();
         if (next == null && snoozes.isEmpty) continue;
         payload.add({'id': entry.id, 'revision': entry.revision, 'nextAt': next?.at.millisecondsSinceEpoch,
-          'schedule': entry.schedule.toJson(), 'title': preferences['notification_content'] == 'show' ? entry.title : 'LifeOS',
+          'schedule': entry.schedule.toJson(), 'title': preferences['notification_content'] == 'show' ? entry.title : 'ULADIM',
           'message': pack.t('reminder_message'), 'snoozeLabel': pack.t('snooze'), 'dismissLabel': pack.t('dismiss'),
           'doneLabel': pack.t('complete'), 'snoozeMinutes': int.tryParse(preferences['snooze_minutes'] ?? '') ?? 10,
           'snoozes': [for (final s in snoozes) {'epoch': s.epoch, 'until': s.snoozedUntil}]});

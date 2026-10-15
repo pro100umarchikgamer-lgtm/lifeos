@@ -45,7 +45,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
     listenable: controller.presentation,
     builder: (context, _) {
       return MaterialApp(
-        title: 'LifeOS',
+        title: 'ULADIM',
         debugShowCheckedModeBanner: false,
         scaffoldMessengerKey: notices.messengerKey,
         navigatorObservers: [navigationObserver],
@@ -485,13 +485,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: 'Life',
+                      text: 'ULA',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     TextSpan(
-                      text: 'OS',
+                      text: 'DIM',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                       ),

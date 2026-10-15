@@ -8,6 +8,7 @@ android = ROOT / 'android/app/src/main/AndroidManifest.xml'
 if android.exists():
     source = android.read_text()
     source = re.sub(r'\s+android:(allowBackup|fullBackupContent|dataExtractionRules)="[^"]*"', '', source)
+    source = re.sub(r'android:label="[^"]*"', 'android:label="ULADIM"', source, count=1)
     source = source.replace('<application', '<application android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules"', 1)
     android.write_text(source)
     rules = ROOT / 'android/app/src/main/res/xml/data_extraction_rules.xml'

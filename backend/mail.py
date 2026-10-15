@@ -15,8 +15,8 @@ def message(settings, job_id, payload):
     value['To'] = payload['email']
     value['Message-ID'] = '<'+job_id+'@lifeos-mail>'
     recovery = payload['purpose']=='recovery'
-    value['Subject'] = 'LifeOS: восстановление аккаунта' if recovery else 'LifeOS: подтверждение почты'
-    value.set_content(('Введите этот код в LifeOS для восстановления аккаунта:\n' if recovery else 'Введите этот код в LifeOS для подтверждения почты:\n')+payload['code']+'\n\nКод одноразовый. Если вы не запрашивали это действие, проигнорируйте письмо.')
+    value['Subject'] = 'ULADIM: восстановление аккаунта' if recovery else 'ULADIM: подтверждение почты'
+    value.set_content(('Введите этот код в ULADIM для восстановления аккаунта:\n' if recovery else 'Введите этот код в ULADIM для подтверждения почты:\n')+payload['code']+'\n\nКод одноразовый. Если вы не запрашивали это действие, проигнорируйте письмо.')
     return value
 
 def smtp_send(settings, email):
