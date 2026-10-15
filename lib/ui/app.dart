@@ -14,7 +14,6 @@ import 'record_detail.dart';
 import 'settings.dart';
 import 'finance_foundation.dart';
 import 'notices.dart';
-import 'selection.dart';
 import 'personal_modules.dart';
 import 'dashboard_editor.dart';
 import 'module_calendar_route.dart';
@@ -718,7 +717,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!at.isAfter(now)) {
         return 0;
       }
-      if (dateOnly(at.toLocal()) == dateOnly(now)) {
+      if (c.civilDate(at) == c.civilDate(now)) {
         return 1;
       }
       return 3;
@@ -1110,10 +1109,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           s.revision == entry.revision &&
           s.epoch == due.at.millisecondsSinceEpoch &&
           s.status == OccurrenceStatus.completed,
-    ))
+    )) {
       return 'task_upcoming';
+    }
     if (due.at.isBefore(c.now)) return 'task_overdue';
-    return dateOnly(due.at) == dateOnly(c.now) ? 'today' : 'task_upcoming';
+    return c.civilDate(due.at) == c.civilDate(c.now)
+        ? 'today'
+        : 'task_upcoming';
   }
 
   Widget _taskRow(Record task) => Container(

@@ -77,6 +77,12 @@ class AppController extends ChangeNotifier {
   DateTime get now => tz.TZDateTime.now(
     tz.getLocation(timezone == 'device' ? deviceZone : timezone),
   );
+  String civilDate(DateTime instant) => dateOnly(
+    tz.TZDateTime.from(
+      instant,
+      tz.getLocation(timezone == 'device' ? deviceZone : timezone),
+    ),
+  );
   int get weekStart => int.tryParse(preferences['week_start'] ?? '') ?? 1;
   LanguagePack get pack =>
       catalog.resolve(preferences['language'] ?? deviceLanguage);

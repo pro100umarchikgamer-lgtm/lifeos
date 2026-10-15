@@ -56,9 +56,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
       c.allocations,
     );
     final buckets = data.buckets(grain);
-    final index = selected == null
-        ? null
-        : selected!.clamp(0, buckets.length - 1);
+    final index = selected?.clamp(0, buckets.length - 1);
     final currencies = {
       widget.currency,
       c.currency,
@@ -411,8 +409,9 @@ class CashflowPainter extends CustomPainter {
         } else {
           line.lineTo(x, y);
         }
-        if (i == selected || buckets.length == 1)
+        if (i == selected || buckets.length == 1) {
           canvas.drawCircle(Offset(x, y), 4, Paint()..color = color);
+        }
       }
       final fill = Path.from(line)
         ..lineTo(size.width, size.height)

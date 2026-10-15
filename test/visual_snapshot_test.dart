@@ -119,32 +119,36 @@ void main() {
         'ru',
       );
       await c.load();
-      if (screen == 'pistachio')
+      if (screen == 'pistachio') {
         c.preferences['appearance_v1'] = const Appearance(
           palette: 'pistachio',
           mode: 'light',
         ).encode();
-      if (screen == 'sky_dark')
+      }
+      if (screen == 'sky_dark') {
         c.preferences['appearance_v1'] = const Appearance(
           palette: 'sky',
           mode: 'dark',
           surface: 'outlined',
         ).encode();
+      }
       await tester.pumpWidget(LifeOSApp(controller: c));
       await tester.pumpAndSettle();
       final context = tester.element(find.byType(HomeShell));
-      if (screen == 'appearance')
+      if (screen == 'appearance') {
         Navigator.push<void>(
           context,
           MaterialPageRoute(builder: (_) => AppearanceEditor(controller: c)),
         );
-      if (screen == 'note_editor')
+      }
+      if (screen == 'note_editor') {
         showEntryEditor(
           context,
           c,
           EntryKind.note,
           record: sampleRecords().first,
         );
+      }
       if (screen == 'task_entry') showEntryEditor(context, c, EntryKind.task);
       if (screen == 'event_entry') {
         showModalBottomSheet<void>(

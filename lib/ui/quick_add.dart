@@ -62,7 +62,6 @@ class _QuickAddState extends State<QuickAdd> {
   final _operation = const Uuid().v4();
   late DateTime _date;
   bool _saving = false;
-  bool _advanced = false;
   String? _error;
   ScheduleSpec? _schedule;
   int _scheduleRevision = 0;
@@ -95,7 +94,6 @@ class _QuickAddState extends State<QuickAdd> {
       final linked = widget.controller.scheduleFor(record);
       _schedule = linked?.schedule;
       _scheduleRevision = linked?.revision ?? 0;
-      _advanced = _schedule != null;
     }
   }
 
@@ -477,32 +475,23 @@ class _QuickAddState extends State<QuickAdd> {
           ),
 
           const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: _saving
-                ? null
-                : () => setState(() => _advanced = !_advanced),
-            icon: Icon(_advanced ? Icons.expand_less : Icons.expand_more),
-            label: Text(pack.t('details')),
+          LifeSelect<String>(
+            label: pack.t('account'),
+            value: _account,
+            choices: _choices(OfflineTable.accounts),
+            searchLabel: pack.t('search_options'),
+            dialog: true,
+            onChanged: _saving ? null : (v) => setState(() => _account = v),
           ),
-          if (_advanced) ...[
-            LifeSelect<String>(
-              label: pack.t('account'),
-              value: _account,
-              choices: _choices(OfflineTable.accounts),
-              searchLabel: pack.t('search_options'),
-              dialog: true,
-              onChanged: _saving ? null : (v) => setState(() => _account = v),
-            ),
-            const SizedBox(height: 12),
-            LifeSelect<String>(
-              label: pack.t('category'),
-              value: _category,
-              choices: _choices(OfflineTable.categories),
-              searchLabel: pack.t('search_options'),
-              dialog: true,
-              onChanged: _saving ? null : (v) => setState(() => _category = v),
-            ),
-          ],
+          const SizedBox(height: 12),
+          LifeSelect<String>(
+            label: pack.t('category'),
+            value: _category,
+            choices: _choices(OfflineTable.categories),
+            searchLabel: pack.t('search_options'),
+            dialog: true,
+            onChanged: _saving ? null : (v) => setState(() => _category = v),
+          ),
         ],
         if (!_money) ...[
           const SizedBox(height: 12),
