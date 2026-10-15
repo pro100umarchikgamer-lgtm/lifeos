@@ -329,52 +329,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     setState(() => c.pendingTasks.add(record.id));
     var saved = false;
     try {
-      final linked = c.scheduleFor(record);
-      if (value &&
-          linked != null &&
-          linked.schedule.repeat != RepeatRule.none) {
-        final now = DateTime.now();
-        final candidates = c.calendarEngine
-            .between(
-              linked,
-              now.subtract(const Duration(days: 370)),
-              now.add(const Duration(days: 370)),
-              c.deviceZone,
-            )
-            .where(
-              (o) => !c.occurrences.any(
-                (s) =>
-                    s.entryId == linked.id &&
-                    s.revision == linked.revision &&
-                    s.epoch == o.at.millisecondsSinceEpoch,
-              ),
-            )
-            .toList();
-        final due =
-            candidates.where((o) => !o.at.isAfter(now)).lastOrNull ??
-            candidates.firstOrNull;
-        if (due == null) throw const DomainFailure('occurrence_missing');
-        await c.engine.execute(
-          SetOccurrence(
-            const Uuid().v4(),
-            linked.id,
-            due.at.millisecondsSinceEpoch,
-            OccurrenceStatus.completed,
-            expectedRevision: linked.revision,
-          ),
-        );
-      } else {
-        await c.engine.execute(
-          CompleteTask(
-            const Uuid().v4(),
-            record.id,
-            value,
-            expectedRevision: record.revision,
-          ),
-        );
-      }
+      await c.completeTask(record.id, value);
       saved = true;
       await c.refresh();
+    } on DomainFailure catch (error) {
+      _message(saved ? 'read_failed' : error.key);
     } catch (_) {
       _message(saved ? 'read_failed' : 'change_failed');
     } finally {

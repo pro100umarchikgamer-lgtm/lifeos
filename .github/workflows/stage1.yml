@@ -27,11 +27,11 @@ jobs:
     uses: ./.github/workflows/backend-production.yml
   focused:
     needs: production_backend
-    if: inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true)
+    if: inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-ux-recovery-launch' || github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true)
     uses: ./.github/workflows/family-focused.yml
   checks:
     needs: production_backend
-    if: inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
+    if: inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-ux-recovery-launch' && github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
     runs-on: ubuntu-latest
     timeout-minutes: 55
     services:

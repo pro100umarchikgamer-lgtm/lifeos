@@ -1,5 +1,6 @@
 """Explicit release branches; feature signing requires an authorized manual run."""
 RELEASE_BRANCHES = frozenset({
+    'refs/heads/feature/uladim-ux-recovery-launch',
     'refs/heads/feature/uladim-brand',
     'refs/heads/feature/family-sync',
     'refs/heads/feature/lifeos-3-production',
