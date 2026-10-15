@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "es",
   "nativeName": "Español",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "La sincronización familiar es opcional. Conecta tu servidor configurado para continuar. Los datos personales siguen funcionando sin conexión.",
     "family_endpoint": "Dirección del servidor (HTTPS)",
     "family_email": "Correo electrónico",
-    "family_password": "Contraseña (al menos 12 caracteres)",
+    "family_password": "Contraseña (al menos 7 caracteres)",
     "family_register": "Crear cuenta",
     "family_login": "Iniciar sesión",
     "family_logout": "Cerrar sesión",
@@ -537,7 +537,7 @@
     "family_error_offline": "Sin conexión. Los cambios pendientes permanecen en este dispositivo.",
     "family_error_invalid_endpoint": "Introduce una dirección de servidor HTTPS.",
     "family_error_invalid_credentials": "El correo o la contraseña son incorrectos.",
-    "family_error_password_length": "La contraseña debe tener entre 12 y 256 caracteres.",
+    "family_error_password_length": "La contraseña debe tener entre 7 y 256 caracteres.",
     "family_error_verify_email": "Verifica primero tu correo.",
     "family_error_unauthorized": "La sesión ha caducado. Cierra sesión y vuelve a entrar. Los cambios guardados se conservan.",
     "family_error_record_pending": "Sincroniza primero el cambio anterior de este registro.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Agrupa tus gastos en categorías útiles.",
     "ux_empty_importBatches": "Aquí aparecerán tus importaciones de extractos confirmadas.",
     "search_options": "Buscar en la lista",
-    "family_error_registration_closed": "Prueba privada: solo las personas invitadas pueden registrarse."
+    "family_error_registration_closed": "Prueba privada: solo las personas invitadas pueden registrarse.",
+    "insight_balance": "Saldo de las cuentas",
+    "insight_no_accounts": "Sin cuenta: balance del período",
+    "insight_dynamics": "Flujo de dinero",
+    "insight_categories": "Gastos por categoría",
+    "insight_select": "Toca el gráfico para ver los importes",
+    "insight_uncategorized": "Sin categoría",
+    "insight_day": "Día",
+    "insight_week": "Semana",
+    "insight_month": "Mes",
+    "task_overdue": "Vencidas",
+    "task_upcoming": "Próximas",
+    "family_error_password_weak": "Elige una contraseña menos común con al menos tres caracteres distintos, no solo números."
   },
   "plurals": {
     "record_count": {

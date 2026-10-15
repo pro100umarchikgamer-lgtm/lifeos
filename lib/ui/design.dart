@@ -16,9 +16,9 @@ class LifePalette {
   static const cream = Color(0xfffff4e5);
   static const ink = Color(0xff18232b);
   static const muted = Color(0xff77838d);
-  static const background = Color(0xfff5f8f8);
-  static const darkBackground = Color(0xff101a1c);
-  static const darkSurface = Color(0xff1c2a2d);
+  static const background = Color(0xfff3f4f6);
+  static const darkBackground = Color(0xff111419);
+  static const darkSurface = Color(0xff1d2229);
 }
 
 Color lifeAccent(BuildContext context, Color color) {

@@ -90,9 +90,13 @@ void main() {
         await tester.pumpAndSettle();
         expect(
           tester.getRect(find.text('Prepare for class')).bottom,
-          lessThan(600),
+          lessThan(740),
         );
-        expect(find.byKey(const Key('financial_period')), findsNothing);
+        expect(find.byKey(const Key('financial_period')), findsOneWidget);
+        expect(
+          tester.getRect(find.byKey(const Key('insight_balance'))).top,
+          lessThan(tester.getRect(find.text('Prepare for class')).top),
+        );
         await tester.tap(find.byKey(const Key('nav_modules')));
         await tester.pumpAndSettle();
         final cards = [

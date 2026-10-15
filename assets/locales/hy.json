@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "hy",
   "nativeName": "Հայերեն",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "Ընտանեկան համաժամացումը պարտադիր չէ։ Շարունակելու համար միացեք կարգավորված սերվերին։ Անձնական տվյալներն աշխատում են առանց համացանցի։",
     "family_endpoint": "Սերվերի հասցե (HTTPS)",
     "family_email": "Էլփոստ",
-    "family_password": "Գաղտնաբառ (առնվազն 12 նիշ)",
+    "family_password": "Գաղտնաբառ (առնվազն 7 նիշ)",
     "family_register": "Ստեղծել հաշիվ",
     "family_login": "Մուտք գործել",
     "family_logout": "Դուրս գալ",
@@ -537,7 +537,7 @@
     "family_error_offline": "Ցանց չկա։ Հերթագրված փոփոխությունները մնում են այս սարքում։",
     "family_error_invalid_endpoint": "Մուտքագրեք HTTPS սերվերի հասցեն։",
     "family_error_invalid_credentials": "Էլփոստը կամ գաղտնաբառը սխալ է։",
-    "family_error_password_length": "Գաղտնաբառը պետք է ունենա 12–256 նիշ։",
+    "family_error_password_length": "Գաղտնաբառը պետք է ունենա 7–256 նիշ։",
     "family_error_verify_email": "Նախ հաստատեք ձեր էլփոստը։",
     "family_error_unauthorized": "Աշխատաշրջանն ավարտվել է։ Դուրս եկեք և նորից մուտք գործեք։ Պահպանված փոփոխությունները մնում են։",
     "family_error_record_pending": "Նախ համաժամացրեք այս գրառման նախորդ փոփոխությունը։",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Խմբավորեք ծախսերը օգտակար կատեգորիաներով։",
     "ux_empty_importBatches": "Այստեղ կհայտնվեն քաղվածքների հաստատված ներմուծումները։",
     "search_options": "Որոնել ցանկում",
-    "family_error_registration_closed": "Փակ փորձարկում․ գրանցվել կարող են միայն հրավիրված մասնակիցները։"
+    "family_error_registration_closed": "Փակ փորձարկում․ գրանցվել կարող են միայն հրավիրված մասնակիցները։",
+    "insight_balance": "Գումար հաշիվներում",
+    "insight_no_accounts": "Հաշիվ չկա․ ցուցադրված է ժամանակահատվածի տարբերությունը",
+    "insight_dynamics": "Դրամական հոսք",
+    "insight_categories": "Ծախսեր ըստ կատեգորիաների",
+    "insight_select": "Գումարները տեսնելու համար հպեք գծապատկերին",
+    "insight_uncategorized": "Առանց կատեգորիայի",
+    "insight_day": "Օր",
+    "insight_week": "Շաբաթ",
+    "insight_month": "Ամիս",
+    "task_overdue": "Ժամկետանց",
+    "task_upcoming": "Առաջիկա",
+    "family_error_password_weak": "Ընտրեք քիչ տարածված գաղտնաբառ՝ առնվազն երեք տարբեր նիշով, ոչ միայն թվերով։"
   },
   "plurals": {
     "record_count": {

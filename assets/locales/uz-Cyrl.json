@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "uz-Cyrl",
   "nativeName": "Ўзбекча",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "Оилавий синхронлаш ихтиёрий. Давом этиш учун созланган серверга уланинг. Шахсий маълумотлар офлайн ишлайверади.",
     "family_endpoint": "Сервер манзили (HTTPS)",
     "family_email": "Электрон почта",
-    "family_password": "Парол (камида 12 белги)",
+    "family_password": "Парол (камида 7 белги)",
     "family_register": "Ҳисоб яратиш",
     "family_login": "Кириш",
     "family_logout": "Чиқиш",
@@ -537,7 +537,7 @@
     "family_error_offline": "Тармоқ йўқ. Навбатдаги ўзгаришлар шу қурилмада қолади.",
     "family_error_invalid_endpoint": "HTTPS сервер манзилини киритинг.",
     "family_error_invalid_credentials": "Электрон почта ёки парол нотўғри.",
-    "family_error_password_length": "Парол 12–256 белгидан иборат бўлиши керак.",
+    "family_error_password_length": "Парол 7–256 белгидан иборат бўлиши керак.",
     "family_error_verify_email": "Аввал электрон почтангизни тасдиқланг.",
     "family_error_unauthorized": "Сеанс тугади. Чиқиб, қайта киринг. Сақланган ўзгаришлар қолади.",
     "family_error_record_pending": "Аввал бу қайднинг олдинги ўзгаришини синхронланг.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Харажатларингизни қулай тоифаларга ажратинг.",
     "ux_empty_importBatches": "Тасдиқланган кўчирма импортлари шу ерда кўринади.",
     "search_options": "Рўйхатдан қидириш",
-    "family_error_registration_closed": "Ёпиқ синов: фақат таклиф қилинган иштирокчилар рўйхатдан ўта олади."
+    "family_error_registration_closed": "Ёпиқ синов: фақат таклиф қилинган иштирокчилар рўйхатдан ўта олади.",
+    "insight_balance": "Ҳисоблардаги маблағ",
+    "insight_no_accounts": "Ҳисоб йўқ: даврдаги кирим ва чиқим фарқи",
+    "insight_dynamics": "Пул оқими",
+    "insight_categories": "Тоифалар бўйича харажатлар",
+    "insight_select": "Суммаларни кўриш учун графикни босинг",
+    "insight_uncategorized": "Тоифасиз",
+    "insight_day": "Кун",
+    "insight_week": "Ҳафта",
+    "insight_month": "Ой",
+    "task_overdue": "Муддати ўтган",
+    "task_upcoming": "Келгуси",
+    "family_error_password_weak": "Кам ишлатиладиган парол танланг: камида уч хил белги бўлсин, фақат рақамлардан иборат бўлмасин."
   },
   "plurals": {
     "record_count": {

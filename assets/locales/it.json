@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "it",
   "nativeName": "Italiano",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "La sincronizzazione familiare è facoltativa. Collega il tuo server configurato per continuare. I dati personali restano disponibili offline.",
     "family_endpoint": "Indirizzo del server (HTTPS)",
     "family_email": "E-mail",
-    "family_password": "Password (almeno 12 caratteri)",
+    "family_password": "Password (almeno 7 caratteri)",
     "family_register": "Crea account",
     "family_login": "Accedi",
     "family_logout": "Esci",
@@ -537,7 +537,7 @@
     "family_error_offline": "Offline. Le modifiche in coda restano su questo dispositivo.",
     "family_error_invalid_endpoint": "Inserisci un indirizzo server HTTPS.",
     "family_error_invalid_credentials": "E-mail o password non corretta.",
-    "family_error_password_length": "La password deve contenere da 12 a 256 caratteri.",
+    "family_error_password_length": "La password deve contenere da 7 a 256 caratteri.",
     "family_error_verify_email": "Verifica prima la tua e-mail.",
     "family_error_unauthorized": "Sessione scaduta. Esci e accedi di nuovo. Le modifiche salvate sono conservate.",
     "family_error_record_pending": "Sincronizza prima la modifica precedente a questo dato.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Raggruppa le spese in categorie utili.",
     "ux_empty_importBatches": "Qui appariranno gli import degli estratti conto confermati.",
     "search_options": "Cerca nell’elenco",
-    "family_error_registration_closed": "Test privato: possono registrarsi solo le persone invitate."
+    "family_error_registration_closed": "Test privato: possono registrarsi solo le persone invitate.",
+    "insight_balance": "Saldo dei conti",
+    "insight_no_accounts": "Nessun conto: saldo del periodo",
+    "insight_dynamics": "Flusso di cassa",
+    "insight_categories": "Spese per categoria",
+    "insight_select": "Tocca il grafico per vedere gli importi",
+    "insight_uncategorized": "Senza categoria",
+    "insight_day": "Giorno",
+    "insight_week": "Settimana",
+    "insight_month": "Mese",
+    "task_overdue": "Scadute",
+    "task_upcoming": "In programma",
+    "family_error_password_weak": "Scegli una password meno comune con almeno tre caratteri diversi, non solo numeri."
   },
   "plurals": {
     "record_count": {

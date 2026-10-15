@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:uuid/uuid.dart';
+
 import 'sync/controller.dart';
 
 import 'package:flutter/foundation.dart';
@@ -88,11 +90,11 @@ class AppController extends ChangeNotifier {
 
   final Map<String, Future<void>> _taskWrites = {};
   Future<void> completeTask(String id, bool completed, {DateTime? at}) =>
-      _taskWrites[id] ??= _completeTask(
-        id,
-        completed,
-        at ?? now,
-      ).whenComplete(() => _taskWrites.remove(id));
+      _taskWrites[id] ??= _completeTask(id, completed, at ?? now).whenComplete(
+        () {
+          _taskWrites.remove(id);
+        },
+      );
 
   Future<void> _completeTask(String id, bool completed, DateTime at) async {
     // Read current persisted revisions: a notification can have changed them
@@ -107,37 +109,36 @@ class AppController extends ChangeNotifier {
           .where((e) => e.taskId == id)
           .firstOrNull;
     }
-    if (completed &&
-        linked != null &&
-        linked.schedule.repeat != RepeatRule.none) {
+    final entry = linked;
+    if (entry != null && entry.schedule.repeat != RepeatRule.none) {
       final occurrence = calendarEngine.completionOccurrence(
-        linked,
+        entry,
         at,
         deviceZone,
       );
       if (occurrence == null) throw const DomainFailure('occurrence_missing');
       final states = await (store as PersonalStore).occurrenceStates();
-      if (states.any(
+      final alreadyDone = states.any(
         (s) =>
-            s.entryId == linked!.id &&
-            s.revision == linked.revision &&
+            s.entryId == entry.id &&
+            s.revision == entry.revision &&
             s.epoch == occurrence.at.millisecondsSinceEpoch &&
             s.status == OccurrenceStatus.completed,
-      ))
-        return;
+      );
+      if (alreadyDone == completed) return;
       await engine.execute(
         SetOccurrence(
-          'complete:${linked.id}:${linked.revision}:${occurrence.at.millisecondsSinceEpoch}',
-          linked.id,
+          const Uuid().v4(),
+          entry.id,
           occurrence.at.millisecondsSinceEpoch,
-          OccurrenceStatus.completed,
-          expectedRevision: linked.revision,
+          completed ? OccurrenceStatus.completed : OccurrenceStatus.dismissed,
+          expectedRevision: entry.revision,
         ),
       );
     } else if (task.completed != completed) {
       await engine.execute(
         CompleteTask(
-          'complete:$id:${task.revision}:$completed',
+          const Uuid().v4(),
           id,
           completed,
           expectedRevision: task.revision,
@@ -217,8 +218,9 @@ class AppController extends ChangeNotifier {
         try {
           await engine.execute(action);
         } on DomainFailure catch (e) {
-          if (e.key != 'record_missing' && e.key != 'revision_conflict')
+          if (e.key != 'record_missing' && e.key != 'revision_conflict') {
             rethrow;
+          }
         }
         acknowledged.add(p['id'] as String);
       }
@@ -227,10 +229,13 @@ class AppController extends ChangeNotifier {
         occurrences = await personal.occurrenceStates();
         records = await personal.records();
         calendar = await personal.calendarEntries();
-        if (personal case final OfflineStore database)
+        if (personal case final OfflineStore database) {
           offline.addAll(
             await database.offlineData(tables: {OfflineTable.habitChecks}),
           );
+        }
+        }
+        }
       }
       final now = DateTime.now();
       final payload = <Map<String, Object?>>[];
@@ -239,8 +244,9 @@ class AppController extends ChangeNotifier {
           .map((r) => r.id)
           .toSet();
       for (final entry in calendar.where((e) => e.schedule.reminder)) {
-        if (entry.taskId != null && completedIds.contains(entry.taskId))
+        if (entry.taskId != null && completedIds.contains(entry.taskId)) {
           continue;
+        }
         final next = calendarEngine.next(entry, now, deviceZone, occurrences);
         final snoozes = occurrences
             .where(
@@ -359,29 +365,34 @@ class AppController extends ChangeNotifier {
         action is ReverseImport) {
       if (store case final OfflineStore database) {
         allocations = await database.splits();
-        if (action is ConfirmImport || action is ReverseImport)
+        if (action is ConfirmImport || action is ReverseImport) {
           importedOrigins = await database.importedOrigins();
+        }
       }
     }
     if (affected.isEmpty ||
         action is SetMoneyDetails ||
-        action is RecordMutation)
+        action is RecordMutation) {
       notifyListeners();
+    }
   }
 
   Future<void> preference(String key, String value) async {
     switch (key) {
       case 'modules_view':
-        if (!['grid', 'list'].contains(value))
+        if (!['grid', 'list'].contains(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'active_scope':
-        if (!['personal', 'family'].contains(value))
+        if (!['personal', 'family'].contains(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'currency':
         Currency.fromCode(value);
       case 'language':
-        if (!catalog.packs.containsKey(value))
+        if (!catalog.packs.containsKey(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'appearance_v1':
         try {
           Appearance.decode(value);
@@ -389,17 +400,21 @@ class AppController extends ChangeNotifier {
           throw const DomainFailure('invalid_setting');
         }
       case 'theme':
-        if (!['system', 'light', 'dark'].contains(value))
+        if (!['system', 'light', 'dark'].contains(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'week_start':
-        if (!['1', '7'].contains(value))
+        if (!['1', '7'].contains(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'snooze_minutes':
-        if (!['5', '10', '15', '30'].contains(value))
+        if (!['5', '10', '15', '30'].contains(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'notification_content':
-        if (!['hide', 'show'].contains(value))
+        if (!['hide', 'show'].contains(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'region':
         if (![
           'ru',
@@ -417,8 +432,9 @@ class AppController extends ChangeNotifier {
           'hy',
           'tg',
           'ky',
-        ].contains(value))
+        ].contains(value)) {
           throw const DomainFailure('invalid_setting');
+        }
       case 'timezone':
         CalendarEngine.validate(
           ScheduleSpec(localStart: '2026-01-01T09:00:00', timezone: value),
@@ -429,8 +445,9 @@ class AppController extends ChangeNotifier {
     await store.setSetting(key, value);
     preferences[key] = value;
     if (key == 'appearance_v1') appearancePreview = null;
-    if (['appearance_v1', 'theme', 'language', 'region'].contains(key))
+    if (['appearance_v1', 'theme', 'language', 'region'].contains(key)) {
       presentation.notifyListeners();
+    }
     if ([
       'language',
       'timezone',

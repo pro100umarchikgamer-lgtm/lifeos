@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "Family sync is optional. Connect your configured backend to continue. Personal data keeps working offline.",
     "family_endpoint": "Server address (HTTPS)",
     "family_email": "Email",
-    "family_password": "Password (at least 12 characters)",
+    "family_password": "Password (at least 7 characters)",
     "family_register": "Create account",
     "family_login": "Sign in",
     "family_logout": "Sign out",
@@ -537,7 +537,7 @@
     "family_error_offline": "Offline. Your queued changes remain on this device.",
     "family_error_invalid_endpoint": "Enter an HTTPS server address.",
     "family_error_invalid_credentials": "Email or password is incorrect.",
-    "family_error_password_length": "Password must have 12–256 characters.",
+    "family_error_password_length": "Password must have 7–256 characters.",
     "family_error_verify_email": "Verify your email first.",
     "family_error_unauthorized": "Session expired. Sign out and sign in again. Saved changes are retained.",
     "family_error_record_pending": "Synchronize the earlier change to this record first.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Group your spending into useful categories.",
     "ux_empty_importBatches": "Your confirmed statement imports will appear here.",
     "search_options": "Search options",
-    "family_error_registration_closed": "Closed testing: registration is available only to invited testers."
+    "family_error_registration_closed": "Closed testing: registration is available only to invited testers.",
+    "insight_balance": "Account balance",
+    "insight_no_accounts": "No account: showing the period’s net income",
+    "insight_dynamics": "Cash flow",
+    "insight_categories": "Spending by category",
+    "insight_select": "Tap the chart to see amounts",
+    "insight_uncategorized": "Uncategorized",
+    "insight_day": "Day",
+    "insight_week": "Week",
+    "insight_month": "Month",
+    "task_overdue": "Overdue",
+    "task_upcoming": "Upcoming",
+    "family_error_password_weak": "Choose a less common password with at least three different characters; avoid numbers only."
   },
   "plurals": {
     "record_count": {

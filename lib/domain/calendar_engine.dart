@@ -59,8 +59,9 @@ class CalendarEngine {
           at.month == date.month &&
           at.day == date.day &&
           at.hour == hour &&
-          at.minute == minute)
+          at.minute == minute) {
         matches.add(at);
+      }
     }
     matches.sort((a, b) => a.compareTo(b));
     return matches.firstOrNull ??
@@ -141,8 +142,9 @@ class CalendarEngine {
       final at = _wallTime(zone, date, local.hour, local.minute);
       if (!at.isBefore(to) ||
           at.year > 2200 ||
-          (spec.until != null && dateOnly(at).compareTo(spec.until!) > 0))
+          (spec.until != null && dateOnly(at).compareTo(spec.until!) > 0)) {
         break;
+      }
       if (!at.isBefore(from)) result.add(CalendarOccurrence(entry, at));
       if (spec.repeat == RepeatRule.none || result.length >= limit) break;
     }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 
 import '../app_controller.dart';
 import '../domain/models.dart';
@@ -8,6 +7,7 @@ import '../localization/language_pack.dart';
 import 'design.dart';
 import 'quick_add.dart';
 import 'money_format.dart';
+import 'financial_overview.dart';
 import 'calendar.dart';
 import 'calendar_panel.dart';
 import 'record_detail.dart';
@@ -108,7 +108,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   bool _profileOpen = false;
   bool _notesOpen = false;
   String _moduleQuery = '';
-  bool _homeFinanceExpanded = false;
   DateTimeRange _period = DateTimeRange(
     start: DateTime(DateTime.now().year, DateTime.now().month),
     end: DateTime(DateTime.now().year, DateTime.now().month + 1, 0),
@@ -120,6 +119,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         financialPeriod
             .records(c.records)
             .map((r) => r.currency!.code)
+            .followedBy(
+              (c.offline[OfflineTable.accounts] ?? []).map(
+                (a) => a['currency'] as String,
+              ),
+            )
             .toSet()
             .toList()
           ..sort();
@@ -688,26 +692,23 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         dates[task.id] = null;
         continue;
       }
-      final occurrences = c.calendarEngine
-          .between(
-            entry,
-            now.subtract(const Duration(days: 370)),
-            now.add(const Duration(days: 370)),
-            c.deviceZone,
-          )
-          .where(
-            (o) => !c.occurrences.any(
-              (s) =>
-                  s.entryId == entry.id &&
-                  s.revision == entry.revision &&
-                  s.epoch == o.at.millisecondsSinceEpoch,
-            ),
-          )
-          .toList();
-      dates[task.id] =
-          (occurrences.where((o) => !o.at.isAfter(now)).lastOrNull ??
-                  occurrences.firstOrNull)
-              ?.at;
+      final due = c.calendarEngine.completionOccurrence(
+        entry,
+        now,
+        c.deviceZone,
+      );
+      final done =
+          due != null &&
+          c.occurrences.any(
+            (s) =>
+                s.entryId == entry.id &&
+                s.revision == entry.revision &&
+                s.epoch == due.at.millisecondsSinceEpoch &&
+                s.status == OccurrenceStatus.completed,
+          );
+      dates[task.id] = done
+          ? c.calendarEngine.next(entry, now, c.deviceZone, c.occurrences)?.at
+          : due?.at;
     }
     int priority(Record record) {
       final at = dates[record.id];
@@ -739,16 +740,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   List<Widget> _home() {
     final now = c.now;
-    if (c.records.isEmpty &&
-        [
-          OfflineTable.projects,
-          OfflineTable.habits,
-          OfflineTable.checklists,
-          OfflineTable.goals,
-          OfflineTable.accounts,
-        ].every((t) => (c.offline[t] ?? []).isEmpty)) {
-      return _emptyHome();
-    }
     final config = [for (final key in dashboardWidgets) dashboardChoice(c, key)]
       ..sort((a, b) {
         final order = (a['position'] as int).compareTo(b['position'] as int);
@@ -760,46 +751,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final notes = c.records.where((r) => r.kind == EntryKind.note);
     Widget card(Map<String, Object?> row) {
       final expanded = row['expanded'] == 1, key = row['widget'] as String;
-      if (key == 'financial') {
-        final balance =
-            financialPeriod.total(
-              c.records,
-              EntryKind.income,
-              summaryCurrency,
-            ) -
-            financialPeriod.total(
-              c.records,
-              EntryKind.expense,
-              summaryCurrency,
-            );
-        return LifeCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                key: const Key('home_financial_summary'),
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.account_balance_wallet_outlined),
-                title: Text(c.pack.t('finances')),
-                subtitle: Text(
-                  formatMoney(
-                    Currency.fromCode(summaryCurrency),
-                    balance,
-                    locale: c.region,
-                  ),
-                ),
-                trailing: Icon(
-                  _homeFinanceExpanded ? Icons.expand_less : Icons.expand_more,
-                ),
-                onTap: () => setState(
-                  () => _homeFinanceExpanded = !_homeFinanceExpanded,
-                ),
-              ),
-              if (_homeFinanceExpanded) _financeSummary(),
-            ],
-          ),
-        );
-      }
+      if (key == 'financial') return _financeSummary();
       if (key == 'tasks') {
         return _tasksCard(tasks.take(expanded ? 3 : 1).toList());
       }
@@ -850,350 +802,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
       const SizedBox(height: 12),
     ];
-    for (final row in config.where(
-      (r) => r['widget'] == 'tasks' && r['visible'] == 1,
-    )) {
-      content.addAll([card(row), const SizedBox(height: 12)]);
-    }
-    content.addAll([_compactQuickActions(), const SizedBox(height: 12)]);
-    for (final row in config.where(
-      (r) => r['widget'] != 'tasks' && r['visible'] == 1,
-    )) {
+    for (final row in config.where((r) => r['visible'] == 1)) {
       content.addAll([card(row), const SizedBox(height: 12)]);
     }
     return content;
   }
 
-  Widget _compactQuickActions() => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    children: [
-      for (final kind in EntryKind.values)
-        OutlinedButton.icon(
-          key: Key('quick_${kind.name}'),
-          onPressed: () => _add(kind),
-          icon: Icon(_kindIcon(kind), size: 20),
-          label: Text(c.pack.t(kind.name)),
-        ),
-    ],
-  );
-
-  List<Widget> _emptyHome() => [
-    _pageTitle('today'),
-    const SizedBox(height: 8),
-    Text(
-      c.pack.t('welcome_title'),
-      style: Theme.of(context).textTheme.titleMedium,
-    ),
-    const SizedBox(height: 12),
-    _tasksCard(const []),
-    const SizedBox(height: 12),
-    _compactQuickActions(),
-    const SizedBox(height: 12),
-    Text(c.pack.t('offline_ready')),
-  ];
-
-  Widget _financeSummary() {
-    final periodRecords = financialPeriod.records(c.records);
-    final currencies =
-        periodRecords.map((r) => r.currency!.code).toSet().toList()..sort();
-    final selected = summaryCurrency;
-    final records = financialPeriod.records(c.records, currency: selected);
-    final income = financialPeriod.total(c.records, EntryKind.income, selected);
-    final expense = financialPeriod.total(
-      c.records,
-      EntryKind.expense,
-      selected,
-    );
-    final incomeCount = records.where((r) => r.kind == EntryKind.income).length;
-    final expenseCount = records
-        .where((r) => r.kind == EntryKind.expense)
-        .length;
-    final duration =
-        DateTime.utc(_period.end.year, _period.end.month, _period.end.day)
-            .difference(
-              DateTime.utc(
-                _period.start.year,
-                _period.start.month,
-                _period.start.day,
-              ),
-            )
-            .inDays +
-        1;
-    final days = duration < 31 ? duration : 31;
-    final dailyIncome = List<BigInt>.filled(days, BigInt.zero),
-        dailyExpense = List<BigInt>.filled(days, BigInt.zero);
-    for (final r in records) {
-      final date = DateTime.parse(r.date!);
-      final offset = DateTime.utc(date.year, date.month, date.day)
-          .difference(
-            DateTime.utc(
-              _period.start.year,
-              _period.start.month,
-              _period.start.day,
-            ),
-          )
-          .inDays;
-      final bucket = offset * days ~/ duration;
-      if (r.kind == EntryKind.income) {
-        dailyIncome[bucket] += BigInt.from(r.amountMinor!);
-      }
-      if (r.kind == EntryKind.expense) {
-        dailyExpense[bucket] += BigInt.from(r.amountMinor!);
-      }
-    }
-    final wholeMonth =
-        _period.start.day == 1 &&
-        _period.end == DateTime(_period.start.year, _period.start.month + 1, 0);
-    final currency = Currency.fromCode(selected);
-    return LifeCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              InkWell(
-                key: const Key('financial_period'),
-                onTap: () async {
-                  final selected = await selectFinancialPeriod(
-                    context,
-                    c,
-                    _period,
-                  );
-                  if (selected != null && mounted) {
-                    setState(() => _period = selected);
-                  }
-                },
-                child: _chip(
-                  wholeMonth
-                      ? MaterialLocalizations.of(context)
-                            .formatMonthYear(_period.start)
-                      : '${MaterialLocalizations.of(context).formatShortDate(_period.start)} — ${MaterialLocalizations.of(context).formatShortDate(_period.end)}',
-                ),
-              ),
-              SizedBox(
-                width: 124,
-                child: LifeSelect<String>(
-                  label: c.pack.t('currency'),
-                  value: selected,
-                  choices: {
-                    for (final code
-                        in currencies.isEmpty ? [selected] : currencies)
-                      code: code,
-                  },
-                  onChanged: (v) => setState(() => _summaryCurrency = v),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          if (_tab == 2) ...[
-            _financeTotal(
-              'income',
-              formatMoney(currency, income, locale: c.region),
-              c.pack.count('record_count', incomeCount),
-              LifePalette.green,
-            ),
-            const Divider(height: 24),
-            _financeTotal(
-              'expense',
-              formatMoney(currency, expense, locale: c.region),
-              c.pack.count('record_count', expenseCount),
-              LifePalette.red,
-            ),
-            const Divider(height: 24),
-            _financeTotal(
-              'difference',
-              formatMoney(currency, income - expense, locale: c.region),
-              '',
-              (income - expense).isNegative
-                  ? LifePalette.red
-                  : LifePalette.green,
-            ),
-          ] else ...[
-            _metric(
-              'difference',
-              formatMoney(currency, income - expense, locale: c.region),
-              '',
-              (income - expense).isNegative
-                  ? LifePalette.red
-                  : LifePalette.green,
-              prominent: true,
-            ),
-            const SizedBox(height: 16),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final metrics = [
-                  _metric(
-                    'income',
-                    formatMoney(currency, income, locale: c.region),
-                    c.pack.count('record_count', incomeCount),
-                    LifePalette.green,
-                  ),
-                  _metric(
-                    'expense',
-                    formatMoney(currency, expense, locale: c.region),
-                    c.pack.count('record_count', expenseCount),
-                    LifePalette.red,
-                  ),
-                ];
-                return MediaQuery.textScalerOf(context).scale(1) > 1.25
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          metrics[0],
-                          const SizedBox(height: 12),
-                          metrics[1],
-                        ],
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: metrics[0]),
-                          const SizedBox(width: 16),
-                          Expanded(child: metrics[1]),
-                        ],
-                      );
-              },
-            ),
-          ],
-          const SizedBox(height: 12),
-          DailyBarChart(income: dailyIncome, expense: dailyExpense),
-          const SizedBox(height: 4),
-          if (wholeMonth)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (final day in [1, 8, 15, 22, duration])
-                  Text(
-                    '$day',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  MaterialLocalizations.of(context)
-                      .formatShortDate(_period.start),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  MaterialLocalizations.of(context)
-                      .formatShortDate(_period.end),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _financeTotal(
-    String label,
-    String amount,
-    String count,
-    Color color,
-  ) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Wrap(
-        spacing: 12,
-        children: [
-          Text(c.pack.t(label), style: Theme.of(context).textTheme.titleMedium),
-          if (count.isNotEmpty)
-            Text(
-              count,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-        ],
-      ),
-      const SizedBox(height: 4),
-      Text(
-        amount,
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-          color: lifeAccent(context, color),
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    ],
-  );
-
-  Widget _chip(String label) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-    decoration: BoxDecoration(
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      borderRadius: BorderRadius.circular(
-        (Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20) * .7,
-      ),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(width: 3),
-        const Icon(Icons.keyboard_arrow_down, size: 14),
-      ],
-    ),
-  );
-
-  Widget _metric(
-    String key,
-    String amount,
-    String count,
-    Color color, {
-    bool prominent = false,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        c.pack.t(key),
-        style: Theme.of(context).textTheme.bodyMedium
-            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-      const SizedBox(height: 4),
-      Text(
-        amount,
-        style: TextStyle(
-          color: lifeAccent(context, color),
-          fontSize: prominent ? 28 : 18,
-          fontWeight: FontWeight.w800,
-          height: 1.2,
-        ),
-      ),
-      if (count.isNotEmpty) ...[
-        const SizedBox(height: 4),
-        Text(
-          count,
-          style: Theme.of(context).textTheme.bodySmall
-              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-      ],
-    ],
+  Widget _financeSummary() => FinancialOverview(
+    key: const Key('home_financial_summary'),
+    controller: c,
+    period: financialPeriod,
+    currency: summaryCurrency,
+    compact: _tab == 0,
+    onCurrency: (v) => setState(() => _summaryCurrency = v),
+    onPeriod: () async {
+      final result = await selectFinancialPeriod(context, c, _period);
+      if (result != null && mounted) setState(() => _period = result);
+    },
+    onRecord: (r) => _showRecord(r.id),
+    onAdd: _add,
   );
 
   Widget _actionGrid({required bool detailed, BuildContext? sheetContext}) =>
@@ -1449,6 +1076,46 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ),
   );
 
+  bool _taskDone(Record task) {
+    if (task.completed) return true;
+    final entry = c.scheduleFor(task);
+    if (entry == null || entry.schedule.repeat == RepeatRule.none) return false;
+    final due = c.calendarEngine.completionOccurrence(
+      entry,
+      c.now,
+      c.deviceZone,
+    );
+    return due != null &&
+        c.occurrences.any(
+          (s) =>
+              s.entryId == entry.id &&
+              s.revision == entry.revision &&
+              s.epoch == due.at.millisecondsSinceEpoch &&
+              s.status == OccurrenceStatus.completed,
+        );
+  }
+
+  String? _taskStatus(Record task) {
+    final entry = c.scheduleFor(task);
+    if (entry == null || task.completed) return null;
+    final due = c.calendarEngine.completionOccurrence(
+      entry,
+      c.now,
+      c.deviceZone,
+    );
+    if (due == null) return null;
+    if (c.occurrences.any(
+      (s) =>
+          s.entryId == entry.id &&
+          s.revision == entry.revision &&
+          s.epoch == due.at.millisecondsSinceEpoch &&
+          s.status == OccurrenceStatus.completed,
+    ))
+      return 'task_upcoming';
+    if (due.at.isBefore(c.now)) return 'task_overdue';
+    return dateOnly(due.at) == dateOnly(c.now) ? 'today' : 'task_upcoming';
+  }
+
   Widget _taskRow(Record task) => Container(
     constraints: const BoxConstraints(minHeight: 48),
     decoration: BoxDecoration(
@@ -1464,7 +1131,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           width: 48,
           child: Checkbox(
             key: Key('task_${task.id}'),
-            value: task.completed,
+            value: _taskDone(task),
             visualDensity: VisualDensity.standard,
             onChanged: c.pendingTasks.contains(task.id)
                 ? null
@@ -1489,6 +1156,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                           : null,
                     ),
                   ),
+                  if (_taskStatus(task) case final String status)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        c.pack.t(status),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: status == 'task_overdue'
+                              ? lifeAccent(context, LifePalette.red)
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   if (c.scheduleFor(task) case final CalendarEntry entry)
                     Padding(
                       padding: const EdgeInsets.only(top: 5),
@@ -1642,42 +1322,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       currency: summaryCurrency,
     )..sort((a, b) => b.date!.compareTo(a.date!));
     return [
-      _pageTitle('finances'),
-      const SizedBox(height: 6),
-      Text(
-        c.pack.t('ux3_finance_body'),
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
-      const SizedBox(height: 12),
-      LifeCard(
-        child: ListTile(
-          leading: const Icon(Icons.account_balance_wallet_outlined),
-          title: Text(c.pack.t('financial_foundation')),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push<void>(
-            context,
-            MaterialPageRoute(builder: (_) => FinanceFoundation(controller: c)),
+      Row(
+        children: [
+          Expanded(child: _pageTitle('finances')),
+          IconButton(
+            key: const Key('finance_accounts'),
+            tooltip: c.pack.t('financial_foundation'),
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            onPressed: () => Navigator.push<void>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FinanceFoundation(controller: c),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
       const SizedBox(height: 12),
       _financeSummary(),
-      const SizedBox(height: 12),
-      LifeCard(
-        child: Row(
-          children: [
-            Expanded(child: _actionTile(EntryKind.expense, detailed: true)),
-            const SizedBox(width: 8),
-            Expanded(child: _actionTile(EntryKind.income, detailed: true)),
-          ],
-        ),
-      ),
-      const SizedBox(height: 12),
-      Text(
-        c.pack.t('no_account_hint'),
-        style: Theme.of(context).textTheme.bodySmall
-            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
       const SizedBox(height: 12),
       if (records.isEmpty) LifeCard(child: Text(c.pack.t('empty_money'))),
       for (final record in records)

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "ka",
   "nativeName": "ქართული",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "ოჯახური სინქრონიზაცია არჩევითია. გასაგრძელებლად დაუკავშირდით გამართულ სერვერს. პირადი მონაცემები ოფლაინ მუშაობს.",
     "family_endpoint": "სერვერის მისამართი (HTTPS)",
     "family_email": "ელფოსტა",
-    "family_password": "პაროლი (მინიმუმ 12 სიმბოლო)",
+    "family_password": "პაროლი (მინიმუმ 7 სიმბოლო)",
     "family_register": "ანგარიშის შექმნა",
     "family_login": "შესვლა",
     "family_logout": "გასვლა",
@@ -537,7 +537,7 @@
     "family_error_offline": "ქსელი არ არის. რიგში მყოფი ცვლილებები ამ მოწყობილობაზე რჩება.",
     "family_error_invalid_endpoint": "შეიყვანეთ HTTPS სერვერის მისამართი.",
     "family_error_invalid_credentials": "ელფოსტა ან პაროლი არასწორია.",
-    "family_error_password_length": "პაროლი უნდა შეიცავდეს 12–256 სიმბოლოს.",
+    "family_error_password_length": "პაროლი უნდა შეიცავდეს 7–256 სიმბოლოს.",
     "family_error_verify_email": "ჯერ დაადასტურეთ ელფოსტა.",
     "family_error_unauthorized": "სესია დასრულდა. გადით და ხელახლა შედით. შენახული ცვლილებები რჩება.",
     "family_error_record_pending": "ჯერ დაასინქრონეთ ამ ჩანაწერის წინა ცვლილება.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "დააჯგუფეთ ხარჯები სასარგებლო კატეგორიებად.",
     "ux_empty_importBatches": "აქ გამოჩნდება ამონაწერების დადასტურებული იმპორტები.",
     "search_options": "სიაში ძიება",
-    "family_error_registration_closed": "დახურული ტესტირება: რეგისტრაცია მხოლოდ მოწვეულ მონაწილეებს შეუძლიათ."
+    "family_error_registration_closed": "დახურული ტესტირება: რეგისტრაცია მხოლოდ მოწვეულ მონაწილეებს შეუძლიათ.",
+    "insight_balance": "თანხა ანგარიშებზე",
+    "insight_no_accounts": "ანგარიში არ არის: ნაჩვენებია პერიოდის სხვაობა",
+    "insight_dynamics": "ფულადი ნაკადი",
+    "insight_categories": "ხარჯები კატეგორიების მიხედვით",
+    "insight_select": "თანხების სანახავად შეეხეთ გრაფიკს",
+    "insight_uncategorized": "კატეგორიის გარეშე",
+    "insight_day": "დღე",
+    "insight_week": "კვირა",
+    "insight_month": "თვე",
+    "task_overdue": "ვადაგადაცილებული",
+    "task_upcoming": "მომავალი",
+    "family_error_password_weak": "აირჩიეთ ნაკლებად გავრცელებული პაროლი: სულ მცირე სამი განსხვავებული სიმბოლო, არა მხოლოდ ციფრები."
   },
   "plurals": {
     "record_count": {

@@ -353,10 +353,27 @@ class _FamilyPageState extends State<FamilyPage> {
                 ),
               ),
             if (c.account == null) ...[
-              LifeHero(
-                icon: Icons.favorite_outline,
-                title: t('ux3_account_title'),
-                body: t('ux3_account_body'),
+              LifeCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.shield_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            t('ux3_account_title'),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(t('ux3_account_body')),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               if (c.accountOrigin.isEmpty)
@@ -498,6 +515,14 @@ class _FamilyPageState extends State<FamilyPage> {
                 onPressed: c.busy || c.accountOrigin.isEmpty
                     ? null
                     : () async {
+                        if (register &&
+                            (password.text.length < 7 ||
+                                password.text.length > 256)) {
+                          setState(
+                            () => formError = 'family_error_password_length',
+                          );
+                          return;
+                        }
                         if (register && password.text != passwordAgain.text) {
                           setState(() => formError = 'password_mismatch');
                           return;

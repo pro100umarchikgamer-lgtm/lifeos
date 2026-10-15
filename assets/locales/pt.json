@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "pt",
   "nativeName": "Português",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "A sincronização familiar é opcional. Ligue o servidor configurado para continuar. Os dados pessoais continuam disponíveis offline.",
     "family_endpoint": "Endereço do servidor (HTTPS)",
     "family_email": "E-mail",
-    "family_password": "Palavra-passe (pelo menos 12 caracteres)",
+    "family_password": "Palavra-passe (pelo menos 7 caracteres)",
     "family_register": "Criar conta",
     "family_login": "Iniciar sessão",
     "family_logout": "Terminar sessão",
@@ -537,7 +537,7 @@
     "family_error_offline": "Offline. As alterações pendentes ficam neste dispositivo.",
     "family_error_invalid_endpoint": "Introduza um endereço de servidor HTTPS.",
     "family_error_invalid_credentials": "O e-mail ou a palavra-passe está incorreto.",
-    "family_error_password_length": "A palavra-passe deve ter entre 12 e 256 caracteres.",
+    "family_error_password_length": "A palavra-passe deve ter entre 7 e 256 caracteres.",
     "family_error_verify_email": "Verifique primeiro o seu e-mail.",
     "family_error_unauthorized": "A sessão expirou. Termine sessão e entre novamente. As alterações guardadas mantêm-se.",
     "family_error_record_pending": "Sincronize primeiro a alteração anterior deste registo.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Agrupe as despesas em categorias úteis.",
     "ux_empty_importBatches": "As importações de extratos confirmadas aparecerão aqui.",
     "search_options": "Pesquisar na lista",
-    "family_error_registration_closed": "Teste privado: apenas as pessoas convidadas podem registar-se."
+    "family_error_registration_closed": "Teste privado: apenas as pessoas convidadas podem registar-se.",
+    "insight_balance": "Saldo das contas",
+    "insight_no_accounts": "Sem conta: saldo do período",
+    "insight_dynamics": "Fluxo de caixa",
+    "insight_categories": "Despesas por categoria",
+    "insight_select": "Toque no gráfico para ver os valores",
+    "insight_uncategorized": "Sem categoria",
+    "insight_day": "Dia",
+    "insight_week": "Semana",
+    "insight_month": "Mês",
+    "task_overdue": "Em atraso",
+    "task_upcoming": "Próximas",
+    "family_error_password_weak": "Escolha uma palavra-passe menos comum com pelo menos três caracteres diferentes, não apenas números."
   },
   "plurals": {
     "record_count": {

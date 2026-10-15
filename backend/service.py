@@ -50,6 +50,12 @@ def civil(value):
 def canonical(value): return json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False)
 def token_hash(value): return hashlib.sha256(value.encode()).hexdigest()
 
+def validate_password(password):
+    require(isinstance(password,str) and 7<=len(password)<=256,'password_length')
+    value=password.casefold().strip()
+    common={'password','password1','password123','qwerty1','qwerty123','letmein','welcome','welcome1','1234567','12345678','123456789','пароль123','uladim123','lifeos123'}
+    require(len(set(value))>=3 and not value.isdecimal() and value not in common,'password_weak')
+
 class ManagedConnection(sqlite3.Connection):
     def __exit__(self,*args):
         try:return super().__exit__(*args)
@@ -81,7 +87,7 @@ class Backend:
         self.deliver(email,code)
     def register(self,email,password):
         require(isinstance(email,str) and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) and len(email)<=254)
-        require(isinstance(password,str) and 12<=len(password)<=256,'password_length')
+        validate_password(password)
         require(self.deliver is not None,'verification_delivery_unconfigured',503)
         uid=str(uuid.uuid4());salt=secrets.token_hex(16);now=int(self.clock())
         encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
@@ -141,7 +147,7 @@ class Backend:
         return {'recovery_requested':True}
     def reset_password(self,email,code,password):
         require(isinstance(email,str) and isinstance(code,str) and len(code)==43)
-        require(isinstance(password,str) and 12<=len(password)<=256,'password_length')
+        validate_password(password)
         with self.transaction() as db:
             row=db.execute('SELECT u.id FROM password_recovery r JOIN users u ON u.id=r.user_id WHERE r.hash=? AND u.email=? AND r.expires_at>?',(token_hash(code),email.casefold(),int(self.clock()))).fetchone()
             require(row is not None,'verification_invalid')
@@ -151,7 +157,7 @@ class Backend:
         return {'password_reset':True}
     def password(self,actor,old_password,new_password):
         require(isinstance(old_password,str) and len(old_password)<=256)
-        require(isinstance(new_password,str) and 12<=len(new_password)<=256,'password_length')
+        validate_password(new_password)
         with self.transaction() as db:
             row=db.execute('SELECT * FROM users WHERE id=?',(actor['id'],)).fetchone()
             digest=hashlib.pbkdf2_hmac('sha256',old_password.encode(),bytes.fromhex(row['salt']),600000).hex()

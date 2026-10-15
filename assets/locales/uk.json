@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "uk",
   "nativeName": "Українська",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "Сімейна синхронізація необов’язкова. Для продовження підключіть налаштований сервер. Особисті дані працюють офлайн.",
     "family_endpoint": "Адреса сервера (HTTPS)",
     "family_email": "Електронна пошта",
-    "family_password": "Пароль (щонайменше 12 символів)",
+    "family_password": "Пароль (щонайменше 7 символів)",
     "family_register": "Створити обліковий запис",
     "family_login": "Увійти",
     "family_logout": "Вийти",
@@ -537,7 +537,7 @@
     "family_error_offline": "Немає мережі. Зміни в черзі залишаються на цьому пристрої.",
     "family_error_invalid_endpoint": "Введіть адресу сервера HTTPS.",
     "family_error_invalid_credentials": "Неправильна електронна пошта або пароль.",
-    "family_error_password_length": "Пароль має містити 12–256 символів.",
+    "family_error_password_length": "Пароль має містити 7–256 символів.",
     "family_error_verify_email": "Спершу підтвердьте електронну пошту.",
     "family_error_unauthorized": "Сеанс завершився. Вийдіть і ввійдіть знову. Збережені зміни залишаться.",
     "family_error_record_pending": "Спершу синхронізуйте попередню зміну цього запису.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Об’єднайте витрати в зручні категорії.",
     "ux_empty_importBatches": "Тут з’являться підтверджені імпорти виписок.",
     "search_options": "Пошук у списку",
-    "family_error_registration_closed": "Закрите тестування: реєстрація доступна лише запрошеним учасникам."
+    "family_error_registration_closed": "Закрите тестування: реєстрація доступна лише запрошеним учасникам.",
+    "insight_balance": "Кошти на рахунках",
+    "insight_no_accounts": "Без рахунку: показано різницю за період",
+    "insight_dynamics": "Рух коштів",
+    "insight_categories": "Витрати за категоріями",
+    "insight_select": "Натисніть на графік, щоб побачити суми",
+    "insight_uncategorized": "Без категорії",
+    "insight_day": "День",
+    "insight_week": "Тиждень",
+    "insight_month": "Місяць",
+    "task_overdue": "Прострочено",
+    "task_upcoming": "Попереду",
+    "family_error_password_weak": "Виберіть менш поширений пароль: щонайменше три різні символи, не лише цифри."
   },
   "plurals": {
     "record_count": {

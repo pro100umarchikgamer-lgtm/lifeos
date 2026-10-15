@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 11,
+  "packVersion": 12,
   "locale": "ru",
   "nativeName": "Русский",
   "strings": {
@@ -442,7 +442,7 @@
     "family_optional": "Синхронизация семьи необязательна. Для неё подключите настроенный сервер. Личные данные работают без интернета.",
     "family_endpoint": "Адрес сервера (HTTPS)",
     "family_email": "Электронная почта",
-    "family_password": "Пароль (минимум 12 символов)",
+    "family_password": "Пароль (минимум 7 символов)",
     "family_register": "Создать аккаунт",
     "family_login": "Войти",
     "family_logout": "Выйти",
@@ -537,7 +537,7 @@
     "family_error_offline": "Нет соединения. Изменения сохранены на устройстве.",
     "family_error_invalid_endpoint": "Введите HTTPS-адрес сервера.",
     "family_error_invalid_credentials": "Неверная почта или пароль.",
-    "family_error_password_length": "Пароль должен содержать 12–256 символов.",
+    "family_error_password_length": "Пароль должен содержать 7–256 символов.",
     "family_error_verify_email": "Сначала подтвердите почту.",
     "family_error_unauthorized": "Сессия истекла. Выйдите и войдите снова. Изменения сохранятся.",
     "family_error_record_pending": "Сначала синхронизируйте предыдущее изменение записи.",
@@ -668,7 +668,19 @@
     "ux_empty_categories": "Объединяйте расходы в удобные категории.",
     "ux_empty_importBatches": "Здесь появятся подтверждённые импорты выписок.",
     "search_options": "Найти в списке",
-    "family_error_registration_closed": "Закрытое тестирование: регистрация доступна только приглашённым участникам."
+    "family_error_registration_closed": "Закрытое тестирование: регистрация доступна только приглашённым участникам.",
+    "insight_balance": "Доступно на счетах",
+    "insight_no_accounts": "Без счёта: показана разница за период",
+    "insight_dynamics": "Динамика",
+    "insight_categories": "Расходы по категориям",
+    "insight_select": "Нажмите на график, чтобы увидеть суммы",
+    "insight_uncategorized": "Без категории",
+    "insight_day": "День",
+    "insight_week": "Неделя",
+    "insight_month": "Месяц",
+    "task_overdue": "Просрочено",
+    "task_upcoming": "Предстоит",
+    "family_error_password_weak": "Выберите менее распространённый пароль: минимум три разных символа, не только цифры."
   },
   "plurals": {
     "record_count": {
