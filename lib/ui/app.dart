@@ -126,11 +126,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             .toSet()
             .toList()
           ..sort();
-    return codes.contains(_summaryCurrency)
-        ? _summaryCurrency!
-        : codes.contains(c.currency)
-        ? c.currency
-        : codes.firstOrNull ?? c.currency;
+    return _summaryCurrency ??
+        (codes.contains(c.currency)
+            ? c.currency
+            : codes.firstOrNull ?? c.currency);
   }
 
   @override
@@ -297,6 +296,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   void _chooseAdd() {
+    FocusScope.of(context).unfocus();
     showModalBottomSheet<void>(
       context: context,
       sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
@@ -723,6 +723,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       return 3;
     }
 
+    tasks.removeWhere((task) => _taskDone(task) && dates[task.id] == null);
     tasks.sort((a, b) {
       final order = priority(a).compareTo(priority(b));
       if (order != 0) {
@@ -1110,7 +1111,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           s.epoch == due.at.millisecondsSinceEpoch &&
           s.status == OccurrenceStatus.completed,
     )) {
-      return 'task_upcoming';
+      return c.calendarEngine.next(entry, c.now, c.deviceZone, c.occurrences) ==
+              null
+          ? 'completed'
+          : 'task_upcoming';
     }
     if (due.at.isBefore(c.now)) return 'task_overdue';
     return c.civilDate(due.at) == c.civilDate(c.now)
@@ -1153,7 +1157,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     task.text,
                     style: TextStyle(
                       fontSize: 15,
-                      decoration: task.completed
+                      decoration: _taskDone(task)
                           ? TextDecoration.lineThrough
                           : null,
                     ),
@@ -1272,8 +1276,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   List<Widget> _entries(EntryKind kind) {
     final records = c.records.where((r) => r.kind == kind).toList();
-    final open = records.where((r) => !r.completed).toList();
-    final completed = records.where((r) => r.completed).toList();
+    final open = records.where((r) => !_taskDone(r)).toList();
+    final completed = records.where(_taskDone).toList();
     return [
       _pageTitle(kind == EntryKind.task ? 'my_tasks' : 'recent_notes'),
       const SizedBox(height: 14),

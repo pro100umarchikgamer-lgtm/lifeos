@@ -296,16 +296,34 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                             parts.map((e) => e.value).toList(),
                             scheme.surfaceContainerHighest,
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.pie_chart_outline_rounded,
-                              size: 32,
-                            ),
+                          child: Center(
+                            child:
+                                MediaQuery.textScalerOf(context).scale(1) <=
+                                        1.4 &&
+                                    money(data.expense).length < 14
+                                ? Text(
+                                    money(data.expense),
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  )
+                                : const Icon(
+                                    Icons.pie_chart_outline_rounded,
+                                    size: 32,
+                                  ),
                           ),
                         ),
                       ),
                     ),
                   ),
+                  if (MediaQuery.textScalerOf(context).scale(1) > 1.4 ||
+                      money(data.expense).length >= 14)
+                    Text(
+                      money(data.expense),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                   const SizedBox(height: 12),
                   for (var i = 0; i < parts.length; i++)
                     ListTile(

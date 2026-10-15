@@ -143,6 +143,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(LifeOSApp(controller: c));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add_button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('quick_expense')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('amount')));
@@ -160,6 +162,8 @@ void main() {
     final controller = AppController(store, catalog, 'ru');
     await controller.load();
     await tester.pumpWidget(LifeOSApp(controller: controller));
+    await tester.tap(find.byKey(const Key('add_button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('quick_expense')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('amount')), '12,50');
@@ -502,10 +506,8 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(
-          find.byKey(const Key('quick_note')),
-          200,
-        );
+        await tester.tap(find.byKey(const Key('add_button')));
+        await tester.pumpAndSettle();
         final expense = tester.getRect(find.byKey(const Key('quick_expense')));
         final income = tester.getRect(find.byKey(const Key('quick_income')));
         final task = tester.getRect(find.byKey(const Key('quick_task')));
@@ -515,6 +517,8 @@ void main() {
         expect(expense.overlaps(task), isFalse);
         expect(income.overlaps(task), isFalse);
         expect(tester.takeException(), isNull);
+        Navigator.of(tester.element(find.byKey(const Key('quick_note')))).pop();
+        await tester.pumpAndSettle();
       }
     },
   );

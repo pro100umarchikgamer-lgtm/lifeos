@@ -5,6 +5,9 @@ import 'package:lifeos/app_controller.dart';
 import 'package:lifeos/domain/models.dart';
 import 'package:lifeos/localization/language_pack.dart';
 import 'package:lifeos/ui/finance_foundation.dart';
+import 'package:lifeos/ui/financial_overview.dart';
+import 'package:lifeos/domain/financial_period.dart';
+import 'package:lifeos/ui/design.dart';
 import 'package:lifeos/ui/selection.dart';
 
 import 'widget_test.dart' show UIStore;
@@ -136,6 +139,102 @@ void main() {
       expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
       expect(store.actions, isEmpty);
       expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'financial chart drilldown keeps currencies isolated and categories open the underlying record',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final c = AppController(UIStore(), catalog, 'ru');
+      await c.load();
+      c.preferences['currency'] = 'RUB';
+      c.records = [
+        Record(
+          id: 'salary',
+          kind: EntryKind.income,
+          text: 'Salary',
+          createdAt: DateTime(2026),
+          amountMinor: 50000,
+          currency: const Currency('RUB', 2),
+          date: '2026-10-01',
+          accountId: 'cash',
+        ),
+        Record(
+          id: 'shop',
+          kind: EntryKind.expense,
+          text: 'Weekly shop',
+          createdAt: DateTime(2026),
+          amountMinor: 1250,
+          currency: const Currency('RUB', 2),
+          date: '2026-10-15',
+          accountId: 'cash',
+          categoryId: 'food',
+        ),
+        Record(
+          id: 'usd',
+          kind: EntryKind.expense,
+          text: 'Other currency',
+          createdAt: DateTime(2026),
+          amountMinor: 99999,
+          currency: const Currency('USD', 2),
+          date: '2026-10-15',
+        ),
+      ];
+      c.offline = {
+        OfflineTable.accounts: [
+          {'id': 'cash', 'currency': 'RUB', 'opening_minor': 10000},
+        ],
+        OfflineTable.categories: [
+          {'id': 'food', 'name': 'Food'},
+        ],
+      };
+      String? opened;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: lifeTheme(Brightness.light),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FinancialOverview(
+                controller: c,
+                period: FinancialPeriod(
+                  DateTime(2026, 10),
+                  DateTime(2026, 10, 31),
+                ),
+                currency: 'RUB',
+                onCurrency: (_) {},
+                onPeriod: () {},
+                onAdd: (_) {},
+                onRecord: (r) => opened = r.id,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('insight_balance'))).data,
+        '587,50 ₽',
+      );
+      await tester.ensureVisible(find.text(c.pack.t('insight_month')));
+      await tester.tap(find.text(c.pack.t('insight_month')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('cashflow_chart')));
+      await tester.tap(find.byKey(const Key('cashflow_chart')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Доход: 500 ₽'), findsOneWidget);
+      await tester.ensureVisible(find.text('Food'));
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Weekly shop'));
+      await tester.tap(find.text('Weekly shop'));
+      expect(opened, 'shop');
+      expect(find.text('Other currency'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      c.dispose();
     },
   );
 }

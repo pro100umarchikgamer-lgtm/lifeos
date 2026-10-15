@@ -267,6 +267,8 @@ void main() {
         await tester.pumpAndSettle();
       }
       if (page == 'quick_expense') {
+        await tester.tap(find.byKey(const Key('add_button')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('quick_expense')));
         await tester.pumpAndSettle();
       }

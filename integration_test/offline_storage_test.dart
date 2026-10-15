@@ -43,7 +43,7 @@ void main() {
             'create-${state.name}',
             'Подтвердить выполнение обязанностей',
             schedule: const ScheduleSpec(
-              localStart: '2026-10-01T09:00:00',
+              localStart: '2026-10-11T09:00:00',
               timezone: 'Europe/Moscow',
               repeat: RepeatRule.daily,
               until: '2026-10-11',
@@ -89,6 +89,24 @@ void main() {
           ),
         ),
       );
+      final stale = (await store.records()).singleWhere((r) => r.id == plain);
+      controller.records = [stale];
+      await engine.execute(
+        EditTask('edit-before-tap', plain, stale.revision, 'Plain (edited)'),
+      );
+      await expectLater(
+        engine.execute(
+          CompleteTask(
+            'stale-render-action',
+            plain,
+            true,
+            expectedRevision: stale.revision,
+          ),
+        ),
+        throwsA(
+          isA<DomainFailure>().having((e) => e.key, 'key', 'revision_conflict'),
+        ),
+      );
       await Future.wait([
         controller.completeTask(plain, true, at: now),
         controller.completeTask(plain, true, at: now),
@@ -100,6 +118,8 @@ void main() {
       await controller.load();
       await tester.pumpWidget(LifeOSApp(controller: controller));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nav_plans')));
+      await tester.pumpAndSettle();
       final check = find.byKey(Key('task_${ids.first}'));
       await tester.ensureVisible(check);
       await tester.pumpAndSettle();
@@ -107,6 +127,8 @@ void main() {
       await tester.tap(check);
       await tester.pumpAndSettle();
       expect(tester.widget<Checkbox>(check).value, isFalse);
+      await tester.ensureVisible(check);
+      await tester.pumpAndSettle();
       await tester.tap(check);
       await tester.pumpAndSettle();
       expect(tester.widget<Checkbox>(check).value, isTrue);
