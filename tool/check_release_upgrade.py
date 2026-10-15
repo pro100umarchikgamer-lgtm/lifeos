@@ -48,7 +48,10 @@ def screenshot(name):
 def start():
     adb('shell','am','force-stop',APP);adb('shell','am','start','-n',APP+'/.MainActivity');time.sleep(2)
 def uid():
-    found=re.search(rb'userId=(\d+)',adb('shell','dumpsys','package',APP));assert found;return found[1].decode()
+    listing=adb('shell','cmd','package','list','packages','-U',APP)
+    found=re.search(rb'^package:app\.lifeos\.lifeos\s+uid:(\d+)\s*$',listing,re.M)
+    if not found:raise RuntimeError('Cannot read installed package UID: '+listing.decode())
+    return found[1].decode()
 def scroll(up=True):
     raw=adb('shell','wm','size').decode();width,height=map(int,re.findall(r'(\d+)x(\d+)',raw)[-1]);x=str(width//2)
     y1,y2=(int(height*.78),int(height*.30)) if up else (int(height*.30),int(height*.78))
@@ -79,4 +82,9 @@ def main():
             adb('shell','input','keyevent','4')
         evidence['screenshots']='real Android 35 release app; synthetic data only'
     OUT.mkdir(exist_ok=True);(OUT/'upgrade-result.json').write_text(json.dumps(evidence,indent=2)+'\n');print(json.dumps(evidence))
-if __name__=='__main__':main()
+if __name__=='__main__':
+    try:main()
+    except Exception:
+        try:screenshot('failure')
+        except Exception:pass
+        raise
