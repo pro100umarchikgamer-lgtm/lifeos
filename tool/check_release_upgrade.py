@@ -61,6 +61,8 @@ def main():
     adb('install','-r',str(old),timeout=90);owner=uid();start()
     tap('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');find(PROBE)
     screenshot('85001-control-task')
+    for kind,amount in [('Expense','12.50'),('Income','100.00')]:
+        tap('Today');tap(kind);tap(editable=True);adb('shell','input','text',amount);adb('shell','input','keyevent','4');tap('Save')
     adb('install','-r',str(args.candidate),timeout=90)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
@@ -73,7 +75,7 @@ def main():
             adb('shell','cmd','uimode','night','no' if theme=='light' else 'yes');time.sleep(.7)
             tap('Today');screenshot('today-'+theme)
             tap('Finances');screenshot('finances-'+theme);scroll();screenshot('categories-'+theme);scroll(False)
-            tap('Profile');tap('Account and family');screenshot('account-'+theme)
+            tap('Profile');tap('Account and family');tap('Create account');screenshot('registration-'+theme)
             adb('shell','input','keyevent','4')
         evidence['screenshots']='real Android 35 release app; synthetic data only'
     OUT.mkdir(exist_ok=True);(OUT/'upgrade-result.json').write_text(json.dumps(evidence,indent=2)+'\n');print(json.dumps(evidence))

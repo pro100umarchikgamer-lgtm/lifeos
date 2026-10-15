@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
+import 'package:lifeos/ui/app.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart' as sql;
 import 'package:lifeos/platform/native_bridge.dart';
 
@@ -95,6 +97,21 @@ void main() {
         (await store.records()).singleWhere((r) => r.id == plain).completed,
         isTrue,
       );
+      await controller.load();
+      await tester.pumpWidget(LifeOSApp(controller: controller));
+      await tester.pumpAndSettle();
+      final check = find.byKey(Key('task_${ids.first}'));
+      await tester.ensureVisible(check);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Checkbox>(check).value, isTrue);
+      await tester.tap(check);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Checkbox>(check).value, isFalse);
+      await tester.tap(check);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Checkbox>(check).value, isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
       await store.close();
       store = await LocalStore.open(name: name);
