@@ -8,4 +8,3 @@ Type=oneshot
 WorkingDirectory=/opt/uladim
 UMask=0077
 ExecStart=/bin/bash /opt/uladim/scripts/backup.sh /etc/uladim/backup.key /var/backups/uladim
-

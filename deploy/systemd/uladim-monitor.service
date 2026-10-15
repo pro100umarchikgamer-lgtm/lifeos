@@ -7,4 +7,3 @@ After=docker.service network-online.target
 Type=oneshot
 WorkingDirectory=/opt/uladim
 ExecStart=/bin/bash /opt/uladim/scripts/monitor.sh /var/backups/uladim
-
