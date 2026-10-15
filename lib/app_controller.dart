@@ -234,8 +234,6 @@ class AppController extends ChangeNotifier {
             await database.offlineData(tables: {OfflineTable.habitChecks}),
           );
         }
-        }
-        }
       }
       final now = DateTime.now();
       final payload = <Map<String, Object?>>[];
