@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Чыгаша чегин коюп, калганын көзөмөлдөңүз.",
     "ux_empty_categories": "Чыгашаларды пайдалуу категорияларга бөлүңүз.",
     "ux_empty_importBatches": "Ырасталган көчүрмө импорттору ушул жерде көрүнөт.",
-    "search_options": "Тизмеден издөө"
+    "search_options": "Тизмеден издөө",
+    "family_error_registration_closed": "Жабык сыноо: чакырылган катышуучулар гана каттала алышат."
   },
   "plurals": {
     "record_count": {

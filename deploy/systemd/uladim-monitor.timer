@@ -1,0 +1,10 @@
+[Unit]
+Description=Check ULADIM services every five minutes
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=5m
+Unit=uladim-monitor.service
+
+[Install]
+WantedBy=timers.target

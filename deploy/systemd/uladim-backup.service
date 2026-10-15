@@ -1,0 +1,11 @@
+[Unit]
+Description=ULADIM encrypted PostgreSQL backup (no retention deletion)
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/uladim
+UMask=0077
+ExecStart=/bin/bash /opt/uladim/scripts/backup.sh /etc/uladim/backup.key /var/backups/uladim
+

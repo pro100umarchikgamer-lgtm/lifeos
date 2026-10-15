@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily ULADIM encrypted backup
+
+[Timer]
+OnCalendar=*-*-* 03:20:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+Unit=uladim-backup.service
+
+[Install]
+WantedBy=timers.target

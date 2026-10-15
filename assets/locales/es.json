@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Establece un límite de gasto y consulta lo que queda.",
     "ux_empty_categories": "Agrupa tus gastos en categorías útiles.",
     "ux_empty_importBatches": "Aquí aparecerán tus importaciones de extractos confirmadas.",
-    "search_options": "Buscar en la lista"
+    "search_options": "Buscar en la lista",
+    "family_error_registration_closed": "Prueba privada: solo las personas invitadas pueden registrarse."
   },
   "plurals": {
     "record_count": {

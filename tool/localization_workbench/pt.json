@@ -661,5 +661,6 @@
   "ux_empty_plannedPayments": "Planeie um pagamento e confirme-o quando acontecer.",
   "ux_empty_budgets": "Defina um limite de despesas e veja o que resta.",
   "ux_empty_categories": "Agrupe as despesas em categorias úteis.",
-  "ux_empty_importBatches": "As importações de extratos confirmadas aparecerão aqui."
+  "ux_empty_importBatches": "As importações de extratos confirmadas aparecerão aqui.",
+  "family_error_registration_closed": "Teste privado: apenas as pessoas convidadas podem registar-se."
 }

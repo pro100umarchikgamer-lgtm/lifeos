@@ -661,5 +661,6 @@
   "ux_empty_plannedPayments": "Planen Sie eine Zahlung und bestätigen Sie sie nach der Ausführung.",
   "ux_empty_budgets": "Legen Sie eine Ausgabengrenze fest und sehen Sie den Restbetrag.",
   "ux_empty_categories": "Ordnen Sie Ausgaben in hilfreiche Kategorien.",
-  "ux_empty_importBatches": "Ihre bestätigten Kontoauszugsimporte erscheinen hier."
+  "ux_empty_importBatches": "Ihre bestätigten Kontoauszugsimporte erscheinen hier.",
+  "family_error_registration_closed": "Geschlossener Test: Nur eingeladene Personen können sich registrieren."
 }

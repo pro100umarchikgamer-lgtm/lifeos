@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Xarajat chegarasini belgilang va qoldiqni kuzating.",
     "ux_empty_categories": "Xarajatlaringizni qulay toifalarga ajrating.",
     "ux_empty_importBatches": "Tasdiqlangan ko‘chirma importlari shu yerda ko‘rinadi.",
-    "search_options": "Ro‘yxatdan qidirish"
+    "search_options": "Ro‘yxatdan qidirish",
+    "family_error_registration_closed": "Yopiq sinov: faqat taklif qilingan ishtirokchilar ro‘yxatdan o‘ta oladi."
   },
   "plurals": {
     "record_count": {

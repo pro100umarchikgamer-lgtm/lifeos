@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Шығын шегін орнатып, қалғанын бақылаңыз.",
     "ux_empty_categories": "Шығындарды ыңғайлы санаттарға бөліңіз.",
     "ux_empty_importBatches": "Расталған үзінді көшірме импорттары осы жерде көрінеді.",
-    "search_options": "Тізімнен іздеу"
+    "search_options": "Тізімнен іздеу",
+    "family_error_registration_closed": "Жабық тестілеу: тек шақырылған қатысушылар тіркеле алады."
   },
   "plurals": {
     "record_count": {

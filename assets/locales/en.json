@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Set a spending limit and see what remains.",
     "ux_empty_categories": "Group your spending into useful categories.",
     "ux_empty_importBatches": "Your confirmed statement imports will appear here.",
-    "search_options": "Search options"
+    "search_options": "Search options",
+    "family_error_registration_closed": "Closed testing: registration is available only to invited testers."
   },
   "plurals": {
     "record_count": {

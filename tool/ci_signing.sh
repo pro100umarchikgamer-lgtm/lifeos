@@ -71,5 +71,7 @@ LIFEOS_APK_CERT
 aapt=$(dirname "$apksigner")/aapt
 "$aapt" dump badging "$apk" > apk-manifest.txt
 grep -q "package: name='app.lifeos.lifeos' versionCode='$version_code'" apk-manifest.txt
+grep -q "application-label:'ULADIM'" apk-manifest.txt
 printf 'commit=%s\napplicationId=app.lifeos.lifeos\nversionCode=%s\ncertificateSHA256=%s\n' "$GITHUB_SHA" "$version_code" "$apk_cert" > apk-identity.txt
+printf 'displayName=ULADIM\napiOrigin=%s\n' "${LIFEOS_API_ORIGIN:-unconfigured}" >> apk-identity.txt
 cat apk-identity.txt

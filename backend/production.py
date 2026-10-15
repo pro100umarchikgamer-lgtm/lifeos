@@ -39,6 +39,13 @@ class Application:
             try:address=str(ipaddress.ip_address(candidate))
             except ValueError:pass
         return address
+    def check_registration(self, body):
+        # Only new account creation is gated. Existing sessions, account recovery,
+        # family permissions and durable sync continue when the allowlist changes.
+        if self.settings.registration_mode == 'open': return
+        email = body.get('email')
+        if not isinstance(email, str) or email.casefold() not in self.settings.registration_allowlist:
+            raise Failure('registration_closed',403)
     def limit(self,environ,path):
         now=int(self.backend.clock())
         category='auth' if path.startswith('/v1/auth/') else 'api'
@@ -81,6 +88,7 @@ class Application:
                     raw=environ['wsgi.input'].read(length)
                     if len(raw)!=length:raise Failure('invalid_input')
                     body=decode_json(raw)
+                if method=='POST' and path=='/v1/auth/register':self.check_registration(body)
                 target=path+('?' +environ['QUERY_STRING'] if environ.get('QUERY_STRING') else '')
                 value=dispatch(self.backend,method,target,body,environ.get('HTTP_AUTHORIZATION',''))
         except Failure as error:status=error.status;value={'error':error.code}

@@ -20,6 +20,7 @@ class PlatformPrivacyTests(unittest.TestCase):
                 exec(compile(injected, 'configure_platforms.py', 'exec'), {'test_root': directory})
             app = ET.parse(manifest).find('application')
             namespace = '{http://schemas.android.com/apk/res/android}'
+            self.assertEqual(app.attrib[namespace + 'label'], 'ULADIM')
             self.assertEqual(app.attrib[namespace + 'allowBackup'], 'false')
             self.assertEqual(app.attrib[namespace + 'fullBackupContent'], 'false')
             rules = ET.parse(root / 'android/app/src/main/res/xml/data_extraction_rules.xml')

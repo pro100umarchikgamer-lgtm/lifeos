@@ -661,5 +661,6 @@
   "ux_empty_plannedPayments": "Prévoyez un paiement et confirmez-le lorsqu’il a lieu.",
   "ux_empty_budgets": "Fixez un plafond de dépenses et voyez ce qu’il reste.",
   "ux_empty_categories": "Regroupez vos dépenses en catégories utiles.",
-  "ux_empty_importBatches": "Vos imports de relevés confirmés apparaîtront ici."
+  "ux_empty_importBatches": "Vos imports de relevés confirmés apparaîtront ici.",
+  "family_error_registration_closed": "Test privé : seules les personnes invitées peuvent s’inscrire."
 }

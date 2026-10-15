@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Установіть ліміт витрат і стежте за залишком.",
     "ux_empty_categories": "Об’єднайте витрати в зручні категорії.",
     "ux_empty_importBatches": "Тут з’являться підтверджені імпорти виписок.",
-    "search_options": "Пошук у списку"
+    "search_options": "Пошук у списку",
+    "family_error_registration_closed": "Закрите тестування: реєстрація доступна лише запрошеним учасникам."
   },
   "plurals": {
     "record_count": {

@@ -63,6 +63,21 @@ jobs:
           docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready',timeout=3)"
           docker compose exec -T api python -c "import os,psycopg; db=psycopg.connect(os.environ['DATABASE_URL']); assert db.execute('SELECT rolsuper FROM pg_roles WHERE rolname=current_user').fetchone()==(False,)"
           docker compose exec -T mail python -c "import pathlib,time; assert time.time()-pathlib.Path('/tmp/lifeos-mail.heartbeat').stat().st_mtime<120"
+      - name: Closed registration is enforced by the running API
+        run: |
+          docker compose exec -T mail python - <<'PY'
+          import json, urllib.request, urllib.error
+          request = urllib.request.Request('http://api:8000/v1/auth/register',
+              data=json.dumps({'email':'closed-test@example.test','password':'synthetic-test-password'}).encode(),
+              headers={'Content-Type':'application/json','X-Forwarded-Proto':'https'})
+          try:
+              urllib.request.urlopen(request, timeout=10)
+          except urllib.error.HTTPError as error:
+              assert error.code == 403
+              assert json.load(error) == {'error':'registration_closed'}
+          else:
+              raise SystemExit('Closed registration unexpectedly accepted a new account')
+          PY
       - name: Exercise operator backup and safe restore scripts
         run: |
           set -euo pipefail

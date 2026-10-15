@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import ipaddress
 import os
+import re
 from cryptography.fernet import Fernet
 
 @dataclass(frozen=True)
@@ -18,6 +19,8 @@ class Settings:
     trusted_proxy_cidrs: str = '172.30.30.0/24'
     require_https: bool = True
     pool_size: int = 4
+    registration_mode: str = 'closed'
+    registration_allowlist: tuple[str, ...] = ()
 
     @classmethod
     def load(cls, env=None):
@@ -32,7 +35,12 @@ class Settings:
             smtp_port=int(e.get('SMTP_PORT','587')), smtp_tls=e.get('SMTP_TLS','starttls'),
             smtp_username=e.get('SMTP_USERNAME',''), smtp_password=e.get('SMTP_PASSWORD',''),
             email_from=required('EMAIL_FROM'), trusted_proxy_cidrs=e.get('TRUSTED_PROXY_CIDRS','172.30.30.0/24'),
-            require_https=e.get('REQUIRE_HTTPS','true')=='true', pool_size=int(e.get('DB_POOL_SIZE','4')))
+            require_https=e.get('REQUIRE_HTTPS','true')=='true', pool_size=int(e.get('DB_POOL_SIZE','4')),
+            registration_mode=e.get('REGISTRATION_MODE','closed'),
+            registration_allowlist=tuple(v.strip().casefold() for v in e.get('REGISTRATION_ALLOWLIST','').split(',') if v.strip()))
+        if value.registration_mode not in ('closed','open'): raise ValueError('Invalid REGISTRATION_MODE')
+        if any(len(v)>254 or not re.fullmatch(r'[^\s@,]+@[^\s@,]+\.[^\s@,]+',v) or '*' in v for v in value.registration_allowlist):
+            raise ValueError('REGISTRATION_ALLOWLIST requires exact email addresses')
         if not value.database_url.startswith(('postgresql://','postgres://')): raise ValueError('PostgreSQL DATABASE_URL required')
         Fernet(value.email_queue_key.encode())
         if len(value.rate_limit_key)<32: raise ValueError('RATE_LIMIT_KEY must contain at least 32 characters')

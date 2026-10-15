@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Imposta un limite di spesa e controlla quanto rimane.",
     "ux_empty_categories": "Raggruppa le spese in categorie utili.",
     "ux_empty_importBatches": "Qui appariranno gli import degli estratti conto confermati.",
-    "search_options": "Cerca nell’elenco"
+    "search_options": "Cerca nell’elenco",
+    "family_error_registration_closed": "Test privato: possono registrarsi solo le persone invitate."
   },
   "plurals": {
     "record_count": {

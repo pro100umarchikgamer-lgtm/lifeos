@@ -667,7 +667,8 @@
     "ux_empty_budgets": "Սահմանեք ծախսի սահմանաչափը և հետևեք մնացորդին։",
     "ux_empty_categories": "Խմբավորեք ծախսերը օգտակար կատեգորիաներով։",
     "ux_empty_importBatches": "Այստեղ կհայտնվեն քաղվածքների հաստատված ներմուծումները։",
-    "search_options": "Որոնել ցանկում"
+    "search_options": "Որոնել ցանկում",
+    "family_error_registration_closed": "Փակ փորձարկում․ գրանցվել կարող են միայն հրավիրված մասնակիցները։"
   },
   "plurals": {
     "record_count": {

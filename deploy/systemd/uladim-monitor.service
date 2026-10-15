@@ -1,0 +1,10 @@
+[Unit]
+Description=ULADIM API, mail worker, disk and backup health
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/uladim
+ExecStart=/bin/bash /opt/uladim/scripts/monitor.sh /var/backups/uladim
+
