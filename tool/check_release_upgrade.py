@@ -121,7 +121,7 @@ def main():
             adb('shell','cmd','uimode','night','no' if theme=='light' else 'yes');time.sleep(.7)
             tap('Today');screenshot('today-'+theme)
             tap('Finances');screenshot('finances-'+theme);scroll();screenshot('categories-'+theme);scroll(False)
-            tap('Profile');tap('Account and family');tap('Create account');screenshot('registration-'+theme)
+            tap('Today');tap('Profile');tap('Account and family');tap('Create account');screenshot('registration-'+theme)
             adb('shell','input','keyevent','4')
         evidence['screenshots']='real Android 35 release app; synthetic data only'
     OUT.mkdir(exist_ok=True);(OUT/'upgrade-result.json').write_text(json.dumps(evidence,indent=2)+'\n');print(json.dumps(evidence))
