@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "fr",
   "nativeName": "Français",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "Authentification à deux facteurs",
     "account_mfa_setup": "Ajoutez cette clé à votre application d’authentification, puis saisissez son code actuel à six chiffres.",
     "account_mfa_recovery": "Conservez ces codes de récupération hors ligne. Chacun fonctionne une fois avec votre mot de passe. Après la configuration, connectez-vous avec un nouveau code d’authentification.",
-    "account_mfa_disable": "Désactiver l’authentification à deux facteurs"
+    "account_mfa_disable": "Désactiver l’authentification à deux facteurs",
+    "account_transfer": "Transférer la propriété de l’espace familial",
+    "account_accept_transfer": "Accepter la propriété de l’espace familial"
   },
   "plurals": {
     "record_count": {

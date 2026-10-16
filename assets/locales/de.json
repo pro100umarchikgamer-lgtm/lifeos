@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "de",
   "nativeName": "Deutsch",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "Zwei-Faktor-Authentifizierung",
     "account_mfa_setup": "Fügen Sie diesen Schlüssel Ihrer Authenticator-App hinzu und geben Sie deren aktuellen sechsstelligen Code ein.",
     "account_mfa_recovery": "Bewahren Sie diese Wiederherstellungscodes offline auf. Jeder gilt einmal zusammen mit Ihrem Passwort. Melden Sie sich nach der Einrichtung mit einem neuen Authenticator-Code an.",
-    "account_mfa_disable": "Zwei-Faktor-Authentifizierung deaktivieren"
+    "account_mfa_disable": "Zwei-Faktor-Authentifizierung deaktivieren",
+    "account_transfer": "Familieninhaberschaft übertragen",
+    "account_accept_transfer": "Familieninhaberschaft übernehmen"
   },
   "plurals": {
     "record_count": {

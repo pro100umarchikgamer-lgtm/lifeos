@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "uz-Latn",
   "nativeName": "O‘zbekcha",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "Ikki bosqichli himoya",
     "account_mfa_setup": "Bu kalitni autentifikator ilovasiga qo‘shing, so‘ng undagi joriy olti xonali kodni kiriting.",
     "account_mfa_recovery": "Tiklash kodlarini oflayn saqlang. Har biri parol bilan bir marta ishlaydi. Sozlashdan keyin autentifikatorning yangi kodi bilan kiring.",
-    "account_mfa_disable": "Ikki bosqichli himoyani o‘chirish"
+    "account_mfa_disable": "Ikki bosqichli himoyani o‘chirish",
+    "account_transfer": "Oila egaligini topshirish",
+    "account_accept_transfer": "Oila egaligini qabul qilish"
   },
   "plurals": {
     "record_count": {

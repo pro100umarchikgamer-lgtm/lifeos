@@ -26,7 +26,12 @@ void main() {
             home: AccountCenter(controller: c, pack: pack)));
           await tester.pumpAndSettle();
           expect(find.text(pack.t('account_access')), findsOneWidget);
+          await tester.ensureVisible(find.text(pack.t('account_privacy')));
+          await tester.pumpAndSettle();
           expect(find.text(pack.t('account_privacy')), findsOneWidget);
+          final target = find.ancestor(of: find.text(pack.t('account_privacy')), matching: find.byType(ListTile));
+          expect(tester.getSize(target).height, greaterThanOrEqualTo(48));
+          expect(tester.getRect(find.text(pack.t('account_privacy'))).bottom, lessThanOrEqualTo(844));
           expect(tester.takeException(), isNull, reason: pack.tag);
           await tester.pumpWidget(const SizedBox());
         }

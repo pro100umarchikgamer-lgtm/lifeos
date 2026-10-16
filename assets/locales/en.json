@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "Two-factor authentication",
     "account_mfa_setup": "Add this key to your authenticator app, then enter its current six-digit code.",
     "account_mfa_recovery": "Save these recovery codes offline. Each works once with your password. Use a new authenticator code to sign in after setup.",
-    "account_mfa_disable": "Turn off two-factor authentication"
+    "account_mfa_disable": "Turn off two-factor authentication",
+    "account_transfer": "Transfer family ownership",
+    "account_accept_transfer": "Accept family ownership"
   },
   "plurals": {
     "record_count": {

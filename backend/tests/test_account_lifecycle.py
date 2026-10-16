@@ -64,9 +64,50 @@ class LifecycleScenarios:
             self.assertIsNone(db.execute('SELECT body FROM notes WHERE id=?',(ids['private'],)).fetchone())
             self.assertEqual(db.execute('SELECT deleted FROM records WHERE id=?',(ids['private'],)).fetchone()['deleted'],1)
 
+    def test_shared_finance_reference_stops_cleanup_without_history_loss(self):
+        aid=str(uuid.uuid4());tid=str(uuid.uuid4())
+        operations=[{'id':str(uuid.uuid4()),'record_id':aid,'action':'record.put','revision':0,'kind':'account','visibility':'private','audience':[],'data':{'name':'Private account','currency':'USD','opening_minor':10000}},
+                    {'id':str(uuid.uuid4()),'record_id':tid,'action':'record.put','revision':0,'kind':'transaction','visibility':'shared','audience':[],'data':{'kind':'expense','amount_minor':100,'currency':'USD','date':'2026-10-16','label':'Shared expense','account_id':aid}}]
+        self.assertTrue(all(r['status']=='accepted' for r in self.backend.batch(self.p2,self.wid,operations)['results']))
+        self.lifecycle.request_deletion(self.p2,PASSWORD,'DELETE');self.now+=86401
+        self.lifecycle.process_one_deletion()
+        self.assertEqual(self.lifecycle.deletion_status(self.p2)['request']['last_error'],'shared_reference_review_required')
+        with self.backend.connect() as db:
+            self.assertEqual(db.execute('SELECT opening_minor FROM accounts WHERE id=?',(aid,)).fetchone()['opening_minor'],10000)
+            self.assertEqual(db.execute('SELECT amount_minor FROM transactions WHERE id=?',(tid,)).fetchone()['amount_minor'],100)
+            self.assertEqual(db.execute('SELECT email FROM users WHERE id=?',(self.p2['id'],)).fetchone()['email'],self.p2['email'])
+
+    def test_failed_cleanup_rolls_back_and_preserves_payload_for_review(self):
+        rid=str(uuid.uuid4())
+        self.backend.batch(self.p2,self.wid,[{'id':str(uuid.uuid4()),'record_id':rid,'action':'record.put','revision':0,'kind':'note','visibility':'private','audience':[],'data':{'body':'preserve on failure'}}])
+        self.lifecycle.request_deletion(self.p2,PASSWORD,'DELETE');self.now+=86401
+        from unittest.mock import patch
+        with patch.object(self.backend,'_audit',side_effect=RuntimeError('synthetic detail must not be stored')):
+            self.assertTrue(self.lifecycle.process_one_deletion())
+        state=self.lifecycle.deletion_status(self.p2)['request']
+        self.assertEqual(state['state'],'attention');self.assertEqual(state['last_error'],'RuntimeError')
+        with self.backend.connect() as db:
+            self.assertEqual(db.execute('SELECT body FROM notes WHERE id=?',(rid,)).fetchone()['body'],'preserve on failure')
+            self.assertEqual(db.execute('SELECT email FROM users WHERE id=?',(self.p2['id'],)).fetchone()['email'],self.p2['email'])
+
+    def test_deletion_cleans_only_requesting_users_support_threads(self):
+        from backend.support import Support
+        from backend.control import Control
+        support=Support(self.backend,Control(self.backend))
+        own=support.create(self.p2,'privacy','Private request','Synthetic personal support body')['ticket_id']
+        other=support.create(self.p1,'bug','Keep this ticket','Other account support body')['ticket_id']
+        self.lifecycle.request_deletion(self.p2,PASSWORD,'DELETE');self.now+=86401
+        self.lifecycle.process_one_deletion()
+        with self.backend.connect() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM support_tickets WHERE id=?',(own,)).fetchone())
+            self.assertIsNone(db.execute('SELECT 1 FROM support_messages WHERE ticket_id=?',(own,)).fetchone())
+        self.assertEqual(support.read(self.p1,other)['messages'][0]['body'],'Other account support body')
+
     def test_creator_deletion_requires_consented_parent_transfer(self):
         with self.assertRaises(Failure):self.lifecycle.request_deletion(self.p1,PASSWORD,'DELETE')
         tid=self.lifecycle.transfer(self.p1,self.wid,self.p2['id'],PASSWORD)['transfer_id']
+        self.assertEqual(self.lifecycle.deletion_status(self.p2)['incoming_transfers'][0]['id'],tid)
+        self.assertEqual(self.lifecycle.deletion_status(self.p1)['incoming_transfers'],[])
         with self.assertRaises(Failure):self.lifecycle.accept_transfer(self.p1,tid,PASSWORD)
         self.lifecycle.accept_transfer(self.p2,tid,PASSWORD)
         with self.assertRaises(Failure):self.lifecycle.accept_transfer(self.p2,tid,PASSWORD)

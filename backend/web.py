@@ -162,6 +162,8 @@ class Web:
             if action == 'support': return self.support.list(actor)
             if action == 'thread': return self.support.read(actor, q.get('id', [''])[0])
         elif method == 'POST':
+            if action == 'transfer':return lifecycle.transfer(actor,b.get('workspace_id'),b.get('user_id'),b.get('password'))
+            if action == 'accept-transfer':return lifecycle.accept_transfer(actor,b.get('transfer_id'),b.get('password'))
             if action == 'mfa/begin':return mfa.begin(actor,b.get('password'))
             if action == 'mfa/enable':return mfa.enable(actor,b.get('password'),b.get('enrollment'),b.get('code'))
             if action == 'mfa/disable':return mfa.disable(actor,b.get('password'),b.get('code'))

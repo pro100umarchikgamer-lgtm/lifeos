@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "pt",
   "nativeName": "Português",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "Autenticação de dois fatores",
     "account_mfa_setup": "Adicione esta chave à sua aplicação de autenticação e introduza o código atual de seis dígitos.",
     "account_mfa_recovery": "Guarde estes códigos de recuperação offline. Cada um funciona uma vez com a sua palavra-passe. Após a configuração, inicie sessão com um novo código da aplicação de autenticação.",
-    "account_mfa_disable": "Desativar autenticação de dois fatores"
+    "account_mfa_disable": "Desativar autenticação de dois fatores",
+    "account_transfer": "Transferir a propriedade da família",
+    "account_accept_transfer": "Aceitar a propriedade da família"
   },
   "plurals": {
     "record_count": {

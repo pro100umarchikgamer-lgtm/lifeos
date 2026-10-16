@@ -75,7 +75,7 @@ def main():
                         page.get_by_role('button',name='Продолжить',exact=True).click()
                         expect(page.get_by_role('heading',name='Обзор сервиса')).to_be_visible()
                         page.screenshot(path=str(OUT/'control_dashboard_light.png'),full_page=True)
-                        page.get_by_role('button',name='Пользователи',exact=True).click()
+                        page.get_by_label('Раздел Control',exact=True).select_option('users')
                         page.get_by_label('ID или почта',exact=True).fill('tester@example.test')
                         page.get_by_role('button',name='Найти',exact=True).click()
                         expect(page.get_by_role('heading',name='tester@example.test')).to_be_visible()

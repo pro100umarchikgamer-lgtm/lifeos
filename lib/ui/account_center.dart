@@ -24,17 +24,21 @@ class AccountCenter extends StatelessWidget {
       const SizedBox(height: 12),
       Text(pack.t('account_cloud_required')),
       const SizedBox(height: 20),
-      for (final section in _AccountSection.values)
-        Padding(padding: const EdgeInsets.only(bottom: 12), child: LifeCard(
-          child: ListTile(contentPadding: EdgeInsets.zero,
-            leading: Icon(section.icon), title: Text(pack.t(section.key)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push<void>(MaterialPageRoute(
-              builder: (_) => _AccountSectionPage(controller: controller,
-                pack: pack, section: section, request: request),
-            )),
-          ),
-        )),
+      LifeCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Column(children: [
+          for (final section in _AccountSection.values) ...[
+            if (section != _AccountSection.values.first) const Divider(height: 1),
+            ListTile(contentPadding: EdgeInsets.zero, minVerticalPadding: 12,
+              leading: Icon(section.icon), title: Text(pack.t(section.key)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push<void>(MaterialPageRoute(
+                builder: (_) => _AccountSectionPage(controller: controller,
+                  pack: pack, section: section, request: request),
+              )),
+            ),
+          ],
+        ]),
+      ),
     ])),
   );
 }
@@ -225,6 +229,28 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
+  Future<void> transferOwnership(Json transfer, {bool accept = false}) async {
+    final label = t(accept ? 'account_accept_transfer' : 'account_transfer');
+    final approved = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: Text(label), content: Text(transfer['name'] as String),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('confirm')))],
+    ));
+    if (approved != true || !mounted) return;
+    final password = await ask(t('family_password'), secret: true);
+    if (password == null || !mounted) return;
+    await run(() async {
+      await request('/v1/account/lifecycle/${accept ? 'accept-transfer' : 'transfer'}', body: {
+        'password': password,
+        if (accept) 'transfer_id': transfer['id'] else ...{
+          'workspace_id': transfer['id'], 'user_id': transfer['eligible_parent_id'],
+        },
+      });
+      final result = await request(path);
+      if (mounted) setState(() => data = result);
+    });
+  }
+
   Future<void> showPrivateMaterial(String title, String body, String material) async {
     await showDialog<void>(context: context, barrierDismissible: false,
       builder: (ctx) => AlertDialog(title: Text(title), scrollable: true,
@@ -314,6 +340,13 @@ class _AccountSectionState extends State<_AccountSectionPage> {
           const SizedBox(height: 12),
           OutlinedButton.icon(onPressed: busy ? null : emailChange, icon: const Icon(Icons.alternate_email), label: Text(t('account_email_change'))),
           const SizedBox(height: 20), Text(t('account_delete_notice')),
+          for (final raw in data!['ownership_transfer_required'] as List? ?? [])
+            if (object(raw)['eligible_parent_id'] != null) ListTile(
+              title: Text(object(raw)['name'] as String), subtitle: Text(t('account_transfer')),
+              trailing: const Icon(Icons.swap_horiz), onTap: busy ? null : () => transferOwnership(object(raw))),
+          for (final raw in data!['incoming_transfers'] as List? ?? []) ListTile(
+            title: Text(object(raw)['name'] as String), subtitle: Text(t('account_accept_transfer')),
+            trailing: const Icon(Icons.handshake_outlined), onTap: busy ? null : () => transferOwnership(object(raw), accept: true)),
           if (data!['request'] != null) Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(date(object(data!['request'])['due_at']))),
           const SizedBox(height: 16),
           OutlinedButton.icon(onPressed: busy ? null : () => deletion(false), icon: const Icon(Icons.person_remove_outlined), label: Text(t('account_delete'))),

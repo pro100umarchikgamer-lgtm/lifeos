@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "uz-Cyrl",
   "nativeName": "Ўзбекча",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "Икки босқичли ҳимоя",
     "account_mfa_setup": "Бу калитни аутентификатор иловасига қўшинг, сўнг ундаги жорий олти хонали кодни киритинг.",
     "account_mfa_recovery": "Тиклаш кодларини офлайн сақланг. Ҳар бири парол билан бир марта ишлайди. Созлашдан кейин аутентификаторнинг янги коди билан киринг.",
-    "account_mfa_disable": "Икки босқичли ҳимояни ўчириш"
+    "account_mfa_disable": "Икки босқичли ҳимояни ўчириш",
+    "account_transfer": "Оила эгалигини топшириш",
+    "account_accept_transfer": "Оила эгалигини қабул қилиш"
   },
   "plurals": {
     "record_count": {

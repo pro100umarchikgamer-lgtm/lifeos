@@ -67,7 +67,12 @@ class AccountLifecycle:
         with self.backend.connect() as db:
             job = db.execute('SELECT id,requested_at,due_at,state,last_error FROM deletion_jobs WHERE user_id=?', (actor['id'],)).fetchone()
             families = db.execute("SELECT w.id,w.name FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (actor['id'], actor['id'])).fetchall()
-        return {'request': dict(job) if job else None, 'ownership_transfer_required': [dict(w) for w in families], 'local_data_deleted': False, 'backup_erasure': 'operator_retention_review_required'}
+            transfers=db.execute("SELECT t.id,t.workspace_id,w.name,t.from_id,t.expires_at FROM ownership_transfers t JOIN workspaces w ON w.id=t.workspace_id JOIN memberships m ON m.workspace_id=w.id AND m.user_id=t.to_id WHERE t.to_id=? AND t.expires_at>? AND t.accepted_at=0 AND w.creator_id=t.from_id AND w.dissolved=0 AND m.role='parent' AND m.active=1",(actor['id'],int(self.backend.clock()))).fetchall()
+            outgoing=[]
+            for family in families:
+                parent=db.execute("SELECT user_id FROM memberships WHERE workspace_id=? AND user_id<>? AND role='parent' AND active=1 ORDER BY user_id LIMIT 1",(family['id'],actor['id'])).fetchone()
+                outgoing.append(dict(family,eligible_parent_id=parent['user_id'] if parent else None))
+        return {'request': dict(job) if job else None, 'ownership_transfer_required': outgoing, 'incoming_transfers':[dict(t) for t in transfers], 'local_data_deleted': False, 'backup_erasure': 'operator_retention_review_required'}
 
     def request_deletion(self, actor, password, confirmation):
         require(confirmation == 'DELETE', 'confirmation_required')
@@ -117,11 +122,24 @@ class AccountLifecycle:
         return {'transferred': True}
 
     def process_one_deletion(self):
+        selected=[]
+        try:
+            return self._process_one_deletion(selected)
+        except Exception as error:
+            if not selected:raise
+            # Rollback all payload changes before recording a bounded, non-secret
+            # failure state. A bad request must not stop transactional mail delivery.
+            with self.backend.transaction() as db:
+                db.execute("UPDATE deletion_jobs SET state='attention',last_error=? WHERE id=? AND state='pending'", (type(error).__name__,selected[0]))
+            return True
+
+    def _process_one_deletion(self, selected):
         """Worker consumes only explicit, due user requests; no automatic history pruning."""
         now = int(self.backend.clock())
         with self.backend.transaction() as db:
             job = db.execute("SELECT * FROM deletion_jobs WHERE state='pending' AND due_at<=? ORDER BY due_at,id LIMIT 1", (now,)).fetchone()
             if not job: return False
+            selected.append(job['id'])
             uid = job['user_id']
             # Recheck authority at execution, including families created during grace.
             blocked = db.execute("SELECT 1 FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (uid, uid)).fetchone()
@@ -151,6 +169,13 @@ class AccountLifecycle:
             for table in ('verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa'):
                 db.execute('DELETE FROM '+table+' WHERE user_id=?', (uid,))
             db.execute('DELETE FROM grants WHERE user_id=?', (uid,))
+            db.execute('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid,))
+            db.execute('DELETE FROM support_tickets WHERE user_id=?', (uid,))
+            db.execute('DELETE FROM invitations WHERE email=? AND used_by IS NULL', (user['email'],))
+            db.execute('DELETE FROM staff_invitations WHERE email=? OR issued_by IN (SELECT id FROM staff WHERE user_id=?)', (user['email'],uid))
+            db.execute('UPDATE invitations SET email=? WHERE email=?', ('deleted-'+uid+'@invalid.example',user['email']))
+            db.execute('DELETE FROM staff_recovery WHERE staff_id IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
+            db.execute('UPDATE staff SET mfa_secret=? WHERE user_id=?', (b'',uid))
             db.execute('UPDATE memberships SET active=0,revision=revision+1 WHERE user_id=?', (uid,))
             db.execute("UPDATE devices SET label='Deleted account' WHERE user_id=?", (uid,))
             # Per-user pseudonym keeps shared FK history valid; no login is possible.

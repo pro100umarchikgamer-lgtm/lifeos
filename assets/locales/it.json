@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "it",
   "nativeName": "Italiano",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "Autenticazione a due fattori",
     "account_mfa_setup": "Aggiungi questa chiave alla tua app di autenticazione, poi inserisci il codice corrente a sei cifre.",
     "account_mfa_recovery": "Conserva questi codici di recupero offline. Ognuno funziona una volta insieme alla password. Dopo la configurazione, accedi con un nuovo codice dell’app di autenticazione.",
-    "account_mfa_disable": "Disattiva autenticazione a due fattori"
+    "account_mfa_disable": "Disattiva autenticazione a due fattori",
+    "account_transfer": "Trasferisci la proprietà della famiglia",
+    "account_accept_transfer": "Accetta la proprietà della famiglia"
   },
   "plurals": {
     "record_count": {

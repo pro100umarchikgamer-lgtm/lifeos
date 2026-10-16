@@ -429,12 +429,14 @@ class _FamilyPageState extends State<FamilyPage> {
               const SizedBox(height: 6),
               TextField(
                 controller: email,
+                onChanged: (_) => setState(() {}),
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
                 textInputAction: TextInputAction.next,
                 autocorrect: false,
                 decoration: const InputDecoration(),
               ),
+              if (!(register && c.pendingRegistrationEmail == email.text.trim())) ...[
               const SizedBox(height: 12),
               Text(t('family_password')),
               const SizedBox(height: 6),
@@ -473,6 +475,7 @@ class _FamilyPageState extends State<FamilyPage> {
                   enableSuggestions: false,
                   decoration: const InputDecoration(),
                 ),
+              ],
               ],
               if (formError != null)
                 Padding(
@@ -519,7 +522,7 @@ class _FamilyPageState extends State<FamilyPage> {
               ],
               if (register && c.pendingRegistrationEmail == email.text.trim()) ...[
                 Text(t('family_verify_hint')),
-                TextField(controller: code, decoration: InputDecoration(labelText: t('family_code')),
+                TextField(controller: code, autofocus: true, decoration: InputDecoration(labelText: t('family_code')),
                   textInputAction: TextInputAction.done),
                 const SizedBox(height: 12),
               ],

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 14,
+  "packVersion": 15,
   "locale": "az",
   "nativeName": "Azərbaycan dili",
   "strings": {
@@ -700,7 +700,9 @@
     "account_mfa": "İki mərhələli qoruma",
     "account_mfa_setup": "Bu açarı autentifikator tətbiqinə əlavə edin və oradakı cari altırəqəmli kodu daxil edin.",
     "account_mfa_recovery": "Bərpa kodlarını oflayn saxlayın. Hər biri parolla birlikdə bir dəfə işləyir. Quraşdırmadan sonra autentifikatorun yeni kodu ilə daxil olun.",
-    "account_mfa_disable": "İki mərhələli qorumanı söndür"
+    "account_mfa_disable": "İki mərhələli qorumanı söndür",
+    "account_transfer": "Ailə sahəsinin sahibliyini ötür",
+    "account_accept_transfer": "Ailə sahəsinin sahibliyini qəbul et"
   },
   "plurals": {
     "record_count": {
