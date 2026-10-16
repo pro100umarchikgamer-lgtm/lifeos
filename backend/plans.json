@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "sales_enabled": false,
+  "approval": "closed_test_catalog_for_owner_review",
+  "features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"],
+  "tiers": {
+    "Free": {"features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"], "limits": {"shared_records": null}, "price": null},
+    "Plus": {"features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"], "limits": {"shared_records": null}, "price": null},
+    "Premium": {"features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"], "limits": {"shared_records": null}, "price": null}
+  }
+}

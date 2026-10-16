@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from .service import Failure
 
-OPTIONAL_TABLES={'account_state','devices','session_devices','refresh_tokens'}
+OPTIONAL_TABLES={'account_state','devices','session_devices','refresh_tokens','staff','control_sessions','staff_invitations','staff_recovery','control_audit','plan_catalog','entitlement_grants','entitlement_overrides','provider_purchases','provider_events','service_holds','support_tickets','support_messages','feature_flags','flag_proposals','web_sessions','email_changes','deletion_jobs','ownership_transfers'}
 TABLES=re.findall(r'CREATE TABLE IF NOT EXISTS (\w+)\(',Path(__file__).with_name('schema.sql').read_text())
 
 def import_server(backend,source,apply=False):
@@ -25,9 +25,10 @@ def import_server(backend,source,apply=False):
                 if name not in names:continue
                 for row in old.execute('SELECT * FROM '+name):
                     fields=list(row.keys())
-                    overriding=' OVERRIDING SYSTEM VALUE' if name=='changes' else ''
+                    overriding=' OVERRIDING SYSTEM VALUE' if name in {'changes','control_audit'} else ''
                     db.execute('INSERT INTO '+name+'('+','.join(fields)+')'+overriding+' VALUES('+','.join('?' for _ in fields)+')',list(row))
-            db.execute("SELECT setval(pg_get_serial_sequence('changes','seq'),COALESCE(MAX(seq),1),COUNT(*)>0) FROM changes")
+            for sequence_table in ['changes','control_audit']:
+                db.execute("SELECT setval(pg_get_serial_sequence('"+sequence_table+"','seq'),COALESCE(MAX(seq),1),COUNT(*)>0) FROM "+sequence_table)
         return counts
 
 def main():

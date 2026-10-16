@@ -1,14 +1,14 @@
 {
     email {$ACME_EMAIL}
 }
-{$LIFEOS_DOMAIN} {
+{$LIFEOS_DOMAIN}, {$ULADIM_SITE_DOMAIN}, {$ULADIM_CONTROL_DOMAIN} {
     encode zstd gzip
     header {
         Strict-Transport-Security "max-age=31536000"
         X-Content-Type-Options nosniff
         -Server
     }
-    @private path /metrics
+    @private path /metrics /health/*
     respond @private 404
     request_body {
         max_size 2MB

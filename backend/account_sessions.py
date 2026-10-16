@@ -58,6 +58,7 @@ class AccountSessions:
     def revoke_all_in(self, db, uid):
         now = max(1, int(self.clock()))
         db.execute('DELETE FROM sessions WHERE user_id=?', (uid,))
+        db.execute('DELETE FROM control_sessions WHERE staff_id IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
         db.execute('UPDATE refresh_tokens SET revoked_at=? WHERE user_id=?', (now, uid))
         db.execute('UPDATE devices SET revoked_at=? WHERE user_id=?', (now, uid))
 
@@ -138,3 +139,8 @@ class AccountSessions:
             else:
                 db.execute('DELETE FROM sessions WHERE hash=?', (token_hash(token),))
         return {'signed_out': True}
+
+    def check_service(self, db, uid, service):
+        from .service import require
+        row = db.execute('SELECT until_at FROM service_holds WHERE user_id=? AND service=?', (uid, service)).fetchone()
+        require(not row or row['until_at'] <= int(self.clock()), 'service_restricted', 403)

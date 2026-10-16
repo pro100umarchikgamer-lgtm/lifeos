@@ -27,6 +27,8 @@ def decode_json(raw):
 class Application:
     def __init__(self, backend, settings):
         self.backend,self.settings=backend,settings
+        from .web import Web
+        self.web=Web(backend,settings)
         self.started=time.time()
         self.networks=[ipaddress.ip_network(v.strip()) for v in settings.trusted_proxy_cidrs.split(',')]
     def trusted(self,environ):
@@ -78,7 +80,8 @@ class Application:
             else:
                 if self.settings.require_https and not (self.trusted(environ) and environ.get('HTTP_X_FORWARDED_PROTO')=='https'):
                     raise Failure('https_required',426)
-                if not path.startswith('/v1/'):raise Failure('not_found',404)
+                is_web=self.web.handles(environ)
+                if not is_web and not path.startswith('/v1/'):raise Failure('not_found',404)
                 self.limit(environ,path)
                 body={}
                 if method=='POST':
@@ -88,15 +91,19 @@ class Application:
                     raw=environ['wsgi.input'].read(length)
                     if len(raw)!=length:raise Failure('invalid_input')
                     body=decode_json(raw)
-                if method=='POST' and path=='/v1/auth/register':self.check_registration(body)
-                target=path+('?' +environ['QUERY_STRING'] if environ.get('QUERY_STRING') else '')
-                value=dispatch(self.backend,method,target,body,environ.get('HTTP_AUTHORIZATION',''))
+                if is_web:
+                    value,web_headers=self.web.request(environ,body)
+                    headers.update(dict(web_headers))
+                else:
+                    if method=='POST' and path=='/v1/auth/register':self.check_registration(body)
+                    target=path+('?' +environ['QUERY_STRING'] if environ.get('QUERY_STRING') else '')
+                    value=dispatch(self.backend,method,target,body,environ.get('HTTP_AUTHORIZATION',''))
         except Failure as error:status=error.status;value={'error':error.code}
         except (ValueError,TypeError,KeyError):status=400;value={'error':'invalid_input'}
         except Exception as error:
             log.error('request_failed class=%s',type(error).__name__)
             status=503;value={'error':'server_unavailable'}
-        output=value.encode() if isinstance(value,str) else json.dumps(value,ensure_ascii=False).encode()
+        output=value if isinstance(value,bytes) else (value.encode() if isinstance(value,str) else json.dumps(value,ensure_ascii=False).encode())
         headers['Content-Length']=str(len(output))
         if status==429:headers['Retry-After']='60'
         start_response(str(status)+' '+HTTPStatus(status).phrase,list(headers.items()))

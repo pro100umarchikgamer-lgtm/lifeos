@@ -20,6 +20,8 @@ x-api: &api
     SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM}
     DB_POOL_SIZE: ${DB_POOL_SIZE:-4}
+    SITE_ORIGIN: https://${ULADIM_SITE_DOMAIN:-getuladim.space}
+    CONTROL_ORIGIN: https://${ULADIM_CONTROL_DOMAIN:-control.getuladim.space}
     REGISTRATION_MODE: ${REGISTRATION_MODE:-closed}
     REGISTRATION_ALLOWLIST: ${REGISTRATION_ALLOWLIST:-}
     REQUIRE_HTTPS: 'true'
@@ -83,6 +85,8 @@ services:
     ports: ['80:80', '443:443', '443:443/udp']
     environment:
       LIFEOS_DOMAIN: ${LIFEOS_DOMAIN:?Set LIFEOS_DOMAIN}
+      ULADIM_SITE_DOMAIN: ${ULADIM_SITE_DOMAIN:-getuladim.space}
+      ULADIM_CONTROL_DOMAIN: ${ULADIM_CONTROL_DOMAIN:-control.getuladim.space}
       ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
     volumes: [./deploy/Caddyfile:/etc/caddy/Caddyfile:ro, caddy_data:/data, caddy_config:/config]
     networks: [edge]

@@ -12,6 +12,7 @@ from psycopg import sql
 from cryptography.fernet import Fernet
 import test_family_backend as fixtures
 from test_account_sessions import SessionScenarios
+from test_control import ControlScenarios
 from backend.postgres import PostgresBackend
 from backend.mail import deliver_one
 from backend.production import Application
@@ -137,3 +138,34 @@ class PostgresTests(SessionScenarios,fixtures.FamilyBackendTests):
         for thread in threads:thread.start()
         for thread in threads:thread.join(15)
         self.assertEqual(statuses,[200]*12)
+
+
+@unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
+class PostgresControlTests(ControlScenarios, unittest.TestCase):
+    drop_schema = PostgresTests.drop_schema
+    user = fixtures.FamilyBackendTests.user
+    op = fixtures.FamilyBackendTests.op
+
+    def setUp(self):
+        PostgresTests.setUp(self)
+        self.setup_control()
+
+import test_control_web as webfixtures
+from backend.control import Control, totp
+
+@unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
+class PostgresControlWebTests(webfixtures.WebControlTests):
+    drop_schema = PostgresTests.drop_schema
+    user = fixtures.FamilyBackendTests.user
+    op = fixtures.FamilyBackendTests.op
+
+    def setUp(self):
+        PostgresTests.setUp(self)
+        self.owner_user,self.user2=self.p1,self.p2
+        self.control=Control(self.backend)
+        self.enrollment=self.control.bootstrap(self.owner_user['email'])
+        self.now=int(self.backend.clock());self.backend.clock=lambda:self.now
+        self.staff_login=self.control.login(self.owner_user['email'],'a-valid-long-passphrase',totp(self.enrollment['totp_secret'],self.now//30),'fixture')
+        self.owner=self.control.authenticate(self.staff_login['token'],'fixture')
+        self.settings=PostgresTests.settings(self)
+        self.app=Application(self.backend,self.settings)

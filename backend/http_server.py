@@ -25,6 +25,24 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/account/devices' and method=='GET':result=backend.list_devices(actor,token)
         elif route=='/v1/account/devices/revoke' and method=='POST':result=backend.revoke_device(actor,body.get('device_id'),body.get('password'))
         elif route=='/v1/account/logout-all' and method=='POST':result=backend.revoke_all(actor,body.get('password'))
+        elif route=='/v1/account/entitlements' and method=='GET':
+            from .entitlements import resolve
+            with backend.connect() as db:result=resolve(db,actor['id'],int(backend.clock()))
+        elif route=='/v1/account/staff/enrollment' and method=='POST':
+            from .control import Control
+            result=Control(backend).prepare_enrollment(actor,body.get('invitation'),body.get('password'))
+        elif route=='/v1/account/staff/confirm' and method=='POST':
+            from .control import Control
+            result=Control(backend).finish_enrollment(actor,body.get('enrollment'),body.get('code'))
+        elif route.startswith('/v1/support'):
+            from .support import Support
+            from .control import Control
+            support=Support(backend,Control(backend))
+            if route=='/v1/support' and method=='GET':result=support.list(actor)
+            elif route=='/v1/support' and method=='POST':result=support.create(actor,body.get('category'),body.get('subject'),body.get('message'))
+            elif route=='/v1/support/thread' and method=='GET':result=support.read(actor,query.get('id',[''])[0])
+            elif route=='/v1/support/reply' and method=='POST':result=support.reply(actor,body.get('ticket_id'),body.get('message'),body.get('state','open'))
+            else:raise Failure('not_found',404)
         elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
         elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}
         elif route=='/v1/family' and method=='POST':result=backend.family(actor,body)

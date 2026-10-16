@@ -184,6 +184,8 @@ class Backend(AccountSessions):
         with self.transaction() as db:
             wid=identifier(op.get('workspace_id'))
             space=None if kind=='workspace.create' else self._workspace(db,actor,wid,parent=kind not in ('workspace.leave',))
+            if (space and space['kind']=='family') or (kind=='workspace.create' and op.get('kind')=='family'):
+                self.check_service(db,actor['id'],'family_write')
             prior=self._idempotent(db,actor,op)
             if prior:return prior
             if kind=='workspace.create':
@@ -352,7 +354,9 @@ class Backend(AccountSessions):
         identifier(op.get('id'))
         rid=identifier(op.get('record_id'))
         with self.transaction() as db:
-            space=self._workspace(db,actor,wid);row=db.execute('SELECT * FROM records WHERE id=?',(rid,)).fetchone()
+            space=self._workspace(db,actor,wid)
+            if space['kind']=='family':self.check_service(db,actor['id'],'family_write')
+            row=db.execute('SELECT * FROM records WHERE id=?',(rid,)).fetchone()
             if row:
                 require(row['workspace_id']==wid and self._readable(db,actor,space,row),'record_forbidden',403)
                 require(self._editable(db,actor,space,row),'record_forbidden',403)

@@ -30,3 +30,27 @@ CREATE TABLE IF NOT EXISTS session_devices(hash TEXT PRIMARY KEY REFERENCES sess
 CREATE TABLE IF NOT EXISTS refresh_tokens(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),device_id TEXT NOT NULL REFERENCES devices(id),family_id TEXT NOT NULL,expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0,revoked_at BIGINT NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS device_user_active ON devices(user_id,revoked_at);
 CREATE INDEX IF NOT EXISTS refresh_family ON refresh_tokens(family_id);
+CREATE TABLE IF NOT EXISTS staff(id TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQUE REFERENCES users(id),roles TEXT NOT NULL,mfa_secret BYTEA NOT NULL,last_counter BIGINT NOT NULL DEFAULT -1,active BIGINT NOT NULL DEFAULT 1,revision BIGINT NOT NULL DEFAULT 1,created_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS control_sessions(hash TEXT PRIMARY KEY,staff_id TEXT NOT NULL REFERENCES staff(id),created_at BIGINT NOT NULL,last_seen_at BIGINT NOT NULL,expires_at BIGINT NOT NULL,agent_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS staff_invitations(hash TEXT PRIMARY KEY,email TEXT NOT NULL,roles TEXT NOT NULL,issued_by TEXT NOT NULL REFERENCES staff(id),expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS staff_recovery(hash TEXT PRIMARY KEY,staff_id TEXT NOT NULL REFERENCES staff(id),used_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS control_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,actor_id TEXT NOT NULL,subject_id TEXT,action TEXT NOT NULL,before_value TEXT NOT NULL,after_value TEXT NOT NULL,reason TEXT NOT NULL,created_at BIGINT NOT NULL,request_id TEXT NOT NULL,previous_hash TEXT NOT NULL,entry_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS plan_catalog(version BIGINT PRIMARY KEY,body TEXT NOT NULL,created_at BIGINT NOT NULL,actor_id TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS entitlement_grants(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),tier TEXT NOT NULL CHECK(tier IN ('Plus','Premium')),source TEXT NOT NULL CHECK(source IN ('manual','promo')),starts_at BIGINT NOT NULL,valid_until BIGINT,revoked_at BIGINT NOT NULL DEFAULT 0,reason TEXT NOT NULL,actor_id TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS user_grants ON entitlement_grants(user_id,revoked_at,valid_until);
+CREATE TABLE IF NOT EXISTS entitlement_overrides(user_id TEXT NOT NULL REFERENCES users(id),feature TEXT NOT NULL,enabled BIGINT NOT NULL,valid_until BIGINT,reason TEXT NOT NULL,actor_id TEXT NOT NULL,PRIMARY KEY(user_id,feature));
+CREATE TABLE IF NOT EXISTS provider_purchases(source TEXT NOT NULL,reference_hash TEXT NOT NULL,user_id TEXT NOT NULL REFERENCES users(id),product_id TEXT NOT NULL,tier TEXT NOT NULL CHECK(tier IN ('Plus','Premium')),state TEXT NOT NULL,valid_until BIGINT NOT NULL,revision BIGINT NOT NULL,trial_until BIGINT,updated_at BIGINT NOT NULL,PRIMARY KEY(source,reference_hash));
+CREATE TABLE IF NOT EXISTS provider_events(source TEXT NOT NULL,event_id TEXT NOT NULL,digest TEXT NOT NULL,reference_hash TEXT NOT NULL,received_at BIGINT NOT NULL,result TEXT NOT NULL,PRIMARY KEY(source,event_id));
+CREATE TABLE IF NOT EXISTS service_holds(user_id TEXT NOT NULL REFERENCES users(id),service TEXT NOT NULL,until_at BIGINT NOT NULL,reason TEXT NOT NULL,actor_id TEXT NOT NULL,PRIMARY KEY(user_id,service));
+CREATE TABLE IF NOT EXISTS support_tickets(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),category TEXT NOT NULL,subject TEXT NOT NULL,state TEXT NOT NULL,priority TEXT NOT NULL,created_at BIGINT NOT NULL,updated_at BIGINT NOT NULL,email_notify BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS support_messages(id TEXT PRIMARY KEY,ticket_id TEXT NOT NULL REFERENCES support_tickets(id),actor_id TEXT NOT NULL,is_staff BIGINT NOT NULL,body TEXT NOT NULL,created_at BIGINT NOT NULL);
+CREATE INDEX IF NOT EXISTS support_user ON support_tickets(user_id,updated_at);
+CREATE TABLE IF NOT EXISTS feature_flags(name TEXT PRIMARY KEY,body TEXT NOT NULL,revision BIGINT NOT NULL,actor_id TEXT NOT NULL,updated_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS flag_proposals(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,body TEXT NOT NULL,digest TEXT NOT NULL,expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS web_sessions(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),device_id TEXT NOT NULL REFERENCES devices(id),created_at BIGINT NOT NULL,last_seen_at BIGINT NOT NULL,expires_at BIGINT NOT NULL,agent_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS email_changes(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),email TEXT NOT NULL,expires_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS deletion_jobs(id TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQUE REFERENCES users(id),requested_at BIGINT NOT NULL,due_at BIGINT NOT NULL,state TEXT NOT NULL,last_error TEXT);
+CREATE TABLE IF NOT EXISTS ownership_transfers(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),from_id TEXT NOT NULL REFERENCES users(id),to_id TEXT NOT NULL REFERENCES users(id),expires_at BIGINT NOT NULL,accepted_at BIGINT NOT NULL DEFAULT 0);
+
+CREATE TRIGGER IF NOT EXISTS control_audit_no_update BEFORE UPDATE ON control_audit BEGIN SELECT RAISE(ABORT,'control_audit is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS control_audit_no_delete BEFORE DELETE ON control_audit BEGIN SELECT RAISE(ABORT,'control_audit is append-only'); END;
