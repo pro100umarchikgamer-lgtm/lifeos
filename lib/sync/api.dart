@@ -36,7 +36,9 @@ class FamilyApi implements SyncTransport {
       return await _send(path, body: body);
     } on SyncFailure catch (error) {
       if (error.code != 'unauthorized' || refreshToken == null || token == null ||
-          path == '/v1/auth/refresh') rethrow;
+          path == '/v1/auth/refresh') {
+        rethrow;
+      }
       if (token != attemptedToken) return _send(path, body: body);
       final rotation = _rotation ??= _rotate();
       try {
