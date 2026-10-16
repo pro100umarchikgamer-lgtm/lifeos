@@ -86,7 +86,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     setState(() {busy = true; error = null;});
     try {await action();}
     on SyncFailure catch (failure) {
-      if (mounted) setState(() => error = t('family_error_${failure.code}'));
+      if (mounted) setState(() => error = failure.code == 'ownership_transfer_required' ? t('account_delete_notice') : t('family_error_${failure.code}'));
     } catch (_) {
       if (mounted) setState(() => error = t('family_error_offline'));
     } finally {
@@ -143,16 +143,37 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     await run(() async {
       final result = await request('/v1/support/thread?id=${Uri.encodeQueryComponent(ticket['id'] as String)}');
       if (!mounted) return;
-      await Navigator.of(context).push<void>(MaterialPageRoute(builder: (context) => Scaffold(
-        appBar: AppBar(title: Text(ticket['subject'] as String)),
-        body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
-          for (final raw in result['messages'] as List? ?? [])
-            Padding(padding: const EdgeInsets.only(bottom: 12), child: LifeCard(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(t(object(raw)['is_staff'] == 1 ? 'account_support' : 'family_account'), style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8), Text(object(raw)['body'] as String),
-              ]))),
-        ])),
+      List<Json> messages = (result['messages'] as List? ?? []).map(object).toList();
+      bool sending = false;
+      await Navigator.of(context).push<void>(MaterialPageRoute(builder: (context) => StatefulBuilder(
+        builder: (ctx, update) => Scaffold(
+          appBar: AppBar(title: Text(ticket['subject'] as String), actions: [
+            IconButton(tooltip: t('account_send'), icon: const Icon(Icons.reply),
+              onPressed: sending ? null : () async {
+                final message = await ask(t('account_message'), multiline: true);
+                if (message == null || !ctx.mounted) return;
+                update(() => sending = true);
+                try {
+                  await request('/v1/support/reply', body: {'ticket_id': ticket['id'], 'message': message});
+                  final refreshed = await request('/v1/support/thread?id=${Uri.encodeQueryComponent(ticket['id'] as String)}');
+                  if (ctx.mounted) update(() => messages = (refreshed['messages'] as List).map(object).toList());
+                } catch (_) {
+                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(t('family_error_offline'))));
+                } finally {
+                  if (ctx.mounted) update(() => sending = false);
+                }
+              }),
+          ]),
+          body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
+            if (sending) const LinearProgressIndicator(),
+            for (final message in messages)
+              Padding(padding: const EdgeInsets.only(bottom: 12), child: LifeCard(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t(message['is_staff'] == 1 ? 'account_support' : 'family_account'), style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: 8), Text(message['body'] as String),
+                ]))),
+          ])),
+        ),
       )));
     });
   }
@@ -206,7 +227,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(t(widget.section.key))),
+    appBar: AppBar(toolbarHeight: 88, title: Text(t(widget.section.key))),
     body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
       if (busy) const LinearProgressIndicator(),
       if (error != null) ...[Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

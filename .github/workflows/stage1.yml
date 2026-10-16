@@ -184,7 +184,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tool/check_release_upgrade.py --download
-      - name: Install over signed 85001 and retain encrypted user data
+      - name: Install over signed 112001 and retain encrypted user data
         if: steps.validation.outputs.build == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 12

@@ -6,20 +6,26 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 APP='app.lifeos.lifeos'
 OLD_ZIP='97d151438db0ef3515096c9df30755a075d85993a4fea270bf07518703ca4d0f'
-PROBE='ULADIM_upgrade_probe_85001'
+PROBE='ULADIM_upgrade_probe_112001'
 OUT=Path('upgrade_evidence')
 
 def run(*args,timeout=30):
     return subprocess.check_output(args,timeout=timeout)
 def adb(*args,timeout=30):return run('adb','-s','emulator-5554',*args,timeout=timeout)
 def previous():
-    archive=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.zip'
-    with archive.open('wb') as stream:
-        subprocess.run(['gh','api','--allow-escape-sequences','repos/pro100umarchikgamer-lgtm/lifeos/actions/artifacts/12005525126/zip'],stdout=stream,check=True,timeout=60)
-    if hashlib.sha256(archive.read_bytes()).hexdigest()!=OLD_ZIP:raise RuntimeError('Retained release artifact checksum mismatch')
-    with zipfile.ZipFile(archive) as z:data=z.read('build/app/outputs/flutter-apk/app-release.apk')
-    if hashlib.sha256(data).hexdigest()!='11ac369ea24ee89969a71755798e2143e411b9c8d02f6ffb24fbe72971e10758':raise RuntimeError('Retained APK checksum mismatch')
-    target=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.apk';target.write_bytes(data);return target
+    source='f8632cdd5cf4dad40f0163a44183016d23121abd'
+    target=Path(os.environ['RUNNER_TEMP'])/'uladim-baseline-112001'
+    target.mkdir(exist_ok=True)
+    subprocess.run(['gh','run','download','38883235405','--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+source,'--dir',str(target)],check=True,timeout=90)
+    original=target/'build/app/outputs/flutter-apk/app-release.apk'
+    if hashlib.sha256(original.read_bytes()).hexdigest()!='0594d97502523901e9d8b7d6b0ceb5ec995f7379b66faabd886f8f75ea58908e':raise RuntimeError('Retained APK112001 checksum mismatch')
+    identity=dict(line.split('=',1) for line in (target/'apk-identity.txt').read_text().splitlines())
+    assert identity['versionCode']=='112001' and identity['commit']==source
+    assert identity['applicationId']==APP and identity['certificateSHA256']==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip()
+    path=Path(os.environ['RUNNER_TEMP'])/'uladim-112001.apk'
+    import shutil
+    shutil.copyfile(original,path)
+    return path
 
 def xml():
     adb('shell','uiautomator','dump','/sdcard/uladim-window.xml',timeout=15)
@@ -63,11 +69,9 @@ def legacy_add_node(root,width,height):
     if len(candidates)!=1:raise RuntimeError('Cannot identify retained 85001 add button: '+str(len(candidates)))
     return candidates[0]
 def legacy_editor(kind):
-    # Retained 85001 has no accessibility label on its persistent + button.
-    # Derive its exact hit rectangle from the actual UI tree, never a fixed coordinate.
+    # Baseline112001 labels its Add action; use its actual accessibility semantics.
     find('Today')
-    width,height=map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size').decode())[-1])
-    tap_node(legacy_add_node(xml(),width,height));tap(kind)
+    tap('Add');tap(kind)
 def enter_text(value):
     # Autofocus/IME can move the field while its old bounds are being tapped.
     # Replace any existing input and require the exact value before saving.
@@ -99,28 +103,31 @@ def device_timezone(zone):
     assert actual==zone, f'Emulator timezone mismatch: {actual} != {zone}'
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
-    if args.download:print('Retained signed 85001 verified:',previous());return
+    if args.download:print('Retained signed 112001 verified:',previous());return
     assert args.candidate and args.candidate.is_file()
-    old=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.apk';assert old.is_file()
+    old=Path(os.environ['RUNNER_TEMP'])/'uladim-112001.apk';assert old.is_file()
     device_timezone('Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
     legacy_editor('Task');enter_text(PROBE);tap('Save');tap('Plans');find(PROBE,reveal=True)
-    screenshot('85001-control-task')
+    screenshot('112001-control-task')
     for kind,amount in [('Expense','12.50'),('Income','100.00')]:
         tap('Today');legacy_editor(kind);enter_text(amount);tap('Save')
     adb('install','-r',str(args.candidate),timeout=90)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
-    assert version==85001 if args.probe else version>85001
+    assert version==112001 if args.probe else version>112001
     if not args.probe:device_timezone('Etc/UTC')
     start();tap('Plans');find(PROBE,reveal=True);screenshot('upgraded-control-task')
     start();tap('Plans');find(PROBE,reveal=True)
-    evidence={'previousVersionCode':85001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
+    evidence={'previousVersionCode':112001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
     if not args.probe:
         for theme in ['light','dark']:
             adb('shell','cmd','uimode','night','no' if theme=='light' else 'yes');time.sleep(.7)
             tap('Today');screenshot('today-'+theme)
-            tap('Finances');screenshot('finances-'+theme);scroll();screenshot('categories-'+theme);scroll(False)
+            tap('Finances');find('Finances');screenshot('finances-'+theme);
+            amounts=ET.tostring(xml(),encoding='unicode')
+            assert '12.50' in amounts and '100.00' in amounts, 'Synthetic financial amounts did not survive the update'
+            scroll();screenshot('categories-'+theme);scroll(False)
             tap('Today');tap('Profile');tap('Account and family');tap('Create account');screenshot('registration-'+theme)
             adb('shell','input','keyevent','4')
         evidence['screenshots']='real Android 35 release app; synthetic data only'
