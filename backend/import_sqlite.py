@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 from .service import Failure
 
+OPTIONAL_TABLES={'account_state','devices','session_devices','refresh_tokens'}
 TABLES=re.findall(r'CREATE TABLE IF NOT EXISTS (\w+)\(',Path(__file__).with_name('schema.sql').read_text())
 
 def import_server(backend,source,apply=False):
@@ -13,14 +14,15 @@ def import_server(backend,source,apply=False):
         old.row_factory=sqlite3.Row
         old.execute('BEGIN')
         names={row[0] for row in old.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
-        if names!=set(TABLES):raise ValueError('Source must be a compatible LifeOS development server database')
+        if not set(TABLES)-OPTIONAL_TABLES<=names or not names<=set(TABLES):raise ValueError('Source must be a compatible LifeOS development server database')
         if old.execute('PRAGMA foreign_key_check').fetchone():raise ValueError('Source foreign-key integrity check failed')
-        counts={name:old.execute('SELECT COUNT(*) FROM '+name).fetchone()[0] for name in TABLES}
+        counts={name:old.execute('SELECT COUNT(*) FROM '+name).fetchone()[0] if name in names else 0 for name in TABLES}
         if not apply:return counts
         with backend.transaction() as db:
             for name in TABLES:
                 if db.execute('SELECT 1 FROM '+name+' LIMIT 1').fetchone():raise Failure('import_target_not_empty',409)
             for name in TABLES:
+                if name not in names:continue
                 for row in old.execute('SELECT * FROM '+name):
                     fields=list(row.keys())
                     overriding=' OVERRIDING SYSTEM VALUE' if name=='changes' else ''

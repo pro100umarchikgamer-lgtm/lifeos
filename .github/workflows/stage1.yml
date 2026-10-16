@@ -36,11 +36,11 @@ jobs:
     uses: ./.github/workflows/backend-production.yml
   focused:
     needs: production_backend
-    if: inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-ux-recovery-launch' || github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true)
+    if: inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-control-release' || github.ref == 'refs/heads/feature/uladim-ux-recovery-launch' || github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true)
     uses: ./.github/workflows/family-focused.yml
   checks:
     needs: production_backend
-    if: inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-ux-recovery-launch' && github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
+    if: inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-control-release' && github.ref != 'refs/heads/feature/uladim-ux-recovery-launch' && github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
     runs-on: ubuntu-latest
     timeout-minutes: 55
     services:
@@ -122,7 +122,7 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart test/session_rotation_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart test/ux31_visual_test.dart
         if: steps.validation.outputs.full == 'true'

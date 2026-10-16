@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -27,6 +29,7 @@ class FamilyController extends ChangeNotifier {
   bool busy = false;
   bool _disposed = false;
   Timer? _retry;
+  int _recoveryFailures = 0;
   SyncEngine? _engine;
   int _generation = 0;
   String get scope => '${api!.base.origin}|${account!['user_id']}';
@@ -65,12 +68,21 @@ class FamilyController extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      final endpoint = await secure.read(key: 'lifeos.sync.endpoint');
+      final raw = await secure.read(key: 'lifeos.sync.session');
+      final saved = raw == null ? null : object(jsonDecode(raw));
+      final endpoint = saved?['endpoint'] as String? ??
+          await secure.read(key: 'lifeos.sync.endpoint');
       if (endpoint == null) return;
       api = FamilyApi(endpoint);
-      api!.token = await secure.read(key: 'lifeos.sync.token');
+      api!.token = saved?['token'] as String? ??
+          await secure.read(key: 'lifeos.sync.token');
+      api!.refreshToken = saved?['refresh_token'] as String?;
+      final initialized = api!;
+      initialized.onRotated = (result) => _acceptRotation(initialized, result);
       // Identity is stored with the token; data never becomes another account's cache.
-      final user = await secure.read(key: 'lifeos.sync.user');
+      final user = saved?['user_id'] as String? ??
+          await secure.read(key: 'lifeos.sync.user');
+      api!.userId = user;
       if (user != null && api!.token != null) {
         account = {'user_id': user, 'verified': false};
       }
@@ -96,8 +108,19 @@ class FamilyController extends ChangeNotifier {
   }
 
   void startRecovery() {
-    _retry ??= Timer.periodic(const Duration(seconds: 30), (_) {
-      if (account != null && !busy) refresh();
+    if (_disposed || _retry != null) return;
+    final base = _recoveryFailures > 0
+        ? math.min(900, 30 * (1 << math.min(_recoveryFailures - 1, 5)))
+        : pending.isNotEmpty ? 15 : 120;
+    final seconds = (base * (0.85 + math.Random().nextDouble() * 0.30)).round();
+    _retry = Timer(Duration(seconds: seconds), () async {
+      _retry = null;
+      if (_disposed) return;
+      if (account != null && !busy) {
+        await refresh();
+        _recoveryFailures = error == null ? 0 : _recoveryFailures + 1;
+      }
+      startRecovery();
     });
   }
 
@@ -142,6 +165,10 @@ class FamilyController extends ChangeNotifier {
         body: {'email': email, 'password': password},
       );
       candidate.token = result['token'] as String;
+      candidate.refreshToken = result['refresh_token'] as String?;
+      candidate.userId = result['user_id'] as String;
+      candidate.onRotated = (value) => _acceptRotation(candidate, value);
+      await _persistSession(candidate, result);
       // A failed login cannot overwrite a saved identity or its outbox.
       await secure.write(
         key: 'lifeos.sync.endpoint',
@@ -155,7 +182,7 @@ class FamilyController extends ChangeNotifier {
       await secure.delete(key: 'lifeos.sync.workspace');
       api?.close();
       api = candidate;
-      account = result;
+      account = {'user_id': result['user_id'], 'verified': result['verified'], 'email': email};
       workspace = null;
       roster = null;
       spaces = [];
@@ -171,6 +198,25 @@ class FamilyController extends ChangeNotifier {
       rethrow;
     }
   });
+  Future<void> _acceptRotation(FamilyApi client, Json result) {
+    if (_disposed || !identical(api, client) ||
+        account?['user_id'] != result['user_id']) {
+      throw const SyncFailure('identity_mismatch');
+    }
+    return _persistSession(client, result);
+  }
+
+  Future<void> _persistSession(FamilyApi client, Json result) => secure.write(
+    key: 'lifeos.sync.session',
+    value: jsonEncode({
+      'endpoint': client.base.origin,
+      'user_id': result['user_id'],
+      'token': result['token'],
+      'refresh_token': result['refresh_token'],
+      'device_id': result['device_id'],
+    }),
+  );
+
   Future<void> recover(String endpoint, String email) => run(() async {
     final candidate = FamilyApi(endpoint);
     try {
@@ -338,10 +384,17 @@ class FamilyController extends ChangeNotifier {
   });
   Future<void> _clearSession() async {
     _generation++;
+    api?.token = null;
+    api?.refreshToken = null;
+    api?.userId = null;
+    account = null;
+    await secure.delete(key: 'lifeos.sync.session');
     await secure.delete(key: 'lifeos.sync.token');
     await secure.delete(key: 'lifeos.sync.user');
     await secure.delete(key: 'lifeos.sync.workspace');
     api?.token = null;
+    api?.refreshToken = null;
+    api?.userId = null;
     account = null;
     workspace = null;
     roster = null;

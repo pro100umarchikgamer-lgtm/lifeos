@@ -14,6 +14,7 @@ def dispatch(backend,method,path,body,auth):
     if route=='/v1/auth/register' and method=='POST':result=backend.register(body.get('email'),body.get('password'))
     elif route=='/v1/auth/recovery' and method=='POST':result=backend.recover(body.get('email'))
     elif route=='/v1/auth/reset' and method=='POST':result=backend.reset_password(body.get('email'),body.get('code'),body.get('password'))
+    elif route=='/v1/auth/refresh' and method=='POST':result=backend.refresh_session(body.get('refresh_token'))
     elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'))
     else:
         token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
@@ -21,6 +22,9 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/auth/verification/resend' and method=='POST':result=backend.resend_verification(actor)
         elif route=='/v1/auth/password' and method=='POST':result=backend.password(actor,body.get('old_password'),body.get('new_password'))
         elif route=='/v1/auth/logout' and method=='POST':result=backend.logout(token)
+        elif route=='/v1/account/devices' and method=='GET':result=backend.list_devices(actor,token)
+        elif route=='/v1/account/devices/revoke' and method=='POST':result=backend.revoke_device(actor,body.get('device_id'),body.get('password'))
+        elif route=='/v1/account/logout-all' and method=='POST':result=backend.revoke_all(actor,body.get('password'))
         elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
         elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}
         elif route=='/v1/family' and method=='POST':result=backend.family(actor,body)

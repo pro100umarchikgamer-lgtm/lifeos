@@ -11,6 +11,7 @@ import psycopg
 from psycopg import sql
 from cryptography.fernet import Fernet
 import test_family_backend as fixtures
+from test_account_sessions import SessionScenarios
 from backend.postgres import PostgresBackend
 from backend.mail import deliver_one
 from backend.production import Application
@@ -21,7 +22,7 @@ from backend.service import Backend,Failure
 DSN=os.environ.get('LIFEOS_TEST_DATABASE_URL','')
 
 @unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
-class PostgresTests(fixtures.FamilyBackendTests):
+class PostgresTests(SessionScenarios,fixtures.FamilyBackendTests):
     def setUp(self):
         if urlsplit(DSN).path!='/lifeos_test':raise RuntimeError('Tests refuse a non-test database')
         self.schema='test_'+uuid.uuid4().hex

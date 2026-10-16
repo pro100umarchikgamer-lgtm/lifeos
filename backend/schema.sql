@@ -24,3 +24,9 @@ CREATE TABLE IF NOT EXISTS auth_limits(key TEXT PRIMARY KEY,count INTEGER NOT NU
 CREATE INDEX IF NOT EXISTS scoped_records ON records(workspace_id,seq);
 CREATE TABLE IF NOT EXISTS task_progress(task_id TEXT NOT NULL REFERENCES tasks(id),profile_id TEXT NOT NULL REFERENCES profiles(id),completed INTEGER NOT NULL DEFAULT 0,approved INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(task_id,profile_id));
 CREATE TABLE IF NOT EXISTS password_recovery(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS account_state(user_id TEXT PRIMARY KEY REFERENCES users(id),disabled_until BIGINT NOT NULL DEFAULT 0,deleted_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),family_id TEXT NOT NULL UNIQUE,label TEXT NOT NULL,created_at BIGINT NOT NULL,last_seen_at BIGINT NOT NULL,revoked_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS session_devices(hash TEXT PRIMARY KEY REFERENCES sessions(hash) ON DELETE CASCADE,device_id TEXT NOT NULL REFERENCES devices(id));
+CREATE TABLE IF NOT EXISTS refresh_tokens(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),device_id TEXT NOT NULL REFERENCES devices(id),family_id TEXT NOT NULL,expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0,revoked_at BIGINT NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS device_user_active ON devices(user_id,revoked_at);
+CREATE INDEX IF NOT EXISTS refresh_family ON refresh_tokens(family_id);

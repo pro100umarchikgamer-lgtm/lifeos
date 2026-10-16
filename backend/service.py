@@ -12,6 +12,8 @@ import sqlite3
 import time
 import uuid
 
+from .account_sessions import AccountSessions
+
 MAX_MINOR = 999999999999999
 PERMISSIONS = {'view_budget', 'record_spending', 'edit_own', 'request_money', 'view_shared', 'create_tasks', 'complete_tasks'}
 TABLES = {'task':'tasks','note':'notes','account':'accounts','transaction':'transactions','transfer':'transfers','budget':'budgets','event':'events','shopping':'shopping','request':'requests'}
@@ -61,7 +63,7 @@ class ManagedConnection(sqlite3.Connection):
         try:return super().__exit__(*args)
         finally:self.close()
 
-class Backend:
+class Backend(AccountSessions):
     def __init__(self,path,deliver=None,clock=time.time):
         self.path,self.deliver,self.clock=str(path),deliver,clock
         with self.connect() as db: db.executescript(Path(__file__).with_name('schema.sql').read_text())
@@ -76,11 +78,6 @@ class Backend:
             db.execute('BEGIN IMMEDIATE');yield db;db.commit()
         except Exception: db.rollback();raise
         finally: db.close()
-    def authenticate(self,token):
-        require(isinstance(token,str) and len(token)==43,'unauthorized',401)
-        with self.connect() as db:
-            row=db.execute('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>?',(token_hash(token),int(self.clock()))).fetchone()
-        require(row is not None,'unauthorized',401);return dict(row)
     def _session(self,db,uid):
         token=secrets.token_urlsafe(32);db.execute('INSERT INTO sessions VALUES(?,?,?)',(token_hash(token),uid,int(self.clock())+86400));return token
     def _deliver(self,db,email,code,purpose):
@@ -96,9 +93,9 @@ class Backend:
             require(not db.execute('SELECT id FROM users WHERE email=?',(email.casefold(),)).fetchone(),'account_exists',409)
             db.execute('INSERT INTO users VALUES(?,?,?,?,0,?)',(uid,email.casefold(),encoded,salt,now))
             db.execute('INSERT INTO verification VALUES(?,?,?)',(token_hash(verify),uid,now+3600))
-            session=self._session(db,uid)
+            session=self.new_session(db,uid,False)
             self._deliver(db,email.casefold(),verify,'verification')
-        return {'user_id':uid,'token':session,'verified':False}
+        return session
     def verify(self,actor,code):
         require(isinstance(code,str) and len(code)==43)
         with self.transaction() as db:
@@ -128,7 +125,7 @@ class Backend:
             actual=hashlib.pbkdf2_hmac('sha256',password.encode(),salt,600000).hex()
             valid=row is not None and hmac.compare_digest(actual,row['password_hash'])
             # Commit failed-attempt counters rather than rolling them back with the error.
-            result={'user_id':row['id'],'token':self._session(db,row['id']),'verified':bool(row['verified'])} if valid else None
+            result=self.new_session(db,row['id'],row['verified']) if valid else None
         require(valid,'invalid_credentials',401);return result
     def recover(self,email):
         require(isinstance(email,str) and len(email)<=254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email))
@@ -153,22 +150,18 @@ class Backend:
             require(row is not None,'verification_invalid')
             salt=secrets.token_hex(16);encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
             db.execute('UPDATE users SET salt=?,password_hash=?,verified=1 WHERE id=?',(salt,encoded,row['id']))
-            db.execute('DELETE FROM sessions WHERE user_id=?',(row['id'],));db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
+            self.revoke_all_in(db,row['id']);db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
         return {'password_reset':True}
     def password(self,actor,old_password,new_password):
         require(isinstance(old_password,str) and len(old_password)<=256)
         validate_password(new_password)
+        self.reserve_reauth(actor)
         with self.transaction() as db:
-            row=db.execute('SELECT * FROM users WHERE id=?',(actor['id'],)).fetchone()
-            digest=hashlib.pbkdf2_hmac('sha256',old_password.encode(),bytes.fromhex(row['salt']),600000).hex()
-            require(hmac.compare_digest(digest,row['password_hash']),'invalid_credentials',401)
+            self.reauthenticate(db,actor,old_password)
             salt=secrets.token_hex(16)
             encoded=hashlib.pbkdf2_hmac('sha256',new_password.encode(),bytes.fromhex(salt),600000).hex()
             db.execute('UPDATE users SET salt=?,password_hash=? WHERE id=?',(salt,encoded,actor['id']))
-            db.execute('DELETE FROM sessions WHERE user_id=?',(actor['id'],))
-        return {'signed_out':True}
-    def logout(self,token):
-        with self.transaction() as db:db.execute('DELETE FROM sessions WHERE hash=?',(token_hash(token),))
+            self.revoke_all_in(db,actor['id'])
         return {'signed_out':True}
     def _workspace(self,db,actor,wid,parent=False):
         require(actor['verified']==1,'verify_email',403)
