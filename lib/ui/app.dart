@@ -512,7 +512,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
       const SizedBox(width: 3),
       IconButton(
-        tooltip: c.pack.t('profile'),
         key: const Key('profile_button'),
         tooltip: c.pack.t('profile'),
         onPressed: () {

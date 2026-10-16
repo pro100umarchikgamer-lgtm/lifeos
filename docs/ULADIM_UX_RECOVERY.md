@@ -80,3 +80,5 @@ Probe #94: после ограниченного ожидания APK 85001 ос
 Проверка исходника 85001 обнаружила отсутствие accessibility-label у постоянной кнопки + и аватара. В новой версии добавлены локализованные tooltip Add/Profile; legacy update adapter выбирает старую + по единственному фактическому hit rectangle из UI XML (с отдельным тестом), не по выдуманным координатам. Данные контрольной задачи проверяются через Plans независимо от порядка Today.
 
 Focused Android #1 подтвердил устранение Etc/UTC crash: экран Plans построился. Следующий отказ был в ensureVisible для ещё не построенного checkbox ниже календаря. Регрессия теперь прокручивает реальный ListView через scrollUntilVisible и ждёт завершения нативной записи; assertions checked/unchecked/rechecked и SQLCipher reopen сохранены. Полный CI до focused native pass не повторяется.
+
+Уточнение accessibility: Profile уже имел tooltip в исходнике; анализатор #102 обнаружил добавленный дубль, удалён только дубль. Новая подпись + сохранена. Полный CI не запускался; ошибка остановлена focused analysis до APK.
