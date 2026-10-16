@@ -8,6 +8,22 @@ import 'design.dart';
 
 typedef AccountRequest = Future<Json> Function(String path, {Json? body});
 
+PreferredSizeWidget _accountBar(BuildContext context, String title,
+    {List<Widget>? actions}) {
+  final theme = Theme.of(context);
+  final style = theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge!;
+  final media = MediaQuery.of(context);
+  final available = media.size.width - media.padding.horizontal - 32 -
+      (Navigator.of(context).canPop() ? 56 : 0) -
+      (actions == null ? 0 : actions.length * 48 + 8);
+  final titleLayout = TextPainter(text: TextSpan(text: title, style: style),
+    textDirection: Directionality.of(context), textScaler: media.textScaler)
+    ..layout(maxWidth: available.clamp(1, double.infinity).toDouble());
+  return AppBar(titleSpacing: 16, titleTextStyle: style,
+    toolbarHeight: (titleLayout.height + 24).clamp(kToolbarHeight, double.infinity).toDouble(),
+    title: Text(title, softWrap: true, overflow: TextOverflow.visible), actions: actions);
+}
+
 class AccountCenter extends StatelessWidget {
   const AccountCenter({super.key, required this.controller, required this.pack,
     this.request});
@@ -17,7 +33,7 @@ class AccountCenter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(pack.t('account_manage'))),
+    appBar: _accountBar(context, pack.t('account_manage')),
     body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
       Text(controller.account?['email'] as String? ?? pack.t('family_account'),
         style: Theme.of(context).textTheme.titleLarge),
@@ -155,7 +171,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
       bool sending = false;
       await Navigator.of(context).push<void>(MaterialPageRoute(builder: (context) => StatefulBuilder(
         builder: (ctx, update) => Scaffold(
-          appBar: AppBar(title: Text(ticket['subject'] as String), actions: [
+          appBar: _accountBar(ctx, t('account_support'), actions: [
             IconButton(tooltip: t('account_send'), icon: const Icon(Icons.reply),
               onPressed: sending ? null : () async {
                 final message = await ask(t('account_message'), multiline: true);
@@ -173,6 +189,8 @@ class _AccountSectionState extends State<_AccountSectionPage> {
               }),
           ]),
           body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
+            Text(ticket['subject'] as String, style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 16),
             if (sending) const LinearProgressIndicator(),
             for (final message in messages)
               Padding(padding: const EdgeInsets.only(bottom: 12), child: LifeCard(child: Column(
@@ -306,7 +324,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(toolbarHeight: 88, title: Text(t(widget.section.key))),
+    appBar: _accountBar(context, t(widget.section.key)),
     body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
       if (busy) const LinearProgressIndicator(),
       if (error != null) ...[Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

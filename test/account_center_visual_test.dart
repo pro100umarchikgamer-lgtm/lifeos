@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos/localization/language_pack.dart';
@@ -8,6 +9,18 @@ import 'package:lifeos/sync/controller.dart';
 import 'package:lifeos/ui/account_center.dart';
 import 'package:lifeos/ui/design.dart';
 import 'support/sync_memory.dart';
+
+void expectFullTitle(WidgetTester tester, String title) {
+  final label = find.descendant(of: find.byType(AppBar), matching: find.text(title));
+  final paragraph = tester.renderObject<RenderParagraph>(label);
+  expect(paragraph.didExceedMaxLines, isFalse, reason: 'The full page title must remain readable');
+  final bounds = tester.getRect(label);
+  final bar = tester.getRect(find.byType(AppBar));
+  expect(bounds.left, greaterThanOrEqualTo(bar.left));
+  expect(bounds.right, lessThanOrEqualTo(bar.right));
+  expect(bounds.top, greaterThanOrEqualTo(bar.top));
+  expect(bounds.bottom, lessThanOrEqualTo(bar.bottom));
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +62,7 @@ void main() {
             home: AccountCenter(controller: c, pack: pack, request: request)));
           await tester.pumpAndSettle();
           expect(tester.takeException(),isNull);
+          expectFullTitle(tester, pack.t('account_manage'));
           await expectLater(find.byType(MaterialApp), matchesGoldenFile('control_goldens/${tag}_${mode}_${width}_hub.png'));
           if (tag == 'en' || tag == 'ru') {
             for (final key in ['account_access','account_devices','account_support','account_privacy']) {
@@ -56,6 +70,7 @@ void main() {
               await tester.tap(find.text(pack.t(key)));
               await tester.pumpAndSettle();
               expect(tester.takeException(),isNull);
+              expectFullTitle(tester, pack.t(key));
               await expectLater(find.byType(MaterialApp), matchesGoldenFile('control_goldens/${tag}_${mode}_${width}_$key.png'));
               expect(find.byType(BackButton), findsOneWidget);
               await tester.tap(find.byType(BackButton));
