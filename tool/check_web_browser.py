@@ -23,6 +23,20 @@ class Quiet(WSGIRequestHandler):
     def log_message(self,*args): pass
 
 
+def check_header_layout(page):
+    for width in (320,390,430):
+        page.set_viewport_size({'width':width,'height':844})
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),(page.url,width)
+        assert page.locator('.brand').evaluate('''element => {
+            const range=document.createRange();range.selectNodeContents(element.firstChild);
+            return range.getClientRects().length===1;
+        }'''),('wordmark wraps',width)
+        for link in page.locator('header nav a').all():
+            box=link.bounding_box()
+            if box is not None:assert box['height']>=48,('navigation target',width,box)
+    page.set_viewport_size({'width':390,'height':844})
+
+
 def main():
     OUT.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as folder:
@@ -49,6 +63,7 @@ def main():
                     page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
                     for name,path in (('home','/'),('plans','/plans'),('privacy','/privacy'),('account_login','/account')):
                         page.goto(site+path);expect(page.locator('h1')).to_be_visible()
+                        check_header_layout(page)
                         page.screenshot(path=str(OUT/(name+'_'+theme+'.png')),full_page=True)
                         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),path
                     page.get_by_label('Электронная почта',exact=True).fill('tester@example.test')

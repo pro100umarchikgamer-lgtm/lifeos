@@ -4,3 +4,6 @@ label:has(input[type=checkbox]){display:flex;align-items:center;gap:12px;min-hei
 h1,h2,h3,p,a,span{overflow-wrap:anywhere;hyphens:auto}.card,.row>*,header>*{min-width:0}
 
 .metrics{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.metric-card{padding:18px;min-height:132px}.metric-card h2{font-size:15px;line-height:1.4;font-weight:600;color:var(--muted);margin-bottom:16px}.metric-value{font-size:26px;line-height:1.2;font-weight:700}.metric-unavailable{font-size:14px;color:var(--muted)}body[data-control] .tabs{display:grid;grid-template-columns:minmax(0,1fr) auto;max-width:640px}details{margin-top:12px}summary{cursor:pointer;min-height:48px;display:flex;align-items:center}
+
+/* Keep the wordmark intact; let navigation use another row on narrow screens. */
+header{flex-wrap:wrap}.brand{flex:0 0 auto;white-space:nowrap;overflow-wrap:normal;hyphens:none}header nav{flex:1 1 240px}nav a{display:inline-flex;align-items:center;min-height:48px}
