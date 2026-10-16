@@ -95,6 +95,27 @@ def main():
                         page.get_by_role('button',name='Найти',exact=True).click()
                         expect(page.get_by_role('heading',name='tester@example.test')).to_be_visible()
                         page.screenshot(path=str(OUT/'control_users_light.png'),full_page=True)
+                        page.get_by_role('button',name='Открыть аккаунт',exact=True).click()
+                        expect(page.get_by_role('heading',name='Доступ: Free',exact=True)).to_be_visible()
+                        page.get_by_label('Причина выдачи',exact=True).fill('Synthetic 30-day closed test')
+                        page.get_by_label('Уровень',exact=True).select_option('Premium')
+                        page.get_by_label('Основание',exact=True).select_option('promo')
+                        page.get_by_label('Срок доступа',exact=True).select_option('30')
+                        page.get_by_role('button',name='Выдать доступ',exact=True).click()
+                        expect(page.get_by_role('heading',name='Доступ: Premium',exact=True)).to_be_visible()
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        page.screenshot(path=str(OUT/'control_user_grant_light.png'),full_page=True)
+                        with backend.connect() as db:
+                            grant=db.execute('SELECT * FROM entitlement_grants').fetchone()
+                        assert grant['source']=='promo' and grant['tier']=='Premium'
+                        assert 29*86400 < grant['valid_until']-int(backend.clock()) <= 30*86400
+                        page.get_by_role('button',name='Отозвать выдачу',exact=True).click()
+                        page.get_by_label('Причина отзыва',exact=True).fill('Synthetic test finished')
+                        page.get_by_role('button',name='Подтвердить отзыв выдачи',exact=True).click()
+                        expect(page.get_by_role('heading',name='Доступ: Free',exact=True)).to_be_visible()
+                        expect(page.get_by_role('heading',name='Premium · Отозван',exact=True)).to_be_visible()
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        page.screenshot(path=str(OUT/'control_user_revoked_light.png'),full_page=True)
                     assert not errors,errors
                     context.close()
                 browser.close()

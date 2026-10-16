@@ -34,7 +34,67 @@ function registration(){heading('Создать аккаунт','Доступн�
 function recovery(){heading('Восстановить доступ','Ответ одинаков для существующих и неизвестных адресов.');form('Письмо для восстановления',[['email','Электронная почта','email']],'Отправить код',async b=>{await api('recovery',b);heading('Новый пароль','Если аккаунт существует, проверьте входящие. Код действует ограниченное время.');form('Восстановление',[['code','Код из письма','text'],['password','Новый пароль: от 7 символов','password']],'Сохранить пароль',async value=>{await api('reset',{email:b.email,...value});login();notice('Пароль изменён. Старые сессии отозваны.');});});}
 async function accountPrivacy(){heading('Аккаунт и приватность');action('Двухфакторная защита',customerMfa);const status=await api('deletion');for(const transfer of status.incoming_transfers||[]){form('Принять владение: '+transfer.name,[['password','Ваш пароль','password']],'Принять владение семьёй',async b=>{await api('accept-transfer',{transfer_id:transfer.id,password:b.password});await accountPrivacy();});}form('Сменить пароль',[['old_password','Текущий пароль','password'],['new_password','Новый пароль: от 7 символов','password']],'Сменить и выйти',async b=>{await api('password',b);login();});form('Сменить почту',[['email','Новый адрес','email'],['password','Текущий пароль','password']],'Отправить код',async b=>{await api('email',b);heading('Подтвердить новую почту');form('Код из письма',[['code','Код','text']],'Подтвердить и выйти',async value=>{await api('confirm-email',{code:value.code,password:b.password});login();});});app.append(el('h2','Удаление облачного аккаунта'));notice('Запрос можно отменить в течение 24 часов. Локальная база Android и общие записи семьи сохраняются. Срок очистки резервных копий требует отдельной проверки оператором.');if(status.ownership_transfer_required.length){notice('Сначала передайте владение семейным пространством другому родителю с его подтверждением.');for(const family of status.ownership_transfer_required){if(family.eligible_parent_id)form('Передать владение: '+family.name,[['password','Ваш пароль','password']],'Запросить согласие другого родителя',async b=>{await api('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:b.password});notice('Запрос создан. Другой родитель может принять его в разделе приватности своего аккаунта.');});}}else if(status.request?.state==='pending'){notice('Запрос ожидает исполнения после '+new Date(status.request.due_at*1000).toLocaleString());form('Отменить запрос',[['password','Текущий пароль','password']],'Отменить удаление',async b=>{await api('cancel-deletion',b);await accountPrivacy();});}else{if(status.request?.state==='attention')notice('Для исполнения нужна отдельная проверка: общие ссылки или права изменились. Данные не удалены.');form('Подтвердить запрос удаления',[['password','Текущий пароль','password'],['confirmation','Введите DELETE для подтверждения','text']],'Запросить удаление',async b=>{await api('deletion',b);await accountPrivacy();});}}
 async function staffUsers(){heading('Пользователи','Поиск только по ID или почте. Личные записи не доступны.');form('Поиск',[['search','ID или почта','text']],'Найти',async b=>{const result=await api('users?search='+encodeURIComponent(b.search));const list=el('div',undefined,'grid');for(const user of result.users){const card=panel(user.email,user.verified?'Почта подтверждена':'Почта не подтверждена');action('Открыть аккаунт',()=>staffUser(user.id),card);list.append(card);}app.append(list);});}
-async function staffUser(id){const result=await api('user?id='+encodeURIComponent(id));const session=await api('session');heading(result.user.email,'Карточка аккаунта без финансов, заметок или семейного содержимого.');app.append(panel('Доступ: '+result.entitlements.tier,'Основания и покупки учтены раздельно.'));for(const device of result.devices)app.append(panel(device.label,new Date(device.last_seen_at*1000).toLocaleString()));if(session.permissions.includes('plans.grant')){const f=form('Выдать тестовый доступ',[['reason','Причина выдачи','text']],'Выдать доступ',async b=>{await api('grant',{user_id:id,tier:f.elements.tier.value,source:f.elements.source.value,valid_until:null,reason:b.reason});await staffUser(id);});for(const [name,label,values]of [['tier','Уровень',['Plus','Premium']],['source','Основание',['manual','promo']]]){const l=el('label',label);l.htmlFor='grant-'+name;const select=el('select');select.id='grant-'+name;select.name=name;for(const value of values){const option=el('option',value);option.value=value;select.append(option);}f.insertBefore(l,f.querySelector('button'));f.insertBefore(select,f.querySelector('button'));}notice('Это ручная выдача доступа. Платёж и магазинная подписка не создаются.');}if(session.permissions.includes('users.moderate')){const f=form('Временное ограничение',[['reason','Обязательная причина','text']],'Ограничить на 24 часа',async b=>{await api('moderate',{user_id:id,service:f.elements.service.value,until_at:Math.floor(Date.now()/1000)+86400,reason:b.reason});await staffUser(id);});const select=el('select');select.name='service';select.setAttribute('aria-label','Ограничиваемый сервис');for(const [value,label]of [['account','Весь аккаунт'],['family_write','Изменения в семье'],['premium','Премиальные сервисы'],['support_write','Новые сообщения поддержки']]){const option=el('option',label);option.value=value;select.append(option);}f.insertBefore(select,f.querySelector('button'));form('Снять ограничение аккаунта',[['reason','Причина снятия','text']],'Снять ограничение',async b=>{await api('moderate',{user_id:id,service:'account',until_at:0,reason:b.reason});await staffUser(id);});}}
+function selectField(form,name,label,choices){
+  const caption=el('label',label);caption.htmlFor='select-'+name;
+  const select=el('select');select.name=name;select.id=caption.htmlFor;
+  for(const [value,title]of choices){const option=el('option',title);option.value=value;select.append(option);}
+  form.insertBefore(caption,form.querySelector('button'));form.insertBefore(select,form.querySelector('button'));
+  return select;
+}
+const sourceName=value=>({manual:'Ручная выдача',promo:'Подарок / тест',google_play:'Google Play',rustore:'RuStore',web:'Веб-провайдер'}[value]||'Бесплатный доступ');
+const accessUntil=value=>value?new Date(value*1000).toLocaleString('ru-RU'):'Без ограничения срока';
+async function staffUser(id){
+  const result=await api('user?id='+encodeURIComponent(id));const session=await api('session');const ent=result.entitlements;
+  heading(result.user.email,'Карточка аккаунта без финансов, заметок или семейного содержимого.');
+  app.append(panel('Доступ: '+ent.tier,sourceName(ent.source)+' · '+accessUntil(ent.valid_until)));
+  app.append(el('p',result.user.verified?'Почта подтверждена':'Почта не подтверждена'));
+  for(const device of result.devices)app.append(panel(device.label,new Date(device.last_seen_at*1000).toLocaleString('ru-RU')));
+  const canGrant=session.permissions.includes('plans.grant');
+  app.append(el('h2','История выдачи доступа'));
+  if(!ent.grants.length)app.append(el('p','Ручных выдач пока нет.'));
+  for(const grant of ent.grants){
+    const expired=grant.valid_until!==null&&grant.valid_until<=Math.floor(Date.now()/1000);
+    const state=grant.revoked_at?'Отозван':expired?'Срок завершён':'Действует';
+    const card=panel(grant.tier+' · '+state,sourceName(grant.source)+' · '+accessUntil(grant.valid_until));
+    card.append(el('p',grant.reason));app.append(card);
+    if(canGrant&&!grant.revoked_at&&!expired)action('Отозвать выдачу',async()=>{
+      heading('Отозвать ручную выдачу',grant.tier+' · '+sourceName(grant.source));
+      notice('Отзывается только эта выдача. Другие действующие основания сохранятся. Списание или отмена магазинной подписки не выполняются.');
+      form('Подтверждение отзыва',[['reason','Причина отзыва','text']],'Подтвердить отзыв выдачи',async b=>{
+        await api('revoke-grant',{grant_id:grant.id,reason:b.reason});await staffUser(id);
+      });
+      action('Отменить',async()=>staffUser(id));
+    },card);
+  }
+  if(canGrant){
+    const f=form('Выдать тестовый доступ',[['reason','Причина выдачи','text']],'Выдать доступ',async b=>{
+      const days=f.elements.duration.value;
+      await api('grant',{user_id:id,tier:f.elements.tier.value,source:f.elements.source.value,
+        valid_until:days==='unlimited'?null:Math.floor(Date.now()/1000)+Number(days)*86400,reason:b.reason});
+      await staffUser(id);
+    });
+    selectField(f,'tier','Уровень',[['Plus','Plus'],['Premium','Premium']]);
+    selectField(f,'source','Основание',[['manual','Ручная выдача'],['promo','Подарок / тест']]);
+    selectField(f,'duration','Срок доступа',[['30','30 дней'],['90','90 дней'],['365','1 год'],['unlimited','Без ограничения срока']]);
+    notice('Это ручная выдача доступа. Платёж и магазинная подписка не создаются.');
+  }
+  if(session.permissions.includes('users.moderate')){
+    const services=[['account','Весь аккаунт'],['family_write','Изменения в семье'],['premium','Премиальные сервисы'],['support_write','Новые сообщения поддержки']];
+    for(const [service,until]of Object.entries(ent.holds)){
+      const name=services.find(row=>row[0]===service)?.[1]||service;
+      const card=panel('Ограничение: '+name,'До '+accessUntil(until));app.append(card);
+      action('Снять ограничение',async()=>{
+        heading('Снять ограничение: '+name,'Снятие не удалит историю и другие ограничения.');
+        form('Подтверждение',[['reason','Причина снятия','text']],'Подтвердить снятие',async b=>{
+          await api('moderate',{user_id:id,service,until_at:0,reason:b.reason});await staffUser(id);
+        });action('Отменить',async()=>staffUser(id));
+      },card);
+    }
+    const f=form('Временное ограничение',[['reason','Обязательная причина','text']],'Ограничить на 24 часа',async b=>{
+      await api('moderate',{user_id:id,service:f.elements.service.value,until_at:Math.floor(Date.now()/1000)+86400,reason:b.reason});await staffUser(id);
+    });selectField(f,'service','Ограничиваемый сервис',services);
+  }
+}
 
 async function staffTeam(){const result=await api('staff');const session=await api('session');heading('Команда Control','Права ограничены ролью и проверяются сервером при каждом действии. Для каждого сотрудника обязателен MFA.');for(const member of result.staff){const card=panel(member.email,member.roles.join(' · '));card.append(el('span',member.active?'Доступ активен':'Доступ отозван','badge'));app.append(card);if(!member.roles.includes('owner')&&member.id!==session.staff_id)action('Изменить права',async()=>{heading(member.email);const f=form('Права сотрудника',[['reason','Обязательная причина','text']],'Сохранить и отозвать сессии',async b=>{await api('staff/update',{staff_id:member.id,roles:[f.elements.role.value],active:f.elements.active.checked,revision:member.revision,reason:b.reason});await staffTeam();});roleSelect(f,session.roles.includes('owner'));const l=el('label','Доступ активен');const checkbox=el('input');checkbox.type='checkbox';checkbox.name='active';checkbox.checked=!!member.active;l.append(checkbox);f.insertBefore(l,f.querySelector('button'));},card);}const f=form('Пригласить сотрудника',[['email','Почта получателя','email'],['reason','Причина приглашения','text']],'Создать приглашение',async b=>{const result=await api('staff/invite',{email:b.email,roles:[f.elements.role.value],reason:b.reason});heading('Приглашение создано','Передайте код только выбранному получателю по защищённому каналу. Он должен войти в свой подтверждённый аккаунт и настроить MFA. Срок — 24 часа.');const code=el('textarea');code.readOnly=true;code.value=result.invitation;code.setAttribute('aria-label','Одноразовое приглашение');app.append(code);});roleSelect(f,session.roles.includes('owner'));}
 function roleSelect(form,owner){const label=el('label','Роль');label.htmlFor='role-select';const select=el('select');select.name='role';select.id='role-select';const roles={support:'Поддержка',moderator:'Модератор',billing_manager:'Управление доступом',auditor:'Аудитор',admin:'Администратор'};for(const [value,title]of Object.entries(roles)){if(value==='admin'&&!owner)continue;const option=el('option',title);option.value=value;select.append(option);}form.insertBefore(label,form.querySelector('button'));form.insertBefore(select,form.querySelector('button'));}
