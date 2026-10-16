@@ -13,6 +13,15 @@ class AccountLifecycle:
             result = self.backend.register(email, password)
         except Failure as error:
             if error.code != 'account_exists': raise
+            try:
+                pending = self.backend.login(email, password)
+                try:
+                    actor = self.backend.authenticate(pending['token'])
+                    if not actor['verified']: self.backend.resend_verification(actor)
+                finally:
+                    self.backend.logout(pending['token'])
+            except Failure:
+                pass # Identical response; existing addresses and password guesses are not disclosed.
         else:
             self.backend.logout(result['token'])
         return {'accepted': True, 'next': 'check_email'}

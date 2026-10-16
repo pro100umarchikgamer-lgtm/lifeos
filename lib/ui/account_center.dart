@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../localization/language_pack.dart';
 import '../sync/contracts.dart';
 import '../sync/controller.dart';
-import '../sync/api.dart';
 import 'design.dart';
 
 typedef AccountRequest = Future<Json> Function(String path, {Json? body});

@@ -142,6 +142,7 @@ class Web:
             if action == 'staff/invite': return c.invite_staff(actor, b.get('email'), b.get('roles'), b.get('reason'))
             if action == 'staff/update': return c.update_staff(actor, b.get('staff_id'), b.get('roles'), b.get('active'), b.get('revision'), b.get('reason'))
             if action == 'support/reply': return self.support.reply(actor, b.get('ticket_id'), b.get('message'), b.get('state', 'waiting'), True)
+            if action == 'support/triage': return self.support.triage(actor, b.get('ticket_id'), b.get('priority'), b.get('state'), b.get('reason'))
             if action == 'flags/preview': return c.preview_flag(actor, b.get('name'), b.get('enabled'), b.get('rollout'), b.get('revision'), b.get('reason'))
             if action == 'flags/commit': return c.commit_flag(actor, b.get('proposal_id'), b.get('digest'))
         raise Failure('not_found', 404)

@@ -3,7 +3,7 @@ import uuid
 from .service import require, text, identifier
 from .control import scrub
 
-CATEGORIES = {'account', 'sync', 'billing', 'bug', 'other'}
+CATEGORIES = {'account', 'sync', 'billing', 'bug', 'complaint', 'privacy', 'deletion', 'other'}
 STATES = {'open', 'waiting', 'resolved'}
 
 class Support:
@@ -62,4 +62,13 @@ class Support:
             self._message(db, tid, actor.id if staff else actor['id'], staff, body, now)
             db.execute('UPDATE support_tickets SET state=?,updated_at=? WHERE id=?', (state, now, tid))
             if staff: self.control.audit(db, actor, prior['user_id'], 'support.reply', {'ticket_id': tid, 'state': prior['state']}, {'ticket_id': tid, 'state': state}, 'Staff support response')
+        return {'updated': True}
+
+    def triage(self, actor, tid, priority, state, reason):
+        self.control.require(actor, 'support.reply')
+        require(priority in {'low', 'normal', 'high', 'urgent'} and state in STATES)
+        with self.backend.transaction() as db:
+            prior = self._ticket(db, actor, tid, True)
+            db.execute('UPDATE support_tickets SET priority=?,state=?,updated_at=? WHERE id=?', (priority, state, int(self.backend.clock()), tid))
+            self.control.audit(db, actor, prior['user_id'], 'support.triage', {'ticket_id': tid, 'priority': prior['priority'], 'state': prior['state']}, {'ticket_id': tid, 'priority': priority, 'state': state}, reason)
         return {'updated': True}
