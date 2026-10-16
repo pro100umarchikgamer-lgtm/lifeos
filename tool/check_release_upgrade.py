@@ -47,8 +47,24 @@ def find(label=None,editable=False):
         time.sleep(.5)
     OUT.mkdir(exist_ok=True);(OUT/'missing-control.xml').write_bytes(ET.tostring(root))
     raise RuntimeError('Release UI control not found: '+str(label or 'editable field'))
-def tap(label=None,editable=False):
-    node=find(label,editable);x1,y1,x2,y2=bounds(node);adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(.4)
+def tap_node(node):
+    x1,y1,x2,y2=bounds(node);adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(.4)
+def tap(label=None,editable=False):tap_node(find(label,editable))
+def legacy_add_node(root,width,height):
+    candidates=[]
+    for node in root.iter('node'):
+        rect=bounds(node)
+        if node.get('clickable')!='true' or node.get('enabled')=='false' or not rect:continue
+        x1,y1,x2,y2=rect
+        if abs((x1+x2)/2-width/2)<width*.08 and y1>height*.65 and x2-x1<width*.3 and y2-y1<height*.2:candidates.append(node)
+    if len(candidates)!=1:raise RuntimeError('Cannot identify retained 85001 add button: '+str(len(candidates)))
+    return candidates[0]
+def legacy_editor(kind):
+    # Retained 85001 has no accessibility label on its persistent + button.
+    # Derive its exact hit rectangle from the actual UI tree, never a fixed coordinate.
+    find('Today')
+    width,height=map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size').decode())[-1])
+    tap_node(legacy_add_node(xml(),width,height));tap(kind)
 def screenshot(name):
     OUT.mkdir(exist_ok=True);(OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
 def start():
@@ -70,10 +86,10 @@ def main():
     old=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.apk';assert old.is_file()
     adb('shell','cmd','alarm','set-timezone','Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
-    tap('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');find(PROBE)
+    legacy_editor('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');tap('Plans');find(PROBE)
     screenshot('85001-control-task')
     for kind,amount in [('Expense','12.50'),('Income','100.00')]:
-        tap('Today');tap(kind);tap(editable=True);adb('shell','input','text',amount);adb('shell','input','keyevent','4');tap('Save')
+        tap('Today');legacy_editor(kind);tap(editable=True);adb('shell','input','text',amount);adb('shell','input','keyevent','4');tap('Save')
     adb('install','-r',str(args.candidate),timeout=90)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
@@ -81,7 +97,7 @@ def main():
     if not args.probe:adb('shell','cmd','alarm','set-timezone','Etc/UTC')
     start();tap('Plans');find(PROBE);screenshot('upgraded-control-task')
     start();tap('Plans');find(PROBE)
-    evidence={'previousVersionCode':85001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False}
+    evidence={'previousVersionCode':85001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
     if not args.probe:
         for theme in ['light','dark']:
             adb('shell','cmd','uimode','night','no' if theme=='light' else 'yes');time.sleep(.7)

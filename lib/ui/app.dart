@@ -512,6 +512,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
       const SizedBox(width: 3),
       IconButton(
+        tooltip: c.pack.t('profile'),
         key: const Key('profile_button'),
         tooltip: c.pack.t('profile'),
         onPressed: () {
@@ -546,6 +547,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ),
     child: FloatingActionButton(
       key: const Key('add_button'),
+      tooltip: c.pack.t('add'),
       onPressed: _chooseAdd,
       backgroundColor: Theme.of(context).colorScheme.primary,
       foregroundColor: Theme.of(context).colorScheme.onPrimary,

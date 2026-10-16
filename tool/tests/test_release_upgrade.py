@@ -17,3 +17,7 @@ class ReleaseUpgradeHelpers(unittest.TestCase):
         with patch.object(upgrade, 'adb', return_value=b'package:other.app uid:10123\n'):
             with self.assertRaises(RuntimeError):
                 upgrade.uid()
+
+    def test_retained_unlabelled_add_button_is_selected_by_actual_bounds(self):
+        root=ET.fromstring('<hierarchy><node clickable="true" bounds="[0,1680][200,1810]" /><node clickable="true" bounds="[480,1660][600,1790]" id="add" /></hierarchy>')
+        self.assertEqual(upgrade.legacy_add_node(root,1080,1920).get('id'),'add')
