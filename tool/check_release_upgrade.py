@@ -68,6 +68,16 @@ def legacy_editor(kind):
     find('Today')
     width,height=map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size').decode())[-1])
     tap_node(legacy_add_node(xml(),width,height));tap(kind)
+def enter_text(value):
+    # Autofocus/IME can move the field while its old bounds are being tapped.
+    # Replace any existing input and require the exact value before saving.
+    tap(editable=True)
+    adb('shell','input','keyevent','KEYCODE_MOVE_END')
+    adb('shell','input','keyevent',*(['KEYCODE_DEL']*64))
+    adb('shell','input','text',value)
+    actual=find(editable=True).get('text','')
+    assert actual==value, f'Fixture text mismatch: {actual!r} != {value!r}'
+    adb('shell','input','keyevent','4')
 def screenshot(name):
     OUT.mkdir(exist_ok=True);(OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
 def start():
@@ -94,10 +104,10 @@ def main():
     old=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.apk';assert old.is_file()
     device_timezone('Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
-    legacy_editor('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');tap('Plans');find(PROBE,reveal=True)
+    legacy_editor('Task');enter_text(PROBE);tap('Save');tap('Plans');find(PROBE,reveal=True)
     screenshot('85001-control-task')
     for kind,amount in [('Expense','12.50'),('Income','100.00')]:
-        tap('Today');legacy_editor(kind);tap(editable=True);adb('shell','input','text',amount);adb('shell','input','keyevent','4');tap('Save')
+        tap('Today');legacy_editor(kind);enter_text(amount);tap('Save')
     adb('install','-r',str(args.candidate),timeout=90)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])

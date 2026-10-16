@@ -38,3 +38,12 @@ class ReleaseUpgradeHelpers(unittest.TestCase):
         with patch.object(upgrade, 'xml', side_effect=[empty, task]), patch.object(upgrade, 'scroll') as scroll, patch.object(upgrade.time, 'sleep'):
             self.assertEqual(upgrade.find(upgrade.PROBE, reveal=True).get('content-desc'), upgrade.PROBE)
             scroll.assert_called_once_with()
+
+    def test_editor_replaces_input_and_requires_exact_fixture_value_before_save(self):
+        with patch.object(upgrade, 'tap'), patch.object(upgrade, 'adb') as adb, patch.object(upgrade, 'find', return_value=ET.fromstring('<node text="expected" />')):
+            upgrade.enter_text('expected')
+            self.assertEqual(adb.call_args_list[1].args, ('shell','input','keyevent',*(['KEYCODE_DEL']*64)))
+    def test_editor_rejects_prefixed_input_instead_of_hiding_a_record_mismatch(self):
+        with patch.object(upgrade, 'tap'), patch.object(upgrade, 'adb'), patch.object(upgrade, 'find', return_value=ET.fromstring('<node text="Yexpected" />')):
+            with self.assertRaisesRegex(AssertionError, 'Fixture text mismatch'):
+                upgrade.enter_text('expected')
