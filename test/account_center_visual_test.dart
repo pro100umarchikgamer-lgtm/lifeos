@@ -57,7 +57,10 @@ void main() {
               await tester.pumpAndSettle();
               expect(tester.takeException(),isNull);
               await expectLater(find.byType(MaterialApp), matchesGoldenFile('control_goldens/${tag}_${mode}_${width}_$key.png'));
-              await tester.pageBack();await tester.pumpAndSettle();
+              expect(find.byType(BackButton), findsOneWidget);
+              await tester.tap(find.byType(BackButton));
+              await tester.pumpAndSettle();
+              expect(find.text(pack.t('account_manage')), findsOneWidget);
             }
           }
         });
