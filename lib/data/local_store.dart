@@ -1,3 +1,4 @@
+import '../domain/timezones.dart';
 import '../sync/contracts.dart';
 import '../domain/offline_validation.dart';
 import '../domain/statement_import.dart';
@@ -521,7 +522,7 @@ class LocalStore implements OfflineStore {
               ? utc.toLocal()
               : tz.TZDateTime.from(
                   utc,
-                  tz.getLocation(spec['timezone'] as String),
+                  calendarLocation(spec['timezone'] as String),
                 ));
           final checks = await tx.query(
             'habit_checks',

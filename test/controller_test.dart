@@ -55,6 +55,18 @@ void main() {
   timezone.initializeTimeZones();
   late PackCatalog catalog;
   setUpAll(() async { catalog = await PackCatalog.load(); });
+  test('Android UTC aliases keep the controller clock and civil dates usable', () async {
+    final catalog = await PackCatalog.load();
+    final c = AppController(CountingStore(), catalog, 'en', platform: FakeNative());
+    await c.load();
+    c.deviceZone = 'Etc/UTC';
+    expect(c.now.timeZoneOffset, Duration.zero);
+    expect(c.civilDate(DateTime.utc(2026, 10, 11, 23)), '2026-10-11');
+    c.preferences['timezone'] = 'Etc/UTC';
+    expect(c.now.timeZoneOffset, Duration.zero);
+    c.dispose();
+  });
+
   test('appearance preview is not persisted; Apply survives a new controller without database refresh', () async {
     final store = CountingStore(), native = FakeNative();
     final c = AppController(store, catalog, 'ru', platform: native);

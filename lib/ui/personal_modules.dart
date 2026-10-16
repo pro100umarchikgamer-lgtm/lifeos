@@ -1,3 +1,4 @@
+import '../domain/timezones.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -62,7 +63,7 @@ class _PersonalModulesPageState extends State<PersonalModulesPage> {
         ]);
       case OfflineTable.habits:
         final spec=storedSchedule(row);final checks=(c.offline[OfflineTable.habitChecks]??[]).where((h)=>h['habit_id']==id).toList();
-        final date=dateOnly(spec==null||spec.timezone=='device'?DateTime.now():tz.TZDateTime.now(tz.getLocation(spec.timezone))),today=checks.where((h)=>h['local_date']==date).firstOrNull;
+        final date=dateOnly(spec==null||spec.timezone=='device'?DateTime.now():tz.TZDateTime.now(calendarLocation(spec.timezone))),today=checks.where((h)=>h['local_date']==date).firstOrNull;
         final streak=spec==null?0:habitStreak(CalendarEntry(id:id,title:title(row),schedule:spec),c.now,c.deviceZone,checks,pauses:[for(final p in row['__pauses'] as List? ?? [])Map<String,Object?>.from(p as Map)]);
         return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Wrap(spacing:6,runSpacing:6,children:[for(var offset=6;offset>=0;offset--) Semantics(label:'${dateOnly(c.now.subtract(Duration(days:offset)))}: ${checks.any((e)=>e['local_date']==dateOnly(c.now.subtract(Duration(days:offset)))&&e['completed']==1)?c.pack.t('complete'):c.pack.t('ux_pending')}',child:Icon(checks.any((e)=>e['local_date']==dateOnly(c.now.subtract(Duration(days:offset)))&&e['completed']==1)?Icons.check_circle:Icons.circle_outlined,color:Theme.of(context).colorScheme.primary))]),const SizedBox(height:8),Text(row['paused']==1?c.pack.t('status_paused'):'${c.pack.t('habit_streak')}: $streak'),
           CheckboxListTile(contentPadding:EdgeInsets.zero,title:Text(c.pack.t('check_today')),value:today?['completed']==1,onChanged:busy||row['paused']==1?null:(v)=>change(CheckHabit(const Uuid().v4(),today?['id'] as String? ?? const Uuid().v4(),today?['revision'] as int? ?? 0,habitId:id,localDate:date,timezone:spec==null||spec.timezone=='device'?c.deviceZone:spec.timezone,completed:v==true))),

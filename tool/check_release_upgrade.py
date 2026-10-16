@@ -68,6 +68,7 @@ def main():
     if args.download:print('Retained signed 85001 verified:',previous());return
     assert args.candidate and args.candidate.is_file()
     old=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.apk';assert old.is_file()
+    adb('shell','cmd','alarm','set-timezone','Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
     tap('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');find(PROBE)
     screenshot('85001-control-task')
@@ -77,6 +78,7 @@ def main():
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
     assert version==85001 if args.probe else version>85001
+    if not args.probe:adb('shell','cmd','alarm','set-timezone','Etc/UTC')
     start();tap('Plans');find(PROBE);screenshot('upgraded-control-task')
     start();tap('Plans');find(PROBE)
     evidence={'previousVersionCode':85001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False}

@@ -52,14 +52,14 @@ extension PersonalModulesPersistence on LocalStore {
         final calendar=await _moduleCalendar(tx,action,'habits',action.name,action.schedule,now,paused:action.paused);
         await _writeEntity(tx,'habits',action,{'name':action.name.trim(),'paused':action.paused?1:0,'calendar_id':calendar},now);
         final clock=DateTime.now(),zone=action.schedule.timezone;
-        final day=dateOnly(zone=='device'?clock:tz.TZDateTime.from(clock,tz.getLocation(zone)));
+        final day=dateOnly(zone=='device'?clock:tz.TZDateTime.from(clock,calendarLocation(zone)));
         if(action.paused&&previous?['paused']!=1)await tx.insert('habit_pauses',{'id':LocalStore._uuid.v4(),'habit_id':action.id,'start_on':day});
         if(!action.paused&&previous?['paused']==1)await tx.update('habit_pauses',{'end_on':day},where:'habit_id=? AND end_on IS NULL',whereArgs:[action.id]);
       case CheckHabit():
         final habit=await _scoped(tx,'habits',action.habitId);
         final calendar=await _scoped(tx,'calendar_entries',habit['calendar_id'] as String,deleted:true);
         final spec=ScheduleSpec(localStart:calendar['local_start'] as String,timezone:calendar['timezone'] as String,repeat:RepeatRule.values.byName(calendar['repeat_rule'] as String),interval:calendar['repeat_interval'] as int,until:calendar['until_date'] as String?);
-        final location=tz.getLocation(spec.timezone=='device'?action.timezone=='device'?tz.local.name:action.timezone:spec.timezone),day=DateTime.parse(action.localDate);
+        final location=calendarLocation(spec.timezone=='device'?action.timezone=='device'?tz.local.name:action.timezone:spec.timezone),day=DateTime.parse(action.localDate);
         final occurrences=const CalendarEngine().between(CalendarEntry(id:calendar['id'] as String,title:calendar['title'] as String,schedule:spec),tz.TZDateTime(location,day.year,day.month,day.day),tz.TZDateTime(location,day.year,day.month,day.day+1),location.name);
         if(occurrences.isEmpty)throw const DomainFailure('invalid_date');
         await _writeEntity(tx,'habit_checks',action,{'habit_id':action.habitId,'local_date':action.localDate,'timezone':action.timezone,'completed':action.completed?1:0},now);

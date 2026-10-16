@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:lifeos/domain/calendar_engine.dart';
+import 'package:lifeos/domain/timezones.dart';
 import 'package:lifeos/domain/models.dart';
 
 void main() {
@@ -24,6 +25,18 @@ void main() {
       until: until,
     ),
   );
+  test('Android UTC aliases preserve completion instants and reject unknown zones', () {
+    for (final alias in ['UTC', 'Etc/UTC', 'GMT', 'Etc/GMT', 'Etc/Universal']) {
+      expect(calendarLocation(alias), same(tz.UTC));
+      final due = engine.completionOccurrence(
+        series('2026-10-11T09:00:00', RepeatRule.daily, zone: 'device', until: '2026-10-11'),
+        DateTime.utc(2026, 10, 15, 18),
+        alias,
+      );
+      expect(due?.at.toUtc(), DateTime.utc(2026, 10, 11, 9));
+    }
+    expect(() => calendarLocation('Invalid/Timezone'), throwsA(isA<tz.LocationNotFoundException>()));
+  });
   test('month end and leap day stay anchored rather than drifting', () {
     final dates = engine.between(
       series('2024-01-31T09:00:00', RepeatRule.monthly),

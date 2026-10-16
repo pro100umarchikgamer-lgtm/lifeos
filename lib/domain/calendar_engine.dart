@@ -1,3 +1,4 @@
+import 'timezones.dart';
 import 'dart:math' as math;
 
 import 'package:timezone/timezone.dart' as tz;
@@ -22,7 +23,7 @@ class CalendarEngine {
     if (canonical != spec.localStart) throw const DomainFailure('invalid_date');
     if (spec.timezone != 'device') {
       try {
-        tz.getLocation(spec.timezone);
+        calendarLocation(spec.timezone);
       } catch (_) {
         throw const DomainFailure('invalid_timezone');
       }
@@ -78,7 +79,7 @@ class CalendarEngine {
     if (!from.isBefore(to)) return [];
     final spec = entry.schedule;
     final local = DateTime.parse(spec.localStart);
-    final zone = tz.getLocation(
+    final zone = calendarLocation(
       spec.timezone == 'device' ? deviceZone : spec.timezone,
     );
     final localFrom = tz.TZDateTime.from(from, zone);
@@ -159,7 +160,7 @@ class CalendarEngine {
     String deviceZone,
   ) {
     final spec = entry.schedule;
-    final zone = tz.getLocation(
+    final zone = calendarLocation(
       spec.timezone == 'device' ? deviceZone : spec.timezone,
     );
     var anchor = tz.TZDateTime.from(now, zone);

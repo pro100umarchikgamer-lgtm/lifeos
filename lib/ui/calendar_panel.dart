@@ -1,3 +1,4 @@
+import '../domain/timezones.dart';
 import 'module_calendar_route.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -46,7 +47,7 @@ class _CalendarPanelState extends State<CalendarPanel> {
   }
   @override
   Widget build(BuildContext context) => ListenableBuilder(listenable: c, builder: (context, _) {
-    final location = tz.getLocation(c.timezone == 'device' ? c.deviceZone : c.timezone);
+    final location = calendarLocation(c.timezone == 'device' ? c.deviceZone : c.timezone);
     final from = tz.TZDateTime(location, month.year, month.month);
     final to = tz.TZDateTime(location, month.year, month.month + 1);
     final key = '${month.year}-${month.month}-${location.name}-${c.deviceZone}';

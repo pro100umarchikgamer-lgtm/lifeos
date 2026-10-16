@@ -1,3 +1,4 @@
+import 'timezones.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'models.dart';
 import 'calendar_engine.dart';
@@ -8,7 +9,7 @@ ScheduleSpec? storedSchedule(Map<String,Object?>? row) {
 }
 /// Civil dates, never elapsed 24-hour periods. Paused habits do not accumulate misses.
 int habitStreak(CalendarEntry entry,DateTime now,String deviceZone,Iterable<Map<String,Object?>> checks,{Iterable<Map<String,Object?>> pauses=const []}) {
-  final zone=tz.getLocation(entry.schedule.timezone=='device'?deviceZone:entry.schedule.timezone);
+  final zone=calendarLocation(entry.schedule.timezone=='device'?deviceZone:entry.schedule.timezone);
   final today=tz.TZDateTime.from(now,zone),civil=DateTime.utc(today.year,today.month,today.day);
   final completed={for(final c in checks)if(c['completed']==1&&c['deleted_at']==null)c['local_date'] as String};
   if(completed.isEmpty)return 0;

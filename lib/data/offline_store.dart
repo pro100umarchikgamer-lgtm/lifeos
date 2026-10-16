@@ -127,7 +127,7 @@ extension OfflinePersistence on LocalStore {
         final schedule=await _scoped(tx,'calendar_entries',plan['calendar_id'] as String);
         final spec=ScheduleSpec(localStart:schedule['local_start'] as String,timezone:schedule['timezone'] as String,repeat:RepeatRule.values.byName(schedule['repeat_rule'] as String),interval:schedule['repeat_interval'] as int,until:schedule['until_date'] as String?);
         // Only an actual occurrence of this plan may be confirmed.
-        final civil=DateTime.parse(action.occurrence), location=tz.getLocation(spec.timezone=='device'?'UTC':spec.timezone);
+        final civil=DateTime.parse(action.occurrence), location=calendarLocation(spec.timezone=='device'?'UTC':spec.timezone);
         final event=CalendarEntry(id:plan['calendar_id'] as String,title:plan['name'] as String,schedule:spec);
         final occurrences=const CalendarEngine().between(event,tz.TZDateTime(location,civil.year,civil.month,civil.day),tz.TZDateTime(location,civil.year,civil.month,civil.day+1),'UTC');
         if(occurrences.isEmpty) throw const DomainFailure('invalid_date');
