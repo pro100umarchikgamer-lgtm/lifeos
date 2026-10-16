@@ -366,6 +366,18 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          final currencyText = find.descendant(
+            of: find.byKey(const Key('insight_currency')),
+            matching: find.text('RUB'),
+          );
+          final currencyParagraph = tester.renderObject<RenderParagraph>(currencyText);
+          expect(
+            currencyParagraph.getBoxesForSelection(
+              const TextSelection(baseOffset: 0, extentOffset: 3),
+            ),
+            hasLength(1),
+            reason: 'Currency code must remain on one line at large text',
+          );
           await snapshot('today_large_text');
           await tester.scrollUntilVisible(
             find.text(pack.t('all_tasks')),

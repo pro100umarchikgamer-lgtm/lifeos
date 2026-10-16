@@ -109,7 +109,8 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   SizedBox(
-                    width: 106,
+                    key: const Key('insight_currency'),
+                    width: 76 + MediaQuery.textScalerOf(context).scale(40),
                     child: LifeSelect<String>(
                       label: t('currency'),
                       showLabel: false,
