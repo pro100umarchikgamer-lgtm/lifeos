@@ -121,16 +121,30 @@ void main() {
       await tester.tap(find.byKey(const Key('nav_plans')));
       await tester.pumpAndSettle();
       final check = find.byKey(Key('task_${ids.first}'));
-      await tester.ensureVisible(check);
-      await tester.pumpAndSettle();
+      final plansScroll = find.descendant(
+        of: find.byKey(const Key('plans')),
+        matching: find.byType(Scrollable),
+      ).first;
+      Future<void> reveal(double delta) async {
+        await tester.scrollUntilVisible(check, delta, scrollable: plansScroll, maxScrolls: 40);
+        await tester.pumpAndSettle();
+      }
+      Future<void> waitForTaskWrite() async {
+        for (var attempt = 0; attempt < 100 && controller.pendingTasks.isNotEmpty; attempt++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(controller.pendingTasks, isEmpty, reason: 'SQLCipher task write must settle');
+        await tester.pumpAndSettle();
+      }
+      await reveal(180);
       expect(tester.widget<Checkbox>(check).value, isTrue);
       await tester.tap(check);
-      await tester.pumpAndSettle();
+      await waitForTaskWrite();
+      await reveal(-180);
       expect(tester.widget<Checkbox>(check).value, isFalse);
-      await tester.ensureVisible(check);
-      await tester.pumpAndSettle();
       await tester.tap(check);
-      await tester.pumpAndSettle();
+      await waitForTaskWrite();
+      await reveal(180);
       expect(tester.widget<Checkbox>(check).value, isTrue);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
