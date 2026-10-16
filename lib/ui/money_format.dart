@@ -19,3 +19,14 @@ String formatMoney(Currency currency, Object minor, {required String locale}) {
   return template.replaceFirst(units.isNegative ? '1' : '0', amount)
     .replaceAll(' ', ' ').replaceAll(' ', ' ');
 }
+
+// Convert only the bounded presentation ratio, never monetary units, to double.
+String formatShare(BigInt part, BigInt total, {required String locale}) {
+  final formatter = NumberFormat.percentPattern(locale)
+    ..minimumFractionDigits = 1
+    ..maximumFractionDigits = 1;
+  final tenths = total == BigInt.zero
+      ? BigInt.zero
+      : part * BigInt.from(1000) ~/ total;
+  return formatter.format(tenths.toInt() / 1000);
+}

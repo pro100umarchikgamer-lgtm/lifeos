@@ -340,7 +340,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                       ),
                       title: Text(name(parts[i].key)),
                       subtitle: Text(
-                        '${money(parts[i].value)} · ${(parts[i].value * BigInt.from(1000) ~/ data.expense).toDouble() / 10}%',
+                        '${money(parts[i].value)} · ${formatShare(parts[i].value, data.expense, locale: c.region)}',
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       selected: category == parts[i].key,

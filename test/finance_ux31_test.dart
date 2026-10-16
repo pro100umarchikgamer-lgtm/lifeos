@@ -9,6 +9,7 @@ import 'package:lifeos/ui/financial_overview.dart';
 import 'package:lifeos/domain/financial_period.dart';
 import 'package:lifeos/ui/design.dart';
 import 'package:lifeos/ui/selection.dart';
+import 'package:lifeos/ui/money_format.dart';
 
 import 'widget_test.dart' show UIStore;
 
@@ -18,6 +19,13 @@ void main() {
   late PackCatalog catalog;
   setUpAll(() async {
     catalog = await PackCatalog.load();
+  });
+  test('category shares follow selected decimal formatting', () {
+    expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'ru'), contains('80,0'));
+    expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'en'), contains('80.0'));
+    expect(formatShare(BigInt.zero, BigInt.zero, locale: 'de'), contains('0,0'));
+    final huge = BigInt.parse('9999999999999999999999999999999999');
+    expect(formatShare(huge, huge, locale: 'ru'), contains('100,0'));
   });
   testWidgets(
     'account search retains history and budget progress uses real spending',
