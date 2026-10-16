@@ -21,7 +21,7 @@ def dispatch(backend,method,path,body,auth):
     elif route=='/v1/auth/recovery' and method=='POST':result=backend.recover(body.get('email'))
     elif route=='/v1/auth/reset' and method=='POST':result=backend.reset_password(body.get('email'),body.get('code'),body.get('password'))
     elif route=='/v1/auth/refresh' and method=='POST':result=backend.refresh_session(body.get('refresh_token'))
-    elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'))
+    elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'),body.get('code'))
     else:
         token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
         if route=='/v1/auth/verify' and method=='POST':result=backend.verify(actor,body.get('code'))
@@ -31,6 +31,9 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/account/devices' and method=='GET':result=backend.list_devices(actor,token)
         elif route=='/v1/account/devices/revoke' and method=='POST':result=backend.revoke_device(actor,body.get('device_id'),body.get('password'))
         elif route=='/v1/account/logout-all' and method=='POST':result=backend.revoke_all(actor,body.get('password'))
+        elif route=='/v1/account/features' and method=='GET':
+            from .control import Control
+            result={'flags':Control(backend).flags(actor['id'])}
         elif route=='/v1/account/entitlements' and method=='GET':
             from .entitlements import resolve
             with backend.connect() as db:result=resolve(db,actor['id'],int(backend.clock()))
@@ -48,6 +51,14 @@ def dispatch(backend,method,path,body,auth):
             elif route=='/v1/support' and method=='POST':result=support.create(actor,body.get('category'),body.get('subject'),body.get('message'))
             elif route=='/v1/support/thread' and method=='GET':result=support.read(actor,query.get('id',[''])[0])
             elif route=='/v1/support/reply' and method=='POST':result=support.reply(actor,body.get('ticket_id'),body.get('message'),body.get('state','open'))
+            else:raise Failure('not_found',404)
+        elif route.startswith('/v1/account/mfa'):
+            from .customer_mfa import CustomerMFA
+            mfa=CustomerMFA(backend)
+            if route=='/v1/account/mfa' and method=='GET':result=mfa.status(actor)
+            elif route=='/v1/account/mfa/begin' and method=='POST':result=mfa.begin(actor,body.get('password'))
+            elif route=='/v1/account/mfa/enable' and method=='POST':result=mfa.enable(actor,body.get('password'),body.get('enrollment'),body.get('code'))
+            elif route=='/v1/account/mfa/disable' and method=='POST':result=mfa.disable(actor,body.get('password'),body.get('code'))
             else:raise Failure('not_found',404)
         elif route.startswith('/v1/account/lifecycle/'):
             from .account_lifecycle import AccountLifecycle

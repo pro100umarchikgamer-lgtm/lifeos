@@ -116,11 +116,16 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     return result;
   }
 
-  Future<void> revoke(String id) async {
+  Future<void> revoke(String id, {bool current = false}) async {
     final password = await ask(t('family_password'), secret: true);
     if (password == null || !mounted) return;
     await run(() async {
       await request('/v1/account/devices/revoke', body: {'device_id': id, 'password': password});
+      if (current) {
+        await widget.controller.signOut();
+        if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+        return;
+      }
       final result = await request(path);
       if (mounted) setState(() => data = result);
     });
@@ -217,7 +222,56 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     });
     if (!changed || !mounted) return;
     await widget.controller.signOut();
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  Future<void> showPrivateMaterial(String title, String body, String material) async {
+    await showDialog<void>(context: context, barrierDismissible: false,
+      builder: (ctx) => AlertDialog(title: Text(title), scrollable: true,
+        content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(body), const SizedBox(height: 16), SelectableText(material),
+        ]),
+        actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(t('account_done')))],
+      ));
+  }
+
+  Future<void> manageMfa() async {
+    Json? status;
+    await run(() async {status = await request('/v1/account/mfa');});
+    if (status == null || !mounted) return;
+    final enabled = status!['enabled'] == true;
+    if (enabled) {
+      final yes = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+        title: Text(t('account_mfa_disable')),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('confirm')))],
+      ));
+      if (yes != true || !mounted) return;
+    }
+    final password = await ask(t('family_password'), secret: true);
+    if (password == null || !mounted) return;
+    Json? enrollment;
+    if (!enabled) {
+      await run(() async {enrollment = await request('/v1/account/mfa/begin', body: {'password': password});});
+      if (enrollment == null || !mounted) return;
+      await showPrivateMaterial(t('account_mfa'), t('account_mfa_setup'), enrollment!['totp_secret'] as String);
+      if (!mounted) return;
+    }
+    final code = await ask(t('family_code'));
+    if (code == null || !mounted) return;
+    Json? changed;
+    await run(() async {
+      changed = await request('/v1/account/mfa/${enabled ? 'disable' : 'enable'}', body: {
+        'password': password, 'code': code.trim(), if (!enabled) 'enrollment': enrollment!['enrollment'],
+      });
+    });
+    if (changed == null || !mounted) return;
+    if (!enabled) {
+      await showPrivateMaterial(t('account_mfa'), t('account_mfa_recovery'), (changed!['recovery_codes'] as List).join('\n\n'));
+      if (!mounted) return;
+    }
+    await widget.controller.signOut();
+    if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   String date(Object? value) => value is int
@@ -245,7 +299,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
             crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(object(raw)['label'] as String, style: Theme.of(context).textTheme.titleMedium),
               Text(date(object(raw)['last_seen_at'])),
-              if (object(raw)['revoked_at'] == 0) TextButton.icon(onPressed: busy ? null : () => revoke(object(raw)['id'] as String),
+              if (object(raw)['revoked_at'] == 0) TextButton.icon(onPressed: busy ? null : () => revoke(object(raw)['id'] as String, current: object(raw)['current'] == true),
                 icon: const Icon(Icons.logout), label: Text(t('account_revoke'))),
             ])))],
         _AccountSection.support => [
@@ -256,6 +310,8 @@ class _AccountSectionState extends State<_AccountSectionPage> {
             trailing: const Icon(Icons.chevron_right), onTap: busy ? null : () => openTicket(object(raw))),
         ],
         _AccountSection.privacy => [
+          OutlinedButton.icon(onPressed: busy ? null : manageMfa, icon: const Icon(Icons.phonelink_lock), label: Text(t('account_mfa'))),
+          const SizedBox(height: 12),
           OutlinedButton.icon(onPressed: busy ? null : emailChange, icon: const Icon(Icons.alternate_email), label: Text(t('account_email_change'))),
           const SizedBox(height: 20), Text(t('account_delete_notice')),
           if (data!['request'] != null) Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(date(object(data!['request'])['due_at']))),

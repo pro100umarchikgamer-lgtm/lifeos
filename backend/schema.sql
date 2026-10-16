@@ -54,3 +54,5 @@ CREATE TABLE IF NOT EXISTS ownership_transfers(id TEXT PRIMARY KEY,workspace_id 
 
 CREATE TRIGGER IF NOT EXISTS control_audit_no_update BEFORE UPDATE ON control_audit BEGIN SELECT RAISE(ABORT,'control_audit is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS control_audit_no_delete BEFORE DELETE ON control_audit BEGIN SELECT RAISE(ABORT,'control_audit is append-only'); END;
+CREATE TABLE IF NOT EXISTS account_mfa(user_id TEXT PRIMARY KEY REFERENCES users(id),secret BYTEA NOT NULL,last_counter BIGINT NOT NULL DEFAULT -1);
+CREATE TABLE IF NOT EXISTS account_recovery(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),used_at BIGINT NOT NULL DEFAULT 0);

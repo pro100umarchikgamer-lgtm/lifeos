@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 13,
+  "packVersion": 14,
   "locale": "de",
   "nativeName": "Deutsch",
   "strings": {
@@ -696,7 +696,11 @@
     "account_delete": "Cloud-Konto löschen",
     "account_delete_notice": "Die Löschung beginnt nach 24 Stunden und kann abgebrochen werden. Lokale Android-Einträge und der gemeinsame Verlauf anderer Familienmitglieder bleiben erhalten. Die Familieninhaberschaft muss zuerst übertragen werden. Für die Löschung aus Sicherungen müssen die Aufbewahrungsfristen separat geprüft werden.",
     "account_cancel_delete": "Löschantrag abbrechen",
-    "account_done": "Fertig"
+    "account_done": "Fertig",
+    "account_mfa": "Zwei-Faktor-Authentifizierung",
+    "account_mfa_setup": "Fügen Sie diesen Schlüssel Ihrer Authenticator-App hinzu und geben Sie deren aktuellen sechsstelligen Code ein.",
+    "account_mfa_recovery": "Bewahren Sie diese Wiederherstellungscodes offline auf. Jeder gilt einmal zusammen mit Ihrem Passwort. Melden Sie sich nach der Einrichtung mit einem neuen Authenticator-Code an.",
+    "account_mfa_disable": "Zwei-Faktor-Authentifizierung deaktivieren"
   },
   "plurals": {
     "record_count": {

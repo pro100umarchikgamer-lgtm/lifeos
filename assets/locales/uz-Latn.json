@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 13,
+  "packVersion": 14,
   "locale": "uz-Latn",
   "nativeName": "O‘zbekcha",
   "strings": {
@@ -696,7 +696,11 @@
     "account_delete": "Bulut hisobini o‘chirish",
     "account_delete_notice": "O‘chirish 24 soatdan keyin boshlanadi; so‘rovni bekor qilish mumkin. Androiddagi mahalliy yozuvlar va boshqa oila a’zolarining umumiy tarixi saqlanadi. Avval oila egaligini topshirish kerak. Zaxira nusxalarini tozalash uchun saqlash muddatlarini alohida tekshirish zarur.",
     "account_cancel_delete": "O‘chirish so‘rovini bekor qilish",
-    "account_done": "Tayyor"
+    "account_done": "Tayyor",
+    "account_mfa": "Ikki bosqichli himoya",
+    "account_mfa_setup": "Bu kalitni autentifikator ilovasiga qo‘shing, so‘ng undagi joriy olti xonali kodni kiriting.",
+    "account_mfa_recovery": "Tiklash kodlarini oflayn saqlang. Har biri parol bilan bir marta ishlaydi. Sozlashdan keyin autentifikatorning yangi kodi bilan kiring.",
+    "account_mfa_disable": "Ikki bosqichli himoyani o‘chirish"
   },
   "plurals": {
     "record_count": {

@@ -181,3 +181,14 @@ class PostgresLifecycleTests(LifecycleScenarios, unittest.TestCase):
     def setUp(self):
         PostgresTests.setUp(self)
         self.setup_lifecycle()
+
+from test_customer_mfa import MFAScenarios
+
+@unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
+class PostgresCustomerMFATests(MFAScenarios, unittest.TestCase):
+    drop_schema = PostgresTests.drop_schema
+    user = fixtures.FamilyBackendTests.user
+    op = fixtures.FamilyBackendTests.op
+    def setUp(self):
+        PostgresTests.setUp(self)
+        self.setup_mfa()

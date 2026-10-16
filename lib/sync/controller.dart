@@ -27,6 +27,7 @@ class FamilyController extends ChangeNotifier {
   List<Json> spaces = [], records = [], pending = [], issues = [];
   String? workspace, error, pendingRegistrationEmail;
   bool busy = false;
+  bool loginMfaRequired = false;
   bool _disposed = false;
   Timer? _retry;
   int _recoveryFailures = 0;
@@ -158,19 +159,27 @@ class FamilyController extends ChangeNotifier {
     String password, {
     bool register = false,
     String? verificationCode,
+    String? mfaCode,
   }) => run(() async {
     final candidate = FamilyApi(endpoint);
     try {
       if (register && verificationCode == null) {
         await candidate.request('/v1/auth/signup', body: {'email': email, 'password': password});
+        loginMfaRequired = false;
         pendingRegistrationEmail = email;
         candidate.close();
         return;
       }
       final result = await candidate.request(
         '/v1/auth/${register ? 'signup/confirm' : 'login'}',
-        body: {'email': email, if (register) 'code': verificationCode else 'password': password},
+        body: {'email': email, if (register) 'code': verificationCode else 'password': password, if (!register && mfaCode != null) 'code': mfaCode},
       );
+      if (result['mfa_required'] == true) {
+        loginMfaRequired = true;
+        candidate.close();
+        return;
+      }
+      loginMfaRequired = false;
       pendingRegistrationEmail = null;
       candidate.token = result['token'] as String;
       candidate.refreshToken = result['refresh_token'] as String?;
@@ -393,6 +402,7 @@ class FamilyController extends ChangeNotifier {
   Future<void> _clearSession() async {
     _generation++;
     pendingRegistrationEmail = null;
+    loginMfaRequired = false;
     api?.token = null;
     api?.refreshToken = null;
     api?.userId = null;

@@ -512,6 +512,11 @@ class _FamilyPageState extends State<FamilyPage> {
                   ),
                 ],
               ),
+              if (!register && c.loginMfaRequired) ...[
+                Text(t('account_mfa')),
+                TextField(controller: code, decoration: InputDecoration(labelText: t('family_code')), textInputAction: TextInputAction.done),
+                const SizedBox(height: 12),
+              ],
               if (register && c.pendingRegistrationEmail == email.text.trim()) ...[
                 Text(t('family_verify_hint')),
                 TextField(controller: code, decoration: InputDecoration(labelText: t('family_code')),
@@ -540,10 +545,14 @@ class _FamilyPageState extends State<FamilyPage> {
                           email.text.trim(),
                           password.text,
                           register: register,
+                          mfaCode: !register && c.loginMfaRequired ? code.text.trim() : null,
                           verificationCode: register && c.pendingRegistrationEmail == email.text.trim() ? code.text.trim() : null,
                         );
-                        password.clear();
-                        passwordAgain.clear();
+                        if (!c.loginMfaRequired) {
+                          password.clear();
+                          passwordAgain.clear();
+                          code.clear();
+                        }
                       },
                 child: Text(t(register ? (c.pendingRegistrationEmail == email.text.trim() ? 'family_verify' : 'family_register') : 'family_login')),
               ),

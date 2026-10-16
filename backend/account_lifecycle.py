@@ -15,6 +15,7 @@ class AccountLifecycle:
             if error.code != 'account_exists': raise
             try:
                 pending = self.backend.login(email, password)
+                if pending.get('mfa_required'):return {'accepted': True, 'next': 'check_email'}
                 try:
                     actor = self.backend.authenticate(pending['token'])
                     if not actor['verified']: self.backend.resend_verification(actor)
@@ -147,7 +148,7 @@ class AccountLifecycle:
                 seq = self.backend._audit(db, record['workspace_id'], {'id': uid}, str(uuid.uuid4()), 'record.delete', rid)
                 db.execute('UPDATE records SET deleted=1,revision=revision+1,seq=? WHERE id=?', (seq, rid))
             self.backend.revoke_all_in(db, uid)
-            for table in ('verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations'):
+            for table in ('verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa'):
                 db.execute('DELETE FROM '+table+' WHERE user_id=?', (uid,))
             db.execute('DELETE FROM grants WHERE user_id=?', (uid,))
             db.execute('UPDATE memberships SET active=0,revision=revision+1 WHERE user_id=?', (uid,))

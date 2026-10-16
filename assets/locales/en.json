@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 13,
+  "packVersion": 14,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -696,7 +696,11 @@
     "account_delete": "Delete cloud account",
     "account_delete_notice": "Deletion starts after 24 hours and can be cancelled. Local Android records and other family members’ shared history are preserved. Family ownership must be transferred first. Backup erasure requires a separate retention review.",
     "account_cancel_delete": "Cancel deletion request",
-    "account_done": "Done"
+    "account_done": "Done",
+    "account_mfa": "Two-factor authentication",
+    "account_mfa_setup": "Add this key to your authenticator app, then enter its current six-digit code.",
+    "account_mfa_recovery": "Save these recovery codes offline. Each works once with your password. Use a new authenticator code to sign in after setup.",
+    "account_mfa_disable": "Turn off two-factor authentication"
   },
   "plurals": {
     "record_count": {

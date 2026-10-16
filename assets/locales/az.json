@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 13,
+  "packVersion": 14,
   "locale": "az",
   "nativeName": "Azərbaycan dili",
   "strings": {
@@ -696,7 +696,11 @@
     "account_delete": "Bulud hesabını sil",
     "account_delete_notice": "Silinmə 24 saatdan sonra başlayır və sorğu ləğv edilə bilər. Androiddəki yerli qeydlər və digər ailə üzvlərinin ümumi tarixçəsi saxlanılır. Əvvəlcə ailə sahəsinin sahibliyini ötürmək lazımdır. Ehtiyat nüsxələrin silinməsi üçün saxlama müddətləri ayrıca yoxlanmalıdır.",
     "account_cancel_delete": "Silinmə sorğusunu ləğv et",
-    "account_done": "Hazırdır"
+    "account_done": "Hazırdır",
+    "account_mfa": "İki mərhələli qoruma",
+    "account_mfa_setup": "Bu açarı autentifikator tətbiqinə əlavə edin və oradakı cari altırəqəmli kodu daxil edin.",
+    "account_mfa_recovery": "Bərpa kodlarını oflayn saxlayın. Hər biri parolla birlikdə bir dəfə işləyir. Quraşdırmadan sonra autentifikatorun yeni kodu ilə daxil olun.",
+    "account_mfa_disable": "İki mərhələli qorumanı söndür"
   },
   "plurals": {
     "record_count": {

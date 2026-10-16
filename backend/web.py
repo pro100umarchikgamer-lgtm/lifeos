@@ -78,7 +78,8 @@ class Web:
                 result = self.control.login(body.get('email'), body.get('password'), body.get('code'), agent)
                 token = result['token']
             else:
-                result = self.backend.login(body.get('email'), body.get('password'))
+                result = self.backend.login(body.get('email'), body.get('password'), body.get('code'))
+                if result.get('mfa_required'):return result,headers
                 token, now = secrets.token_urlsafe(32), int(self.backend.clock())
                 with self.backend.transaction() as db:
                     db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)', (token_hash(token), result['user_id'], result['device_id'], now, now, now + 2592000, token_hash(agent)))
@@ -103,7 +104,7 @@ class Web:
         actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:500]) if staff else self.account(token, env.get('HTTP_USER_AGENT', '')[:500])
         if method == 'POST': require(hmac.compare_digest(env.get('HTTP_X_CSRF_TOKEN', ''), self.csrf(token)), 'csrf_invalid', 403)
         if action == 'session' and method == 'GET':
-            return ({'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token)}), headers
+            return ({'staff_id': actor.id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token)}), headers
         if action == 'logout' and method == 'POST':
             if staff: self.control.logout(token)
             else:
@@ -150,7 +151,10 @@ class Web:
     def account_action(self, actor, action, method, b, q):
         from .account_lifecycle import AccountLifecycle
         lifecycle = AccountLifecycle(self.backend)
+        from .customer_mfa import CustomerMFA
+        mfa=CustomerMFA(self.backend)
         if method == 'GET':
+            if action == 'mfa':return mfa.status(actor)
             if action == 'deletion': return lifecycle.deletion_status(actor)
             if action == 'entitlements':
                 with self.backend.connect() as db: return entitlements.resolve(db, actor['id'], int(self.backend.clock()))
@@ -158,6 +162,9 @@ class Web:
             if action == 'support': return self.support.list(actor)
             if action == 'thread': return self.support.read(actor, q.get('id', [''])[0])
         elif method == 'POST':
+            if action == 'mfa/begin':return mfa.begin(actor,b.get('password'))
+            if action == 'mfa/enable':return mfa.enable(actor,b.get('password'),b.get('enrollment'),b.get('code'))
+            if action == 'mfa/disable':return mfa.disable(actor,b.get('password'),b.get('code'))
             if action == 'deletion': return lifecycle.request_deletion(actor, b.get('password'), b.get('confirmation'))
             if action == 'cancel-deletion': return lifecycle.cancel_deletion(actor, b.get('password'))
             if action == 'email': return lifecycle.change_email(actor, b.get('email'), b.get('password'))

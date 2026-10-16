@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 13,
+  "packVersion": 14,
   "locale": "fr",
   "nativeName": "Français",
   "strings": {
@@ -696,7 +696,11 @@
     "account_delete": "Supprimer le compte cloud",
     "account_delete_notice": "La suppression commence après 24 heures et peut être annulée. Les données Android locales et l’historique partagé des autres membres de la famille sont conservés. Transférez d’abord la propriété de l’espace familial. L’effacement des sauvegardes exige un examen distinct des durées de conservation.",
     "account_cancel_delete": "Annuler la demande de suppression",
-    "account_done": "Terminé"
+    "account_done": "Terminé",
+    "account_mfa": "Authentification à deux facteurs",
+    "account_mfa_setup": "Ajoutez cette clé à votre application d’authentification, puis saisissez son code actuel à six chiffres.",
+    "account_mfa_recovery": "Conservez ces codes de récupération hors ligne. Chacun fonctionne une fois avec votre mot de passe. Après la configuration, connectez-vous avec un nouveau code d’authentification.",
+    "account_mfa_disable": "Désactiver l’authentification à deux facteurs"
   },
   "plurals": {
     "record_count": {

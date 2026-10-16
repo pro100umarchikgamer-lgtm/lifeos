@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 13,
+  "packVersion": 14,
   "locale": "es",
   "nativeName": "Español",
   "strings": {
@@ -696,7 +696,11 @@
     "account_delete": "Eliminar cuenta en la nube",
     "account_delete_notice": "La eliminación comienza tras 24 horas y se puede cancelar. Se conservan los registros locales de Android y el historial compartido de otros familiares. Primero debes transferir la propiedad del espacio familiar. El borrado de copias de seguridad requiere revisar por separado los plazos de conservación.",
     "account_cancel_delete": "Cancelar solicitud de eliminación",
-    "account_done": "Listo"
+    "account_done": "Listo",
+    "account_mfa": "Autenticación de dos factores",
+    "account_mfa_setup": "Añade esta clave a tu aplicación de autenticación e introduce su código actual de seis dígitos.",
+    "account_mfa_recovery": "Guarda estos códigos de recuperación sin conexión. Cada uno sirve una vez junto con tu contraseña. Tras configurar la protección, inicia sesión con un código nuevo.",
+    "account_mfa_disable": "Desactivar autenticación de dos factores"
   },
   "plurals": {
     "record_count": {

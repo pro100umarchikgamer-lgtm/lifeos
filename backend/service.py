@@ -113,7 +113,7 @@ class Backend(AccountSessions):
             db.execute('INSERT INTO verification VALUES(?,?,?)',(token_hash(code),actor['id'],now+3600))
             self._deliver(db,actor['email'],code,'verification')
         return {'sent':True}
-    def login(self,email,password):
+    def login(self,email,password,code=None):
         require(isinstance(email,str) and isinstance(password,str) and len(password)<=256)
         with self.transaction() as db:
             key=token_hash(email.casefold());now=int(self.clock());limit=db.execute('SELECT * FROM auth_limits WHERE key=?',(key,)).fetchone()
@@ -125,7 +125,15 @@ class Backend(AccountSessions):
             actual=hashlib.pbkdf2_hmac('sha256',password.encode(),salt,600000).hex()
             valid=row is not None and hmac.compare_digest(actual,row['password_hash'])
             # Commit failed-attempt counters rather than rolling them back with the error.
-            result=self.new_session(db,row['id'],row['verified']) if valid else None
+            result=None
+            if valid:
+                self._account_available(db,row['id'])
+                mfa=db.execute('SELECT 1 FROM account_mfa WHERE user_id=?',(row['id'],)).fetchone()
+                if mfa and not code:result={'mfa_required':True}
+                else:
+                    from .customer_mfa import accept
+                    valid=accept(self,db,row['id'],code)
+                    if valid:result=self.new_session(db,row['id'],row['verified'])
         require(valid,'invalid_credentials',401);return result
     def recover(self,email):
         require(isinstance(email,str) and len(email)<=254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email))
