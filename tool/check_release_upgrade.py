@@ -93,7 +93,7 @@ if __name__=='__main__':
     except Exception:
         try:
             OUT.mkdir(exist_ok=True)
-            (OUT/'failure-logcat.txt').write_bytes(adb('logcat','-d','-t','2000'))
+            (OUT/'failure-logcat.txt').write_bytes(adb('logcat','-d'))
             screenshot('failure')
         except Exception:pass
         raise
