@@ -29,9 +29,10 @@ def bounds(node):
     nums=list(map(int,re.findall(r'\d+',node.get('bounds',''))))
     return nums if len(nums)==4 and nums[2]>nums[0] and nums[3]>nums[1] else None
 
-def find(label=None,editable=False):
+def find(label=None,editable=False,reveal=False):
     root=ET.Element('hierarchy')
     deadline=time.monotonic()+60
+    swipes=0
     while time.monotonic()<deadline:
         try:root=xml()
         except (ET.ParseError,subprocess.SubprocessError):
@@ -44,6 +45,8 @@ def find(label=None,editable=False):
             if match and node.get('enabled')!='false' and bounds(node):nodes.append(node)
         if nodes:
             nodes.sort(key=lambda n:n.get('clickable')!='true');return nodes[0]
+        if reveal and swipes<8:
+            scroll();swipes+=1
         time.sleep(.5)
     OUT.mkdir(exist_ok=True);(OUT/'missing-control.xml').write_bytes(ET.tostring(root))
     raise RuntimeError('Release UI control not found: '+str(label or 'editable field'))
@@ -91,7 +94,7 @@ def main():
     old=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.apk';assert old.is_file()
     device_timezone('Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
-    legacy_editor('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');tap('Plans');find(PROBE)
+    legacy_editor('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');tap('Plans');find(PROBE,reveal=True)
     screenshot('85001-control-task')
     for kind,amount in [('Expense','12.50'),('Income','100.00')]:
         tap('Today');legacy_editor(kind);tap(editable=True);adb('shell','input','text',amount);adb('shell','input','keyevent','4');tap('Save')
@@ -100,8 +103,8 @@ def main():
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
     assert version==85001 if args.probe else version>85001
     if not args.probe:device_timezone('Etc/UTC')
-    start();tap('Plans');find(PROBE);screenshot('upgraded-control-task')
-    start();tap('Plans');find(PROBE)
+    start();tap('Plans');find(PROBE,reveal=True);screenshot('upgraded-control-task')
+    start();tap('Plans');find(PROBE,reveal=True)
     evidence={'previousVersionCode':85001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
     if not args.probe:
         for theme in ['light','dark']:

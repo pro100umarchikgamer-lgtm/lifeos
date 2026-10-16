@@ -31,3 +31,10 @@ class ReleaseUpgradeHelpers(unittest.TestCase):
         with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Etc/UTC\n']):
             with self.assertRaisesRegex(AssertionError, 'timezone mismatch'):
                 upgrade.device_timezone('Europe/Moscow')
+
+    def test_saved_task_below_calendar_is_revealed_without_skipping_assertion(self):
+        empty = ET.fromstring('<hierarchy />')
+        task = ET.fromstring('<hierarchy><node content-desc="ULADIM_upgrade_probe_85001" enabled="true" bounds="[0,0][100,50]" /></hierarchy>')
+        with patch.object(upgrade, 'xml', side_effect=[empty, task]), patch.object(upgrade, 'scroll') as scroll, patch.object(upgrade.time, 'sleep'):
+            self.assertEqual(upgrade.find(upgrade.PROBE, reveal=True).get('content-desc'), upgrade.PROBE)
+            scroll.assert_called_once_with()

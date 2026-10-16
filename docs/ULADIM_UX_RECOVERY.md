@@ -88,3 +88,5 @@ Focused Android #1 подтвердил устранение Etc/UTC crash: эк
 - Actual dark screenshot review found finance history income amount using the light-only green on dark surface; apply existing theme-aware lifeAccent to record amounts and assert actual rendered text contrast >=4.5:1 for both income/expense in both themes. Icon on pale mint retains its dark color.
 
 - Final signed workflow now retains a full Git bundle, baseline-to-release patch, source ZIP, exact commit and SHA256SUMS as a 90-day Actions artifact before validation/signing. This supplements normal feature-branch publication and avoids reliance on a transient browser download.
+
+- Upgrade probe107 now launches retained85001 correctly. Actual XML shows Plans calendar fills viewport and saved task is in lazy content below it. Reveal the actual task via bounded scrolling before asserting it, both before and after update/restart; no data assertions removed. Added helper regression test.
