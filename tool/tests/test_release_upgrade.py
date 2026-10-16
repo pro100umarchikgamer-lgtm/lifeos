@@ -21,3 +21,13 @@ class ReleaseUpgradeHelpers(unittest.TestCase):
     def test_retained_unlabelled_add_button_is_selected_by_actual_bounds(self):
         root=ET.fromstring('<hierarchy><node clickable="true" bounds="[0,1680][200,1810]" /><node clickable="true" bounds="[480,1660][600,1790]" id="add" /></hierarchy>')
         self.assertEqual(upgrade.legacy_add_node(root,1080,1920).get('id'),'add')
+
+    def test_fixture_disables_automatic_timezone_before_setting_and_verifies_it(self):
+        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Europe/Moscow\n']) as adb:
+            upgrade.device_timezone('Europe/Moscow')
+            self.assertEqual(adb.call_args_list[0].args, ('shell','settings','put','global','auto_time_zone','0'))
+            self.assertEqual(adb.call_args_list[1].args, ('shell','cmd','alarm','set-timezone','Europe/Moscow'))
+    def test_fixture_rejects_ignored_timezone_change(self):
+        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Etc/UTC\n']):
+            with self.assertRaisesRegex(AssertionError, 'timezone mismatch'):
+                upgrade.device_timezone('Europe/Moscow')

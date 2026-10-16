@@ -79,12 +79,17 @@ def scroll(up=True):
     raw=adb('shell','wm','size').decode();width,height=map(int,re.findall(r'(\d+)x(\d+)',raw)[-1]);x=str(width//2)
     y1,y2=(int(height*.78),int(height*.30)) if up else (int(height*.30),int(height*.78))
     adb('shell','input','swipe',x,str(y1),x,str(y2),'400');time.sleep(.4)
+def device_timezone(zone):
+    adb('shell','settings','put','global','auto_time_zone','0')
+    adb('shell','cmd','alarm','set-timezone',zone)
+    actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
+    assert actual==zone, f'Emulator timezone mismatch: {actual} != {zone}'
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
     if args.download:print('Retained signed 85001 verified:',previous());return
     assert args.candidate and args.candidate.is_file()
     old=Path(os.environ['RUNNER_TEMP'])/'uladim-85001.apk';assert old.is_file()
-    adb('shell','cmd','alarm','set-timezone','Europe/Moscow')
+    device_timezone('Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
     legacy_editor('Task');tap(editable=True);adb('shell','input','text',PROBE);adb('shell','input','keyevent','4');tap('Save');tap('Plans');find(PROBE)
     screenshot('85001-control-task')
@@ -94,7 +99,7 @@ def main():
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
     assert version==85001 if args.probe else version>85001
-    if not args.probe:adb('shell','cmd','alarm','set-timezone','Etc/UTC')
+    if not args.probe:device_timezone('Etc/UTC')
     start();tap('Plans');find(PROBE);screenshot('upgraded-control-task')
     start();tap('Plans');find(PROBE)
     evidence={'previousVersionCode':85001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}

@@ -82,3 +82,5 @@ Probe #94: после ограниченного ожидания APK 85001 ос
 Focused Android #1 подтвердил устранение Etc/UTC crash: экран Plans построился. Следующий отказ был в ensureVisible для ещё не построенного checkbox ниже календаря. Регрессия теперь прокручивает реальный ListView через scrollUntilVisible и ждёт завершения нативной записи; assertions checked/unchecked/rechecked и SQLCipher reopen сохранены. Полный CI до focused native pass не повторяется.
 
 Уточнение accessibility: Profile уже имел tooltip в исходнике; анализатор #102 обнаружил добавленный дубль, удалён только дубль. Новая подпись + сохранена. Полный CI не запускался; ошибка остановлена focused analysis до APK.
+
+- Android regression #4 / cb19e3a: all six real SQLCipher tests pass, including overdue/repeating completion, UI undo/recomplete, duplicate taps and reopen. Focused CI104 passes. Probe105 full logcat proves Android automatic timezone reset Moscow to Etc/UTC before retained85001 built Home; pin auto_time_zone=0 only in disposable emulator and assert actual property. Candidate still must run Etc/UTC.
