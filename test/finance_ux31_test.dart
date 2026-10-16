@@ -5,6 +5,7 @@ import 'package:lifeos/app_controller.dart';
 import 'package:lifeos/domain/models.dart';
 import 'package:lifeos/localization/language_pack.dart';
 import 'package:lifeos/ui/finance_foundation.dart';
+import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/financial_overview.dart';
 import 'package:lifeos/domain/financial_period.dart';
 import 'package:lifeos/ui/design.dart';
@@ -20,6 +21,33 @@ void main() {
   setUpAll(() async {
     catalog = await PackCatalog.load();
   });
+  for (final mode in ['light', 'dark']) {
+    testWidgets('financial history amounts retain readable contrast in $mode', (tester) async {
+      final store = UIStore()..items = [
+        for (final kind in [EntryKind.income, EntryKind.expense])
+          Record(id: kind.name, kind: kind, text: kind.name, createdAt: DateTime.now(), amountMinor: 10000, currency: const Currency('RUB', 2), date: dateOnly(DateTime.now())),
+      ];
+      final c = AppController(store, catalog, 'ru');
+      await c.load();
+      c.preferences['theme'] = mode;
+      c.preferences['currency'] = 'RUB';
+      await tester.pumpWidget(LifeOSApp(controller: c));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(c.pack.t('finances')).last);
+      await tester.pumpAndSettle();
+      for (final kind in [EntryKind.income, EntryKind.expense]) {
+        final finder = find.byKey(Key('finance_amount_${kind.name}'));
+        await tester.scrollUntilVisible(finder, 180, scrollable: find.byType(Scrollable).first);
+        final text = tester.widget<Text>(finder);
+        final foreground = text.style!.color!;
+        final background = Theme.of(tester.element(finder)).colorScheme.surface;
+        final a = foreground.computeLuminance(), b = background.computeLuminance();
+        final ratio = ((a > b ? a : b) + .05) / ((a < b ? a : b) + .05);
+        expect(ratio, greaterThanOrEqualTo(4.5));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
   test('category shares follow selected decimal formatting', () {
     expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'ru'), contains('80,0'));
     expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'en'), contains('80.0'));

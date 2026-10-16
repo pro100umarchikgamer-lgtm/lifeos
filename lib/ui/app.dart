@@ -1408,9 +1408,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                         record.amountMinor!,
                         locale: c.region,
                       ),
+                      key: Key('finance_amount_${record.id}'),
                       textAlign: TextAlign.right,
                       style: TextStyle(
-                        color: _kindColors(record.kind).foreground,
+                        color: lifeAccent(context, _kindColors(record.kind).foreground),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
