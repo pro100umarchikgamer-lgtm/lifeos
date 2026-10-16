@@ -168,6 +168,7 @@ jobs:
           target: google_apis
           profile: pixel_2
           disable-animations: true
+          emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim
           script: python3 tool/check_release_upgrade.py --candidate build/app/outputs/flutter-apk/app-release.apk
       - name: Save Android upgrade evidence
         if: always() && steps.validation.outputs.build == 'true'

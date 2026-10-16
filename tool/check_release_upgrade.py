@@ -53,6 +53,7 @@ def screenshot(name):
     OUT.mkdir(exist_ok=True);(OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
 def start():
     adb('shell','am','force-stop',APP);adb('shell','am','start','-n',APP+'/.MainActivity');time.sleep(2)
+    OUT.mkdir(exist_ok=True);(OUT/('startup-'+str(time.time_ns())+'.txt')).write_bytes(adb('logcat','-d'))
 def uid():
     listing=adb('shell','cmd','package','list','packages','-U',APP)
     found=re.search(rb'^package:app\.lifeos\.lifeos\s+uid:(\d+)\s*$',listing,re.M)
