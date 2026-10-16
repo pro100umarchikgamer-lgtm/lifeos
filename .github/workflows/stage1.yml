@@ -56,6 +56,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Preserve exact release source and Git history
+        if: inputs.build_apk == true
+        run: |
+          mkdir -p source-recovery
+          git bundle create source-recovery/ULADIM.bundle HEAD
+          git format-patch --stdout e12609e5168683c4fafae6acea2d3c9ed445c57c..HEAD > source-recovery/ULADIM.patch
+          git archive --format=zip --output=source-recovery/ULADIM-source.zip HEAD
+          git rev-parse HEAD > source-recovery/COMMIT.txt
+          (cd source-recovery && sha256sum ULADIM.bundle ULADIM.patch ULADIM-source.zip COMMIT.txt > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: inputs.build_apk == true
+        with:
+          name: uladim-source-recovery
+          path: source-recovery/
+          retention-days: 90
+          if-no-files-found: error
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

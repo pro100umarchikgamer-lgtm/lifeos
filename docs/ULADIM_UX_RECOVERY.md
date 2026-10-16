@@ -86,3 +86,5 @@ Focused Android #1 подтвердил устранение Etc/UTC crash: эк
 - Android regression #4 / cb19e3a: all six real SQLCipher tests pass, including overdue/repeating completion, UI undo/recomplete, duplicate taps and reopen. Focused CI104 passes. Probe105 full logcat proves Android automatic timezone reset Moscow to Etc/UTC before retained85001 built Home; pin auto_time_zone=0 only in disposable emulator and assert actual property. Candidate still must run Etc/UTC.
 
 - Actual dark screenshot review found finance history income amount using the light-only green on dark surface; apply existing theme-aware lifeAccent to record amounts and assert actual rendered text contrast >=4.5:1 for both income/expense in both themes. Icon on pale mint retains its dark color.
+
+- Final signed workflow now retains a full Git bundle, baseline-to-release patch, source ZIP, exact commit and SHA256SUMS as a 90-day Actions artifact before validation/signing. This supplements normal feature-branch publication and avoids reliance on a transient browser download.
