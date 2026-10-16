@@ -6,7 +6,7 @@ class PasswordPolicy(unittest.TestCase):
     def test_seven_character_policy_and_weak_passwords(self):
         validate_password('River!7')
         validate_password('Очень-длинная-фраза')
-        for value,code in [('short!','password_length'),('x'*257,'password_length'),('1234567','password_weak'),('password','password_weak'),('aaaaaaa','password_weak'),('qwerty123','password_weak')]:
+        for value,code in [('short!','password_length'),('x'*257,'password_length'),('1234567','password_weak'),('password','password_weak'),('aaaaaaa','password_weak'),('qwerty123','password_weak'),('    abc','password_weak'),('abcdefg','password_weak')]:
             with self.subTest(value=value),self.assertRaises(Failure) as caught:validate_password(value)
             self.assertEqual(caught.exception.code,code)
     def test_registration_login_reset_and_change_share_policy(self):

@@ -299,6 +299,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     FocusScope.of(context).unfocus();
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
           ? AnimationStyle.noAnimation
           : null,
@@ -307,20 +308,27 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                c.pack.t('quick_add'),
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .85,
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    c.pack.t('quick_add'),
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  _actionGrid(detailed: false, sheetContext: sheetContext),
+                ],
               ),
-              const SizedBox(height: 16),
-              _actionGrid(detailed: false, sheetContext: sheetContext),
-            ],
+            ),
           ),
         ),
       ),
@@ -831,7 +839,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   constraints.maxWidth >= 500 &&
                   MediaQuery.textScalerOf(context).scale(1) <= 1.2
               ? 4
-              : 2;
+              : MediaQuery.textScalerOf(context).scale(1) > 1.3 ? 1 : 2;
           final kinds = EntryKind.values
               .where(
                 (kind) =>

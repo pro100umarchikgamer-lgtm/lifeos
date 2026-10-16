@@ -53,8 +53,8 @@ def token_hash(value): return hashlib.sha256(value.encode()).hexdigest()
 def validate_password(password):
     require(isinstance(password,str) and 7<=len(password)<=256,'password_length')
     value=password.casefold().strip()
-    common={'password','password1','password123','qwerty1','qwerty123','letmein','welcome','welcome1','1234567','12345678','123456789','пароль123','uladim123','lifeos123'}
-    require(len(set(value))>=3 and not value.isdecimal() and value not in common,'password_weak')
+    common={'password','password1','password123','qwerty1','qwerty123','letmein','welcome','welcome1','1234567','12345678','123456789','пароль123','uladim123','lifeos123','abcdefg','abcdefgh','qwertyuiop','iloveyou','welcome123','letmein1','admin123','test123','testing','123456a','sunshine','football','monkey123','dragon123','princess'}
+    require(len(value)>=7 and len(set(value))>=3 and not value.isdecimal() and value not in common,'password_weak')
 
 class ManagedConnection(sqlite3.Connection):
     def __exit__(self,*args):

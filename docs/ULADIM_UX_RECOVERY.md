@@ -63,3 +63,6 @@ ApplicationId app.lifeos.lifeos, pin сертификата, UUID, миграц�
 VPS: HTTPS из Codespace отвечает Connection refused. Без доверенной консоли и
 SSH-доступа отпечаток подтвердить невозможно. SMTP credentials/sender/allowlist
 не предоставлены. Публичный запуск не объявлен; DNS менять не требуется.
+
+## Продолжение 16 октября
+Focused CI #91 на bd76ff6: Flutter analysis, unit/widget/visual и PostgreSQL backend прошли. Probe #92: Android показал стартовый экран, UIAutomator вернул null root; добавлено ограниченное ожидание валидного XML и logcat при отказе. Недопустимо пропускать проверку обновления. Восстановлены последние изменения доступности меню и проверки слабых паролей после утраты локальной командной среды.

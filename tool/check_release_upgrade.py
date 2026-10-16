@@ -30,8 +30,14 @@ def bounds(node):
     return nums if len(nums)==4 and nums[2]>nums[0] and nums[3]>nums[1] else None
 
 def find(label=None,editable=False):
-    for _ in range(12):
-        root=xml();nodes=[]
+    root=ET.Element('hierarchy')
+    deadline=time.monotonic()+60
+    while time.monotonic()<deadline:
+        try:root=xml()
+        except (ET.ParseError,subprocess.SubprocessError):
+            time.sleep(.5)
+            continue
+        nodes=[]
         for node in root.iter('node'):
             text=(node.get('text','')+'\n'+node.get('content-desc','')).strip()
             match=(node.get('class')=='android.widget.EditText') if editable else any(part.strip()==label for part in text.splitlines())
@@ -85,6 +91,9 @@ def main():
 if __name__=='__main__':
     try:main()
     except Exception:
-        try:screenshot('failure')
+        try:
+            OUT.mkdir(exist_ok=True)
+            (OUT/'failure-logcat.txt').write_bytes(adb('logcat','-d','-t','2000'))
+            screenshot('failure')
         except Exception:pass
         raise
