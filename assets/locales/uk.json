@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "uk",
   "nativeName": "Українська",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Місяць",
     "task_overdue": "Прострочено",
     "task_upcoming": "Попереду",
-    "family_error_password_weak": "Виберіть менш поширений пароль: щонайменше три різні символи, не лише цифри."
+    "family_error_password_weak": "Виберіть менш поширений пароль: щонайменше три різні символи, не лише цифри.",
+    "account_manage": "Керування акаунтом",
+    "account_access": "Доступ і тарифи",
+    "account_devices": "Пристрої та сеанси",
+    "account_support": "Підтримка",
+    "account_privacy": "Акаунт і приватність",
+    "account_no_payment": "Під час закритого тесту покупки вимкнено.",
+    "account_cloud_required": "Для цих налаштувань потрібне з’єднання із сервером. Локальні записи залишаються на пристрої.",
+    "account_revoke": "Відкликати доступ",
+    "account_subject": "Тема",
+    "account_message": "Повідомлення",
+    "account_send": "Надіслати",
+    "account_email_change": "Змінити пошту",
+    "account_delete": "Видалити хмарний акаунт",
+    "account_delete_notice": "Видалення почнеться через 24 години; запит можна скасувати. Локальні записи Android і спільна історія інших членів сім’ї збережуться. Спочатку потрібно передати володіння сім’єю. Очищення резервних копій потребує окремої перевірки строків зберігання.",
+    "account_cancel_delete": "Скасувати запит на видалення",
+    "account_done": "Готово"
   },
   "plurals": {
     "record_count": {

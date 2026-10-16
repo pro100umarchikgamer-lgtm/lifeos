@@ -95,7 +95,7 @@ jobs:
           fi
           bash scripts/monitor.sh
       - name: Validate HTTPS proxy configuration
-        run: docker run --rm -e LIFEOS_DOMAIN -e ACME_EMAIL -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+        run: docker run --rm -e LIFEOS_DOMAIN -e ACME_EMAIL -e ULADIM_SITE_DOMAIN=getuladim.space -e ULADIM_CONTROL_DOMAIN=control.getuladim.space -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Real PostgreSQL backup and restore into a second database
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}

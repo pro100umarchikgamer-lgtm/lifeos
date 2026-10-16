@@ -73,7 +73,7 @@ class Web:
         if method == 'POST':
             require(env.get('HTTP_ORIGIN') == origin, 'origin_forbidden', 403)
         if action == 'login' and method == 'POST':
-            agent = env.get('HTTP_USER_AGENT', '')[:512]
+            agent = env.get('HTTP_USER_AGENT', '')[:500]
             if staff:
                 result = self.control.login(body.get('email'), body.get('password'), body.get('code'), agent)
                 token = result['token']
@@ -84,10 +84,23 @@ class Web:
                     db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)', (token_hash(token), result['user_id'], result['device_id'], now, now, now + 2592000, token_hash(agent)))
                     db.execute("UPDATE devices SET label='Web browser' WHERE id=?", (result['device_id'],))
             return {'authenticated': True, 'csrf': self.csrf(token)}, headers + [self.cookie(token, staff)]
+        if not staff and method == 'POST' and action in ('signup', 'confirm-signup', 'recovery', 'reset'):
+            from .account_lifecycle import AccountLifecycle
+            lifecycle = AccountLifecycle(self.backend)
+            if action == 'signup':
+                # Same exact closed-test gate as Android registration.
+                from .production import Application
+                Application.check_registration(self, body)
+                return lifecycle.signup(body.get('email'), body.get('password')), headers
+            if action == 'recovery': return self.backend.recover(body.get('email')), headers
+            if action == 'reset': return self.backend.reset_password(body.get('email'), body.get('code'), body.get('password')), headers
+            result = lifecycle.confirm_signup(body.get('email'), body.get('code'))
+            self.backend.logout(result['token'])
+            return {'verified': True, 'sign_in_required': True}, headers
         if not staff and action == 'plans' and method == 'GET':
             with self.backend.connect() as db: return entitlements.catalog(db), headers
         token = self.token(env, staff)
-        actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:512]) if staff else self.account(token, env.get('HTTP_USER_AGENT', '')[:512])
+        actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:500]) if staff else self.account(token, env.get('HTTP_USER_AGENT', '')[:500])
         if method == 'POST': require(hmac.compare_digest(env.get('HTTP_X_CSRF_TOKEN', ''), self.csrf(token)), 'csrf_invalid', 403)
         if action == 'session' and method == 'GET':
             return ({'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token)}), headers
@@ -134,13 +147,21 @@ class Web:
         raise Failure('not_found', 404)
 
     def account_action(self, actor, action, method, b, q):
+        from .account_lifecycle import AccountLifecycle
+        lifecycle = AccountLifecycle(self.backend)
         if method == 'GET':
+            if action == 'deletion': return lifecycle.deletion_status(actor)
             if action == 'entitlements':
                 with self.backend.connect() as db: return entitlements.resolve(db, actor['id'], int(self.backend.clock()))
             if action == 'devices': return self.backend.list_devices(actor, '')
             if action == 'support': return self.support.list(actor)
             if action == 'thread': return self.support.read(actor, q.get('id', [''])[0])
         elif method == 'POST':
+            if action == 'deletion': return lifecycle.request_deletion(actor, b.get('password'), b.get('confirmation'))
+            if action == 'cancel-deletion': return lifecycle.cancel_deletion(actor, b.get('password'))
+            if action == 'email': return lifecycle.change_email(actor, b.get('email'), b.get('password'))
+            if action == 'confirm-email': return lifecycle.confirm_email(actor, b.get('code'), b.get('password'))
+            if action == 'password': return self.backend.password(actor, b.get('old_password'), b.get('new_password'))
             if action == 'devices/revoke': return self.backend.revoke_device(actor, b.get('device_id'), b.get('password'))
             if action == 'logout-all': return self.backend.revoke_all(actor, b.get('password'))
             if action == 'support': return self.support.create(actor, b.get('category'), b.get('subject'), b.get('message'))

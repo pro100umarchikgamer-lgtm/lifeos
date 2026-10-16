@@ -169,3 +169,15 @@ class PostgresControlWebTests(webfixtures.WebControlTests):
         self.owner=self.control.authenticate(self.staff_login['token'],'fixture')
         self.settings=PostgresTests.settings(self)
         self.app=Application(self.backend,self.settings)
+
+from test_account_lifecycle import LifecycleScenarios
+
+@unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
+class PostgresLifecycleTests(LifecycleScenarios, unittest.TestCase):
+    drop_schema = PostgresTests.drop_schema
+    user = fixtures.FamilyBackendTests.user
+    op = fixtures.FamilyBackendTests.op
+
+    def setUp(self):
+        PostgresTests.setUp(self)
+        self.setup_lifecycle()

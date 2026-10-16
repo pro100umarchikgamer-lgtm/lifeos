@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "kk",
   "nativeName": "Қазақша",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Ай",
     "task_overdue": "Мерзімі өткен",
     "task_upcoming": "Алда",
-    "family_error_password_weak": "Жиі қолданылмайтын пароль таңдаңыз: кемінде үш түрлі таңба болсын, тек сандардан тұрмасын."
+    "family_error_password_weak": "Жиі қолданылмайтын пароль таңдаңыз: кемінде үш түрлі таңба болсын, тек сандардан тұрмасын.",
+    "account_manage": "Аккаунтты басқару",
+    "account_access": "Қолжетімділік пен тарифтер",
+    "account_devices": "Құрылғылар мен сеанстар",
+    "account_support": "Қолдау",
+    "account_privacy": "Аккаунт және құпиялық",
+    "account_no_payment": "Жабық сынақ кезінде сатып алу өшірулі.",
+    "account_cloud_required": "Бұл баптаулар үшін серверге қосылу қажет. Жергілікті жазбалар құрылғыда қалады.",
+    "account_revoke": "Қолжетімділікті қайтарып алу",
+    "account_subject": "Тақырып",
+    "account_message": "Хабарлама",
+    "account_send": "Жіберу",
+    "account_email_change": "Поштаны өзгерту",
+    "account_delete": "Бұлттық аккаунтты жою",
+    "account_delete_notice": "Жою 24 сағаттан кейін басталады; сұрауды тоқтатуға болады. Android құрылғысындағы жазбалар мен отбасының басқа мүшелерінің ортақ тарихы сақталады. Алдымен отбасы иелігін беру қажет. Сақтық көшірмелерді тазалау үшін сақтау мерзімін бөлек тексеру керек.",
+    "account_cancel_delete": "Жою сұрауын тоқтату",
+    "account_done": "Дайын"
   },
   "plurals": {
     "record_count": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "pt",
   "nativeName": "Português",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Mês",
     "task_overdue": "Em atraso",
     "task_upcoming": "Próximas",
-    "family_error_password_weak": "Escolha uma palavra-passe menos comum com pelo menos três caracteres diferentes, não apenas números."
+    "family_error_password_weak": "Escolha uma palavra-passe menos comum com pelo menos três caracteres diferentes, não apenas números.",
+    "account_manage": "Gerir conta",
+    "account_access": "Acesso e planos",
+    "account_devices": "Dispositivos e sessões",
+    "account_support": "Suporte",
+    "account_privacy": "Conta e privacidade",
+    "account_no_payment": "As compras estão desativadas durante este teste fechado.",
+    "account_cloud_required": "Estas definições precisam de ligação ao servidor. Os registos locais permanecem no dispositivo.",
+    "account_revoke": "Revogar acesso",
+    "account_subject": "Assunto",
+    "account_message": "Mensagem",
+    "account_send": "Enviar",
+    "account_email_change": "Alterar email",
+    "account_delete": "Eliminar conta na nuvem",
+    "account_delete_notice": "A eliminação começa após 24 horas e pode ser cancelada. Os registos locais do Android e o histórico partilhado dos outros familiares são preservados. É necessário transferir primeiro a propriedade do espaço familiar. A eliminação das cópias de segurança exige uma revisão separada dos prazos de retenção.",
+    "account_cancel_delete": "Cancelar pedido de eliminação",
+    "account_done": "Concluído"
   },
   "plurals": {
     "record_count": {

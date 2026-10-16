@@ -95,7 +95,7 @@ class Application:
                     value,web_headers=self.web.request(environ,body)
                     headers.update(dict(web_headers))
                 else:
-                    if method=='POST' and path=='/v1/auth/register':self.check_registration(body)
+                    if method=='POST' and path in ('/v1/auth/register','/v1/auth/signup'):self.check_registration(body)
                     target=path+('?' +environ['QUERY_STRING'] if environ.get('QUERY_STRING') else '')
                     value=dispatch(self.backend,method,target,body,environ.get('HTTP_AUTHORIZATION',''))
         except Failure as error:status=error.status;value={'error':error.code}

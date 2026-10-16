@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "it",
   "nativeName": "Italiano",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Mese",
     "task_overdue": "Scadute",
     "task_upcoming": "In programma",
-    "family_error_password_weak": "Scegli una password meno comune con almeno tre caratteri diversi, non solo numeri."
+    "family_error_password_weak": "Scegli una password meno comune con almeno tre caratteri diversi, non solo numeri.",
+    "account_manage": "Gestisci account",
+    "account_access": "Accesso e piani",
+    "account_devices": "Dispositivi e sessioni",
+    "account_support": "Assistenza",
+    "account_privacy": "Account e privacy",
+    "account_no_payment": "Gli acquisti sono disattivati durante questo test chiuso.",
+    "account_cloud_required": "Queste impostazioni richiedono una connessione al server. I dati locali restano sul dispositivo.",
+    "account_revoke": "Revoca accesso",
+    "account_subject": "Oggetto",
+    "account_message": "Messaggio",
+    "account_send": "Invia",
+    "account_email_change": "Cambia email",
+    "account_delete": "Elimina account cloud",
+    "account_delete_notice": "L’eliminazione inizia dopo 24 ore e può essere annullata. I dati Android locali e la cronologia condivisa degli altri familiari vengono conservati. Occorre prima trasferire la proprietà dello spazio familiare. La cancellazione dei backup richiede una verifica separata dei tempi di conservazione.",
+    "account_cancel_delete": "Annulla richiesta di eliminazione",
+    "account_done": "Fatto"
   },
   "plurals": {
     "record_count": {

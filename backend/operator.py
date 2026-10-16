@@ -1,6 +1,7 @@
 """Local operator commands. Secret enrollment material is written once to a 0600 file."""
 import argparse
 import json
+import getpass
 import os
 from pathlib import Path
 from cryptography.fernet import Fernet
@@ -25,11 +26,20 @@ def main():
     owner = sub.add_parser('bootstrap-owner')
     owner.add_argument('--email', required=True)
     owner.add_argument('--output', type=Path, required=True)
+    recovery = sub.add_parser('recover-staff')
+    recovery.add_argument('--email', required=True)
+    recovery.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     settings = Settings.load()
     backend = PostgresBackend(settings.database_url, Fernet(settings.email_queue_key.encode()))
     try:
-        write_private(args.output, lambda: Control(backend).bootstrap(args.email))
+        control = Control(backend)
+        if args.command == 'bootstrap-owner':
+            write_private(args.output, lambda: control.bootstrap(args.email))
+        else:
+            password = getpass.getpass('Account password: ')
+            code = getpass.getpass('Offline recovery code: ')
+            write_private(args.output, lambda: control.recover_staff(args.email, password, code))
         print('Enrollment written to the private output file. Store it offline; MFA is mandatory.')
     finally:
         backend.close()

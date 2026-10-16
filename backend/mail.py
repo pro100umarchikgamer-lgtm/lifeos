@@ -15,7 +15,9 @@ def message(settings, job_id, payload):
     value['To'] = payload['email']
     value['Message-ID'] = '<'+job_id+'@lifeos-mail>'
     recovery = payload['purpose']=='recovery'
+    email_change = payload['purpose']=='email_change'
     value['Subject'] = 'ULADIM: восстановление аккаунта' if recovery else 'ULADIM: подтверждение почты'
+    if email_change:value.replace_header('Subject','ULADIM: подтверждение нового адреса')
     value.set_content(('Введите этот код в ULADIM для восстановления аккаунта:\n' if recovery else 'Введите этот код в ULADIM для подтверждения почты:\n')+payload['code']+'\n\nКод одноразовый. Если вы не запрашивали это действие, проигнорируйте письмо.')
     return value
 
@@ -59,6 +61,8 @@ def main():
         while True:
             with backend.connect() as db:
                 db.execute("INSERT INTO worker_health VALUES('mail',?) ON CONFLICT(name) DO UPDATE SET last_seen=excluded.last_seen",(int(backend.clock()),))
+            from .account_lifecycle import AccountLifecycle
+            AccountLifecycle(backend).process_one_deletion()
             from pathlib import Path
             Path('/tmp/lifeos-mail.heartbeat').touch()
             if not deliver_one(backend,config):time.sleep(2)

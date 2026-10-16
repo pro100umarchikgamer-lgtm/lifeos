@@ -14,9 +14,9 @@ Implemented source:
 - Same-origin public site/customer/Control shells and operations API in the existing WSGI service. Caddy forwards the three configured hostnames. No second backend or unrelated hosting project.
 
 Not yet accepted as complete:
-- Account deletion worker, email-change and public verification-first signup; current public site directs closed testers to Android account flows. Public registration remains closed.
-- Customer MFA/recovery management, completed staff recovery workflow and complete polished staff action UI.
-- Android plan/device/support UI and translated new strings; existing 16 packs are preserved and release validator passes.
+- Implemented verification-first signup, reauthenticated one-use email change and a 24-hour cancellable account deletion queue. The worker rechecks family ownership, preserves shared history/UUID tombstones, erases private payloads and stops for review if they have external shared references. Ownership transfer requires the receiving active co-parent’s consent. Backups require a separate operator retention review; immediate erasure from all copies is not promised. PostgreSQL acceptance is pending.
+- Customer MFA and complete polished staff action UI remain pending. Staff operator recovery requires the account password plus an offline one-use recovery code and rotates MFA/recovery material and sessions; it is not available over HTTP.
+- Android account subpages now cover access, device revocation, support, email change and deletion requests; sixteen new keys have translations in all 16 versioned packs. Isolated Flutter analysis/layout acceptance is pending.
 - Browser visual/E2E review, PostgreSQL acceptance for new Control migration, final CI and new signed APK.
 - Production deployment/TLS/SMTP/two-client live sync: provider console is not authenticated and no trusted SSH fingerprint/key is available. No live-service claim.
 
@@ -28,7 +28,7 @@ umask 077
 python -m backend.operator bootstrap-owner --email OWNER_EMAIL --output /secure-owner-path/enrollment.json
 ```
 
-The output path must not already exist and must be accessible only to the operator. It contains the TOTP enrollment secret and single-use recovery material, never stdout. Transfer it to the owner's authenticator through a secure owner-controlled channel; retain emergency material offline. Do not commit or send it in chat. First-owner bootstrap is one-time and is not an HTTP endpoint. Recovery codes are reserved for a separately tested operator recovery workflow; no bypass of MFA is exposed.
+The output path must not already exist and must be accessible only to the operator. It contains the TOTP enrollment secret and single-use recovery material, never stdout. Transfer it to the owner's authenticator through a secure owner-controlled channel; retain emergency material offline. Do not commit or send it in chat. First-owner bootstrap is one-time and is not an HTTP endpoint. Operator recovery uses `python -m backend.operator recover-staff --email OWNER_EMAIL --output NEW_PRIVATE_FILE`. Password and offline recovery code are read with hidden terminal prompts. Existing output files are never overwritten; all previous staff sessions and recovery codes are invalidated. No HTTP MFA bypass exists.
 
 ## Deployment gates
 Existing VPS/domain remain the target. Verify the provider-console ED25519 fingerprint against SSH before accepting a host key. Preserve emergency owner access before credential rotation/firewall changes. Do not disable trust checks. No purchase is required.

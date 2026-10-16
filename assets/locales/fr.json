@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "fr",
   "nativeName": "Français",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Mois",
     "task_overdue": "En retard",
     "task_upcoming": "À venir",
-    "family_error_password_weak": "Choisissez un mot de passe moins courant avec au moins trois caractères différents, pas uniquement des chiffres."
+    "family_error_password_weak": "Choisissez un mot de passe moins courant avec au moins trois caractères différents, pas uniquement des chiffres.",
+    "account_manage": "Gérer le compte",
+    "account_access": "Accès et offres",
+    "account_devices": "Appareils et sessions",
+    "account_support": "Assistance",
+    "account_privacy": "Compte et confidentialité",
+    "account_no_payment": "Les achats sont désactivés pendant ce test fermé.",
+    "account_cloud_required": "Ces réglages nécessitent une connexion au serveur. Les données locales restent sur votre appareil.",
+    "account_revoke": "Révoquer l’accès",
+    "account_subject": "Objet",
+    "account_message": "Message",
+    "account_send": "Envoyer",
+    "account_email_change": "Changer d’adresse e-mail",
+    "account_delete": "Supprimer le compte cloud",
+    "account_delete_notice": "La suppression commence après 24 heures et peut être annulée. Les données Android locales et l’historique partagé des autres membres de la famille sont conservés. Transférez d’abord la propriété de l’espace familial. L’effacement des sauvegardes exige un examen distinct des durées de conservation.",
+    "account_cancel_delete": "Annuler la demande de suppression",
+    "account_done": "Terminé"
   },
   "plurals": {
     "record_count": {

@@ -144,3 +144,6 @@ class AccountSessions:
         from .service import require
         row = db.execute('SELECT until_at FROM service_holds WHERE user_id=? AND service=?', (uid, service)).fetchone()
         require(not row or row['until_at'] <= int(self.clock()), 'service_restricted', 403)
+        if service=='family_write':
+            from .entitlements import resolve
+            require(resolve(db,uid,int(self.clock()))['features']['family_sync'],'service_restricted',403)

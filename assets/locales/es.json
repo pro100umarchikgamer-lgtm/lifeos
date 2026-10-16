@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "es",
   "nativeName": "Español",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Mes",
     "task_overdue": "Vencidas",
     "task_upcoming": "Próximas",
-    "family_error_password_weak": "Elige una contraseña menos común con al menos tres caracteres distintos, no solo números."
+    "family_error_password_weak": "Elige una contraseña menos común con al menos tres caracteres distintos, no solo números.",
+    "account_manage": "Gestionar cuenta",
+    "account_access": "Acceso y planes",
+    "account_devices": "Dispositivos y sesiones",
+    "account_support": "Soporte",
+    "account_privacy": "Cuenta y privacidad",
+    "account_no_payment": "Las compras están desactivadas durante esta prueba cerrada.",
+    "account_cloud_required": "Estos ajustes necesitan conexión al servidor. Los registros locales permanecen en tu dispositivo.",
+    "account_revoke": "Revocar acceso",
+    "account_subject": "Asunto",
+    "account_message": "Mensaje",
+    "account_send": "Enviar",
+    "account_email_change": "Cambiar correo",
+    "account_delete": "Eliminar cuenta en la nube",
+    "account_delete_notice": "La eliminación comienza tras 24 horas y se puede cancelar. Se conservan los registros locales de Android y el historial compartido de otros familiares. Primero debes transferir la propiedad del espacio familiar. El borrado de copias de seguridad requiere revisar por separado los plazos de conservación.",
+    "account_cancel_delete": "Cancelar solicitud de eliminación",
+    "account_done": "Listo"
   },
   "plurals": {
     "record_count": {

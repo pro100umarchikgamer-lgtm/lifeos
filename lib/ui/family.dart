@@ -6,6 +6,7 @@ import '../sync/controller.dart';
 import '../sync/contracts.dart';
 import 'design.dart';
 import 'selection.dart';
+import 'account_center.dart';
 
 class FamilyPage extends StatefulWidget {
   const FamilyPage({super.key, required this.controller, required this.pack});
@@ -511,11 +512,17 @@ class _FamilyPageState extends State<FamilyPage> {
                   ),
                 ],
               ),
+              if (register && c.pendingRegistrationEmail == email.text.trim()) ...[
+                Text(t('family_verify_hint')),
+                TextField(controller: code, decoration: InputDecoration(labelText: t('family_code')),
+                  textInputAction: TextInputAction.done),
+                const SizedBox(height: 12),
+              ],
               FilledButton(
                 onPressed: c.busy || c.accountOrigin.isEmpty
                     ? null
                     : () async {
-                        if (register &&
+                        if (register && c.pendingRegistrationEmail != email.text.trim() &&
                             (password.text.length < 7 ||
                                 password.text.length > 256)) {
                           setState(
@@ -523,7 +530,7 @@ class _FamilyPageState extends State<FamilyPage> {
                           );
                           return;
                         }
-                        if (register && password.text != passwordAgain.text) {
+                        if (register && c.pendingRegistrationEmail != email.text.trim() && password.text != passwordAgain.text) {
                           setState(() => formError = 'password_mismatch');
                           return;
                         }
@@ -533,17 +540,21 @@ class _FamilyPageState extends State<FamilyPage> {
                           email.text.trim(),
                           password.text,
                           register: register,
+                          verificationCode: register && c.pendingRegistrationEmail == email.text.trim() ? code.text.trim() : null,
                         );
                         password.clear();
                         passwordAgain.clear();
                       },
-                child: Text(t(register ? 'family_register' : 'family_login')),
+                child: Text(t(register ? (c.pendingRegistrationEmail == email.text.trim() ? 'family_verify' : 'family_register') : 'family_login')),
               ),
             ] else ...[
               Text(
                 c.account!['email'] as String? ?? t('family_account'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              button('account_manage', () => Navigator.of(context).push<void>(MaterialPageRoute(
+                builder: (_) => AccountCenter(controller: c, pack: widget.pack),
+              )), icon: Icons.manage_accounts_outlined),
               button('family_logout', () => c.signOut(), icon: Icons.logout),
               button('family_password_change', () async {
                 final old = await ask(t('family_old_password'), secret: true);

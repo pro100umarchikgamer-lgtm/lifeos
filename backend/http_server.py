@@ -11,7 +11,13 @@ MAX_BODY=2*1024*1024
 
 def dispatch(backend,method,path,body,auth):
     split=urllib.parse.urlsplit(path);route=split.path;query=urllib.parse.parse_qs(split.query)
-    if route=='/v1/auth/register' and method=='POST':result=backend.register(body.get('email'),body.get('password'))
+    if route=='/v1/auth/signup' and method=='POST':
+        from .account_lifecycle import AccountLifecycle
+        result=AccountLifecycle(backend).signup(body.get('email'),body.get('password'))
+    elif route=='/v1/auth/signup/confirm' and method=='POST':
+        from .account_lifecycle import AccountLifecycle
+        result=AccountLifecycle(backend).confirm_signup(body.get('email'),body.get('code'))
+    elif route=='/v1/auth/register' and method=='POST':result=backend.register(body.get('email'),body.get('password'))
     elif route=='/v1/auth/recovery' and method=='POST':result=backend.recover(body.get('email'))
     elif route=='/v1/auth/reset' and method=='POST':result=backend.reset_password(body.get('email'),body.get('code'),body.get('password'))
     elif route=='/v1/auth/refresh' and method=='POST':result=backend.refresh_session(body.get('refresh_token'))
@@ -42,6 +48,17 @@ def dispatch(backend,method,path,body,auth):
             elif route=='/v1/support' and method=='POST':result=support.create(actor,body.get('category'),body.get('subject'),body.get('message'))
             elif route=='/v1/support/thread' and method=='GET':result=support.read(actor,query.get('id',[''])[0])
             elif route=='/v1/support/reply' and method=='POST':result=support.reply(actor,body.get('ticket_id'),body.get('message'),body.get('state','open'))
+            else:raise Failure('not_found',404)
+        elif route.startswith('/v1/account/lifecycle/'):
+            from .account_lifecycle import AccountLifecycle
+            lifecycle=AccountLifecycle(backend);action=route.rsplit('/',1)[-1]
+            if action=='deletion' and method=='GET':result=lifecycle.deletion_status(actor)
+            elif action=='deletion' and method=='POST':result=lifecycle.request_deletion(actor,body.get('password'),body.get('confirmation'))
+            elif action=='cancel-deletion' and method=='POST':result=lifecycle.cancel_deletion(actor,body.get('password'))
+            elif action=='email' and method=='POST':result=lifecycle.change_email(actor,body.get('email'),body.get('password'))
+            elif action=='confirm-email' and method=='POST':result=lifecycle.confirm_email(actor,body.get('code'),body.get('password'))
+            elif action=='transfer' and method=='POST':result=lifecycle.transfer(actor,body.get('workspace_id'),body.get('user_id'),body.get('password'))
+            elif action=='accept-transfer' and method=='POST':result=lifecycle.accept_transfer(actor,body.get('transfer_id'),body.get('password'))
             else:raise Failure('not_found',404)
         elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
         elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}

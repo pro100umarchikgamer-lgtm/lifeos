@@ -25,7 +25,7 @@ class FamilyController extends ChangeNotifier {
   FamilyApi? api;
   Json? account, roster;
   List<Json> spaces = [], records = [], pending = [], issues = [];
-  String? workspace, error;
+  String? workspace, error, pendingRegistrationEmail;
   bool busy = false;
   bool _disposed = false;
   Timer? _retry;
@@ -157,13 +157,21 @@ class FamilyController extends ChangeNotifier {
     String email,
     String password, {
     bool register = false,
+    String? verificationCode,
   }) => run(() async {
     final candidate = FamilyApi(endpoint);
     try {
+      if (register && verificationCode == null) {
+        await candidate.request('/v1/auth/signup', body: {'email': email, 'password': password});
+        pendingRegistrationEmail = email;
+        candidate.close();
+        return;
+      }
       final result = await candidate.request(
-        '/v1/auth/${register ? 'register' : 'login'}',
-        body: {'email': email, 'password': password},
+        '/v1/auth/${register ? 'signup/confirm' : 'login'}',
+        body: {'email': email, if (register) 'code': verificationCode else 'password': password},
       );
+      pendingRegistrationEmail = null;
       candidate.token = result['token'] as String;
       candidate.refreshToken = result['refresh_token'] as String?;
       candidate.userId = result['user_id'] as String;
@@ -384,6 +392,7 @@ class FamilyController extends ChangeNotifier {
   });
   Future<void> _clearSession() async {
     _generation++;
+    pendingRegistrationEmail = null;
     api?.token = null;
     api?.refreshToken = null;
     api?.userId = null;

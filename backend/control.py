@@ -359,3 +359,24 @@ class Control:
             db.execute('UPDATE flag_proposals SET used_at=? WHERE id=?', (max(1, int(self.backend.clock())), pid))
             self.audit(db, actor, value['name'], 'flag.update', json.loads(prior['body']) if prior else {}, after, value['reason'])
         return {'revision': value['revision'] + 1}
+
+    def recover_staff(self, email, password, recovery_code):
+        """Operator-only recovery: account password plus a stored one-use code."""
+        email = text(email, 254).casefold()
+        self._attempt(email)
+        require(isinstance(recovery_code, str) and len(recovery_code) == 32, 'recovery_invalid', 403)
+        secret = base64.b32encode(secrets.token_bytes(20)).decode()
+        recovery = [secrets.token_urlsafe(24) for _ in range(8)]
+        with self.backend.transaction() as db:
+            row = db.execute('SELECT s.id,s.user_id FROM staff s JOIN users u ON u.id=s.user_id WHERE u.email=? AND s.active=1 AND u.verified=1', (email,)).fetchone()
+            require(row is not None, 'recovery_invalid', 403)
+            self.backend._account_available(db, row['user_id'])
+            self.backend.reauthenticate(db, {'id': row['user_id']}, password)
+            valid = db.execute('SELECT 1 FROM staff_recovery WHERE hash=? AND staff_id=? AND used_at=0', (token_hash(recovery_code), row['id'])).fetchone()
+            require(valid is not None, 'recovery_invalid', 403)
+            db.execute('UPDATE staff SET mfa_secret=?,last_counter=-1,revision=revision+1 WHERE id=?', (self._cipher().encrypt(secret.encode()), row['id']))
+            db.execute('DELETE FROM control_sessions WHERE staff_id=?', (row['id'],))
+            db.execute('DELETE FROM staff_recovery WHERE staff_id=?', (row['id'],))
+            for code in recovery: db.execute('INSERT INTO staff_recovery VALUES(?,?,0)', (token_hash(code), row['id']))
+            self.audit(db, 'operator-recovery', row['user_id'], 'staff.recover', {}, {'mfa_rotated': True, 'sessions_revoked': True}, 'Password and offline one-use recovery code verified')
+        return {'staff_id': row['id'], 'totp_secret': secret, 'recovery_codes': recovery}

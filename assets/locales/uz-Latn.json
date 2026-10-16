@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "uz-Latn",
   "nativeName": "O‘zbekcha",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Oy",
     "task_overdue": "Muddati o‘tgan",
     "task_upcoming": "Kelgusi",
-    "family_error_password_weak": "Kam ishlatiladigan parol tanlang: kamida uch xil belgi bo‘lsin, faqat raqamlardan iborat bo‘lmasin."
+    "family_error_password_weak": "Kam ishlatiladigan parol tanlang: kamida uch xil belgi bo‘lsin, faqat raqamlardan iborat bo‘lmasin.",
+    "account_manage": "Hisobni boshqarish",
+    "account_access": "Kirish huquqlari va tariflar",
+    "account_devices": "Qurilmalar va seanslar",
+    "account_support": "Yordam",
+    "account_privacy": "Hisob va maxfiylik",
+    "account_no_payment": "Yopiq sinovda xaridlar o‘chirilgan.",
+    "account_cloud_required": "Bu sozlamalar serverga ulanishni talab qiladi. Mahalliy yozuvlar qurilmada qoladi.",
+    "account_revoke": "Kirish huquqini bekor qilish",
+    "account_subject": "Mavzu",
+    "account_message": "Xabar",
+    "account_send": "Yuborish",
+    "account_email_change": "Elektron pochtani o‘zgartirish",
+    "account_delete": "Bulut hisobini o‘chirish",
+    "account_delete_notice": "O‘chirish 24 soatdan keyin boshlanadi; so‘rovni bekor qilish mumkin. Androiddagi mahalliy yozuvlar va boshqa oila a’zolarining umumiy tarixi saqlanadi. Avval oila egaligini topshirish kerak. Zaxira nusxalarini tozalash uchun saqlash muddatlarini alohida tekshirish zarur.",
+    "account_cancel_delete": "O‘chirish so‘rovini bekor qilish",
+    "account_done": "Tayyor"
   },
   "plurals": {
     "record_count": {

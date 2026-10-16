@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "de",
   "nativeName": "Deutsch",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Monat",
     "task_overdue": "Überfällig",
     "task_upcoming": "Anstehend",
-    "family_error_password_weak": "Wähle ein weniger verbreitetes Passwort mit mindestens drei verschiedenen Zeichen, nicht nur Ziffern."
+    "family_error_password_weak": "Wähle ein weniger verbreitetes Passwort mit mindestens drei verschiedenen Zeichen, nicht nur Ziffern.",
+    "account_manage": "Konto verwalten",
+    "account_access": "Zugang und Tarife",
+    "account_devices": "Geräte und Sitzungen",
+    "account_support": "Support",
+    "account_privacy": "Konto und Datenschutz",
+    "account_no_payment": "Käufe sind während dieses geschlossenen Tests deaktiviert.",
+    "account_cloud_required": "Diese Einstellungen benötigen eine Serververbindung. Lokale Einträge bleiben auf Ihrem Gerät.",
+    "account_revoke": "Zugriff widerrufen",
+    "account_subject": "Betreff",
+    "account_message": "Nachricht",
+    "account_send": "Senden",
+    "account_email_change": "E-Mail ändern",
+    "account_delete": "Cloud-Konto löschen",
+    "account_delete_notice": "Die Löschung beginnt nach 24 Stunden und kann abgebrochen werden. Lokale Android-Einträge und der gemeinsame Verlauf anderer Familienmitglieder bleiben erhalten. Die Familieninhaberschaft muss zuerst übertragen werden. Für die Löschung aus Sicherungen müssen die Aufbewahrungsfristen separat geprüft werden.",
+    "account_cancel_delete": "Löschantrag abbrechen",
+    "account_done": "Fertig"
   },
   "plurals": {
     "record_count": {

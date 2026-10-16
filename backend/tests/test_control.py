@@ -34,6 +34,13 @@ class ControlScenarios:
         self.now += 901
         with self.assertRaises(Failure): self.control.authenticate(self.control_token, 'test-agent')
 
+    def test_operator_recovery_requires_password_and_one_use_code(self):
+        with self.assertRaises(Failure): self.control.recover_staff(self.p1['email'], 'wrong', self.enrollment['recovery_codes'][0])
+        recovered = self.control.recover_staff(self.p1['email'], 'a-valid-long-passphrase', self.enrollment['recovery_codes'][0])
+        with self.assertRaises(Failure): self.control.authenticate(self.control_token, 'test-agent')
+        with self.assertRaises(Failure): self.control.recover_staff(self.p1['email'], 'a-valid-long-passphrase', self.enrollment['recovery_codes'][0])
+        self.assertNotEqual(recovered['totp_secret'], self.enrollment['totp_secret'])
+
     def test_unique_owner_and_no_self_or_peer_escalation(self):
         with self.assertRaises(Failure): self.control.bootstrap(self.p2['email'])
         with self.assertRaises(Failure): self.control.update_staff(self.owner, self.owner.id, ['admin'], True, 1, 'not allowed')

@@ -167,6 +167,9 @@ class Backend(AccountSessions):
         require(actor['verified']==1,'verify_email',403)
         row=db.execute('SELECT w.*,m.role,m.profile_id,m.revision AS member_revision FROM workspaces w JOIN memberships m ON m.workspace_id=w.id WHERE w.id=? AND m.user_id=? AND m.active=1 AND w.dissolved=0',(wid,actor['id'])).fetchone()
         require(row is not None,'workspace_forbidden',403)
+        if row['kind']=='family':
+            from .entitlements import resolve
+            require(resolve(db,actor['id'],int(self.clock()))['features']['family_sync'],'service_restricted',403)
         if parent: require(row['role'] in ('parent','owner'),'parent_required',403)
         return dict(row)
     def _audit(self,db,wid,actor,op,kind,rid=None):
@@ -285,6 +288,10 @@ class Backend(AccountSessions):
         p=self._permissions(db,space)
         return row['owner_id']==actor['id'] and 'edit_own' in p or row['kind']=='task' and 'complete_tasks' in p and space['profile_id'] in json.loads(row['audience'])
     def _data(self,db,row):
+        if row['deleted']:
+            result=dict(row);result['audience']=json.loads(result['audience']);result['data']={}
+            if row['kind']=='task':result['progress']=[]
+            return result
         result=dict(row);result['audience']=json.loads(result['audience']);data=dict(db.execute('SELECT * FROM '+TABLES[row['kind']]+' WHERE id=?',(row['id'],)).fetchone());data.pop('id')
         for key in JSON_FIELDS & data.keys(): data[key]=json.loads(data[key])
         result['data']=data

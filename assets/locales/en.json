@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 12,
+  "packVersion": 13,
   "locale": "en",
   "nativeName": "English",
   "strings": {
@@ -680,7 +680,23 @@
     "insight_month": "Month",
     "task_overdue": "Overdue",
     "task_upcoming": "Upcoming",
-    "family_error_password_weak": "Choose a less common password with at least three different characters; avoid numbers only."
+    "family_error_password_weak": "Choose a less common password with at least three different characters; avoid numbers only.",
+    "account_manage": "Manage account",
+    "account_access": "Access & plans",
+    "account_devices": "Devices & sessions",
+    "account_support": "Support",
+    "account_privacy": "Account & privacy",
+    "account_no_payment": "Purchases are disabled during this closed test.",
+    "account_cloud_required": "These settings need a server connection. Local records remain on your device.",
+    "account_revoke": "Revoke access",
+    "account_subject": "Subject",
+    "account_message": "Message",
+    "account_send": "Send",
+    "account_email_change": "Change email",
+    "account_delete": "Delete cloud account",
+    "account_delete_notice": "Deletion starts after 24 hours and can be cancelled. Local Android records and other family members’ shared history are preserved. Family ownership must be transferred first. Backup erasure requires a separate retention review.",
+    "account_cancel_delete": "Cancel deletion request",
+    "account_done": "Done"
   },
   "plurals": {
     "record_count": {
