@@ -92,3 +92,5 @@ Focused Android #1 подтвердил устранение Etc/UTC crash: эк
 - Upgrade probe107 now launches retained85001 correctly. Actual XML shows Plans calendar fills viewport and saved task is in lazy content below it. Reveal the actual task via bounded scrolling before asserting it, both before and after update/restart; no data assertions removed. Added helper regression test.
 
 - Full CI112: all mandatory Python/backend/Flutter/widget/visual/native checks pass, 11 Android tests pass; one APK112001 signed by pinned certificate, applicationId retained. Post-build fixture failed before candidate install: actual old85001 XML/title is YULADIM_upgrade_probe_85001 (IME/autofocus tap inserted Y). Clear input and assert exact field value before save. Preserve/reuse APK SHA256 0594d97502523901e9d8b7d6b0ceb5ec995f7379b66faabd886f8f75ea58908e; no second release build.
+
+- Probe114 verified retained APK hash/application inputs, then runner rejected multiline if because its script input executes lines independently. Move conditional to a syntax-checked shell file; no application or APK change.

@@ -253,12 +253,7 @@ jobs:
           target: google_apis
           profile: pixel_2
           disable-animations: true
-          script: |
-            if [ "${{ inputs.reuse_signed_apk }}" = "true" ]; then
-              python3 tool/check_release_upgrade.py --candidate "$RUNNER_TEMP/uladim-candidate.apk"
-            else
-              python3 tool/check_release_upgrade.py --probe --candidate "$RUNNER_TEMP/uladim-85001.apk"
-            fi
+          script: bash tool/check_release_probe.sh "${{ inputs.reuse_signed_apk }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
