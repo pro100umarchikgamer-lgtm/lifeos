@@ -2,6 +2,7 @@
 then update in place. Never uninstall or clear app data. CI emulator only.
 """
 import argparse,hashlib,json,os,re,subprocess,time,zipfile
+from decimal import Decimal
 from pathlib import Path
 import xml.etree.ElementTree as ET
 APP='app.lifeos.lifeos'
@@ -84,6 +85,18 @@ def enter_text(value):
     adb('shell','input','keyevent','4')
 def screenshot(name):
     OUT.mkdir(exist_ok=True);(OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
+
+def verify_financial_summary(root):
+    # The UI deliberately renders whole amounts as $100, not $100.00.
+    # Compare exact currency values, never unanchored numeric substrings.
+    amounts=set()
+    for node in root.iter('node'):
+        for attribute in ('text','content-desc'):
+            for value in re.findall(r'(?<![\w$])\$(-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)(?![\d.,])',node.get(attribute,'')):
+                amounts.add(Decimal(value.replace(',','')))
+    expected={Decimal('12.50'),Decimal('100.00'),Decimal('87.50')}
+    assert expected <= amounts, f'Synthetic financial values missing after update: {expected-amounts}'
+
 def start():
     adb('shell','am','force-stop',APP);adb('shell','am','start','-n',APP+'/.MainActivity');time.sleep(2)
     OUT.mkdir(exist_ok=True);(OUT/('startup-'+str(time.time_ns())+'.txt')).write_bytes(adb('logcat','-d'))
@@ -125,12 +138,13 @@ def main():
             adb('shell','cmd','uimode','night','no' if theme=='light' else 'yes');time.sleep(.7)
             tap('Today');screenshot('today-'+theme)
             tap('Finances');find('Finances');screenshot('finances-'+theme);
-            amounts=ET.tostring(xml(),encoding='unicode')
-            assert '12.50' in amounts and '100.00' in amounts, 'Synthetic financial amounts did not survive the update'
+            tree=xml();(OUT/('finances-'+theme+'.xml')).write_bytes(ET.tostring(tree))
+            verify_financial_summary(tree)
             scroll();screenshot('categories-'+theme);scroll(False)
             tap('Today');tap('Profile');tap('Account and family');tap('Create account');screenshot('registration-'+theme)
             adb('shell','input','keyevent','4')
         evidence['screenshots']='real Android 35 release app; synthetic data only'
+        evidence['financialAmountsRetained']={'incomeMinor':10000,'expenseMinor':1250,'differenceMinor':8750,'currency':'USD'}
     OUT.mkdir(exist_ok=True);(OUT/'upgrade-result.json').write_text(json.dumps(evidence,indent=2)+'\n');print(json.dumps(evidence))
 if __name__=='__main__':
     try:main()

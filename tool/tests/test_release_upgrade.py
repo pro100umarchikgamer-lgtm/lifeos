@@ -4,6 +4,29 @@ import xml.etree.ElementTree as ET
 from tool import check_release_upgrade as upgrade
 
 class ReleaseUpgradeHelpers(unittest.TestCase):
+    def financial_tree(self, income='$100', expense='$12.50', difference='$87.50'):
+        root=ET.Element('hierarchy')
+        for value in (income,expense,difference):ET.SubElement(root,'node',{'content-desc':value})
+        return root
+
+    def test_finance_retention_accepts_compact_whole_currency_format(self):
+        upgrade.verify_financial_summary(self.financial_tree())
+        upgrade.verify_financial_summary(self.financial_tree(income='$100.00'))
+
+    def test_finance_retention_rejects_numeric_substring_and_wrong_precision(self):
+        for amount in ('$1100.00','$1000','$100.001'):
+            with self.subTest(amount=amount), self.assertRaises(AssertionError):
+                upgrade.verify_financial_summary(self.financial_tree(income=amount))
+
+    def test_finance_retention_requires_both_records_and_their_exact_net(self):
+        for values in ({'income':'$99.99'},{'expense':'$12.51'},{'difference':'$0'},{'difference':'$-87.50'}):
+            with self.subTest(values=values), self.assertRaises(AssertionError):
+                upgrade.verify_financial_summary(self.financial_tree(**values))
+
+    def test_finance_retention_cannot_mix_another_currency(self):
+        with self.assertRaises(AssertionError):
+            upgrade.verify_financial_summary(self.financial_tree(income='€100.00'))
+
     def test_transient_empty_accessibility_tree_does_not_abort_readiness(self):
         root = ET.fromstring('<hierarchy><node text="Task" enabled="true" clickable="true" bounds="[0,0][100,50]" /></hierarchy>')
         with patch.object(upgrade, 'xml', side_effect=[ET.ParseError('startup'), root]), patch.object(upgrade.time, 'sleep'):

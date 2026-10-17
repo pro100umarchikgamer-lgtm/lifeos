@@ -9,7 +9,7 @@ on:
         type: boolean
         default: false
       reuse_signed_apk:
-        description: Verify the retained signed APK112001 without building another APK
+        description: Verify the retained signed APK134001 without building another APK
         type: boolean
         default: false
       focused:
@@ -218,7 +218,7 @@ jobs:
         if: always() && (steps.signing.outcome == 'success' || steps.reuse.outcome == 'success')
         uses: actions/upload-artifact@v4
         with:
-          name: lifeos-release-test-apk-${{ inputs.reuse_signed_apk && 'f8632cdd5cf4dad40f0163a44183016d23121abd' || steps.validation.outputs.sha }}
+          name: lifeos-release-test-apk-${{ inputs.reuse_signed_apk && '6acbde34f499d7c740322687416abc3aa542f9ac' || steps.validation.outputs.sha }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             apk-identity.txt
@@ -239,7 +239,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tool/check_release_upgrade.py --download
-      - name: Reuse exact signed APK112001 for acceptance without rebuilding
+      - name: Reuse exact signed APK134001 for acceptance without rebuilding
         if: inputs.reuse_signed_apk == true
         env:
           GH_TOKEN: ${{ github.token }}
