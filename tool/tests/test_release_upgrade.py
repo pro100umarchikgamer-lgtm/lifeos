@@ -50,8 +50,14 @@ class ReleaseUpgradeHelpers(unittest.TestCase):
             upgrade.device_timezone('Europe/Moscow')
             self.assertEqual(adb.call_args_list[0].args, ('shell','settings','put','global','auto_time_zone','0'))
             self.assertEqual(adb.call_args_list[1].args, ('shell','cmd','alarm','set-timezone','Europe/Moscow'))
+    def test_fixture_waits_for_asynchronous_timezone_acknowledgement(self):
+        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Etc/UTC\n', b'Europe/Moscow\n']) as adb, patch.object(upgrade.time, 'sleep') as sleep, patch.object(upgrade.time, 'monotonic', return_value=0):
+            upgrade.device_timezone('Europe/Moscow')
+            sleep.assert_called_once_with(0.25)
+            self.assertEqual(adb.call_count, 4)
+
     def test_fixture_rejects_ignored_timezone_change(self):
-        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Etc/UTC\n']):
+        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Etc/UTC\n']), patch.object(upgrade.time, 'monotonic', side_effect=[0, 11]):
             with self.assertRaisesRegex(AssertionError, 'timezone mismatch'):
                 upgrade.device_timezone('Europe/Moscow')
 

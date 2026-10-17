@@ -112,7 +112,12 @@ def scroll(up=True):
 def device_timezone(zone):
     adb('shell','settings','put','global','auto_time_zone','0')
     adb('shell','cmd','alarm','set-timezone',zone)
+    deadline=time.monotonic()+10
     actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
+    # AlarmManager acknowledges the request before the timezone property settles.
+    while actual!=zone and time.monotonic()<deadline:
+        time.sleep(0.25)
+        actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
     assert actual==zone, f'Emulator timezone mismatch: {actual} != {zone}'
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
