@@ -5,7 +5,8 @@ permissions:
   contents: read
 jobs:
   postgres:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 supports this image; ubuntu-latest now selects 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -124,6 +125,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Render public, customer and MFA staff workflows
         run: python -m tool.check_web_browser
+      - name: Verify PWA synchronization, retry, locales and safe caching
+        run: python -m tool.check_pwa_browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
