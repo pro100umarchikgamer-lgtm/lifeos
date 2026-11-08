@@ -1,0 +1,16 @@
+[Unit]
+Description=ULADIM pre-launch HTTPS and closed-access verification
+Requires=docker.service
+After=docker.service network-online.target
+[Service]
+Type=oneshot
+User=uladim
+Group=uladim
+WorkingDirectory=/opt/uladim/releases/c0a7f33
+ExecStart=/usr/bin/python3 /usr/local/libexec/uladim/check-edge.py --quiet
+Environment=PYTHONDONTWRITEBYTECODE=1
+TimeoutStartSec=120
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

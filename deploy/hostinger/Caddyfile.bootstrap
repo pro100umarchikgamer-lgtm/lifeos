@@ -1,0 +1,46 @@
+# Pre-launch edge only. API, accounts and Control stay closed pending acceptance.
+{$LIFEOS_DOMAIN}, {$ULADIM_CONTROL_DOMAIN} {
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Cache-Control no-store
+        -Server
+    }
+    @private path /health/* /metrics
+    handle @private {
+        respond 404
+    }
+    handle {
+        header Retry-After 3600
+        respond "ULADIM: service preparation. Registration and administrative access are closed." 503
+    }
+}
+{$ULADIM_SITE_DOMAIN} {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+        -Server
+    }
+    @private path /metrics /health/*
+    handle @private {
+        respond 404
+    }
+    @unavailable path /account* /control* /plans /auth/* /sync/*
+    handle @unavailable {
+        header Cache-Control no-store
+        header Retry-After 3600
+        respond "ULADIM: preparing closed testing. Accounts and subscriptions are not available yet." 503
+    }
+    handle_path /assets/* {
+        root * /srv/assets
+        file_server
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}
