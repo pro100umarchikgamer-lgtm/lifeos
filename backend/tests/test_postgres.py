@@ -220,3 +220,27 @@ class PostgresEarlyAccessTests(EarlyAccessScenarios, unittest.TestCase):
     def drop_schema(self):
         with psycopg.connect(DSN, autocommit=True) as db:
             db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(self.schema)))
+
+
+from test_owner_enrollment import OwnerSetupScenarios
+from backend.owner_enrollment import OwnerEnrollment
+import test_pwa as pwa_fixtures
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresOwnerSetupTests(OwnerSetupScenarios, unittest.TestCase):
+    drop_schema = PostgresEarlyAccessTests.drop_schema
+    def setUp(self):
+        PostgresEarlyAccessTests.setUp(self)
+        self.password = 'synthetic-owner-passphrase'
+        registered = self.backend.register('owner@example.test', self.password)
+        self.actor = self.backend.authenticate(registered['token'])
+        self.backend.verify(self.actor, self.mail[self.actor['email']])
+        self.actor = self.backend.authenticate(registered['token'])
+        self.setup = OwnerEnrollment(self.backend)
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresPWAHTTPTests(pwa_fixtures.PWAHTTPTests):
+    drop_schema = PostgresEarlyAccessTests.drop_schema
+    def setUp(self):
+        PostgresEarlyAccessTests.setUp(self)
+        self.prepare_pwa()

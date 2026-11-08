@@ -1,0 +1,2 @@
+'use strict';
+(async()=>{try{const packs=await(await fetch('/app/assets/locales.json')).json();let lang='ru';try{lang=JSON.parse(localStorage.getItem('uladim-interface')||'{}').lang||'ru';}catch{}const pack=packs[lang]||packs.ru;document.documentElement.lang=lang;document.querySelector('#message').textContent=pack.strings.web_online;document.querySelector('#retry').textContent=pack.strings.retry;}catch{}})();

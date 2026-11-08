@@ -59,6 +59,8 @@ class Web:
         origin = self.staff if staff else self.site
         headers = [('Content-Type', 'application/json; charset=utf-8'), ('Cache-Control', 'no-store'), ('X-Robots-Tag', 'noindex, nofollow' if staff or path.startswith('/account') else 'index, follow'),
                    ('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"), ('X-Content-Type-Options', 'nosniff'), ('Referrer-Policy', 'no-referrer')]
+        if not staff and method == 'GET' and (path in ('/app', '/app/') or path.startswith('/app/assets/') or path == '/app/sw.js'):
+            return self.app_asset(path, headers)
         if method == 'GET' and path in ('/assets/web.js', '/assets/web.css'):
             headers[0] = ('Content-Type', 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8')
             return (ASSETS / path.rsplit('/', 1)[-1]).read_bytes(), headers
@@ -171,6 +173,9 @@ class Web:
         from .customer_mfa import CustomerMFA
         mfa=CustomerMFA(self.backend)
         if method == 'GET':
+            if action == 'spaces': return {'spaces': self.backend.spaces(actor)}
+            if action == 'roster': return self.backend.roster(actor, q.get('workspace', [''])[0])
+            if action == 'sync': return self.backend.pull_incremental(actor, q.get('workspace', [''])[0], int(q.get('cursor', ['0'])[0]), q.get('epoch', [''])[0])
             if action == 'mfa':return mfa.status(actor)
             if action == 'deletion': return lifecycle.deletion_status(actor)
             if action == 'entitlements':
@@ -179,6 +184,17 @@ class Web:
             if action == 'support': return self.support.list(actor)
             if action == 'thread': return self.support.read(actor, q.get('id', [''])[0])
         elif method == 'POST':
+            if action == 'sync': return self.backend.batch(actor, b.get('workspace_id'), b.get('operations'))
+            if action == 'family': return self.backend.family(actor, b)
+            if action == 'invitations/accept': return self.backend.accept(actor, b)
+            if action == 'staff/enrollment':
+                from .owner_enrollment import OwnerEnrollment
+                if b.get('owner'): return OwnerEnrollment(self.backend).begin(actor, b.get('invitation'), b.get('password'))
+                return self.control.prepare_enrollment(actor, b.get('invitation'), b.get('password'))
+            if action == 'staff/confirm':
+                from .owner_enrollment import OwnerEnrollment
+                if b.get('owner'): return OwnerEnrollment(self.backend).finish(actor, b.get('enrollment'), b.get('code'))
+                return self.control.finish_enrollment(actor, b.get('enrollment'), b.get('code'))
             if action == 'transfer':return lifecycle.transfer(actor,b.get('workspace_id'),b.get('user_id'),b.get('password'))
             if action == 'accept-transfer':return lifecycle.accept_transfer(actor,b.get('transfer_id'),b.get('password'))
             if action == 'mfa/begin':return mfa.begin(actor,b.get('password'))
@@ -194,4 +210,18 @@ class Web:
             if action == 'support': return self.support.create(actor, b.get('category'), b.get('subject'), b.get('message'))
             if action == 'support/reply': return self.support.reply(actor, b.get('ticket_id'), b.get('message'), b.get('state', 'open'))
         raise Failure('not_found', 404)
+
+    def app_asset(self, path, headers):
+        """An explicit static allowlist; no API, cookie or user data is cached."""
+        import mimetypes
+        root = ASSETS / 'app'
+        relative = 'index.html' if path in ('/app', '/app/') else ('sw.js' if path == '/app/sw.js' else path[len('/app/assets/'):])
+        allowed = {'index.html', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
+        require(relative in allowed and (root / relative).is_file(), 'not_found', 404)
+        mime = {'.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.json': 'application/json'}.get(Path(relative).suffix, mimetypes.guess_type(relative)[0] or 'application/octet-stream')
+        result = dict(headers)
+        result.update({'Content-Type': mime, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow',
+                       'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
+        if relative == 'sw.js': result['Service-Worker-Allowed'] = '/app'
+        return (root / relative).read_bytes(), list(result.items())
 
