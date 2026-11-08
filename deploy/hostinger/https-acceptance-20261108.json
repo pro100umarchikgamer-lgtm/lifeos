@@ -1,0 +1,380 @@
+{
+  "at": "2026-11-08T20:02:53.584399+00:00",
+  "scope": "Real HTTPS, no accounts, credentials, accepted applications or outgoing mail; proxy TLS trust, no direct DNS/certificate inspection",
+  "passed": 45,
+  "total": 45,
+  "checks": [
+    {
+      "url": "https://getuladim.space/",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 5.898
+    },
+    {
+      "url": "https://getuladim.space/early-access",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 5.897
+    },
+    {
+      "url": "https://getuladim.space/account",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 5.932
+    },
+    {
+      "url": "https://getuladim.space/plans",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 5.895
+    },
+    {
+      "url": "https://getuladim.space/privacy",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 4.787
+    },
+    {
+      "url": "https://getuladim.space/terms",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 4.916
+    },
+    {
+      "url": "https://getuladim.space/status",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 4.786
+    },
+    {
+      "url": "https://getuladim.space/support",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 4.787
+    },
+    {
+      "url": "https://getuladim.space/app",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 5.336
+    },
+    {
+      "url": "https://getuladim.space/app/",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "seconds": 5.101
+    },
+    {
+      "url": "https://getuladim.space/app/assets/app.js",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "c1aa7837db40c3cb0ad077a4c78897321f9022f3479c72eee263d8696156849d",
+      "passed": true,
+      "seconds": 5.3
+    },
+    {
+      "url": "https://getuladim.space/app/assets/app.css",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "7cac0511a71de08a1292d3138ef9c72dbe57924f750e920d93483a76f056ab29",
+      "passed": true,
+      "seconds": 4.974
+    },
+    {
+      "url": "https://getuladim.space/app/assets/locales.json",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "72430bbe3a48d9ab52807fdb82a2afcb13c0a66e7ecac7bfc8b8dffbcc635a69",
+      "passed": true,
+      "seconds": 7.02
+    },
+    {
+      "url": "https://getuladim.space/app/assets/manifest.webmanifest",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "f37f0edf50ba02e32abc4cc0c5e6df2c3b9a02dfd7f2e146264aa7d369bd8057",
+      "passed": true,
+      "seconds": 7.017
+    },
+    {
+      "url": "https://getuladim.space/app/assets/offline.html",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "9db3a0789f037e7c179219e38a8e236ccec1eda0e6e560fff35c1c987fa66176",
+      "passed": true,
+      "seconds": 6.1
+    },
+    {
+      "url": "https://getuladim.space/app/assets/offline.js",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "c7f836ab9c600a93080100d945ee45fae58ecfb2ec19bf11fae9b47cf298fa42",
+      "passed": true,
+      "seconds": 6.099
+    },
+    {
+      "url": "https://getuladim.space/app/assets/icon-192.png",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "0afe267704910d33ec793e7376cb413cdbd9b801407f20b5dcd8d80a08068b0e",
+      "passed": true,
+      "seconds": 5.258
+    },
+    {
+      "url": "https://getuladim.space/app/assets/icon-512.png",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "402e75fd0d7f9f6439ad303b1ac5f788891a6119f22818604aa4af11808ec94e",
+      "passed": true,
+      "seconds": 5.147
+    },
+    {
+      "url": "https://getuladim.space/app/assets/apple-touch-icon.png",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "c8afaa5ac406661fe04a83824d09fd875d989dcc0582812ec9e68194132101a0",
+      "passed": true,
+      "seconds": 4.423
+    },
+    {
+      "url": "https://getuladim.space/app/sw.js",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "84e342648b14688957f99f7d977bbd31e6ae39962f07df8638c202f01eac9b5e",
+      "passed": true,
+      "seconds": 4.383
+    },
+    {
+      "url": "https://getuladim.space/assets/web.js",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "1041022d542071e497613ff40d18d62883c064570a540cf83a8cdcf649317813",
+      "passed": true,
+      "seconds": 5.269
+    },
+    {
+      "url": "https://getuladim.space/assets/web.css",
+      "method": "GET",
+      "expected": 200,
+      "status": 200,
+      "sha256": "d73b063c8545f6c3535ccc6b7272043ae0182136c477100b9a5fd8610057ad6d",
+      "passed": true,
+      "seconds": 5.008
+    },
+    {
+      "url": "https://getuladim.space/metrics",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 4.96
+    },
+    {
+      "url": "https://getuladim.space/health/ready",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 4.849
+    },
+    {
+      "url": "https://getuladim.space/control/api/applications",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 4.624
+    },
+    {
+      "url": "https://getuladim.space/app/assets/config.py",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 4.589
+    },
+    {
+      "url": "https://getuladim.space/account/api/session",
+      "method": "GET",
+      "expected": 401,
+      "status": 401,
+      "passed": true,
+      "seconds": 4.617
+    },
+    {
+      "url": "https://getuladim.space/account/api/spaces",
+      "method": "GET",
+      "expected": 401,
+      "status": 401,
+      "passed": true,
+      "seconds": 4.358
+    },
+    {
+      "url": "https://getuladim.space/account/api/sync",
+      "method": "GET",
+      "expected": 401,
+      "status": 401,
+      "passed": true,
+      "seconds": 9.535
+    },
+    {
+      "url": "https://getuladim.space/account/api/entitlements",
+      "method": "GET",
+      "expected": 401,
+      "status": 401,
+      "passed": true,
+      "seconds": 9.534
+    },
+    {
+      "url": "https://getuladim.space/account/api/signup",
+      "method": "POST",
+      "expected": 403,
+      "status": 403,
+      "passed": true,
+      "seconds": 9.463
+    },
+    {
+      "url": "https://getuladim.space/account/api/staff/enrollment",
+      "method": "POST",
+      "expected": 401,
+      "status": 401,
+      "passed": true,
+      "seconds": 9.462
+    },
+    {
+      "url": "https://getuladim.space/early-access/api/status",
+      "method": "POST",
+      "expected": 401,
+      "status": 401,
+      "passed": true,
+      "seconds": 5.405
+    },
+    {
+      "url": "https://getuladim.space/early-access/api/cancel",
+      "method": "POST",
+      "expected": 401,
+      "status": 401,
+      "passed": true,
+      "seconds": 5.365
+    },
+    {
+      "url": "https://getuladim.space/early-access/api/apply",
+      "method": "POST",
+      "expected": 403,
+      "status": 403,
+      "passed": true,
+      "seconds": 5.368
+    },
+    {
+      "url": "https://api.getuladim.space/",
+      "method": "GET",
+      "expected": 503,
+      "status": 503,
+      "passed": true,
+      "seconds": 4.288
+    },
+    {
+      "url": "https://api.getuladim.space/control/api/login",
+      "method": "POST",
+      "expected": 503,
+      "status": 503,
+      "passed": true,
+      "seconds": 5.833
+    },
+    {
+      "url": "https://api.getuladim.space/v1/auth/register",
+      "method": "POST",
+      "expected": 503,
+      "status": 503,
+      "passed": true,
+      "seconds": 4.847
+    },
+    {
+      "url": "https://api.getuladim.space/metrics",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 4.961
+    },
+    {
+      "url": "https://api.getuladim.space/health/ready",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 4.752
+    },
+    {
+      "url": "https://control.getuladim.space/",
+      "method": "GET",
+      "expected": 503,
+      "status": 503,
+      "passed": true,
+      "seconds": 5.861
+    },
+    {
+      "url": "https://control.getuladim.space/control/api/login",
+      "method": "POST",
+      "expected": 503,
+      "status": 503,
+      "passed": true,
+      "seconds": 5.86
+    },
+    {
+      "url": "https://control.getuladim.space/v1/auth/register",
+      "method": "POST",
+      "expected": 503,
+      "status": 503,
+      "passed": true,
+      "seconds": 5.752
+    },
+    {
+      "url": "https://control.getuladim.space/metrics",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 5.734
+    },
+    {
+      "url": "https://control.getuladim.space/health/ready",
+      "method": "GET",
+      "expected": 404,
+      "status": 404,
+      "passed": true,
+      "seconds": 4.505
+    }
+  ]
+}

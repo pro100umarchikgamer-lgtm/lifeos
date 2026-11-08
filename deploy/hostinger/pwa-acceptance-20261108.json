@@ -1,10 +1,76 @@
 {
   "date": "2026-11-08",
-  "scope": "Codespace synthetic fixtures; not production acceptance",
-  "backend": {"tests": 127, "result": "OK", "duration_seconds": 135.099, "postgres": "isolated lifeos_test, non-admin lifeos_ci role; no production data"},
-  "chromium": {"result": "passed", "checks": ["web writes readable by Android protocol", "lost-response retry creates one record", "responsive phone/tablet/desktop", "16 complete UI locales", "static-only CacheStorage", "preferences-only localStorage", "logout clears personal rendering", "localized fallback after real server disconnect"]},
-  "webkit": {"result": "incomplete", "stage": "customer login on HTTP loopback fixture; secure cookies preserved; HTTPS Safari acceptance required"},
-  "production": {"deployed": false, "baseline_image": "uladim-backend:c0a7f33", "migrations_observed": "001-007", "early_access_browser": "HTML 200 followed by JavaScript error from old static page", "api": "503 intentionally closed", "control": "503 intentionally closed", "ssh": "existing encrypted key needs unlocking after Codespace restart"},
-  "not_verified": ["production migrations 008/009", "real application and invitation mail delivery", "owner's actual MFA enrollment", "live staff authorization", "real Android two-client sync", "physical iPhone/iPad installation", "real backup restore and rollback", "load and full accessibility audit"],
-  "preserved": ["main unchanged", "PostgreSQL volumes", "encryption keys", "old backups", "signed APKs", "closed registration", "disabled payments"]
+  "scope": "Isolated synthetic acceptance and independently verified production HTTPS; incomplete authenticated production acceptance",
+  "backend": {
+    "tests": 127,
+    "result": "OK",
+    "duration_seconds": 135.099,
+    "postgres": "isolated lifeos_test, non-admin lifeos_ci role; no production data"
+  },
+  "chromium": {
+    "result": "passed",
+    "checks": [
+      "web writes readable by Android protocol",
+      "lost-response retry creates one record",
+      "responsive phone/tablet/desktop",
+      "16 complete UI locales",
+      "static-only CacheStorage",
+      "preferences-only localStorage",
+      "logout clears personal rendering",
+      "localized fallback after real server disconnect"
+    ]
+  },
+  "webkit": {
+    "result": "incomplete",
+    "stage": "customer login on HTTP loopback fixture; secure cookies preserved; HTTPS Safari acceptance required"
+  },
+  "production": {
+    "deployed": true,
+    "revision": "69ebda960242949af2220e31e0be47e97d311f6b",
+    "api_mail_image": "uladim-backend:69ebda960242949af2220e31e0be47e97d311f6b",
+    "migrations_observed": "001-009",
+    "containers": "API, mail and PostgreSQL healthy after deployment",
+    "registration_mode": "closed",
+    "registration_allowlist_count": 0,
+    "early_access_browser": "Form and confirmation entry render without application JavaScript errors",
+    "pwa_browser": "Real HTTPS login renders; no authenticated owner session available",
+    "api": "503 intentionally closed",
+    "control": "503 intentionally closed",
+    "edge_monitor": "Result=success after activating check-early-access-edge.py against the new release",
+    "backup": "Encrypted pre-deployment archive created at 2026-11-08T16:36:14Z; earlier archives preserved",
+    "https_acceptance": {
+      "passed": 45,
+      "total": 45,
+      "at": "2026-11-08T20:02:53.584399+00:00",
+      "scope": "Real HTTPS, no accounts, credentials, accepted applications or outgoing mail; proxy TLS trust, no direct DNS/certificate inspection"
+    },
+    "ssh": "Encrypted key was unlocked for one hour; remote session must be rechecked before further server work"
+  },
+  "not_verified": [
+    "real application and invitation mail delivery",
+    "owner's actual MFA enrollment",
+    "live staff authorization",
+    "real Android two-client sync",
+    "physical iPhone/iPad installation",
+    "real backup restore and rollback",
+    "load and full accessibility audit"
+  ],
+  "preserved": [
+    "main unchanged",
+    "PostgreSQL volumes",
+    "encryption keys",
+    "old backups",
+    "signed APKs",
+    "closed registration",
+    "disabled payments"
+  ],
+  "known_limits": [
+    "HEAD requests return 405; GET acceptance is successful",
+    "Login submit is still labelled Save",
+    "Transactional email templates remain Russian",
+    "Full Android financial feature parity is not yet implemented in web",
+    "Live owner email and personal MFA enrollment are required before Control exposure",
+    "VPS monitor verified direct DNS/TLS on deployment; independent workstation uses configured proxy and cannot resolve public DNS directly",
+    "GitHub check badge shows failure; combined-status API returned no statuses, cause not yet established"
+  ]
 }
