@@ -1,0 +1,2681 @@
+{
+  "at": "2026-11-08T22:36:46.165666+00:00",
+  "passed": true,
+  "tests": 143,
+  "postgres": true,
+  "scope": "Disposable two-account HTTP fixtures, no production data or SMTP",
+  "cases": [
+    {
+      "case": "guest application accepted",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "application creates no user",
+      "expected": 2,
+      "actual": 2,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "confirmed applicant enters queue",
+      "expected": [
+        200,
+        "pending"
+      ],
+      "actual": [
+        200,
+        "pending"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "confirmation is one-use",
+      "expected": 400,
+      "actual": 400,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "uninvited registration stays closed",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "invitation bound to recipient",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "invited signup",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "email confirmation completes registration",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "application status capability",
+      "expected": "approved",
+      "actual": "approved",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "cancel applicant",
+      "expected": "cancelled",
+      "actual": "cancelled",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "cancellation invalidates invitation",
+      "expected": false,
+      "actual": false,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "task foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "task foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "task foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "note foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "note foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "note foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "account foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "account foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "account foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "transaction foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "transaction foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "transaction foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "user ID parameter does not select identity",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "actual session owner remains Bob",
+      "expected": "1af72bbf-88c7-4ad0-ad7c-9f4472f88709",
+      "actual": "1af72bbf-88c7-4ad0-ad7c-9f4472f88709",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "Alice records unchanged",
+      "expected": 4,
+      "actual": 4,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "HEAD static route status",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "HEAD preserves representation length",
+      "expected": "867",
+      "actual": "867",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "HEAD body omitted",
+      "expected": 0,
+      "actual": 0,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "HEAD cannot log out",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "HEAD logout body omitted",
+      "expected": 0,
+      "actual": 0,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "session survives HEAD logout",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "logout succeeds",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "logged out cookie replay",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "old web cookie after password change",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "password without staff MFA",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET dashboard",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET staff",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET flags",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET applications",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner GET catalog",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "owner MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET dashboard",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET staff",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET flags",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET applications",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin GET catalog",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "admin MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET dashboard",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET support",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager GET catalog",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST moderate",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST support/reply",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST support/triage",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "billing_manager MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET dashboard",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET audit",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator GET catalog",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST revoke-grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST override",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "moderator MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET dashboard",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET audit",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support GET catalog",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST moderate",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST revoke-grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST override",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "support MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET dashboard",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET users",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET support",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor GET catalog",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST moderate",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST revoke-grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST override",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST support/reply",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST support/triage",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "auditor MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "staff brute force persists",
+      "expected": 429,
+      "actual": 429,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "foreign support /account/api/thread?id=f8301b82-95dc-4ea3-b5bf-f58090c4b2af",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "foreign support /account/api/support/reply",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "missing CSRF",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "cross-origin write rejected",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "no permissive CORS header",
+      "expected": null,
+      "actual": null,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "method PUT",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "method PATCH",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "method DELETE",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "method OPTIONS",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "forged __Host-uladim_account",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "forged __Host-uladim_control",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "client role ignored",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "public origin cannot reach Control",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "client cannot select Premium",
+      "expected": [
+        200,
+        "Free"
+      ],
+      "actual": [
+        200,
+        "Free"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "server-issued Plus",
+      "expected": "Plus",
+      "actual": "Plus",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "server-issued Premium",
+      "expected": "Premium",
+      "actual": "Premium",
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "customer cannot grant own plan",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "family invitation cannot be forwarded",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "recipient joins family",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "family invite one-use",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "family member cannot dissolve",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "removed family member loses read access",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account PostgreSQL WSGI"
+    },
+    {
+      "case": "guest application accepted",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "application creates no user",
+      "expected": 2,
+      "actual": 2,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "confirmed applicant enters queue",
+      "expected": [
+        200,
+        "pending"
+      ],
+      "actual": [
+        200,
+        "pending"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "confirmation is one-use",
+      "expected": 400,
+      "actual": 400,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "uninvited registration stays closed",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "invitation bound to recipient",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "invited signup",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "email confirmation completes registration",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "application status capability",
+      "expected": "approved",
+      "actual": "approved",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "cancel applicant",
+      "expected": "cancelled",
+      "actual": "cancelled",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "cancellation invalidates invitation",
+      "expected": false,
+      "actual": false,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "task foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "task foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "task foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "note foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "note foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "note foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "account foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "account foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "account foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "transaction foreign workspace read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "transaction foreign record edit",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "transaction foreign record delete",
+      "expected": "record_forbidden",
+      "actual": "record_forbidden",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "user ID parameter does not select identity",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "actual session owner remains Bob",
+      "expected": "292895fe-bf0d-43e8-83af-a4d8cdee2574",
+      "actual": "292895fe-bf0d-43e8-83af-a4d8cdee2574",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "Alice records unchanged",
+      "expected": 4,
+      "actual": 4,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "HEAD static route status",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "HEAD preserves representation length",
+      "expected": "867",
+      "actual": "867",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "HEAD body omitted",
+      "expected": 0,
+      "actual": 0,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "HEAD cannot log out",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "HEAD logout body omitted",
+      "expected": 0,
+      "actual": 0,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "session survives HEAD logout",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "logout succeeds",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "logged out cookie replay",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "old web cookie after password change",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "password without staff MFA",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET dashboard",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET staff",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET flags",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET applications",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner GET catalog",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "owner MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET dashboard",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET staff",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET flags",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET applications",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin GET catalog",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "admin MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET dashboard",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET support",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager GET catalog",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST moderate",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST support/reply",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST support/triage",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "billing_manager MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET dashboard",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET audit",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator GET catalog",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST revoke-grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST override",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "moderator MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET dashboard",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET users",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET audit",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET support",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support GET catalog",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST moderate",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST revoke-grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST override",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "support MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET dashboard",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET users",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET staff",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET audit",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET support",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET flags",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET applications",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor GET catalog",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST applications/decide",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST moderate",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST revoke-grant",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST override",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST catalog",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST staff/invite",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST staff/update",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST support/reply",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST support/triage",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST flags/preview",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor forbidden POST flags/commit",
+      "expected": [
+        403,
+        "staff_forbidden"
+      ],
+      "actual": [
+        403,
+        "staff_forbidden"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "auditor MFA replay rejected",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "staff brute force persists",
+      "expected": 429,
+      "actual": 429,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "foreign support /account/api/thread?id=19ca8d20-c69a-48eb-a875-914907a4328a",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "foreign support /account/api/support/reply",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "missing CSRF",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "cross-origin write rejected",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "no permissive CORS header",
+      "expected": null,
+      "actual": null,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "method PUT",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "method PATCH",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "method DELETE",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "method OPTIONS",
+      "expected": 405,
+      "actual": 405,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "forged __Host-uladim_account",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "forged __Host-uladim_control",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "client role ignored",
+      "expected": 401,
+      "actual": 401,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "public origin cannot reach Control",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "client cannot select Premium",
+      "expected": [
+        200,
+        "Free"
+      ],
+      "actual": [
+        200,
+        "Free"
+      ],
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "server-issued Plus",
+      "expected": "Plus",
+      "actual": "Plus",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "server-issued Premium",
+      "expected": "Premium",
+      "actual": "Premium",
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "customer cannot grant own plan",
+      "expected": 404,
+      "actual": 404,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "family invitation cannot be forwarded",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "recipient joins family",
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "family invite one-use",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "family member cannot dissolve",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    },
+    {
+      "case": "removed family member loses read access",
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "fixture": "isolated two-account SQLite WSGI"
+    }
+  ]
+}

@@ -1,0 +1,979 @@
+{
+  "result": "passed",
+  "screenshots": 108,
+  "checks": [
+    {
+      "direction": "clarity",
+      "screen": "home",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "today",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "finance",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "account",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "tasks",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "notes",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "family",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "plans",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "apply",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "login",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "support",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "control",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "home",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "today",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "finance",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "account",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "tasks",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "notes",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "family",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "plans",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "apply",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "login",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "support",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "control",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "home",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "today",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "finance",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "account",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "tasks",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "notes",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "family",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "plans",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "apply",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "login",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "support",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "clarity",
+      "screen": "control",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "home",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "today",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "finance",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "account",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "tasks",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "notes",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "family",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "plans",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "apply",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "login",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "support",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "control",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "home",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "today",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "finance",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "account",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "tasks",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "notes",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "family",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "plans",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "apply",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "login",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "support",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "control",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "home",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "today",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "finance",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "account",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "tasks",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "notes",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "family",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "plans",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "apply",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "login",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "support",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "signal",
+      "screen": "control",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "home",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "today",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "finance",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "account",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "tasks",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "notes",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "family",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "plans",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "apply",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "login",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "support",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "control",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "home",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "today",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "finance",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "account",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "tasks",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "notes",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "family",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "plans",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "apply",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "login",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "support",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "control",
+      "viewport": [
+        820,
+        1180
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "home",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "today",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "finance",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "account",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "tasks",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "notes",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "family",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "plans",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "apply",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "login",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "support",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    },
+    {
+      "direction": "bloom",
+      "screen": "control",
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    }
+  ],
+  "scope": "Synthetic design previews, not authenticated production or physical Safari acceptance"
+}
