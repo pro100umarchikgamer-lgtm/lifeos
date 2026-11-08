@@ -70,7 +70,25 @@
     "Transactional email templates remain Russian",
     "Full Android financial feature parity is not yet implemented in web",
     "Live owner email and personal MFA enrollment are required before Control exposure",
-    "VPS monitor verified direct DNS/TLS on deployment; independent workstation uses configured proxy and cannot resolve public DNS directly",
-    "GitHub check badge shows failure; combined-status API returned no statuses, cause not yet established"
-  ]
+    "VPS monitor verified direct DNS/TLS on deployment; independent workstation uses configured proxy and cannot resolve public DNS directly"
+  ],
+  "ci_followup": {
+    "revision": "a1566fb2fb70c099e51c28e596ca329be7db59cf",
+    "backend_job": "success",
+    "backend_job_duration_seconds": 252,
+    "url": "https://github.com/pro100umarchikgamer-lgtm/lifeos/actions/runs/42519672036/job/128850188762",
+    "validated": [
+      "PostgreSQL backend tests",
+      "two real Dart protocol clients",
+      "Compose API and mail services",
+      "closed registration",
+      "isolated backup and restore",
+      "public/customer/staff browser workflows",
+      "PWA retry, synchronization, responsive locales and cache boundaries"
+    ],
+    "previous_failure": "Playwright 1.56 cannot install Chromium dependencies on ubuntu-latest after its Ubuntu 26.04 transition",
+    "fix": "Pin backend browser runner to ubuntu-24.04 and add PWA browser acceptance",
+    "parent_workflow": "Full Flutter stage is separate; not claimed successful from backend job status",
+    "apk_rebuilt": false
+  }
 }
