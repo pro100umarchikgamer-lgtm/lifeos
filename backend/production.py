@@ -45,12 +45,14 @@ class Application:
         # Only new account creation is gated. Existing sessions, account recovery,
         # family permissions and durable sync continue when the allowlist changes.
         if self.settings.registration_mode == 'open': return
+        from .early_access import EarlyAccess
+        if EarlyAccess(self.backend).invited(body.get('email'), body.get('invitation')): return
         email = body.get('email')
         if not isinstance(email, str) or email.casefold() not in self.settings.registration_allowlist:
             raise Failure('registration_closed',403)
     def limit(self,environ,path):
         now=int(self.backend.clock())
-        category='auth' if path.startswith('/v1/auth/') else 'api'
+        category='auth' if path.startswith(('/v1/auth/', '/account/api/login', '/account/api/signup', '/account/api/recovery', '/account/api/reset', '/early-access/api/')) else 'api'
         maximum=30 if category=='auth' else 240
         key=hmac.new(self.settings.rate_limit_key.encode(),(category+'|'+self.client(environ)).encode(),hashlib.sha256).hexdigest()
         # A single autocommit UPSERT avoids repeatable-read serialization failures
@@ -92,6 +94,7 @@ class Application:
                     if len(raw)!=length:raise Failure('invalid_input')
                     body=decode_json(raw)
                 if is_web:
+                    environ['uladim.client'] = self.client(environ)
                     value,web_headers=self.web.request(environ,body)
                     headers.update(dict(web_headers))
                 else:
@@ -136,3 +139,4 @@ def main():
     finally:backend.close()
 
 if __name__=='__main__':main()
+

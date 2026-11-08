@@ -15,8 +15,8 @@ from . import entitlements
 
 ROLE_RANK = {'owner': 100, 'admin': 80, 'billing_manager': 40, 'moderator': 30, 'support': 20, 'auditor': 10}
 ROLE_PERMISSIONS = {
-    'owner': {'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
-    'admin': {'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'owner': {'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'admin': {'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
     'billing_manager': {'users.read', 'plans.grant', 'audit.read'},
     'moderator': {'users.read', 'users.moderate', 'support.read', 'support.reply'},
     'support': {'users.read', 'support.read', 'support.reply'},
@@ -380,3 +380,4 @@ class Control:
             for code in recovery: db.execute('INSERT INTO staff_recovery VALUES(?,?,0)', (token_hash(code), row['id']))
             self.audit(db, 'operator-recovery', row['user_id'], 'staff.recover', {}, {'mfa_rotated': True, 'sessions_revoked': True}, 'Password and offline one-use recovery code verified')
         return {'staff_id': row['id'], 'totp_secret': secret, 'recovery_codes': recovery}
+

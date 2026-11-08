@@ -63,8 +63,19 @@ class Web:
             headers[0] = ('Content-Type', 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8')
             return (ASSETS / path.rsplit('/', 1)[-1]).read_bytes(), headers
         prefix = '/control/api/' if staff else '/account/api/'
+        if not staff and path.startswith('/early-access/api/'):
+            require(method == 'POST', 'method_not_allowed', 405)
+            require(env.get('HTTP_ORIGIN') == self.site, 'origin_forbidden', 403)
+            from .early_access import EarlyAccess
+            applications = EarlyAccess(self.backend)
+            action = path.rsplit('/', 1)[-1]
+            if action == 'apply':
+                return applications.apply(body.get('email'), body.get('consent_version'), body.get('website', ''), env.get('uladim.client', 'unknown')), headers
+            if action == 'confirm': return applications.confirm(body.get('email'), body.get('code')), headers
+            if action in ('status', 'cancel'): return applications.manage(body.get('management_token'), action == 'cancel'), headers
+            raise Failure('not_found', 404)
         if method == 'GET' and not path.startswith(prefix):
-            allowed = {'/'} if staff else {'/', '/account', '/plans', '/privacy', '/terms', '/support', '/delete-account', '/status', '/download', '/faq'}
+            allowed = {'/'} if staff else {'/', '/account', '/plans', '/privacy', '/terms', '/support', '/delete-account', '/status', '/download', '/faq', '/early-access', '/docs'}
             require(path in allowed, 'not_found', 404)
             page = (ASSETS / 'index.html').read_text().replace('__SURFACE__', 'control' if staff else 'site')
             return page.encode(), [('Content-Type', 'text/html; charset=utf-8')] + headers[1:]
@@ -121,6 +132,9 @@ class Web:
     def staff_action(self, actor, action, method, b, q):
         c = self.control
         if method == 'GET':
+            if action == 'applications':
+                from .early_access import EarlyAccess
+                return EarlyAccess(self.backend).list(actor, c, q.get('state', ['pending'])[0], q.get('before', [None])[0])
             if action == 'dashboard': return c.dashboard(actor)
             if action == 'users': return c.users(actor, q.get('search', [''])[0])
             if action == 'user': return c.user(actor, q.get('id', [''])[0])
@@ -135,6 +149,9 @@ class Web:
                 c.require(actor, 'flags.manage')
                 return c.flags()
         elif method == 'POST':
+            if action == 'applications/decide':
+                from .early_access import EarlyAccess
+                return EarlyAccess(self.backend).decide(actor, c, b.get('id'), b.get('decision'), b.get('revision'), b.get('reason'))
             if action == 'moderate': return c.moderate(actor, b.get('user_id'), b.get('service'), b.get('until_at'), b.get('reason'))
             if action == 'grant': return c.give_access(actor, b.get('user_id'), b.get('tier'), b.get('source'), b.get('valid_until'), b.get('reason'))
             if action == 'revoke-grant': return c.revoke_access(actor, b.get('grant_id'), b.get('reason'))
@@ -177,3 +194,4 @@ class Web:
             if action == 'support': return self.support.create(actor, b.get('category'), b.get('subject'), b.get('message'))
             if action == 'support/reply': return self.support.reply(actor, b.get('ticket_id'), b.get('message'), b.get('state', 'open'))
         raise Failure('not_found', 404)
+

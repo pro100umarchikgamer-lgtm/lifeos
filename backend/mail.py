@@ -14,6 +14,18 @@ def message(settings, job_id, payload):
     value['From'] = settings.email_from
     value['To'] = payload['email']
     value['Message-ID'] = '<'+job_id+'@lifeos-mail>'
+    if payload['purpose'].startswith('early_'):
+        purpose = payload['purpose']
+        subjects = {'early_verify': 'ULADIM: подтвердите заявку', 'early_invite': 'ULADIM: приглашение в закрытый тест', 'early_rejected': 'ULADIM: решение по заявке'}
+        value['Subject'] = subjects[purpose]
+        if purpose == 'early_verify':
+            content = 'Подтвердите заявку на https://getuladim.space/early-access, введя этот одноразовый код (15 минут):\n' + payload['code'] + '\nПосле подтверждения можно проверить статус и отменить заявку. Заявка не создаёт аккаунт.'
+        elif purpose == 'early_invite':
+            content = 'Ваша заявка одобрена. Создайте аккаунт на https://getuladim.space/account с этим приглашением (7 дней):\n' + payload['code']
+        else:
+            content = 'Сейчас мы не можем включить вас в закрытый тест ULADIM. Аккаунт не создан. Статус и отмена заявки: https://getuladim.space/early-access'
+        value.set_content(content + '\n\nЕсли вы не запрашивали это действие, проигнорируйте письмо.')
+        return value
     recovery = payload['purpose']=='recovery'
     email_change = payload['purpose']=='email_change'
     value['Subject'] = 'ULADIM: восстановление аккаунта' if recovery else 'ULADIM: подтверждение почты'
@@ -69,3 +81,4 @@ def main():
     finally:backend.close()
 
 if __name__=='__main__':main()
+

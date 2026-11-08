@@ -192,3 +192,31 @@ class PostgresCustomerMFATests(MFAScenarios, unittest.TestCase):
     def setUp(self):
         PostgresTests.setUp(self)
         self.setup_mfa()
+
+
+
+from test_early_access import EarlyAccessScenarios
+from backend.early_access import EarlyAccess
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresEarlyAccessTests(EarlyAccessScenarios, unittest.TestCase):
+    def setUp(self):
+        if urlsplit(DSN).path != '/lifeos_test': raise RuntimeError('Tests refuse a non-test database')
+        self.schema = 'test_' + uuid.uuid4().hex
+        with psycopg.connect(DSN, autocommit=True) as db:
+            db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(self.schema)))
+        self.addCleanup(self.drop_schema)
+        self.now = 1800000000
+        self.mail = {}
+        self.backend = PostgresBackend(DSN, Fernet(Fernet.generate_key()), schema=self.schema, migrate=True, clock=lambda:self.now)
+        self.addCleanup(self.backend.close)
+        original = self.backend._deliver
+        def capture(db, email, code, purpose):
+            original(db, email, code, purpose)
+            self.mail[email] = code
+        self.backend._deliver = capture
+        self.early = EarlyAccess(self.backend)
+
+    def drop_schema(self):
+        with psycopg.connect(DSN, autocommit=True) as db:
+            db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(self.schema)))
