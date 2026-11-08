@@ -70,6 +70,11 @@ class Application:
             'X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'X-Request-ID':str(uuid.uuid4())}
         path=environ.get('PATH_INFO','')
         method=environ.get('REQUEST_METHOD','')
+        head = method == 'HEAD'
+        if head:
+            # HEAD has GET authority and headers, never POST mutation semantics.
+            environ = dict(environ, REQUEST_METHOD='GET')
+            method = 'GET'
         try:
             if method not in ('GET','POST'):raise Failure('method_not_allowed',405)
             if path=='/health/live' and method=='GET':value={'status':'ok'}
@@ -112,7 +117,7 @@ class Application:
         headers['Content-Length']=str(len(output))
         if status==429:headers['Retry-After']='60'
         start_response(str(status)+' '+HTTPStatus(status).phrase,list(headers.items()))
-        return [output]
+        return [] if head else [output]
     def metrics(self):
         now=int(self.backend.clock())
         with self.backend.connect() as db:

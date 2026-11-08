@@ -50,7 +50,7 @@ def main():
                 page.goto(origin+'/app');expect(page.get_by_role('heading',name='Войти')).to_be_visible()
                 page.get_by_label('Электронная почта',exact=True).fill(actor['email'])
                 page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
-                page.get_by_role('button',name='Сохранить',exact=True).click()
+                page.get_by_role('button',name='Войти',exact=True).click()
                 expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-today-light.png'),full_page=False)
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
@@ -110,6 +110,15 @@ def main():
                 checks.append('all_16_locales_render')
                 # Leave selected language in RU for unambiguous logout assertion.
                 page.locator('select[name=language]').select_option('ru')
+                # A page entering history must not retain a readable private DOM.
+                page.evaluate("dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))")
+                assert page.locator('.nav').count()==0, 'private DOM retained in history snapshot'
+                assert actor['email'] not in page.locator('body').inner_text()
+                assert 'Подготовить план' not in page.locator('body').inner_text()
+                page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
+                expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                checks.append('history_snapshot_scrubbed_before_session_revalidation')
+                page.get_by_role('button',name='Профиль',exact=True).click()
                 page.get_by_role('button',name='Выйти',exact=True).click()
                 expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible()
                 assert 'Подготовить план' not in page.locator('body').inner_text()

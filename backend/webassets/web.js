@@ -3,13 +3,13 @@ const app=document.querySelector('#app');
 const staff=document.documentElement.dataset.surface==='control';
 if(staff){document.body.dataset.control='true';document.title='ULADIM Control';}
 const prefix=staff?'/control/api/':'/account/api/';
-let csrf='';
+let csrf='',viewEpoch=0;
 let controlNavigation=null;
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const add=(parent,...children)=>{for(const c of children)parent.append(c);return parent;};
 const link=(label,path,secondary=false)=>{const a=el('a',label,'button'+(secondary?' secondary':''));a.href=path;return a;};
 const errors={unauthorized:'Войдите в аккаунт.',invalid_credentials:'Проверьте почту и пароль.',staff_auth_invalid:'Проверьте данные входа и новый код MFA.',rate_limited:'Слишком много попыток. Подождите перед повтором.',staff_forbidden:'Для этого действия нет разрешения.',csrf_invalid:'Обновите страницу и повторите действие.',verify_email:'Сначала подтвердите почту в приложении.',registration_closed:'Регистрация пока доступна только приглашённым тестировщикам.'};
-async function api(path,body){const response=await fetch(prefix+path,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{},body:body?JSON.stringify(body):undefined});const value=await response.json();if(!response.ok){const error=new Error(errors[value.error]||'Не удалось выполнить действие. Код: '+value.error);error.code=value.error;throw error;}return value;}
+async function api(path,body){const epoch=viewEpoch;const response=await fetch(prefix+path,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{},body:body?JSON.stringify(body):undefined});const value=await response.json();if(epoch!==viewEpoch)throw new Error('Обновите страницу и повторите действие.');if(!response.ok){const error=new Error(errors[value.error]||'Не удалось выполнить действие. Попробуйте ещё раз.');error.code=value.error;throw error;}return value;}
 function heading(title,description){app.replaceChildren(el('div',staff?'ULADIM Control':'ULADIM · закрытый тест','eyebrow'),el('h1',title));if(description)app.append(el('p',description));if(staff&&controlNavigation)app.append(controlNavigation);}
 function notice(text){app.append(el('div',text,'notice'));}
 function panel(title,body){return add(el('section',undefined,'card'),el('h2',title),el('p',body));}
@@ -119,7 +119,7 @@ function landing(){
 }
 async function earlyApi(action,body){
   const response=await fetch('/early-access/api/'+action,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const value=await response.json();if(!response.ok)throw new Error(({consent_required:'Подтвердите согласие с политикой обработки данных.',invalid_email:'Проверьте адрес почты.',verification_invalid:'Код неверен или истёк. Запросите новое письмо.',unauthorized:'Подтвердите почту ещё раз, чтобы открыть статус.',rate_limited:'Слишком много запросов. Попробуйте через час.',origin_forbidden:'Откройте форму на сайте ULADIM.'})[value.error]||'Не удалось выполнить запрос. Попробуйте позднее.');return value;
+  const value=await response.json();if(epoch!==viewEpoch)throw new Error('Обновите страницу и повторите действие.');if(!response.ok)throw new Error(({consent_required:'Подтвердите согласие с политикой обработки данных.',invalid_email:'Проверьте адрес почты.',verification_invalid:'Код неверен или истёк. Запросите новое письмо.',unauthorized:'Подтвердите почту ещё раз, чтобы открыть статус.',rate_limited:'Слишком много запросов. Попробуйте через час.',origin_forbidden:'Откройте форму на сайте ULADIM.'})[value.error]||'Не удалось выполнить запрос. Попробуйте позднее.');return value;
 }
 function earlyAccess(){
   heading('Ваше место в ULADIM','Оставьте заявку на закрытый тест. Мы приглашаем участников постепенно. Аккаунт и подписка при подаче заявки не создаются.');
@@ -150,3 +150,7 @@ async function staffApplications(state='pending',before=''){
   for(const item of result.applications){const card=panel(item.email,'Почта подтверждена: '+(item.verified_at?new Date(item.verified_at*1000).toLocaleString():'нет'));app.append(card);if(state==='pending')for(const [decision,label]of [['approved','Пригласить'],['rejected','Отклонить']])action(label,()=>{heading(label+': '+item.email);form('Решение по заявке',[['reason','Причина для журнала аудита','text']],'Подтвердить',async b=>{await api('applications/decide',{...b,id:item.id,revision:item.revision,decision});await staffApplications(state);});},card);}
   if(result.next)action('Следующая страница',()=>staffApplications(state,result.next));
 }
+
+// Scrub private views before the browser stores a history snapshot.
+window.addEventListener('pagehide',()=>{viewEpoch++;csrf='';controlNavigation=null;app.replaceChildren();});
+window.addEventListener('pageshow',event=>{if(!event.persisted)return;app.replaceChildren();if(staff)dashboard().catch(()=>login());else publicPage().catch(error=>{heading('Не удалось загрузить');notice(error.message);});});

@@ -244,3 +244,14 @@ class PostgresPWAHTTPTests(pwa_fixtures.PWAHTTPTests):
     def setUp(self):
         PostgresEarlyAccessTests.setUp(self)
         self.prepare_pwa()
+
+
+import test_security_audit as audit_fixtures
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresSecurityAuditTests(audit_fixtures.SecurityAuditTests):
+    drop_schema = PostgresEarlyAccessTests.drop_schema
+
+    def setUp(self):
+        PostgresEarlyAccessTests.setUp(self)
+        self.prepare_audit()
