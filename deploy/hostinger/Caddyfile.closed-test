@@ -1,0 +1,38 @@
+# Staged only. Activate after owner approves closed external testing.
+{$ULADIM_CONTROL_DOMAIN} {
+    header {
+        X-Content-Type-Options nosniff
+        Cache-Control no-store
+        -Server
+    }
+    @private path /metrics /health/*
+    handle @private {
+        respond 404
+    }
+    handle {
+        header Retry-After 3600
+        respond "ULADIM Control: owner MFA setup is pending." 503
+    }
+}
+{$LIFEOS_DOMAIN}, {$ULADIM_SITE_DOMAIN} {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        -Server
+    }
+    @private path /metrics /health/*
+    handle @private {
+        respond 404
+    }
+    handle {
+        request_body {
+            max_size 2MB
+        }
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
+    }
+}

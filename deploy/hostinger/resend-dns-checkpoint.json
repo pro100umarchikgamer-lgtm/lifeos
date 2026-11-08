@@ -29,7 +29,7 @@
     "DNSSEC"
   ],
   "smtp_tls_probe": "TLSv1.3 EHLO 250 on smtp.resend.com:465; authentication not attempted",
-  "secret_status": "Existing Sending access key is masked in Resend; not available in current Codespace environment",
+  "secret_status": "Rotated sending-only key installed in root-private server environment; no value committed",
   "status_evidence": "Resend dashboard: Domain verified; ready to send emails",
-  "smtp_delivery": "Not tested: SMTP secret unavailable"
+  "smtp_delivery": "Delivered (Resend dashboard)"
 }

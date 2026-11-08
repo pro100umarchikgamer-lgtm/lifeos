@@ -126,3 +126,31 @@ Provider emergency console access and owner credential rotation remain unverifie
 Hostinger browser sign-in restrictions were not bypassed. Full production API/mail,
 Control MFA bootstrap, real email verification/recovery, Android two-client sync
 and final server acceptance remain pending those inputs. APK was not rebuilt.
+
+## SMTP and private backend acceptance
+
+Resend reports the domain as Verified and the real SMTP test email as Delivered.
+SMTP authentication and TLS on port 465 passed. The replacement sending-only key
+is installed in /etc/uladim/production.env (0600), not in Git. The exposed prior
+key was replaced; its command-history entry was removed. Never use the old key.
+
+The existing api and mail services are now running and healthy. PostgreSQL remains
+healthy on the original lifeos_pgdata volume. A backup ran before startup. The
+checksummed migration job exited successfully. 104 isolated backend/PostgreSQL
+checks passed again in 56.206 seconds. Actual internal HTTP readiness returned 200,
+closed registration 403 and unauthenticated sync push 401.
+
+External API and Control still return the intentional 503. Caddyfile.closed-test
+is staged for review, not active: it enables the existing site/API upstream while
+keeping Control closed. Before activation, keep REGISTRATION_MODE=closed and set
+REGISTRATION_ALLOWLIST only to the owner's verified contact in the private env.
+Obtain the owner's explicit external-access approval, replace the phase-specific
+503 monitor with the corresponding closed-test checks, and then activate/reload.
+Do not interpret application health or unit tests as live authenticated acceptance.
+
+Control bootstrap requires an already verified customer account. Complete owner
+signup/email confirmation before invoking the existing operator bootstrap-owner
+CLI; keep enrollment/recovery material private and let the owner enroll MFA.
+Recovery, account deletion, authenticated two-client synchronization, emergency
+console and durable off-server backups still need final operational acceptance.
+No Android APK was rebuilt and main was not modified.

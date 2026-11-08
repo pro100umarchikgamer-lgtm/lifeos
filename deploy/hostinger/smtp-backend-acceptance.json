@@ -1,0 +1,16 @@
+{
+  "domain": "getuladim.space",
+  "resend_status": "Verified",
+  "smtp_tls": "ssl:465",
+  "smtp_authentication": "passed",
+  "smtp_test_subject": "ULADIM SMTP verification",
+  "smtp_test_delivery": "Delivered (Resend dashboard)",
+  "backend_image": "uladim-backend:c0a7f33",
+  "services": {"api":"healthy","mail":"healthy","postgres":"healthy"},
+  "postgres_volume": "lifeos_pgdata preserved",
+  "tests": {"backend":104,"failures":0,"duration_seconds":56.206},
+  "private_http_checks": {"ready":200,"closed_registration":403,"unauthenticated_sync_push":401},
+  "public_api": "503 - waiting for owner approval",
+  "public_control": "503 - verified owner account and MFA enrollment pending",
+  "remaining": ["Closed external testing approval", "Owner registration and email confirmation", "Owner MFA enrollment", "Live authenticated account lifecycle and two-client acceptance", "Provider emergency console verification", "Durable off-server backup destination and key escrow"]
+}
