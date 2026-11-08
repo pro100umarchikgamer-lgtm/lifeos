@@ -1,0 +1,33 @@
+{
+  "domain": "getuladim.space",
+  "region": "eu-west-1",
+  "records": [
+    {
+      "type": "TXT",
+      "name": "resend._domainkey",
+      "value": "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDry6tJBQ2AaQjqJZ9VDfC0yFozjj4jQwKg9qjkVhRxJZ80IViPcAsk9+uuD8ZwYc2wvUL5cefljA+Dbzo7UKIEOIcPdiEXheegFJ2jazkGB2kUnFGxW53rRaLxWkN00CQ0IAFHpp4PAlOUC7wHK1Y7mLYkzwaYIavz9f4MRlMRIQIDAQAB"
+    },
+    {
+      "type": "CNAME",
+      "name": "rsend",
+      "value": "rsend-euw1.forge.rmta.net"
+    },
+    {
+      "type": "CNAME",
+      "name": "send",
+      "value": "send.forge.rmta.net"
+    }
+  ],
+  "sending": true,
+  "receiving": false,
+  "status": "pending verification",
+  "preserved": [
+    "@ A",
+    "api A",
+    "control A",
+    "nameservers",
+    "DNSSEC"
+  ],
+  "smtp_tls_probe": "TLSv1.3 EHLO 250 on smtp.resend.com:465; authentication not attempted",
+  "secret_status": "Existing Sending access key is masked in Resend; not available in current Codespace environment"
+}
