@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS owner_setup (
+ hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at BIGINT NOT NULL,
+ used_at BIGINT NOT NULL DEFAULT 0
+);

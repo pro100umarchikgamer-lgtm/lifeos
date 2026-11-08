@@ -47,6 +47,8 @@ class Application:
         if self.settings.registration_mode == 'open': return
         from .early_access import EarlyAccess
         if EarlyAccess(self.backend).invited(body.get('email'), body.get('invitation')): return
+        from .owner_enrollment import OwnerEnrollment
+        if OwnerEnrollment(self.backend).invited(body.get('email'), body.get('invitation')): return
         email = body.get('email')
         if not isinstance(email, str) or email.casefold() not in self.settings.registration_allowlist:
             raise Failure('registration_closed',403)

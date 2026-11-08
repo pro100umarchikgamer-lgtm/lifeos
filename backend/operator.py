@@ -26,6 +26,9 @@ def main():
     owner = sub.add_parser('bootstrap-owner')
     owner.add_argument('--email', required=True)
     owner.add_argument('--output', type=Path, required=True)
+    setup = sub.add_parser('prepare-owner')
+    setup.add_argument('--email', required=True)
+    setup.add_argument('--output', type=Path, required=True)
     recovery = sub.add_parser('recover-staff')
     recovery.add_argument('--email', required=True)
     recovery.add_argument('--output', type=Path, required=True)
@@ -34,7 +37,10 @@ def main():
     backend = PostgresBackend(settings.database_url, Fernet(settings.email_queue_key.encode()))
     try:
         control = Control(backend)
-        if args.command == 'bootstrap-owner':
+        if args.command == 'prepare-owner':
+            from .owner_enrollment import OwnerEnrollment
+            write_private(args.output, lambda: OwnerEnrollment(backend).issue(args.email))
+        elif args.command == 'bootstrap-owner':
             write_private(args.output, lambda: control.bootstrap(args.email))
         else:
             password = getpass.getpass('Account password: ')

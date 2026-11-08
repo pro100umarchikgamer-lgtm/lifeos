@@ -71,3 +71,7 @@ CREATE TABLE IF NOT EXISTS early_access (
 CREATE INDEX IF NOT EXISTS early_access_queue ON early_access(state,created_at,id);
 
 CREATE TABLE IF NOT EXISTS early_access_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, until_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS owner_setup (
+ hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at BIGINT NOT NULL,
+ used_at BIGINT NOT NULL DEFAULT 0
+);
