@@ -23,3 +23,5 @@ backend/.dev/
 !.env.example
 .secrets/
 backups/
+.venv/
+web_evidence/
