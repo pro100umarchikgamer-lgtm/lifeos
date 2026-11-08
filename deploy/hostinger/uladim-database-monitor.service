@@ -1,0 +1,10 @@
+[Unit]
+Description=ULADIM private PostgreSQL and backup check
+Requires=docker.service
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/uladim/monitor-database.sh
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
