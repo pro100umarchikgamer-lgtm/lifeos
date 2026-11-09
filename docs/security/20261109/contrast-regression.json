@@ -1,0 +1,41 @@
+{
+  "baseline_commit": "2f94da877e2547bc0dff666faee0c2ede8fdf27d",
+  "cases": [
+    {
+      "case": "system-dark-financial-text-ocean",
+      "variant": "baseline",
+      "expected_minimum": 4.5,
+      "actual": 2.924,
+      "meets_criterion": false,
+      "foreground": "rgb(23, 108, 128)",
+      "background": "rgb(17, 27, 25)"
+    },
+    {
+      "case": "system-dark-financial-text-ocean",
+      "variant": "fixed",
+      "expected_minimum": 4.5,
+      "actual": 10.493,
+      "meets_criterion": true,
+      "foreground": "rgb(139, 211, 228)",
+      "background": "rgb(17, 27, 25)"
+    },
+    {
+      "case": "system-dark-financial-text-pistachio",
+      "variant": "baseline",
+      "expected_minimum": 4.5,
+      "actual": 3.45,
+      "meets_criterion": false,
+      "foreground": "rgb(99, 117, 50)",
+      "background": "rgb(17, 27, 25)"
+    },
+    {
+      "case": "system-dark-financial-text-pistachio",
+      "variant": "fixed",
+      "expected_minimum": 4.5,
+      "actual": 10.859,
+      "meets_criterion": true,
+      "foreground": "rgb(194, 211, 137)",
+      "background": "rgb(17, 27, 25)"
+    }
+  ]
+}

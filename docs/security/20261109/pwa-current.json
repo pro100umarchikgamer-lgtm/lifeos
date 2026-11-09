@@ -1,0 +1,1462 @@
+{
+  "result": "passed",
+  "checks": [
+    "password_manager_and_otp_hints",
+    "svg_navigation_named_controls_and_tablet_desktop_layout",
+    "create_and_complete_task_shared_with_android_protocol",
+    "lost_response_retry_is_idempotent",
+    "responsive_320_390_820_1100_1440",
+    "financial_text_contrast_all_themes_and_palettes",
+    "cache_contains_only_interface_and_preferences",
+    "all_16_locales_render",
+    "history_snapshot_scrubbed_before_session_revalidation",
+    "logout_clears_rendered_personal_data",
+    "localized_offline_page_contains_no_personal_data"
+  ],
+  "contrast": [
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 4.963,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 5.393,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 4.542,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 4.936,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 5.532,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 6.012,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 5.266,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 5.723,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 4.689,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 5.096,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 5.297,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 5.757,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 4.963,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 5.393,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 4.542,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 4.936,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 5.532,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 6.012,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 5.266,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 5.723,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 4.689,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 5.096,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 5.297,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 5.757,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.282,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 8.834,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 9.497,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 8.159,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.493,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 9.015,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 10.103,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 8.68,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.859,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 9.33,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 9.215,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "light",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 7.917,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.282,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 8.834,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 9.497,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 8.159,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.493,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 9.015,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 10.103,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 8.68,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.859,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 9.33,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 9.215,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "system",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 7.917,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 4.963,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 5.393,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 4.542,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 4.936,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 5.532,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 6.012,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 5.266,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 5.723,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 13.656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 14.841,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 4.578,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 4.976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 4.689,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 5.096,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 5.297,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "light",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 5.757,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.282,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 8.834,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 9.497,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "forest",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 8.159,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.493,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 9.015,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 10.103,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "ocean",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 8.68,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "bg",
+      "ratio": 15.43,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "ink",
+      "background": "card",
+      "ratio": 13.257,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 8.311,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 7.14,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "bg",
+      "ratio": 10.859,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "income",
+      "background": "card",
+      "ratio": 9.33,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "bg",
+      "ratio": 9.215,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "scheme": "dark",
+      "theme": "dark",
+      "palette": "pistachio",
+      "foreground": "expense",
+      "background": "card",
+      "ratio": 7.917,
+      "minimum": 4.5,
+      "passed": true
+    }
+  ],
+  "fixture": "synthetic loopback SQLite; production and real devices not tested",
+  "engine": "chromium",
+  "design": "current",
+  "screenshots": 10
+}

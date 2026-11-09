@@ -1,0 +1,21 @@
+{
+  "engine": "webkit",
+  "fixture": "HTTP loopback only; no production credentials",
+  "responses": [
+    {
+      "path": "/account/api/session",
+      "status": 401
+    },
+    {
+      "path": "/account/api/login",
+      "status": 200
+    },
+    {
+      "path": "/account/api/session",
+      "status": 401
+    }
+  ],
+  "cookies": [],
+  "body": "ULADIM\nULADIM\nВойти\nДля работы нужен интернет. Личные данные не сохраняются в браузере.\n\n\nЭлектронная почта\n\nПароль (минимум 7 символов)\n\nДвухфакторная защита\n\nВойти\nСоздать аккаунт\nЗабыли пароль?\nЯзык\n\n",
+  "page_errors": []
+}
