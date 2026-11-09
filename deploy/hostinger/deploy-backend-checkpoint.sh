@@ -14,6 +14,13 @@ test "$(docker inspect lifeos-db-1 --format '{{range .Mounts}}{{if eq .Destinati
 systemctl start uladim-database-backup.service
 install -d -m 750 -o root -g uladim "$release"
 cp -a "$source_dir/backend" "$release/"
+# Private archive extraction can leave directories at 0700. The unprivileged
+# edge monitor must be able to read the public reference assets for this release.
+chgrp uladim "$release/backend"
+chmod 750 "$release/backend"
+find "$release/backend/webassets" -type d -exec chgrp uladim {} + -exec chmod 750 {} +
+find "$release/backend/webassets" -type f -exec chgrp uladim {} + -exec chmod 640 {} +
+runuser -u uladim -- test -r "$release/backend/webassets/web.js"
 printf 'FROM uladim-backend:c0a7f33\nCOPY --chown=10001:10001 backend ./backend\nLABEL org.opencontainers.image.revision="%s"\n' "$revision" > "$release/Dockerfile.overlay"
 docker build --network=none --pull=false -f "$release/Dockerfile.overlay" -t "uladim-backend:$revision" "$release"
 python3 - "$revision" "$checkpoint" <<'PY'
