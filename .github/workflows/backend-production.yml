@@ -128,6 +128,8 @@ jobs:
         run: python -m tool.check_web_browser
       - name: Verify PWA synchronization, retry, locales and safe caching
         run: python -m tool.check_pwa_browser
+      - name: Verify opt-in Clarity against the same accounts and API
+        run: ULADIM_DESIGN=clarity python -m tool.check_pwa_browser
       - name: Render the three design concepts on phone, tablet and desktop
         run: python -m tool.capture_design_concepts
       - uses: actions/upload-artifact@v4

@@ -14,7 +14,9 @@ from backend.production import Application
 from backend.service import Backend
 
 ENGINE=os.environ.get('ULADIM_BROWSER','chromium')
-OUT=Path('web_evidence/pwa') / (ENGINE if ENGINE!='chromium' else '')
+DESIGN=os.environ.get('ULADIM_DESIGN','')
+if DESIGN not in ('','clarity'):raise ValueError('Unknown review design')
+OUT=Path('web_evidence/pwa') / (ENGINE if ENGINE!='chromium' else '') / DESIGN
 PASSWORD='synthetic-pwa-browser-password'
 
 class Quiet(WSGIRequestHandler):
@@ -23,7 +25,7 @@ class Quiet(WSGIRequestHandler):
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
-    checks=[]
+    checks=[];contrast_evidence=[]
     with tempfile.TemporaryDirectory() as folder:
         mail={}
         backend=Backend(Path(folder)/'fixture.db',deliver=lambda e,c:mail.update({e:c}))
@@ -46,16 +48,44 @@ def main():
             with sync_playwright() as p:
                 browser=getattr(p,ENGINE).launch(args=['--no-sandbox'] if ENGINE=='chromium' else [])
                 context=browser.new_context(viewport={'width':390,'height':844},color_scheme='light')
-                page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-                page.goto(origin+'/app');expect(page.get_by_role('heading',name='Войти')).to_be_visible()
+                page=context.new_page();errors=[];responses=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                page.on('response',lambda r:responses.append({'path':r.url.split(origin)[-1].split('?')[0],'status':r.status}) if '/account/api/' in r.url else None)
+                page.goto(origin+'/app'+('?design='+DESIGN if DESIGN else ''));expect(page.get_by_role('heading',name='Войти')).to_be_visible()
+                expect(page.locator('.login input[type=password]')).to_have_attribute('autocomplete','current-password')
+                expect(page.locator('.login input[name=code]')).to_have_attribute('autocomplete','one-time-code')
+                page.get_by_role('button',name='Создать аккаунт',exact=True).click()
+                expect(page.get_by_role('dialog').locator('input[type=password]')).to_have_attribute('autocomplete','new-password')
+                page.get_by_role('dialog').get_by_role('button',name='Закрыть',exact=True).click()
+                expect(page.locator('dialog')).to_have_count(0)
+                checks.append('password_manager_and_otp_hints')
                 page.get_by_label('Электронная почта',exact=True).fill(actor['email'])
                 page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
                 page.get_by_role('button',name='Войти',exact=True).click()
-                expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                try:
+                    expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                except AssertionError:
+                    page.screenshot(path=str(OUT/'login-failure.png'))
+                    (OUT/'login-failure.json').write_text(json.dumps({'engine':ENGINE,'fixture':'HTTP loopback only; no production credentials','responses':responses,'cookies':[{'name':c['name'],'secure':c['secure'],'httpOnly':c['httpOnly']} for c in context.cookies()],'body':page.locator('body').inner_text(),'page_errors':errors},ensure_ascii=False,indent=2))
+                    raise
                 page.screenshot(path=str(OUT/'iphone-today-light.png'),full_page=False)
+                assert page.locator('.nav svg[aria-hidden=true]').count()==5
+                for nav_button in page.locator('.nav button').all():
+                    box=nav_button.bounding_box();assert box['width']>=44 and box['height']>=44
+                for w,h,n in [(820,1180,'ipad'),(1440,960,'desktop')]:
+                    page.set_viewport_size({'width':w,'height':h})
+                    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+                    if DESIGN:
+                        nav=page.locator('.nav').bounding_box();assert nav['x']==0 and nav['width']<250 and nav['height']>500
+                    page.screenshot(path=str(OUT/(n+'-today-light.png')),full_page=False)
+                page.set_viewport_size({'width':390,'height':844})
+                checks.append('svg_navigation_named_controls_and_tablet_desktop_layout')
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                 page.get_by_role('button',name='Задачи',exact=True).click()
-                page.get_by_role('button',name='+ Добавить',exact=True).click()
+                page.get_by_role('button',name='Добавить',exact=True).click()
+                dialog=page.get_by_role('dialog')
+                heading_id=dialog.get_attribute('aria-labelledby')
+                assert heading_id and page.locator('[id="'+heading_id+'"]').inner_text()
+                assert dialog.get_by_role('button',name='Закрыть',exact=True).count()==1
                 page.get_by_label('Название задачи',exact=True).fill('Новая задача из веба')
                 page.get_by_role('button',name='Сохранить',exact=True).click()
                 expect(page.get_by_text('Новая задача из веба',exact=True)).to_be_visible()
@@ -64,7 +94,7 @@ def main():
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
                 checks.append('create_and_complete_task_shared_with_android_protocol')
                 page.get_by_role('button',name='Заметки',exact=True).click()
-                page.get_by_role('button',name='+ Добавить',exact=True).click()
+                page.get_by_role('button',name='Добавить',exact=True).click()
                 page.get_by_label('Текст заметки',exact=True).fill('Одна запись при повторе после потери ответа')
                 def lose_response(route):
                     route.fetch();route.abort()
@@ -87,6 +117,28 @@ def main():
                 page.set_viewport_size({'width':390,'height':844})
                 page.get_by_role('button',name='Профиль',exact=True).click()
                 expect(page.get_by_role('heading',name='Управление аккаунтом',exact=True)).to_be_visible()
+                page.screenshot(path=str(OUT/'iphone-account-light.png'),full_page=False)
+                def luminance(hex_color):
+                    if len(hex_color)==4:hex_color='#'+''.join(c*2 for c in hex_color[1:])
+                    assert len(hex_color)==7 and hex_color.startswith('#'),hex_color
+                    channels=[int(hex_color[i:i+2],16)/255 for i in (1,3,5)]
+                    return sum((c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4)*w for c,w in zip(channels,(.2126,.7152,.0722)))
+                for scheme in ('light','dark'):
+                    page.emulate_media(color_scheme=scheme)
+                    for theme in ('system','light','dark'):
+                        page.locator('select[name=theme]').select_option(theme)
+                        for palette in ('forest','ocean','pistachio'):
+                            page.locator('select[name=palette]').select_option(palette)
+                            colors=page.evaluate('''()=>{const s=getComputedStyle(document.body);return Object.fromEntries(['ink','muted','income','expense','bg','card','soft'].map(k=>[k,s.getPropertyValue('--'+k).trim()]));}''')
+                            backgrounds=['bg','card']+(['soft'] if DESIGN else [])
+                            for fg in ('ink','muted','income','expense'):
+                                for bg in backgrounds:
+                                    low,high=sorted((luminance(colors[fg]),luminance(colors[bg])))
+                                    ratio=(high+.05)/(low+.05)
+                                    contrast_evidence.append({'scheme':scheme,'theme':theme,'palette':palette,'foreground':fg,'background':bg,'ratio':round(ratio,3),'minimum':4.5,'passed':ratio>=4.5})
+                                    assert ratio>=4.5,(scheme,theme,palette,fg,bg,ratio)
+                checks.append('financial_text_contrast_all_themes_and_palettes')
+                page.emulate_media(color_scheme='light')
                 page.get_by_label('Оформление',exact=True).select_option('dark')
                 page.get_by_label('Цветовая палитра',exact=True).select_option('ocean')
                 page.get_by_role('button',name='Финансы',exact=True).click()
@@ -133,7 +185,7 @@ def main():
                 context.close();browser.close()
         finally:
             server.shutdown();server.server_close();thread.join(5)
-    (OUT/'RESULT.json').write_text(json.dumps({'result':'passed','checks':checks,'fixture':'synthetic loopback SQLite; production and real devices not tested','engine':ENGINE,'screenshots':len(list(OUT.glob('*.png')))},ensure_ascii=False,indent=2)+'\n')
+    (OUT/'RESULT.json').write_text(json.dumps({'result':'passed','checks':checks,'contrast':contrast_evidence,'fixture':'synthetic loopback SQLite; production and real devices not tested','engine':ENGINE,'design':DESIGN or 'current','screenshots':len(list(OUT.glob('*.png')))},ensure_ascii=False,indent=2)+'\n')
     print(json.dumps({'passed':checks},ensure_ascii=False))
 
 if __name__=='__main__':main()
