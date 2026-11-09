@@ -159,6 +159,7 @@ class Backend(AccountSessions):
             salt=secrets.token_hex(16);encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
             db.execute('UPDATE users SET salt=?,password_hash=?,verified=1 WHERE id=?',(salt,encoded,row['id']))
             self.revoke_all_in(db,row['id']);db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
+            db.execute('DELETE FROM verification WHERE user_id=?',(row['id'],))
         return {'password_reset':True}
     def password(self,actor,old_password,new_password):
         require(isinstance(old_password,str) and len(old_password)<=256)

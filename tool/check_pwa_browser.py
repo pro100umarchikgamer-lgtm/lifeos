@@ -52,7 +52,7 @@ def main():
                 page.on('response',lambda r:responses.append({'path':r.url.split(origin)[-1].split('?')[0],'status':r.status}) if '/account/api/' in r.url else None)
                 page.goto(origin+'/app'+('?design='+DESIGN if DESIGN else ''));expect(page.get_by_role('heading',name='Войти')).to_be_visible()
                 expect(page.locator('.login input[type=password]')).to_have_attribute('autocomplete','current-password')
-                expect(page.locator('.login input[name=code]')).to_have_attribute('autocomplete','one-time-code')
+                expect(page.locator('.login input[name=code]')).to_have_count(0)
                 page.get_by_role('button',name='Создать аккаунт',exact=True).click()
                 expect(page.get_by_role('dialog').locator('input[type=password]')).to_have_attribute('autocomplete','new-password')
                 page.get_by_role('dialog').get_by_role('button',name='Закрыть',exact=True).click()

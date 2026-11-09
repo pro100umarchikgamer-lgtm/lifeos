@@ -17,7 +17,10 @@ def dispatch(backend,method,path,body,auth):
     elif route=='/v1/auth/signup/confirm' and method=='POST':
         from .account_lifecycle import AccountLifecycle
         result=AccountLifecycle(backend).confirm_signup(body.get('email'),body.get('code'))
-    elif route=='/v1/auth/register' and method=='POST':result=backend.register(body.get('email'),body.get('password'))
+    elif route=='/v1/auth/register' and method=='POST':
+        # Historical alias shares the same non-enumerating verified signup flow.
+        from .account_lifecycle import AccountLifecycle
+        result=AccountLifecycle(backend).signup(body.get('email'),body.get('password'))
     elif route=='/v1/auth/recovery' and method=='POST':result=backend.recover(body.get('email'))
     elif route=='/v1/auth/reset' and method=='POST':result=backend.reset_password(body.get('email'),body.get('code'),body.get('password'))
     elif route=='/v1/auth/refresh' and method=='POST':result=backend.refresh_session(body.get('refresh_token'))

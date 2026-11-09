@@ -5,12 +5,12 @@ let packs={},alertTimer,privateEpoch=0;
 try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
 // Persist only interface preferences. Accounts, spaces, records and tokens stay in memory.
 function preferences(){try{localStorage.setItem('uladim-interface',JSON.stringify({lang:state.lang,theme:state.theme,palette:state.palette,chart:state.chart}));}catch{}applyTheme();}
-function applyTheme(){document.body.dataset.design=new URLSearchParams(location.search).get('design')==='clarity'?'clarity':'';document.body.dataset.theme=state.theme;document.body.dataset.palette=state.palette;document.documentElement.lang=state.lang;}
+function applyTheme(){document.body.dataset.design=new URLSearchParams(location.search).get('design')==='legacy'?'':'clarity';document.body.dataset.theme=state.theme;document.body.dataset.palette=state.palette;document.documentElement.lang=state.lang;}
 const t=k=>packs[state.lang]?.strings[k]||packs.ru?.strings[k]||k;
 const E=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 function append(e,...children){e.append(...children);return e;}
 function toast(message){clearTimeout(alertTimer);alerts.textContent=message;alertTimer=setTimeout(()=>alerts.replaceChildren(),4500);}
-function errorText(error){if(error.code==='conflict'||error.code==='revision_conflict')return t('family_conflict');if(error.code==='offline')return t('web_online');if(error.code==='invalid_amount')return t('invalid_amount');return packs[state.lang]?.strings['family_error_'+error.code]||t('family_error_invalid_input');}
+function errorText(error){if(error.code==='mfa_invalid')return t('web_mfa_hint');if(error.code==='conflict'||error.code==='revision_conflict')return t('family_conflict');if(error.code==='offline')return t('web_online');if(error.code==='invalid_amount')return t('invalid_amount');return packs[state.lang]?.strings['family_error_'+error.code]||t('family_error_invalid_input');}
 function report(error){if(['unauthorized','staff_unauthorized'].includes(error.code)){clearIdentity();login();}else if(['workspace_forbidden','service_restricted'].includes(error.code)){state.records=[];state.roster=null;state.space=null;render();}toast(errorText(error));}
 async function call(path,body){
  const epoch=privateEpoch;
@@ -48,10 +48,16 @@ async function readSpace(){
 async function refresh(){if(state.busy)return;state.busy=true;try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();}finally{state.busy=false;}}
 async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();render();}
 function login(){
- root.replaceChildren();const m=E('main',undefined,'login');append(m,E('a','ULADIM','brand'),E('h1',t('family_login')),E('p',t('web_online')));root.append(m);
- form(m,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_password'),'password'),code:input(f,'code',t('account_mfa'),'text','',false)}),async v=>{const r=await call('login',{email:v.email.value,password:v.password.value,code:v.code.value});if(r.mfa_required){v.code.required=true;v.code.focus();throw {code:'mfa_invalid'};}state.csrf=r.csrf;await start();},t('family_login'));
+ root.replaceChildren();const m=E('main',undefined,'login');const brand=E('a','ULADIM','brand');brand.href='/';append(m,brand,E('h1',t('family_login')));root.append(m);
+ form(m,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_password'),'password')}),async v=>{let r;try{r=await call('login',{email:v.email.value,password:v.password.value});}finally{v.password.value='';}if(r.mfa_required){mfaStep(r.challenge);return;}state.csrf=r.csrf;await start();},t('family_login'));
  const actions=E('div',undefined,'actions');append(actions,button(t('family_register'),signup),button(t('family_recovery'),recover));m.append(actions);language(m);
 }
+function mfaStep(challenge){
+ root.replaceChildren();const m=E('main',undefined,'login');append(m,E('a','ULADIM','brand'),E('h1',t('account_mfa')),E('p',t('web_mfa_hint')));root.append(m);
+ form(m,'',f=>({code:input(f,'code',t('family_code'))}),async v=>{let r;try{r=await call('login/mfa',{challenge,code:v.code.value.trim()});}catch(error){if(error.code==='invalid_credentials')error.code='mfa_invalid';throw error;}finally{v.code.value='';}challenge='';state.csrf=r.csrf;await start();},t('family_login'));
+ m.append(button(t('cancel'),()=>{challenge='';login();}));m.querySelector('input').focus();
+}
+
 function language(container){const s=select(container,'language',t('language'),Object.entries(packs).map(([k,v])=>[k,v.name]),state.lang);s.addEventListener('change',()=>{state.lang=s.value;preferences();if(state.session)render();else login();});}
 function shell(){
  root.replaceChildren();const header=E('header');const brand=E('a','ULADIM','brand');brand.href='/app';brand.append(E('small',t('ux3_settings_body')));header.append(brand);
@@ -134,7 +140,19 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 setInterval(()=>{if(state.session&&document.visibilityState==='visible'&&!document.querySelector('dialog')&&navigator.onLine)refresh().then(render).catch(report);},30000);
 (async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';applyTheme();try{await start();}catch(error){if(error.code==='unauthorized')login();else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
 
-function signup(){const d=dialog(t('family_register'),container=>form(container,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'new-password',t('family_password'),'password'),invitation:input(f,'invitation',t('family_invitation'))}),async v=>{const email=v.email.value;await call('signup',{email,password:v.password.value,invitation:v.invitation.value});container.replaceChildren(E('h2',t('family_verify')),E('p',t('family_verify_hint')));form(container,'',f=>({code:input(f,'code',t('family_code'))}),async fields=>{await call('confirm-signup',{email,code:fields.code.value});d.close();login();toast(t('account_done'));});}));}
+async function signup(){
+ const config=await call('config');
+ const d=dialog(t('family_register'),container=>{
+ form(container,'',f=>{const fields={email:input(f,'email',t('family_email'),'email'),password:input(f,'new-password',t('family_password'),'password')};if(!config.registration_open)fields.invitation=input(f,'invitation',t('family_invitation'));return fields;},async v=>{
+ const email=v.email.value;try{await call('signup',{email,password:v.password.value,...(v.invitation?{invitation:v.invitation.value}:{})});}finally{v.password.value='';}
+ container.replaceChildren(E('h2',t('family_verify')),E('p',t('family_verify_hint')));
+ form(container,'',f=>({code:input(f,'code',t('family_code'))}),async fields=>{await call('confirm-signup',{email,code:fields.code.value.trim()});fields.code.value='';d.close();login();toast(t('account_done'));},t('family_verify'));
+ container.append(button(t('ux3_resend_verification'),async()=>{await call('resend-signup',{email});toast(t('family_verify_hint'));}));
+ },t('family_register'));
+ const legal=E('p',undefined,'small');append(legal,anchor(t('account_privacy'),'/privacy'));container.append(legal);
+ });
+}
+
 function recover(){const d=dialog(t('family_recovery'),container=>form(container,'',f=>({email:input(f,'email',t('family_email'),'email')}),async v=>{const email=v.email.value;await call('recovery',{email});container.replaceChildren(E('h2',t('family_recovery')),E('p',t('family_recovery_hint')));form(container,'',f=>({code:input(f,'code',t('family_code')),password:input(f,'new-password',t('family_new_password'),'password')}),async fields=>{await call('reset',{email,code:fields.code.value,password:fields.password.value});d.close();login();toast(t('account_done'));});}));}
 async function privacy(){const status=await call('deletion');dialog(t('account_privacy'),d=>{
  d.append(button(t('account_mfa'),customerMfa),button(t('account_devices'),devices));

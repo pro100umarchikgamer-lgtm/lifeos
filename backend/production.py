@@ -54,7 +54,7 @@ class Application:
             raise Failure('registration_closed',403)
     def limit(self,environ,path):
         now=int(self.backend.clock())
-        category='auth' if path.startswith(('/v1/auth/', '/account/api/login', '/account/api/signup', '/account/api/recovery', '/account/api/reset', '/early-access/api/')) else 'api'
+        category='auth' if path.startswith(('/v1/auth/', '/control/api/login', '/account/api/login', '/account/api/signup', '/account/api/resend-signup', '/account/api/confirm-signup', '/account/api/recovery', '/account/api/reset', '/early-access/api/')) else 'api'
         maximum=30 if category=='auth' else 240
         key=hmac.new(self.settings.rate_limit_key.encode(),(category+'|'+self.client(environ)).encode(),hashlib.sha256).hexdigest()
         # A single autocommit UPSERT avoids repeatable-read serialization failures

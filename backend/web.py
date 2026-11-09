@@ -61,6 +61,8 @@ class Web:
                    ('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"), ('X-Content-Type-Options', 'nosniff'), ('Referrer-Policy', 'no-referrer')]
         if not staff and method == 'GET' and (path in ('/app', '/app/') or path.startswith('/app/assets/') or path == '/app/sw.js'):
             return self.app_asset(path, headers)
+        if method == 'GET' and path == '/assets/locales.json':
+            return (ASSETS / 'app' / 'locales.json').read_bytes(), headers
         if method == 'GET' and path in ('/assets/web.js', '/assets/web.css'):
             headers[0] = ('Content-Type', 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8')
             return (ASSETS / path.rsplit('/', 1)[-1]).read_bytes(), headers
@@ -85,20 +87,28 @@ class Web:
         action = path[len(prefix):]
         if method == 'POST':
             require(env.get('HTTP_ORIGIN') == origin, 'origin_forbidden', 403)
-        if action == 'login' and method == 'POST':
+        if not staff and action == 'config' and method == 'GET':
+            return {'registration_open': self.settings.registration_mode == 'open', 'payments_enabled': False}, headers
+        if action in ('login', 'login/mfa') and method == 'POST':
             agent = env.get('HTTP_USER_AGENT', '')[:500]
+            from .login_flow import LoginFlow
+            if action == 'login/mfa':
+                result = LoginFlow(self.backend).finish(body.get('challenge'), body.get('code'), agent, staff)
+            elif body.get('code'):
+                # Compatibility for previously installed clients; same factor rules.
+                result = self.control.login(body.get('email'), body.get('password'), body.get('code'), agent) if staff else self.backend.login(body.get('email'), body.get('password'), body.get('code'))
+            else:
+                result = LoginFlow(self.backend).begin(body.get('email'), body.get('password'), agent, staff)
+            if result.get('mfa_required'): return result, headers
             if staff:
-                result = self.control.login(body.get('email'), body.get('password'), body.get('code'), agent)
                 token = result['token']
             else:
-                result = self.backend.login(body.get('email'), body.get('password'), body.get('code'))
-                if result.get('mfa_required'):return result,headers
                 token, now = secrets.token_urlsafe(32), int(self.backend.clock())
                 with self.backend.transaction() as db:
                     db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)', (token_hash(token), result['user_id'], result['device_id'], now, now, now + 2592000, token_hash(agent)))
                     db.execute("UPDATE devices SET label='Web browser' WHERE id=?", (result['device_id'],))
             return {'authenticated': True, 'csrf': self.csrf(token)}, headers + [self.cookie(token, staff)]
-        if not staff and method == 'POST' and action in ('signup', 'confirm-signup', 'recovery', 'reset'):
+        if not staff and method == 'POST' and action in ('signup', 'confirm-signup', 'resend-signup', 'recovery', 'reset'):
             from .account_lifecycle import AccountLifecycle
             lifecycle = AccountLifecycle(self.backend)
             if action == 'signup':
@@ -106,6 +116,7 @@ class Web:
                 from .production import Application
                 Application.check_registration(self, body)
                 return lifecycle.signup(body.get('email'), body.get('password')), headers
+            if action == 'resend-signup': return lifecycle.resend_signup(body.get('email')), headers
             if action == 'recovery': return self.backend.recover(body.get('email')), headers
             if action == 'reset': return self.backend.reset_password(body.get('email'), body.get('code'), body.get('password')), headers
             result = lifecycle.confirm_signup(body.get('email'), body.get('code'))

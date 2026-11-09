@@ -43,6 +43,40 @@ class WebControlTests(unittest.TestCase):
         self.assertEqual(status,200)
         return headers['Set-Cookie'].split(';')[0],body['csrf']
 
+    def test_password_first_staff_login_has_no_session_before_second_factor(self):
+        origin = 'https://control.getuladim.space'
+        credentials = {'email':self.owner_user['email'],'password':'a-valid-long-passphrase'}
+        status, headers, value = self.request('/control/api/login',credentials,host='control.getuladim.space',origin=origin)
+        self.assertEqual(status,200); self.assertTrue(value['mfa_required']); self.assertNotIn('Set-Cookie',headers)
+        self.assertEqual(self.request('/control/api/dashboard',host='control.getuladim.space')[0],401)
+        body = {'challenge':value['challenge'],'code':totp(self.enrollment['totp_secret'],(self.now+30)//30),'role':'owner'}
+        self.now += 30
+        self.assertEqual(self.request('/account/api/login/mfa',body,origin='https://getuladim.space')[0],401)
+        self.assertEqual(self.request('/control/api/login/mfa',body,host='control.getuladim.space',origin='https://evil.invalid')[0],403)
+        status, headers, value = self.request('/control/api/login/mfa',body,host='control.getuladim.space',origin=origin)
+        self.assertEqual(status,200); self.assertIn('__Host-uladim_control=',headers['Set-Cookie'])
+        self.assertEqual(self.request('/control/api/login/mfa',body,host='control.getuladim.space',origin=origin)[0],401)
+
+    def test_open_registration_omits_invitation_but_preserves_verification(self):
+        from dataclasses import replace
+        self.app = Application(self.backend,replace(self.settings,registration_mode='open'))
+        self.assertTrue(self.request('/account/api/config')[2]['registration_open'])
+        email = 'public-signup@example.test'
+        body = {'email':email,'password':'a-valid-long-passphrase','role':'owner','tier':'Premium'}
+        status, headers, value = self.request('/account/api/signup',body,origin='https://getuladim.space')
+        self.assertEqual(status,200); self.assertNotIn('Set-Cookie',headers); self.assertNotIn('token',value)
+        self.assertEqual(self.request('/account/api/signup',body,origin='https://getuladim.space')[2],value)
+        with self.backend.connect() as db:
+            user = db.execute('SELECT * FROM users WHERE email=?',(email,)).fetchone()
+            self.assertEqual(user['verified'],0)
+            self.assertIsNone(db.execute('SELECT 1 FROM staff WHERE user_id=?',(user['id'],)).fetchone())
+        self.assertEqual(self.request('/account/api/confirm-signup',{'email':email,'code':'x'*43},origin='https://getuladim.space')[0],400)
+        code = self.mail[email]
+        self.assertEqual(self.request('/account/api/confirm-signup',{'email':email,'code':code},origin='https://getuladim.space')[0],200)
+        self.assertEqual(self.request('/account/api/confirm-signup',{'email':email,'code':code},origin='https://getuladim.space')[0],400)
+        status, headers, value = self.request('/account/api/login',{'email':email,'password':body['password']},origin='https://getuladim.space')
+        self.assertEqual(status,200); self.assertNotIn('mfa_required',value)
+
     def test_host_boundary_csp_cookies_csrf_and_revocation(self):
         status,headers,html=self.request('/')
         self.assertEqual(status,200);self.assertIn('ULADIM',html);self.assertNotIn('control.getuladim',html)

@@ -183,6 +183,19 @@ class PostgresLifecycleTests(LifecycleScenarios, unittest.TestCase):
         self.setup_lifecycle()
 
 from test_customer_mfa import MFAScenarios
+from test_login_flow import LoginFlowScenarios
+
+@unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
+class PostgresLoginFlowTests(LoginFlowScenarios, unittest.TestCase):
+    drop_schema = PostgresTests.drop_schema
+    user = fixtures.FamilyBackendTests.user
+    op = fixtures.FamilyBackendTests.op
+
+    def setUp(self):
+        PostgresTests.setUp(self)
+        self.actor = self.p1
+        self.password = 'a-valid-long-passphrase'
+        self.setup_flow()
 
 @unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
 class PostgresCustomerMFATests(MFAScenarios, unittest.TestCase):

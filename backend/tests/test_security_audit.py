@@ -100,7 +100,11 @@ class SecurityAuditTests(unittest.TestCase):
     def test_staff_http_permission_matrix_and_mfa(self):
         control=Control(self.backend)
         enrollment=control.bootstrap(self.alice['email'])
-        self.check('password without staff MFA',self.request('/control/api/login',{'email':self.alice['email'],'password':self.password},staff=True)[0],401)
+        status, headers, pending = self.request('/control/api/login',{'email':self.alice['email'],'password':self.password},staff=True)
+        self.check('password step returns only pending MFA',status,200)
+        self.check('password without staff MFA has no cookie','Set-Cookie' in headers,False)
+        self.check('password without staff MFA has no authority',pending.get('authenticated',False),False)
+        self.check('pending MFA cannot authorize Control',self.request('/control/api/dashboard',staff=True,identity=('__Host-uladim_control='+pending['challenge'],''))[0],401)
         secret='GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'
         sid=str(uuid.uuid4())
         with self.backend.connect() as db:

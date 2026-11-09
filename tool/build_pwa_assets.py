@@ -26,6 +26,25 @@ EXTRA = {
 }
 
 
+MFA_HINT = {
+ 'ru':'Введите новый код из приложения-аутентификатора или неиспользованный резервный код.',
+ 'en':'Enter a fresh authenticator code or an unused recovery code.',
+ 'de':'Gib einen aktuellen Authenticator-Code oder einen unbenutzten Wiederherstellungscode ein.',
+ 'fr':'Saisissez un code actuel de votre application ou un code de secours inutilisé.',
+ 'es':'Introduce un código actual del autenticador o un código de recuperación sin usar.',
+ 'it':'Inserisci un codice aggiornato dell’autenticatore o un codice di recupero inutilizzato.',
+ 'pt':'Introduza um código atual do autenticador ou um código de recuperação não utilizado.',
+ 'uk':'Введіть новий код із застосунку-автентифікатора або невикористаний резервний код.',
+ 'kk':'Аутентификатордағы жаңа кодты немесе пайдаланылмаған қалпына келтіру кодын енгізіңіз.',
+ 'ky':'Аутентификатордон жаңы кодду же колдонула элек калыбына келтирүү кодун киргизиңиз.',
+ 'tg':'Рамзи нави барномаи тасдиқкунанда ё рамзи эҳтиётии истифоданашударо ворид кунед.',
+ 'az':'Autentifikatorun cari kodunu və ya istifadə olunmamış bərpa kodunu daxil edin.',
+ 'uz-Latn':'Autentifikatorning yangi kodini yoki ishlatilmagan tiklash kodini kiriting.',
+ 'uz-Cyrl':'Аутентификаторнинг янги кодини ёки ишлатилмаган тиклаш кодини киритинг.',
+ 'ka':'შეიყვანეთ ავთენტიფიკატორის ახალი კოდი ან გამოუყენებელი აღდგენის კოდი.',
+ 'hy':'Մուտքագրեք նույնականացման հավելվածի նոր կոդը կամ չօգտագործված վերականգնման կոդը։',
+}
+
 CHARTS = {
  'ru':['Столбцы','Круг','Линия'], 'en':['Bars','Donut','Line'],
  'de':['Balken','Ring','Linie'], 'fr':['Barres','Anneau','Courbe'],
@@ -66,12 +85,13 @@ def main():
     for path in sorted((ROOT / 'assets/locales').glob('*.json')):
         data = json.loads(path.read_text())
         strings = data['strings']
-        missing = keys - strings.keys() - {'web_online', 'web_install','web_bar','web_donut','web_line','web_totals'}
+        missing = keys - strings.keys() - {'web_online', 'web_install','web_bar','web_donut','web_line','web_totals','web_mfa_hint'}
         if missing: raise ValueError((path, missing))
         selected = {k:v for k,v in strings.items() if k in keys or k.startswith(prefixes)}
         selected.update(zip(('web_online', 'web_install'), EXTRA[data['locale']]))
         selected.update(zip(('web_bar','web_donut','web_line'), CHARTS[data['locale']]))
         selected['web_totals'] = TOTALS[data['locale']]
+        selected['web_mfa_hint'] = MFA_HINT[data['locale']]
         packs[data['locale']] = {'name': data['nativeName'], 'strings': selected}
     (OUT / 'locales.json').write_text(json.dumps(packs, ensure_ascii=False, separators=(',', ':')) + '\n')
     from PIL import Image, ImageDraw

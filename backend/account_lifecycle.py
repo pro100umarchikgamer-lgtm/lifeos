@@ -13,24 +13,35 @@ class AccountLifecycle:
             result = self.backend.register(email, password)
         except Failure as error:
             if error.code != 'account_exists': raise
-            try:
-                pending = self.backend.login(email, password)
-                if pending.get('mfa_required'):return {'accepted': True, 'next': 'check_email'}
-                try:
-                    actor = self.backend.authenticate(pending['token'])
-                    if not actor['verified']: self.backend.resend_verification(actor)
-                finally:
-                    self.backend.logout(pending['token'])
-            except Failure:
-                pass # Identical response; existing addresses and password guesses are not disclosed.
+            # Registration already performed the same password KDF as a new
+            # address. Do not do a second login KDF (an address-existence oracle).
+            # Explicit resend has its own generic, per-address/IP limited route.
+            pass
         else:
             self.backend.logout(result['token'])
+        return {'accepted': True, 'next': 'check_email'}
+
+    def resend_signup(self, email):
+        require(isinstance(email, str) and len(email) <= 254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email))
+        email, now = email.casefold(), int(self.backend.clock())
+        with self.backend.transaction() as db:
+            key = token_hash('signup-resend:' + email)
+            limit = db.execute('SELECT * FROM auth_limits WHERE key=?', (key,)).fetchone()
+            require(limit is None or limit['until_at'] <= now, 'rate_limited', 429)
+            db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (key, now + 60))
+            user = db.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
+            if user and not user['verified']:
+                self.backend._account_available(db, user['id'])
+                code = secrets.token_urlsafe(32)
+                db.execute('DELETE FROM verification WHERE user_id=?', (user['id'],))
+                db.execute('INSERT INTO verification VALUES(?,?,?)', (token_hash(code), user['id'], now + 3600))
+                self.backend._deliver(db, email, code, 'verification')
         return {'accepted': True, 'next': 'check_email'}
 
     def confirm_signup(self, email, code):
         require(isinstance(email, str) and len(email) <= 254 and isinstance(code, str) and len(code) == 43, 'verification_invalid')
         with self.backend.transaction() as db:
-            user = db.execute('SELECT u.* FROM users u JOIN verification v ON v.user_id=u.id WHERE u.email=? AND v.hash=? AND v.expires_at>?', (email.casefold(), token_hash(code), int(self.backend.clock()))).fetchone()
+            user = db.execute('SELECT u.* FROM users u JOIN verification v ON v.user_id=u.id WHERE u.email=? AND u.verified=0 AND v.hash=? AND v.expires_at>?', (email.casefold(), token_hash(code), int(self.backend.clock()))).fetchone()
             require(user is not None, 'verification_invalid')
             self.backend._account_available(db, user['id'])
             db.execute('UPDATE users SET verified=1 WHERE id=?', (user['id'],))
@@ -166,7 +177,7 @@ class AccountLifecycle:
                 seq = self.backend._audit(db, record['workspace_id'], {'id': uid}, str(uuid.uuid4()), 'record.delete', rid)
                 db.execute('UPDATE records SET deleted=1,revision=revision+1,seq=? WHERE id=?', (seq, rid))
             self.backend.revoke_all_in(db, uid)
-            for table in ('verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa'):
+            for table in ('verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa', 'login_challenges'):
                 db.execute('DELETE FROM '+table+' WHERE user_id=?', (uid,))
             db.execute('DELETE FROM grants WHERE user_id=?', (uid,))
             db.execute('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid,))
