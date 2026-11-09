@@ -73,6 +73,9 @@ class Web:
             from .early_access import EarlyAccess
             applications = EarlyAccess(self.backend)
             action = path.rsplit('/', 1)[-1]
+            if action == 'recover':
+                from .early_access import CONSENT_VERSION
+                return applications.apply(body.get('email'), CONSENT_VERSION, body.get('website', ''), env.get('uladim.client', 'unknown'), existing_only=True), headers
             if action == 'apply':
                 return applications.apply(body.get('email'), body.get('consent_version'), body.get('website', ''), env.get('uladim.client', 'unknown')), headers
             if action == 'confirm': return applications.confirm(body.get('email'), body.get('code')), headers

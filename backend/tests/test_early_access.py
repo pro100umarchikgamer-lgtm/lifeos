@@ -31,6 +31,21 @@ class EarlyAccessScenarios:
         self.assertNotEqual(row['verification_hash'], self.mail['tester@example.test'])
         self.assertEqual(row['state'], 'unverified')
 
+    def test_archive_recovery_preserves_state_and_never_creates_a_new_application(self):
+        management = self.pending()
+        self.early.manage(management['management_token'], cancel=True)
+        before = self.request_row()
+        self.now += 301
+        known = self.early.apply('tester@example.test', CONSENT_VERSION, client='archive-fixture', existing_only=True)
+        unknown = self.early.apply('unknown@example.test', CONSENT_VERSION, client='archive-fixture', existing_only=True)
+        self.assertEqual(known, unknown)
+        with self.backend.connect() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) AS n FROM early_access').fetchone()['n'], 1)
+            self.assertIsNone(db.execute('SELECT 1 FROM users WHERE email=?', ('tester@example.test',)).fetchone())
+        recovered = self.early.confirm('tester@example.test', self.mail['tester@example.test'])
+        self.assertEqual(recovered['state'], 'cancelled')
+        self.assertEqual(self.request_row()['id'], before['id'])
+
     def test_one_time_confirmation_management_and_cancellation(self):
         result = self.pending()
         self.assertEqual(result['state'], 'pending')
@@ -143,3 +158,15 @@ class EarlyAccessHTTPTests(unittest.TestCase):
         self.assertEqual(json.loads(body)['state'],'pending')
         self.assertEqual(self.request('/account/api/signup',{'email':data['email'],'password':'valid-test-passphrase'})[0],403)
         self.assertEqual(self.request('/control/api/applications',host='control.getuladim.space')[0],401)
+
+    def test_archive_recovery_route_is_generic_and_origin_protected(self):
+        import json
+        data = {'email':'unknown@example.test'}
+        self.assertEqual(self.request('/early-access/api/recover',data,origin='https://evil.invalid')[0],403)
+        self.assertEqual(self.request('/early-access/api/recover')[0],405)
+        status,headers,body = self.request('/early-access/api/recover',data)
+        self.assertEqual(status,200)
+        self.assertEqual(json.loads(body),{'accepted':True,'next':'check_email'})
+        with self.backend.connect() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) AS n FROM early_access').fetchone()['n'],0)
+        self.assertEqual(self.mail,{})

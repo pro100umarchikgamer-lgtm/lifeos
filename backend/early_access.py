@@ -27,7 +27,7 @@ class EarlyAccess:
                              (token_hash('early-access:' + key), now + 3600, now, now)).fetchone()
         require(row['count'] <= maximum, 'rate_limited', 429)
 
-    def apply(self, email, consent, website='', client='unknown'):
+    def apply(self, email, consent, website='', client='unknown', existing_only=False):
         require(consent == CONSENT_VERSION, 'consent_required')
         require(isinstance(website, str) and len(website) <= 500)
         self._limit('ip:' + client, 10)
@@ -38,6 +38,7 @@ class EarlyAccess:
         now, code = int(self.backend.clock()), secrets.token_urlsafe(32)
         with self.backend.transaction() as db:
             row = db.execute('SELECT * FROM early_access WHERE email=?', (email,)).fetchone()
+            if existing_only and row is None: return accepted
             if row and row['updated_at'] > now - 300: return accepted
             if not row:
                 db.execute("INSERT INTO early_access(id,email,state,created_at,updated_at,consent_version,verification_hash,verification_until) VALUES(?,?,'unverified',?,?,?,?,?)",

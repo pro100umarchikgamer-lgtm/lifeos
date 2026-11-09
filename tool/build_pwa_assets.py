@@ -45,6 +45,44 @@ MFA_HINT = {
  'hy':'Մուտքագրեք նույնականացման հավելվածի նոր կոդը կամ չօգտագործված վերականգնման կոդը։',
 }
 
+WEB_SESSION_EXPIRED = {
+ 'ru':'Сессия истекла. Войдите снова. Несохранённые данные нужно ввести повторно.',
+ 'en':'Your session expired. Sign in again and re-enter any unsaved data.',
+ 'de':'Deine Sitzung ist abgelaufen. Melde dich erneut an und gib ungespeicherte Daten nochmals ein.',
+ 'fr':'Votre session a expiré. Reconnectez-vous et saisissez à nouveau les données non enregistrées.',
+ 'es':'Tu sesión ha caducado. Inicia sesión de nuevo y vuelve a introducir los datos sin guardar.',
+ 'it':'La sessione è scaduta. Accedi di nuovo e reinserisci i dati non salvati.',
+ 'pt':'A sessão expirou. Entre novamente e volte a introduzir os dados não guardados.',
+ 'uk':'Сесія закінчилася. Увійдіть знову та повторно введіть незбережені дані.',
+ 'kk':'Сеанс аяқталды. Қайта кіріп, сақталмаған деректерді қайта енгізіңіз.',
+ 'ky':'Сеанстын мөөнөтү бүттү. Кайра кирип, сакталбаган маалыматтарды кайра киргизиңиз.',
+ 'tg':'Муҳлати ҷаласа тамом шуд. Аз нав ворид шавед ва маълумоти сабтнашударо дубора нависед.',
+ 'az':'Sessiyanın vaxtı bitdi. Yenidən daxil olun və saxlanmamış məlumatları təkrar daxil edin.',
+ 'uz-Latn':'Seans muddati tugadi. Qayta kiring va saqlanmagan ma’lumotlarni qayta kiriting.',
+ 'uz-Cyrl':'Сеанс муддати тугади. Қайта киринг ва сақланмаган маълумотларни қайта киритинг.',
+ 'ka':'სესია დასრულდა. ხელახლა შედით და თავიდან შეიყვანეთ შეუნახავი მონაცემები.',
+ 'hy':'Նիստն ավարտվել է։ Կրկին մուտք գործեք և նորից լրացրեք չպահպանված տվյալները։',
+}
+
+ONBOARDING = {
+ 'ru':['Создать личное пространство','Начните с личного пространства. Затем добавьте первую задачу, заметку или счёт. Для общих дел создайте пространство семьи.'],
+ 'en':['Create a personal space','Start with a personal space. Then add your first task, note or account. Create a family space for shared plans.'],
+ 'de':['Persönlichen Bereich erstellen','Beginne mit einem persönlichen Bereich. Füge eine Aufgabe, Notiz oder ein Konto hinzu. Erstelle für gemeinsame Pläne einen Familienbereich.'],
+ 'fr':['Créer un espace personnel','Créez un espace personnel, puis votre première tâche, note ou compte. Utilisez un espace familial pour vos projets communs.'],
+ 'es':['Crear un espacio personal','Empieza con un espacio personal y añade una tarea, nota o cuenta. Crea un espacio familiar para los planes compartidos.'],
+ 'it':['Crea uno spazio personale','Inizia con uno spazio personale, poi aggiungi una prima attività, nota o conto. Crea uno spazio famiglia per i piani condivisi.'],
+ 'pt':['Criar um espaço pessoal','Comece com um espaço pessoal e adicione uma tarefa, nota ou conta. Crie um espaço familiar para os planos partilhados.'],
+ 'uk':['Створити особистий простір','Почніть з особистого простору. Додайте перше завдання, нотатку або рахунок. Для спільних справ створіть сімейний простір.'],
+ 'kk':['Жеке кеңістік құру','Жеке кеңістіктен бастаңыз. Алғашқы тапсырманы, жазбаны немесе шотты қосыңыз. Ортақ жоспарлар үшін отбасылық кеңістік құрыңыз.'],
+ 'ky':['Жеке мейкиндик түзүү','Жеке мейкиндиктен баштаңыз. Биринчи тапшырманы, жазууну же эсепти кошуңуз. Жалпы иштер үчүн үй-бүлөлүк мейкиндик түзүңүз.'],
+ 'tg':['Сохтани фазои шахсӣ','Аз фазои шахсӣ оғоз кунед. Вазифа, ёддошт ё ҳисоби аввалро илова кунед. Барои нақшаҳои муштарак фазои оилавӣ созед.'],
+ 'az':['Şəxsi məkan yaradın','Şəxsi məkanla başlayın. İlk tapşırığı, qeydi və ya hesabı əlavə edin. Ortaq planlar üçün ailə məkanı yaradın.'],
+ 'uz-Latn':['Shaxsiy makon yaratish','Shaxsiy makondan boshlang. Birinchi vazifa, qayd yoki hisobni qo‘shing. Umumiy rejalar uchun oilaviy makon yarating.'],
+ 'uz-Cyrl':['Шахсий макон яратиш','Шахсий макондан бошланг. Биринчи вазифа, қайд ёки ҳисобни қўшинг. Умумий режалар учун оилавий макон яратинг.'],
+ 'ka':['პირადი სივრცის შექმნა','დაიწყეთ პირადი სივრცით. დაამატეთ პირველი დავალება, ჩანაწერი ან ანგარიში. საერთო გეგმებისთვის შექმენით ოჯახის სივრცე.'],
+ 'hy':['Ստեղծել անձնական տարածք','Սկսեք անձնական տարածքից։ Ավելացրեք առաջին առաջադրանքը, նշումը կամ հաշիվը։ Համատեղ ծրագրերի համար ստեղծեք ընտանեկան տարածք։'],
+}
+
 CHARTS = {
  'ru':['Столбцы','Круг','Линия'], 'en':['Bars','Donut','Line'],
  'de':['Balken','Ring','Linie'], 'fr':['Barres','Anneau','Courbe'],
@@ -85,13 +123,15 @@ def main():
     for path in sorted((ROOT / 'assets/locales').glob('*.json')):
         data = json.loads(path.read_text())
         strings = data['strings']
-        missing = keys - strings.keys() - {'web_online', 'web_install','web_bar','web_donut','web_line','web_totals','web_mfa_hint'}
+        missing = keys - strings.keys() - {'web_online', 'web_install','web_bar','web_donut','web_line','web_totals','web_mfa_hint','web_personal_create','web_onboarding'}
         if missing: raise ValueError((path, missing))
         selected = {k:v for k,v in strings.items() if k in keys or k.startswith(prefixes)}
         selected.update(zip(('web_online', 'web_install'), EXTRA[data['locale']]))
         selected.update(zip(('web_bar','web_donut','web_line'), CHARTS[data['locale']]))
         selected['web_totals'] = TOTALS[data['locale']]
         selected['web_mfa_hint'] = MFA_HINT[data['locale']]
+        selected['family_error_unauthorized'] = WEB_SESSION_EXPIRED[data['locale']]
+        selected.update(zip(('web_personal_create','web_onboarding'), ONBOARDING[data['locale']]))
         packs[data['locale']] = {'name': data['nativeName'], 'strings': selected}
     (OUT / 'locales.json').write_text(json.dumps(packs, ensure_ascii=False, separators=(',', ':')) + '\n')
     from PIL import Image, ImageDraw
