@@ -65,7 +65,7 @@ function render(){if(!state.session){login();return;}const m=shell();if(state.ta
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);
 }
 function today(m){
- title(m,'today',()=>chooseAdd());const grid=E('div',undefined,'grid today-grid');m.append(grid);const tasks=records('task');const a=card(t('open_tasks'));a.classList.add('today-tasks');append(a,E('div',String(tasks.filter(r=>!r.data.completed).length),'stat'));for(const r of tasks.filter(r=>!r.data.completed).slice(0,3))a.append(taskRow(r));if(!tasks.length)a.append(E('p',t('empty_tasks')));grid.append(a);
+ title(m,'today',()=>chooseAdd());const grid=E('div',undefined,'grid today-grid');m.append(grid);const tasks=records('task');const a=card(t('open_tasks'));a.classList.add('today-tasks');a.querySelector('h2').append(E('span',new Intl.NumberFormat(state.lang).format(tasks.filter(r=>!r.data.completed).length),'task-count'));for(const r of tasks.filter(r=>!r.data.completed).slice(0,3))a.append(taskRow(r));if(!tasks.length)a.append(E('p',t('empty_tasks')));grid.append(a);
  const b=card(t('recent_notes'));b.classList.add('today-notes');for(const r of records('note').slice(-3).reverse())b.append(E('p',r.data.body.slice(0,160),'note'));if(!records('note').length)b.append(E('p',t('empty_notes')));grid.append(b);
  const c=card(t('finances'));c.classList.add('wide','today-finance');summaries(c);grid.append(c);m.append(button(t('family_sync'),async()=>{await refresh();render();}));
 }
