@@ -8,11 +8,12 @@ root=/var/backups/uladim
 mkdir -p "$root"
 free=$(df -Pk "$root" | awk 'NR==2 {print $4}')
 (( free > 2097152 )) || { echo 'BACKUP_FAILED insufficient disk space' >&2; exit 1; }
+backup_image=$(docker inspect lifeos-api-1 --format '{{.Image}}')
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 out="$root/uladim-$stamp-$$.pgdump.aesgcm"
 test -s /etc/uladim/backup.key
 docker exec lifeos-db-1 pg_dump -U postgres -d lifeos -Fc |
-  docker run --rm -i --network none --user 0:0 --read-only --cap-drop ALL     --security-opt no-new-privileges -v /etc/uladim/backup.key:/run/backup.key:ro     --entrypoint python uladim-backend:c0a7f33     -m backend.backup encrypt --key-file /run/backup.key > "$out.partial"
+  docker run --pull never --rm -i --network none --user 0:0 --read-only --cap-drop ALL     --security-opt no-new-privileges -v /etc/uladim/backup.key:/run/backup.key:ro     --entrypoint python "$backup_image"     -m backend.backup encrypt --key-file /run/backup.key > "$out.partial"
 test -s "$out.partial"
 mv -n "$out.partial" "$out"
 sha256sum "$out" > "$out.sha256"

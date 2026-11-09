@@ -21,7 +21,8 @@ chmod 750 "$release/backend"
 find "$release/backend/webassets" -type d -exec chgrp uladim {} + -exec chmod 750 {} +
 find "$release/backend/webassets" -type f -exec chgrp uladim {} + -exec chmod 640 {} +
 runuser -u uladim -- test -r "$release/backend/webassets/web.js"
-printf 'FROM uladim-backend:c0a7f33\nCOPY --chown=10001:10001 backend ./backend\nLABEL org.opencontainers.image.revision="%s"\n' "$revision" > "$release/Dockerfile.overlay"
+base_image=$(docker inspect lifeos-api-1 --format '{{.Image}}')
+printf 'FROM %s\nCOPY --chown=10001:10001 backend ./backend\nLABEL org.opencontainers.image.revision="%s"\n' "$base_image" "$revision" > "$release/Dockerfile.overlay"
 docker build --network=none --pull=false -f "$release/Dockerfile.overlay" -t "uladim-backend:$revision" "$release"
 python3 - "$revision" "$checkpoint" <<'PY'
 import json, sys
