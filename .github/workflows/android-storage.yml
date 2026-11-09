@@ -1,0 +1,76 @@
+name: Encrypted Android integration
+on:
+  push:
+    branches: [feature/uladim-hostinger-launch]
+    paths:
+      - integration_test/ci_encrypted_suite_test.dart
+      - tool/check_android_family.sh
+      - .github/workflows/android-storage.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  encrypted_clients:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: lifeos_test
+          POSTGRES_PASSWORD: synthetic-ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lifeos_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      LIFEOS_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-ci-only-password@localhost:5432/lifeos_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - run: python -m pip install -r backend/requirements.txt
+      - name: Prepare a non-superuser test database role
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('postgresql://postgres:synthetic-ci-only-password@localhost:5432/lifeos_test',autocommit=True) as db:
+              db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-ci-only-password'")
+              db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
+          PY
+      - run: bash tool/prepare_platforms.sh
+      - run: flutter pub get
+      - run: flutter analyze
+      - name: Enable KVM for the disposable emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run all original encrypted-storage and two-client assertions
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 20
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          script: bash tool/check_android_family.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-encrypted-integration-diagnostics
+          path: web_evidence/android-*
+          if-no-files-found: warn
+          retention-days: 14

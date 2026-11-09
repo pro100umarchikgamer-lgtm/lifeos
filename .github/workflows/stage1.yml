@@ -161,6 +161,14 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: bash tool/check_android_family.sh
+      - name: Retain Android transport diagnostics
+        if: always() && steps.validation.outputs.full == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-integration-diagnostics-${{ github.run_number }}
+          path: web_evidence/android-*
+          if-no-files-found: warn
+          retention-days: 14
       - name: Save evidence after all mandatory validation succeeds
         if: steps.validation.outputs.full == 'true'
         uses: actions/upload-artifact@v4
