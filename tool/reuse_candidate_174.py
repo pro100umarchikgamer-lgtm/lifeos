@@ -36,7 +36,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    changed = subprocess.check_output(['git', 'diff', '--name-only', SOURCE, 'HEAD']).decode().splitlines()
+    changed = subprocess.check_output(['git', 'diff', '--no-renames', '--name-only', SOURCE, 'HEAD']).decode().splitlines()
     verify_changes(changed)
     target = Path(os.environ['RUNNER_TEMP']) / 'uladim-signed-174'
     target.mkdir(exist_ok=True)
