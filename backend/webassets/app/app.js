@@ -70,7 +70,7 @@ async function beginGoogle(invitation){
 async function googleReturn(){
  history.replaceState(null,'','/app');
  const result=await call('google/complete',{});
- if(result.error)throw {code:result.error};
+ if(result.error){login();const message=E('p',errorText({code:result.error}));message.setAttribute('role','alert');root.querySelector('main').append(message);return;}
  if(result.mfa_required){mfaStep(result.challenge);return;}
  await start();if(result.linked)toast(t('account_done'));
 }
