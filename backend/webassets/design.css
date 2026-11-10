@@ -78,3 +78,4 @@ body[data-design=clarity] .nav button.ghost[aria-current=page]{background:var(--
 
 /* Let populated widgets fill the desktop grid instead of reserving empty rows. */
 @media(min-width:1250px){body[data-design=clarity] .today-grid{grid-auto-flow:row dense}body[data-design=clarity] .today-tasks{grid-row:auto!important}body[data-design=clarity] .today-notes{grid-column:1/-1}}
+@media(max-width:759px){body[data-design=clarity] .nav button>span:last-child{overflow:hidden;text-overflow:ellipsis;max-width:100%}}

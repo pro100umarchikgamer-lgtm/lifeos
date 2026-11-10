@@ -1,7 +1,7 @@
 'use strict';
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
 const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',lang:'ru',theme:'system',palette:'forest',chart:'bar',generation:0,busy:false,googleEnabled:false};
-let packs={},alertTimer,navObserver,privateEpoch=0;
+let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null;
 const pendingDeletes=new Map();
 try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
 // Persist only interface preferences. Accounts, spaces, records and tokens stay in memory.
@@ -75,7 +75,7 @@ function replaceDialog(d,...nodes){
  d.replaceChildren(head,...nodes.filter(n=>n!==heading&&n!==existing));
 }
 
-function clearIdentity(){privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){redrawFinance=null;privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function minor(value,signed=false,currency='RUB'){return ULADIMMoney.parse(value,currency,signed);}
 function decimalInput(value,currency){return ULADIMMoney.decimal(value,currency);}
@@ -125,7 +125,7 @@ function shell(){
  for(const [key,label]of [['today','today'],['tasks','widget_tasks'],['calendar','web_calendar'],['notes','widget_notes'],['money','finances'],['account','profile']]){const b=button('',()=>{state.tab=key;render();});const symbol=E('span',undefined,'symbol');symbol.append(icon(key));append(b,symbol,E('span',t(label)));if(state.tab===key)b.setAttribute('aria-current','page');nav.append(b);}root.append(nav);navObserver=new ResizeObserver(()=>{document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');});navObserver.observe(nav);navObserver.observe(header);return m;
 }
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');append(a,E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'),E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
-function render(){if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){title(m,'today');m.append(card(t('welcome_title'),t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')),button(t('family_create'),()=>createSpace('family')),button(t('family_accept'),acceptInvite));return;}
+function render(){redrawFinance=null;if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){title(m,'today');m.append(card(t('welcome_title'),t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')),button(t('family_create'),()=>createSpace('family')),button(t('family_accept'),acceptInvite));return;}
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='calendar')calendar(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);
 }
 function today(m){
@@ -243,6 +243,7 @@ function finance(m){
   ledger.replaceChildren(E('h2',t('family_kind_transaction')));for(const r of filtered.sort((a,b)=>b.data.date.localeCompare(a.data.date))){const row=E('div',undefined,'row');const text=E('div',undefined,'text');append(text,E('h3',r.data.label||t(r.data.kind)),E('p',r.data.date+(r.data.account_id?' · '+(records('account').find(a=>a.id===r.data.account_id)?.data.name||''):''),'small'));append(row,text,E('strong',(r.data.kind==='expense'?'− ':'+ ')+money(r.data.amount_minor,r.data.currency),r.data.kind),iconButton('more',t('edit')+' · '+(r.data.label||t(r.data.kind)),()=>editRecord('transaction',r)));ledger.append(row);}if(!filtered.length)ledger.append(E('p',t('empty_money'),'empty'));
   for(const r of records('transfer').filter(r=>(!accountFilter.value||[r.data.from_id,r.data.to_id].includes(accountFilter.value))&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)))ledger.append(button(t('family_kind_transfer')+' · '+r.data.date,()=>editRecord('transfer',r)));
  }
+ redrawFinance=draw;
  for(const field of [search,from,to,accountFilter,currency,mode])field.addEventListener(field===search?'input':'change',draw);requestAnimationFrame(draw);
 }
 function financeTotals(rows,currency){let income=0n,expense=0n;for(const r of rows.filter(r=>r.data.currency===currency)){if(r.data.kind==='income')income+=BigInt(r.data.amount_minor);else expense+=BigInt(r.data.amount_minor);}return {income,expense};}
@@ -328,3 +329,6 @@ function familyPermissions(m){
 function childProfile(profile){const d=dialog(t('family_child'),container=>form(container,'',f=>{const fields={name:input(f,'name',t('name'),'text',profile.name)};for(const key of ['view_budget','record_spending','edit_own','request_money','view_shared','create_tasks','complete_tasks']){fields[key]=input(f,key,t('family_permission_'+key),'checkbox','',false);fields[key].checked=profile.permissions.includes(key);}return fields;},async v=>{const permissions=Object.keys(v).filter(k=>k!=='name'&&v[k].checked);await call('family',{id:crypto.randomUUID(),workspace_id:state.space,action:'child.save',profile_id:profile.id,revision:profile.revision,name:v.name.value,permissions});d.close();await refresh();render();}));}
 
 if(window.visualViewport){const fit=()=>{document.body.style.setProperty('--visible-height',visualViewport.height+'px');document.querySelector('dialog input:focus,dialog textarea:focus')?.scrollIntoView({block:'nearest'});};visualViewport.addEventListener('resize',fit);fit();}
+
+// Repaint canvas pixels when system colors change; keep open dialog drafts intact.
+window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener('change',()=>redrawFinance?.());

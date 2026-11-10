@@ -146,7 +146,10 @@ def main():
                     d.get_by_role('button',name='Закрыть',exact=True).click()
                 checks.append('responsive_'+theme)
             page.set_viewport_size({'width':375,'height':812});page.evaluate("document.documentElement.style.fontSize='24px'")
-            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');checks.append('text_scale_150_percent')
+            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            assert page.locator('.nav').evaluate('n=>[...n.querySelectorAll("button span:last-child")].every(s=>s.scrollWidth<=s.clientWidth||getComputedStyle(s).overflow==="hidden")'),'scaled nav text spills outside buttons'
+            page.screenshot(path=str(OUT/'text-scale-150-percent.png'))
+            checks.append('text_scale_150_percent')
             assert not errors,errors
         finally:
             if sys.exc_info()[0]:page.screenshot(path=str(OUT/'failure.png'),full_page=True)
