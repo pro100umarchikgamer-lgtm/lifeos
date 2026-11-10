@@ -1,10 +1,10 @@
 // Compiled from the same domain implementation used by Android. No file upload.
 import 'dart:convert';
 import 'dart:js_interop';
-import 'domain/models.dart';
-import 'domain/statement_import.dart';
-import 'domain/statement_detection.dart';
-import 'domain/finance_engine.dart';
+import 'package:lifeos/domain/models.dart';
+import 'package:lifeos/domain/statement_import.dart';
+import 'package:lifeos/domain/statement_detection.dart';
+import 'package:lifeos/domain/finance_engine.dart';
 
 @JS('self.onmessage')
 external set onMessage(JSFunction callback);

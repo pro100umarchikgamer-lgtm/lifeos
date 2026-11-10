@@ -1,7 +1,7 @@
 {
   "sdk": "Dart SDK version: 3.10.3 (stable) (Tue Dec 2 01:04:53 2025 -0800) on \"linux_x64\"",
   "sha256": {
-    "tool/statement_worker.dart": "13470a21528b0b83edf9302887dfb4fb2964abfa73a71742e06b00a73ce8ada9",
+    "tool/statement_worker.dart": "e9f3d829d1b021a0d1b45efe74978b2d2ab26f86ffd0ac39d5ca93d846930abe",
     "tool/statement_worker.pubspec.lock": "bddd5c769e8a085840c0df883916684f4931c5d289dc8d57d200867847d1f5b5",
     "lib/domain/statement_import.dart": "b5019050fc2f6cf9db5deefdf40d14ee7815495a7e6f915cac7281777221b6a5",
     "lib/domain/statement_detection.dart": "449f75a5b5b141e6e8e99c93963b5a21efbade47987855e14d889b340d48e766",
