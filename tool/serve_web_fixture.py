@@ -11,7 +11,7 @@ def main():
     with fixture() as (origin,_,__,___):
         def forward(env,start):
             data=env['wsgi.input'].read(int(env.get('CONTENT_LENGTH') or 0)) if env['REQUEST_METHOD']=='POST' else None
-            headers={k[5:].replace('_','-'):v for k,v in env.items() if k.startswith('HTTP_') and k!='HTTP_HOST'}
+            headers={k[5:].replace('_','-').title():v for k,v in env.items() if k.startswith('HTTP_') and k!='HTTP_HOST'}
             if data is not None:headers['Content-Type']=env.get('CONTENT_TYPE','application/json')
             request=Request(origin+env['PATH_INFO']+('?' + env['QUERY_STRING'] if env.get('QUERY_STRING') else ''),data=data,headers=headers)
             # Same-origin security is preserved at the fixture's own origin.

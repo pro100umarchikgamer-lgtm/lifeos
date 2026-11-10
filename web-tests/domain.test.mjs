@@ -23,6 +23,10 @@ describe('calendar shared schedule contract',()=>{
   expect(()=>D.occurrences([event('bad')],'2026-01-01','2026-02-01','UTC')).toThrow();
  });
 });
+describe('DST parity with Android',()=>{
+ it('chooses earlier instant in an overlap',()=>{expect(new Date(D.wallTime('2026-10-25T02:30:00','Europe/Berlin')).toISOString()).toBe('2026-10-25T00:30:00.000Z');});
+ it('shifts a half-hour gap by its actual length',()=>{expect(new Date(D.wallTime('2026-10-04T02:15:00','Australia/Lord_Howe')).toISOString()).toBe('2026-10-03T15:45:00.000Z');});
+});
 describe('task filters and money form validation',()=>{
  it('filters completion and searches case insensitively',()=>{
   const rows=[{data:{title:'Привет Умар',completed:0}},{data:{title:'Привет',completed:1}}];

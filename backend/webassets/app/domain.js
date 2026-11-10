@@ -6,12 +6,11 @@
  function zonedParts(at,zone){return Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(at).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));}
  function wallTime(text,zone){
   const target=Date.parse(text+'Z');if(!Number.isFinite(target))throw new Error('invalid_schedule');
-  let at=target;
-  for(let i=0;i<4;i++){const p=zonedParts(new Date(at),zone),actual=Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`),delta=target-actual;if(!delta)return at;at+=delta;}
-  // Nonexistent DST wall times advance to the first corresponding later time,
-  // matching Android's calendar convention. Repeated times use the earlier instant.
-  const candidates=[at,at-3600000,at+3600000].filter(n=>{const p=zonedParts(new Date(n),zone);return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`===text.slice(0,16);});
-  return candidates.length?Math.min(...candidates):Math.max(at,at+3600000);
+  const offset=instant=>{const p=zonedParts(new Date(instant),zone);return Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`)-instant;};
+  const before=offset(target-2*dayMs),after=offset(target+2*dayMs);
+  const candidates=[...new Set([before,after])].map(value=>target-value).filter(at=>{const p=zonedParts(new Date(at),zone);return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`===text.slice(0,16);});
+  // Same policy as lib/domain/calendar_engine.dart: earlier overlap, gap forward.
+  return candidates.length?Math.min(...candidates):target-before;
  }
  function occurrences(events,from,to,viewer=Intl.DateTimeFormat().resolvedOptions().timeZone){
   const result=[],lower=Date.parse(from+'T00:00:00Z'),upper=Date.parse(to+'T00:00:00Z');
@@ -30,7 +29,7 @@
     if(['monthly','yearly'].includes(s.repeat)){date.setUTCDate(1);date.setUTCMonth(base.getUTCMonth()+n*s.interval*(s.repeat==='yearly'?12:1));date.setUTCDate(Math.min(base.getUTCDate(),new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate()));}
     const local=civil(date);if(+date>upper+2*dayMs||(s.until&&local>s.until))break;
     const stamp=local+s.localStart.slice(10),at=wallTime(stamp,zone),p=zonedParts(new Date(at),viewer),day=s.allDay?local:`${p.year}-${p.month}-${p.day}`;
-    if(day>=from&&day<to)result.push({record,day,at,allDay:s.allDay,time:`${p.hour}:${p.minute}`,zone});
+    if(day>=from&&day<to)result.push({record,day,at,allDay:s.allDay,time:`${p.hour}:${p.minute}`,zone:viewer});
     if(s.repeat==='none')break;
    }
   }

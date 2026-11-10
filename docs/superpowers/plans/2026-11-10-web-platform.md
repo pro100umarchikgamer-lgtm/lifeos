@@ -28,3 +28,16 @@ contract gaps and results; commit, push and open draft PR without merge/deployme
   habit/goal/debt/investment/category entities. Events do support recurrence/timezones.
 - Ruling: user explicitly requested immediate execution; use existing stack and execute
   without a design approval round. No extra product decisions are needed to begin.
+
+## Verification and handoff
+- Domain logic implemented; 11 Vitest checks and existing money checks pass.
+- Event CRUD, task filters, note editing/cancel-delete, finance operation, theme and
+  Uzbek verified with actual WSGI in supplemental DOM acceptance.
+- Full Python backend run: 187 tests, 92 skipped for absent PostgreSQL test URL,
+  95 pass, 0 failures. Dependency audit: zero reported vulnerabilities.
+- Independent review corrections: DST overlap, non-hour gap, viewer-zone caption,
+  and date-independent DOM integration test. Regression tests pass.
+- Browser/visual/PWA acceptance, Lighthouse, CodeQL, CodeRabbit and staging remain
+  unverified. GitHub write permission is missing (403); no remote branch/PR exists.
+- Source, incremental Git bundle and patches are packaged for transfer, without
+  merging or production changes. See docs/ULADIM_WEB_CONTRACT_GAPS.md.

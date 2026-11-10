@@ -2,7 +2,7 @@ name: ULADIM Web client
 on:
   pull_request:
     branches: [feature/uladim-hostinger-launch]
-    paths: ['backend/webassets/**', 'backend/web.py', 'web-tests/**', 'package*.json', 'tool/check_web_platform.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
+    paths: ['backend/webassets/**', 'backend/web.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
   push:
     branches: [work/uladim-web-platform]
   workflow_dispatch:
@@ -31,6 +31,8 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - name: Shared API and static asset security
         run: python -m unittest backend.tests.test_pwa backend.tests.test_control_web
+      - name: DOM integration with actual server records
+        run: python -m tool.check_web_dom
       - name: Product CRUD, both themes and four viewport widths
         run: python -m tool.check_web_platform
       - name: Existing PWA and financial acceptance

@@ -1,0 +1,49 @@
+// DOM integration with the actual disposable WSGI fixture. No mocked API data.
+// This is supplemental to Playwright; jsdom does not prove rendering or PWA.
+import {JSDOM} from 'jsdom';
+import {readFileSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
+import assert from 'node:assert/strict';
+const origin=process.argv[2],dom=new JSDOM('<div id="root"></div><div id="alerts"></div>',{url:origin+'/app',runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window;let cookie='';
+w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'));};
+w.ResizeObserver=class{observe(){} disconnect(){}};
+w.HTMLElement.prototype.scrollIntoView=function(){};
+w.HTMLCanvasElement.prototype.getContext=function(){return new Proxy({},{get:(_,key)=>key==='measureText'?()=>({width:40}):()=>{}});};
+Object.defineProperty(w.crypto,'randomUUID',{value:randomUUID});
+w.fetch=async(path,options={})=>{
+ const headers={...options.headers,'User-Agent':'uladim-dom-fixture','Origin':origin,...(cookie?{Cookie:cookie}:{})};
+ const response=await fetch(new URL(path,origin),{...options,headers});
+ if(!response.ok&&options.body)console.error('API failure',path,options.body,await response.clone().text());
+ const set=response.headers.get('set-cookie');if(set)cookie=set.split(';')[0];return response;
+};
+w.eval(['domain.js','money.js','import.js','app.js'].map(file=>readFileSync('backend/webassets/app/'+file,'utf8')).join('\n')+'\nglobalThis.fixtureSpace=()=>state.space;');
+const wait=async predicate=>{for(let n=0;n<100;n++){if(predicate())return;await new Promise(r=>setTimeout(r,30));}throw new Error('DOM timeout: '+w.document.body.textContent.slice(0,1000));};
+const button=(text,scope=w.document)=>{const b=[...scope.querySelectorAll('button')].find(b=>b.textContent===text);assert(b,'Missing button '+text);return b;};
+const change=(field,value)=>{field.value=value;field.dispatchEvent(new w.Event('change',{bubbles:true}));};
+const submit=()=>w.document.querySelector('dialog form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+try{
+ await wait(()=>w.document.querySelector('input[name=email]'));
+ w.document.querySelector('[name=email]').value='web@example.test';w.document.querySelector('[name=password]').value='synthetic-web-platform-password';
+ w.document.querySelector('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+ await wait(()=>w.document.querySelector('.nav'));
+ button('Задачи').click();
+ const search=w.document.querySelector('[name=task-search]');search.value='заказ';search.dispatchEvent(new w.Event('input'));
+ assert(w.document.querySelector('main').textContent.includes('Забрать заказ'));assert(!w.document.querySelector('main').textContent.includes('Подготовить план'));
+ change(w.document.querySelector('[name=task-status]'),'open');assert(!w.document.querySelector('main').textContent.includes('Забрать заказ'));
+ button('Календарь').click();button('Добавить').click();
+ w.document.querySelector('dialog [name=name]').value='DOM shared event';w.document.querySelector('[name=localStart]').value='2026-11-12T14:30';w.document.querySelector('[name=timezone]').value='Asia/Tashkent';submit();
+ await wait(()=>!w.document.querySelector('dialog'));assert.equal(w.document.querySelector('.error')?.textContent||'','');
+ change(w.document.querySelector('[name=calendar-day]'),'2026-11-12');await wait(()=>w.document.querySelector('main').textContent.includes('DOM shared event'));
+ button('Заметки').click();button('Редактировать').click();w.document.querySelector('textarea').value='DOM changed note';submit();await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM changed note'));
+ button('Редактировать').click();button('Удалить').click();button('Отменить').click();assert(w.document.querySelector('main').textContent.includes('DOM changed note'));
+ button('Финансы').click();await wait(()=>w.document.querySelector('.finance-total'));assert(w.document.querySelector('main').textContent.includes('RUB'));
+ button('Добавить').click();button('Расход или доход',w.document.querySelector('dialog')).click();
+ w.document.querySelector('[name=amount]').value='125,50';w.document.querySelector('[name=label]').value='DOM coffee';submit();
+ await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM coffee'));
+ button('Профиль').click();await wait(()=>w.document.querySelector('[name=theme]'));change(w.document.querySelector('[name=theme]'),'dark');assert.equal(w.document.body.dataset.theme,'dark');
+ change(w.document.querySelector('[name=language]'),'uz-Latn');await wait(()=>w.document.querySelector('.nav').textContent.includes('Taqvim'));assert.equal(w.document.documentElement.lang,'uz-Latn');
+ const response=await w.fetch('/account/api/sync?workspace='+encodeURIComponent(w.fixtureSpace()));const data=await response.json();assert(data.records.some(r=>r.data.title==='DOM shared event'));assert(data.records.some(r=>r.data.body==='DOM changed note'&&!r.deleted));assert(data.records.some(r=>r.kind==='transaction'&&r.data.label==='DOM coffee'&&r.data.amount_minor===12550));
+ assert(!w.localStorage.getItem('uladim-interface').includes('DOM changed'));console.log('DOM_INTEGRATION_PASSED: task filters, event save, note save/undo, finance, theme, Uzbek, real server records');
+}finally{w.close();}
