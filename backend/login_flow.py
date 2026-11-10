@@ -57,6 +57,17 @@ class LoginFlow:
         require(valid, 'invalid_credentials', 401)
         return result
 
+    def customer_in(self, db, uid, agent):
+        """Called only after a validated primary credential, including Google OIDC."""
+        user, factor = self._principal(db, uid, False)
+        self.backend._account_available(db, uid)
+        if factor is None:
+            return self.backend.new_session(db, uid, user['verified'])
+        now, raw = int(self.backend.clock()), secrets.token_urlsafe(32)
+        db.execute('DELETE FROM login_challenges WHERE expires_at<=? OR (user_id=? AND scope=?)', (now, uid, 'account'))
+        db.execute('INSERT INTO login_challenges VALUES(?,?,?,?,?,?,0,0)', (token_hash(raw), uid, 'account', token_hash(agent), self._version(user, factor, False), now + 300))
+        return {'mfa_required': True, 'challenge': raw, 'expires_in': 300}
+
     def finish(self, challenge, code, agent, staff=False):
         require(isinstance(challenge, str) and len(challenge) == 43 and isinstance(code, str) and len(code) <= 64, 'invalid_credentials', 401)
         now, result, valid = int(self.backend.clock()), None, False

@@ -29,6 +29,7 @@ class Application:
         self.backend,self.settings=backend,settings
         from .web import Web
         self.web=Web(backend,settings)
+        self.google=self.web.google
         self.started=time.time()
         self.networks=[ipaddress.ip_network(v.strip()) for v in settings.trusted_proxy_cidrs.split(',')]
     def trusted(self,environ):
@@ -54,7 +55,7 @@ class Application:
             raise Failure('registration_closed',403)
     def limit(self,environ,path):
         now=int(self.backend.clock())
-        category='auth' if path.startswith(('/v1/auth/', '/control/api/login', '/account/api/login', '/account/api/signup', '/account/api/resend-signup', '/account/api/confirm-signup', '/account/api/recovery', '/account/api/reset', '/early-access/api/')) else 'api'
+        category='auth' if path.startswith(('/v1/auth/', '/control/api/login', '/account/api/login', '/account/api/signup', '/account/api/resend-signup', '/account/api/confirm-signup', '/account/api/recovery', '/account/api/reset', '/early-access/api/', '/account/api/google', '/v1/account/google')) else 'api'
         maximum=30 if category=='auth' else 240
         key=hmac.new(self.settings.rate_limit_key.encode(),(category+'|'+self.client(environ)).encode(),hashlib.sha256).hexdigest()
         # A single autocommit UPSERT avoids repeatable-read serialization failures
@@ -68,6 +69,7 @@ class Application:
         status=200
         headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
             'X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'X-Request-ID':str(uuid.uuid4())}
+        cookies=[]
         path=environ.get('PATH_INFO','')
         method=environ.get('REQUEST_METHOD','')
         head = method == 'HEAD'
@@ -76,6 +78,7 @@ class Application:
             environ = dict(environ, REQUEST_METHOD='GET')
             method = 'GET'
         try:
+            if head and path == '/account/api/google/callback':raise Failure('method_not_allowed',405)
             if method not in ('GET','POST'):raise Failure('method_not_allowed',405)
             if path=='/health/live' and method=='GET':value={'status':'ok'}
             elif path=='/health/ready' and method=='GET':
@@ -103,11 +106,21 @@ class Application:
                 if is_web:
                     environ['uladim.client'] = self.client(environ)
                     value,web_headers=self.web.request(environ,body)
-                    headers.update(dict(web_headers))
+                    cookies=[(key,value) for key,value in web_headers if key.lower()=='set-cookie']
+                    headers.update({key:value for key,value in web_headers if key.lower()!='set-cookie'})
+                    status=int(headers.pop('X-ULADIM-Status', '200'))
                 else:
                     if method=='POST' and path in ('/v1/auth/register','/v1/auth/signup'):self.check_registration(body)
                     target=path+('?' +environ['QUERY_STRING'] if environ.get('QUERY_STRING') else '')
-                    value=dispatch(self.backend,method,target,body,environ.get('HTTP_AUTHORIZATION',''))
+                    if path.startswith('/v1/auth/google/') or path.startswith('/v1/account/google'):
+                        value=self.google_request(environ, body)
+                    elif path in ('/v1/auth/login/start', '/v1/auth/login/finish') and method=='POST':
+                        from .login_flow import LoginFlow
+                        flow=LoginFlow(self.backend)
+                        agent=environ.get('HTTP_USER_AGENT','')[:500]
+                        value=flow.begin(body.get('email'),body.get('password'),agent) if path.endswith('/start') else flow.finish(body.get('challenge'),body.get('code'),agent)
+                    else:
+                        value=dispatch(self.backend,method,target,body,environ.get('HTTP_AUTHORIZATION',''))
         except Failure as error:status=error.status;value={'error':error.code}
         except (ValueError,TypeError,KeyError):status=400;value={'error':'invalid_input'}
         except Exception as error:
@@ -116,8 +129,29 @@ class Application:
         output=value if isinstance(value,bytes) else (value.encode() if isinstance(value,str) else json.dumps(value,ensure_ascii=False).encode())
         headers['Content-Length']=str(len(output))
         if status==429:headers['Retry-After']='60'
-        start_response(str(status)+' '+HTTPStatus(status).phrase,list(headers.items()))
+        start_response(str(status)+' '+HTTPStatus(status).phrase,list(headers.items())+cookies)
         return [] if head else [output]
+    def google_request(self, env, body):
+        path, method = env.get('PATH_INFO'), env.get('REQUEST_METHOD')
+        if path == '/v1/auth/google/config' and method == 'GET':
+            return {'google_enabled': self.google.enabled}
+        if path == '/v1/auth/google/start' and method == 'POST':
+            return self.google.start('android', env.get('HTTP_USER_AGENT','')[:500], invitation=body.get('invitation'))
+        if path == '/v1/auth/google/finish' and method == 'POST':
+            return self.google.finish(body.get('challenge'), 'android', env.get('HTTP_USER_AGENT','')[:500], id_token=body.get('id_token'))
+        auth = env.get('HTTP_AUTHORIZATION', '')
+        token = auth[7:] if auth.startswith('Bearer ') else ''
+        actor = self.backend.authenticate(token)
+        if path == '/v1/account/google' and method == 'GET':
+            return self.google.status(actor)
+        if path == '/v1/account/google/link' and method == 'POST':
+            from .service import token_hash
+            return self.google.start('android', env.get('HTTP_USER_AGENT','')[:500], actor=actor,
+                password=body.get('password'), code=body.get('code'), auth_hash=token_hash(token))
+        if path == '/v1/account/google/unlink' and method == 'POST':
+            return self.google.unlink(actor, body.get('password'), body.get('code'))
+        raise Failure('not_found',404)
+
     def metrics(self):
         now=int(self.backend.clock())
         with self.backend.connect() as db:

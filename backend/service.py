@@ -158,6 +158,7 @@ class Backend(AccountSessions):
             require(row is not None,'verification_invalid')
             salt=secrets.token_hex(16);encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
             db.execute('UPDATE users SET salt=?,password_hash=?,verified=1 WHERE id=?',(salt,encoded,row['id']))
+            db.execute('INSERT INTO account_credentials VALUES(?,1) ON CONFLICT(user_id) DO UPDATE SET has_password=1', (row['id'],))
             self.revoke_all_in(db,row['id']);db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
             db.execute('DELETE FROM verification WHERE user_id=?',(row['id'],))
         return {'password_reset':True}

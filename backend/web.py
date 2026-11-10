@@ -20,6 +20,8 @@ ACCOUNT_COOKIE = '__Host-uladim_account'
 class Web:
     def __init__(self, backend, settings):
         self.backend, self.settings = backend, settings
+        from .google_identity import GoogleIdentity
+        self.google = GoogleIdentity(backend, settings)
         self.control = Control(backend)
         self.support = Support(backend, self.control)
         self.site = getattr(settings, 'site_origin', 'https://getuladim.space')
@@ -81,6 +83,8 @@ class Web:
             if action == 'confirm': return applications.confirm(body.get('email'), body.get('code')), headers
             if action in ('status', 'cancel'): return applications.manage(body.get('management_token'), action == 'cancel'), headers
             raise Failure('not_found', 404)
+        if not staff and path == '/account/api/google/callback' and method == 'GET':
+            return self.google_callback(env, headers)
         if method == 'GET' and not path.startswith(prefix):
             allowed = {'/'} if staff else {'/', '/account', '/plans', '/privacy', '/terms', '/support', '/delete-account', '/status', '/download', '/faq', '/early-access', '/docs'}
             require(path in allowed, 'not_found', 404)
@@ -91,7 +95,12 @@ class Web:
         if method == 'POST':
             require(env.get('HTTP_ORIGIN') == origin, 'origin_forbidden', 403)
         if not staff and action == 'config' and method == 'GET':
-            return {'registration_open': self.settings.registration_mode == 'open', 'payments_enabled': False}, headers
+            return {'registration_open': self.settings.registration_mode == 'open', 'payments_enabled': False, 'google_enabled': self.google.web_enabled}, headers
+        if not staff and action in ('google/start', 'google/complete') and method == 'POST':
+            if action == 'google/complete': return self.google_complete(env, headers)
+            binding=secrets.token_urlsafe(32)
+            value=self.google.start('web', env.get('HTTP_USER_AGENT','')[:500], binding, body.get('invitation'))
+            return value, headers + [self.google_cookie('binding', binding)]
         if action in ('login', 'login/mfa') and method == 'POST':
             agent = env.get('HTTP_USER_AGENT', '')[:500]
             from .login_flow import LoginFlow
@@ -103,14 +112,9 @@ class Web:
             else:
                 result = LoginFlow(self.backend).begin(body.get('email'), body.get('password'), agent, staff)
             if result.get('mfa_required'): return result, headers
-            if staff:
-                token = result['token']
-            else:
-                token, now = secrets.token_urlsafe(32), int(self.backend.clock())
-                with self.backend.transaction() as db:
-                    db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)', (token_hash(token), result['user_id'], result['device_id'], now, now, now + 2592000, token_hash(agent)))
-                    db.execute("UPDATE devices SET label='Web browser' WHERE id=?", (result['device_id'],))
-            return {'authenticated': True, 'csrf': self.csrf(token)}, headers + [self.cookie(token, staff)]
+            if not staff: return self.customer_session(result, agent, headers)
+            token=result['token']
+            return {'authenticated': True, 'csrf': self.csrf(token)}, headers + [self.cookie(token, True)]
         if not staff and method == 'POST' and action in ('signup', 'confirm-signup', 'resend-signup', 'recovery', 'reset'):
             from .account_lifecycle import AccountLifecycle
             lifecycle = AccountLifecycle(self.backend)
@@ -130,6 +134,15 @@ class Web:
         token = self.token(env, staff)
         actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:500]) if staff else self.account(token, env.get('HTTP_USER_AGENT', '')[:500])
         if method == 'POST': require(hmac.compare_digest(env.get('HTTP_X_CSRF_TOKEN', ''), self.csrf(token)), 'csrf_invalid', 403)
+        if not staff and action == 'google' and method == 'GET':
+            return self.google.status(actor), headers
+        if not staff and action == 'google/link' and method == 'POST':
+            binding=secrets.token_urlsafe(32)
+            value=self.google.start('web', env.get('HTTP_USER_AGENT','')[:500], binding, actor=actor,
+                password=body.get('password'), code=body.get('code'), auth_hash=token_hash(token))
+            return value, headers + [self.google_cookie('binding', binding)]
+        if not staff and action == 'google/unlink' and method == 'POST':
+            return self.google.unlink(actor, body.get('password'), body.get('code')), headers + [self.cookie('', clear=True)]
         if action == 'session' and method == 'GET':
             return ({'staff_id': actor.id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token)}), headers
         if action == 'logout' and method == 'POST':
@@ -144,6 +157,65 @@ class Web:
         if staff: value = self.staff_action(actor, action, method, body, query)
         else: value = self.account_action(actor, action, method, body, query)
         return value, headers
+
+    def google_cookie(self, name, value, clear=False):
+        # Lax is required only for the short-lived cross-site OAuth return binding.
+        # The customer session itself remains HttpOnly Secure SameSite=Strict.
+        return ('Set-Cookie', '__Host-uladim_google_' + name + '=' + value + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + ('0' if clear else '300'))
+
+    def google_cookie_value(self, env, name):
+        cookie=SimpleCookie()
+        try: cookie.load(env.get('HTTP_COOKIE',''))
+        except Exception: return ''
+        item=cookie.get('__Host-uladim_google_' + name)
+        return item.value if item and len(item.value)==43 else ''
+
+    def customer_session(self, result, agent, headers):
+        # Recheck underlying session: a revoked intermediate result cannot create
+        # a new browser session after a password change, deletion or device revoke.
+        actor=self.backend.authenticate(result['token'])
+        token, now=secrets.token_urlsafe(32), int(self.backend.clock())
+        with self.backend.transaction() as db:
+            db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)', (token_hash(token), actor['id'], result['device_id'], now, now, now+2592000, token_hash(agent)))
+            db.execute("UPDATE devices SET label='Web browser' WHERE id=?", (result['device_id'],))
+        return {'authenticated':True, 'csrf':self.csrf(token)}, headers+[self.cookie(token)]
+
+    def google_callback(self, env, headers):
+        query=parse_qs(env.get('QUERY_STRING',''), keep_blank_values=True)
+        binding=self.google_cookie_value(env,'binding')
+        agent=env.get('HTTP_USER_AGENT','')[:500]
+        def single(key):
+            values=query.get(key,[])
+            return values[0] if len(values)==1 else None
+        try:
+            value=self.google.finish(single('state'),'web',agent,binding,
+                authorization_code=single('code'),cancelled=bool(single('error')))
+        except Failure as error:
+            value={'error':error.code}
+        raw, now=secrets.token_urlsafe(32),int(self.backend.clock())
+        with self.backend.transaction() as db:
+            db.execute('DELETE FROM oauth_web_results WHERE expires_at<=?',(now,))
+            db.execute('INSERT INTO oauth_web_results VALUES(?,?,?,?,?)',(token_hash(raw),token_hash(agent),token_hash(binding),self.backend.cipher.encrypt(json.dumps(value).encode()),now+120))
+        # No token, challenge or code in the next URL, HTML or browser history.
+        return b'', headers+[('X-ULADIM-Status','303'),('Location','/app?google=return'), self.google_cookie('result',raw)]
+
+    def google_complete(self, env, headers):
+        raw=self.google_cookie_value(env,'result')
+        binding=self.google_cookie_value(env,'binding')
+        agent=env.get('HTTP_USER_AGENT','')[:500]
+        with self.backend.transaction() as db:
+            row=db.execute('SELECT * FROM oauth_web_results WHERE hash=?',(token_hash(raw),)).fetchone()
+            require(row and row['expires_at']>int(self.backend.clock())
+                and hmac.compare_digest(row['agent_hash'],token_hash(agent))
+                and hmac.compare_digest(row['binding_hash'],token_hash(binding)), 'google_invalid',401)
+            value=json.loads(self.backend.cipher.decrypt(bytes(row['payload'])))
+            db.execute('DELETE FROM oauth_web_results WHERE hash=?',(token_hash(raw),))
+        # Use one clear header to avoid duplicate Set-Cookie collapse in WSGI.
+        headers=headers+[self.google_cookie('result','',True)]
+        if value.get('error'): return value,headers
+        if value.get('mfa_required') or value.get('linked'): return value,headers
+        # customer_session adds a second Set-Cookie; Application must preserve them.
+        return self.customer_session(value,agent,headers)
 
     def staff_action(self, actor, action, method, b, q):
         c = self.control

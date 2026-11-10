@@ -268,3 +268,35 @@ class PostgresSecurityAuditTests(audit_fixtures.SecurityAuditTests):
     def setUp(self):
         PostgresEarlyAccessTests.setUp(self)
         self.prepare_audit()
+
+
+from test_google_identity import GoogleIdentityScenarios
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresGoogleIdentityTests(GoogleIdentityScenarios, unittest.TestCase):
+    drop_schema = PostgresEarlyAccessTests.drop_schema
+    def setUp(self):
+        PostgresEarlyAccessTests.setUp(self)
+        self.prepare_google()
+
+    def test_google_migration_preserves_old_uuid_and_exact_money(self):
+        # This schema belongs only to this disposable test, never to production.
+        self.assertTrue(self.schema.startswith('test_'))
+        session=self.backend.register('retained@example.test','synthetic-retained-password')
+        actor=self.backend.authenticate(session['token'])
+        self.backend.verify(actor,self.mail[actor['email']])
+        actor=self.backend.authenticate(session['token'])
+        wid,rid=str(uuid.uuid4()),str(uuid.uuid4())
+        self.backend.family(actor,{'id':str(uuid.uuid4()),'workspace_id':wid,'action':'workspace.create','kind':'personal','name':'Retained'})
+        self.backend.batch(actor,wid,[{'id':str(uuid.uuid4()),'action':'record.put','record_id':rid,'revision':0,
+            'kind':'account','visibility':'private','audience':[],
+            'data':{'name':'Retained account','currency':'KWD','opening_minor':123456789012345}}])
+        with self.backend.transaction() as db:
+            for name in ('oauth_web_results','oauth_challenges','google_identities','account_credentials'):
+                db.execute('DROP TABLE '+name)
+            db.execute("DELETE FROM schema_migrations WHERE version='011_google_identity.sql'")
+        self.backend.migrate()
+        with self.backend.connect() as db:
+            self.assertEqual(db.execute('SELECT id FROM users WHERE email=?',(actor['email'],)).fetchone()['id'],actor['id'])
+            self.assertEqual(db.execute('SELECT opening_minor FROM accounts WHERE id=?',(rid,)).fetchone()['opening_minor'],123456789012345)
+            self.assertEqual(db.execute("SELECT COUNT(*) AS n FROM schema_migrations WHERE version='011_google_identity.sql'").fetchone()['n'],1)

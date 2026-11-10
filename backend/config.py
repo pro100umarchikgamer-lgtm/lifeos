@@ -21,6 +21,8 @@ class Settings:
     pool_size: int = 4
     site_origin: str = 'https://getuladim.space'
     control_origin: str = 'https://control.getuladim.space'
+    google_client_id: str = ''
+    google_client_secret: str = ''
     registration_mode: str = 'closed'
     registration_allowlist: tuple[str, ...] = ()
 
@@ -40,6 +42,8 @@ class Settings:
             require_https=e.get('REQUIRE_HTTPS','true')=='true', pool_size=int(e.get('DB_POOL_SIZE','4')),
             site_origin=e.get('SITE_ORIGIN','https://getuladim.space'),
             control_origin=e.get('CONTROL_ORIGIN','https://control.getuladim.space'),
+            google_client_id=e.get('GOOGLE_OAUTH_CLIENT_ID',''),
+            google_client_secret=e.get('GOOGLE_OAUTH_CLIENT_SECRET',''),
             registration_mode=e.get('REGISTRATION_MODE','closed'),
             registration_allowlist=tuple(v.strip().casefold() for v in e.get('REGISTRATION_ALLOWLIST','').split(',') if v.strip()))
         from urllib.parse import urlsplit
@@ -48,6 +52,10 @@ class Settings:
             if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment or parsed.netloc!=parsed.hostname:
                 raise ValueError('Web origins must be bare HTTPS hostnames')
         if value.site_origin==value.control_origin:raise ValueError('Control requires a separate origin')
+        if value.google_client_id and not re.fullmatch(r'[a-zA-Z0-9_-]{8,200}\.apps\.googleusercontent\.com', value.google_client_id):
+            raise ValueError('Invalid GOOGLE_OAUTH_CLIENT_ID')
+        if value.google_client_secret and not value.google_client_id:
+            raise ValueError('Google OAuth secret requires client ID')
         if value.registration_mode not in ('closed','open'): raise ValueError('Invalid REGISTRATION_MODE')
         if any(len(v)>254 or not re.fullmatch(r'[^\s@,]+@[^\s@,]+\.[^\s@,]+',v) or '*' in v for v in value.registration_allowlist):
             raise ValueError('REGISTRATION_ALLOWLIST requires exact email addresses')

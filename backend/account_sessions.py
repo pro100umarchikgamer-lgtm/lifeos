@@ -57,6 +57,7 @@ class AccountSessions:
 
     def revoke_all_in(self, db, uid):
         now = max(1, int(self.clock()))
+        db.execute('DELETE FROM oauth_challenges WHERE user_id=?', (uid,))
         db.execute('DELETE FROM login_challenges WHERE user_id=?', (uid,))
         db.execute('DELETE FROM sessions WHERE user_id=?', (uid,))
         db.execute('DELETE FROM control_sessions WHERE staff_id IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
