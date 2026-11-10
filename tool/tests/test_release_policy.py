@@ -4,6 +4,12 @@ from tool.release_policy import permits_signed_build
 
 
 class ReleasePolicyTests(unittest.TestCase):
+    def test_hostinger_release_requires_explicit_manual_dispatch(self):
+        branch = 'refs/heads/feature/uladim-hostinger-launch'
+        self.assertTrue(permits_signed_build(branch, 'workflow_dispatch'))
+        for event in ['push', 'pull_request', 'workflow_run', 'schedule']:
+            self.assertFalse(permits_signed_build(branch, event))
+
     def test_requested_branch_requires_manual_dispatch(self):
         branch = 'refs/heads/feature/lifeos-3-ux-recovery'
         self.assertTrue(permits_signed_build(branch, 'workflow_dispatch'))
