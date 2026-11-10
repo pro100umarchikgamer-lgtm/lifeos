@@ -22,7 +22,10 @@ find "$release/backend/webassets" -type d -exec chgrp uladim {} + -exec chmod 75
 find "$release/backend/webassets" -type f -exec chgrp uladim {} + -exec chmod 640 {} +
 runuser -u uladim -- test -r "$release/backend/webassets/web.js"
 base_image=$(docker inspect lifeos-api-1 --format '{{.Image}}')
-printf 'FROM %s\nCOPY --chown=10001:10001 backend ./backend\nLABEL org.opencontainers.image.revision="%s"\n' "$base_image" "$revision" > "$release/Dockerfile.overlay"
+base_tag="uladim-overlay-base:$revision"
+docker image tag "$base_image" "$base_tag"
+test "$(docker image inspect "$base_tag" --format '{{.Id}}')" = "$base_image"
+printf 'FROM %s\nCOPY --chown=10001:10001 backend ./backend\nLABEL org.opencontainers.image.revision="%s"\n' "$base_tag" "$revision" > "$release/Dockerfile.overlay"
 docker build --network=none --pull=false -f "$release/Dockerfile.overlay" -t "uladim-backend:$revision" "$release"
 python3 - "$revision" "$checkpoint" <<'PY'
 import json, sys
@@ -37,7 +40,7 @@ PY
 cd /opt/uladim/releases/c0a7f33
 compose=(docker compose --env-file /etc/uladim/production.env -f compose.yaml -f "/etc/uladim/backend-$revision.override.json")
 "${compose[@]}" config --quiet
-"${compose[@]}" run --rm --no-deps migrate
+"${compose[@]}" run --rm --no-deps -T migrate </dev/null
 "${compose[@]}" up -d --no-build --pull never api mail
 for attempt in {1..20}; do
     if test "$(docker inspect lifeos-api-1 --format '{{.State.Health.Status}}')" = healthy && test "$(docker inspect lifeos-mail-1 --format '{{.State.Health.Status}}')" = healthy; then break; fi
