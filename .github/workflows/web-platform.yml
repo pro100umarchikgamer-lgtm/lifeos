@@ -3,8 +3,6 @@ on:
   pull_request:
     branches: [feature/uladim-hostinger-launch]
     paths: ['backend/webassets/**', 'backend/web.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
-  push:
-    branches: [work/uladim-web-platform]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,7 +21,7 @@ jobs:
           POSTGRES_PASSWORD: synthetic-web-ci-admin
         ports: ['5432:5432']
         options: >-
-          --health-cmd 'pg_isready -U postgres -d lifeos_test'
+          --health-cmd "pg_isready -U postgres -d lifeos_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       LIFEOS_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@localhost:5432/lifeos_test

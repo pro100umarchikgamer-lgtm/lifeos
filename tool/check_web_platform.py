@@ -107,6 +107,9 @@ def main():
                 for tab,label in [('today','Сегодня'),('calendar','Календарь'),('tasks','Задачи'),('notes','Заметки'),('money','Финансы'),('account','Профиль')]:
                     page.locator('.nav').get_by_role('button',name=label,exact=True).click();expect(page.locator('.nav button[aria-current=page]')).to_have_text(label)
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width,tab)
+                    for control in page.locator('.nav button').all():
+                        box=control.bounding_box();assert box and box['width']>=44 and box['height']>=44,(width,tab,'touch-target')
+                        assert control.locator('span:last-child').evaluate('(s)=>{const r=document.createRange();r.selectNodeContents(s);return r.getClientRects().length===1}'),(width,tab,'nav-label-wrap')
                     page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=True)
                 page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
                 page.get_by_role('button',name='Добавить',exact=True).click()
