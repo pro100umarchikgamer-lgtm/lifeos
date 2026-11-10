@@ -19,9 +19,25 @@ PASSWORD='synthetic-web-platform-password'
 def fixture():
     with tempfile.TemporaryDirectory() as folder:
         mail={}
-        backend=Backend(Path(folder)/'fixture.db',deliver=lambda e,c:mail.update({e:c}))
-        backend.cipher=Fernet(Fernet.generate_key())
-        with backend.connect() as db:db.execute('CREATE TABLE http_limits(key TEXT PRIMARY KEY,count BIGINT NOT NULL,until_at BIGINT NOT NULL)')
+        dsn=os.environ.get('ULADIM_WEB_TEST_DATABASE_URL','')
+        schema=None
+        if dsn:
+            from urllib.parse import urlsplit
+            from backend.postgres import PostgresBackend
+            import psycopg
+            from psycopg import sql
+            if urlsplit(dsn).path!='/lifeos_test':raise RuntimeError('Fixture refuses non-test database')
+            schema='web_'+uuid.uuid4().hex
+            with psycopg.connect(dsn,autocommit=True) as db:db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+            backend=PostgresBackend(dsn,Fernet(Fernet.generate_key()),schema=schema,migrate=True)
+            deliver=backend._deliver
+            def capture(db,email,code,purpose):
+                deliver(db,email,code,purpose);mail[email]=code
+            backend._deliver=capture
+        else:
+            backend=Backend(Path(folder)/'fixture.db',deliver=lambda e,c:mail.update({e:c}))
+            backend.cipher=Fernet(Fernet.generate_key())
+        with backend.connect() as db:db.execute('CREATE TABLE IF NOT EXISTS http_limits(key TEXT PRIMARY KEY,count BIGINT NOT NULL,until_at BIGINT NOT NULL)')
         session=backend.register('web@example.test',PASSWORD);actor=backend.authenticate(session['token'])
         backend.verify(actor,mail[actor['email']]);actor=backend.authenticate(session['token'])
         wid=str(uuid.uuid4());backend.family(actor,{'id':str(uuid.uuid4()),'action':'workspace.create','workspace_id':wid,'kind':'personal','name':'Личное пространство'})
@@ -40,7 +56,11 @@ def fixture():
         server.set_app(Application(backend,replace(settings,site_origin=origin,control_origin='http://control.localhost:'+str(server.server_port),require_https=False)))
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:yield origin,backend,actor,wid
-        finally:server.shutdown();server.server_close();thread.join(5)
+        finally:
+            server.shutdown();server.server_close();thread.join(5)
+            if schema:
+                backend.close()
+                with psycopg.connect(dsn,autocommit=True) as db:db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
 
 def login(page,origin):
     page.goto(origin+'/app');page.get_by_label('Электронная почта',exact=True).fill('web@example.test')
@@ -54,13 +74,13 @@ def main():
         context=browser.new_context(viewport={'width':375,'height':812},timezone_id='Europe/Moscow',reduced_motion='reduce')
         page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
         login(page,origin)
-        page.get_by_role('button',name='Задачи',exact=True).click()
+        page.locator('.nav').get_by_role('button',name='Задачи',exact=True).click()
         page.get_by_label('Поиск задач',exact=True).fill('заказ')
         expect(page.get_by_text('Забрать заказ',exact=True)).to_be_visible()
         expect(page.get_by_text('Подготовить план на неделю',exact=True)).to_have_count(0)
         page.get_by_label('Статус задачи',exact=True).select_option('open')
         expect(page.get_by_text('Забрать заказ',exact=True)).to_have_count(0);checks.append('task_search_and_completion_filter')
-        page.get_by_role('button',name='Календарь',exact=True).click()
+        page.locator('.nav').get_by_role('button',name='Календарь',exact=True).click()
         page.get_by_role('button',name='Добавить',exact=True).click()
         d=page.get_by_role('dialog');d.get_by_label('Название',exact=True).fill('Проверяемое событие')
         d.locator('[name=localStart]').fill('2026-11-12T14:30');d.locator('[name=timezone]').fill('Asia/Tashkent')
@@ -68,7 +88,7 @@ def main():
         events=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='event']
         assert any(r['data']['title']=='Проверяемое событие' and r['data']['schedule']['timezone']=='Asia/Tashkent' for r in events)
         checks.append('event_create_shared_protocol')
-        page.get_by_role('button',name='Заметки',exact=True).click()
+        page.locator('.nav').get_by_role('button',name='Заметки',exact=True).click()
         page.get_by_role('button',name='Редактировать',exact=True).first.click();d=page.get_by_role('dialog')
         d.get_by_label('Текст заметки',exact=True).fill('Длинная заметка\n'+'Текст '*1000)
         d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
@@ -77,23 +97,31 @@ def main():
         d.get_by_role('button',name='Удалить',exact=True).click()
         page.get_by_role('button',name='Отменить',exact=True).click()
         assert not any(r['deleted'] for r in backend.pull(actor,wid,0)['records']);checks.append('note_edit_and_cancel_before_delete')
-        page.get_by_role('button',name='Финансы',exact=True).click()
+        page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
         expect(page.locator('.finance-total')).to_be_visible()
         checks.append('real_finance_overview')
         for theme in ('light','dark'):
             page.evaluate("value=>{state.theme=value;preferences();}",theme)
             for width in (375,768,1024,1440):
                 page.set_viewport_size({'width':width,'height':900})
-                for tab,label in [('today','Сегодня'),('calendar','Календарь'),('money','Финансы')]:
-                    page.get_by_role('button',name=label,exact=True).click();page.wait_for_timeout(120)
+                for tab,label in [('today','Сегодня'),('calendar','Календарь'),('tasks','Задачи'),('notes','Заметки'),('money','Финансы'),('account','Профиль')]:
+                    page.locator('.nav').get_by_role('button',name=label,exact=True).click();expect(page.locator('.nav button[aria-current=page]')).to_have_text(label)
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width,tab)
                     page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=True)
+                page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
+                page.get_by_role('button',name='Добавить',exact=True).click()
+                page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
+                d=page.get_by_role('dialog');expect(d).to_be_visible()
+                d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Проверка экранной формы')
+                assert d.evaluate('(d)=>d.scrollWidth<=d.clientWidth'),(theme,width,'form-overflow')
+                page.screenshot(path=str(OUT/f'transaction-form-{width}-{theme}.png'),full_page=True)
+                d.get_by_role('button',name='Закрыть',exact=True).click()
             checks.append('responsive_'+theme)
         page.set_viewport_size({'width':375,'height':812});page.evaluate("document.documentElement.style.fontSize='24px'")
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');checks.append('text_scale_150_percent')
         assert not errors,errors
         context.close();browser.close()
-    (OUT/'RESULT.json').write_text(json.dumps({'checks':checks,'result':'passed','backend':'actual WSGI / disposable SQLite fixture; production not tested'},ensure_ascii=False,indent=2))
+    (OUT/'RESULT.json').write_text(json.dumps({'checks':checks,'result':'passed','backend':'actual WSGI / disposable PostgreSQL fixture' if os.environ.get('ULADIM_WEB_TEST_DATABASE_URL') else 'actual WSGI / disposable SQLite fixture; production not tested'},ensure_ascii=False,indent=2))
     print('Platform acceptance:',', '.join(checks))
 
 if __name__=='__main__':main()

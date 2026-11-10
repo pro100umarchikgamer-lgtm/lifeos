@@ -14,7 +14,20 @@ concurrency:
 jobs:
   web:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: lifeos_test
+          POSTGRES_PASSWORD: synthetic-web-ci-admin
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd 'pg_isready -U postgres -d lifeos_test'
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      LIFEOS_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@localhost:5432/lifeos_test
+      ULADIM_WEB_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@localhost:5432/lifeos_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,8 +42,18 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r backend/requirements.txt -r tool/web-requirements.txt
       - run: python -m playwright install --with-deps chromium
-      - name: Shared API and static asset security
-        run: python -m unittest backend.tests.test_pwa backend.tests.test_control_web
+      - name: Create isolated non-admin PostgreSQL role
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('postgresql://postgres:synthetic-web-ci-admin@localhost:5432/lifeos_test',autocommit=True) as db:
+              db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-web-ci-only'")
+              db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
+          PY
+      - name: Full backend tests including PostgreSQL
+        run: |
+          mkdir -p web_evidence
+          python -m unittest discover -s backend/tests -v 2>&1 | tee web_evidence/backend-tests.log
       - name: DOM integration with actual server records
         run: python -m tool.check_web_dom
       - name: Product CRUD, both themes and four viewport widths
@@ -53,6 +76,7 @@ jobs:
             web_evidence/
             .lighthouseci/
           if-no-files-found: warn
+          include-hidden-files: true
   codeql:
     runs-on: ubuntu-24.04
     permissions:
