@@ -25,3 +25,48 @@ body[data-design=clarity] .card{box-shadow:none}
 @media(min-width:760px) and (max-width:1099px){body[data-design=clarity] .nav{width:11rem;align-items:stretch}body[data-design=clarity] .nav button{display:flex;flex-direction:row;align-items:center;gap:.625rem;padding:.75rem;min-width:0;text-align:left;overflow-wrap:normal;word-break:normal}body[data-design=clarity] .nav button>span:last-child{white-space:normal;overflow-wrap:break-word}body[data-design=clarity] .nav .symbol{flex:0 0 24px}body[data-design=clarity] main:not(.login){margin-left:11rem;width:auto}}
 
 @media(min-width:760px){body[data-design=clarity] .nav{top:var(--app-header-height,80px)}}
+
+/* Web workspace: content surfaces, responsive rail and keyboard-safe dialogs. */
+body[data-design=clarity]{--bg:#f5f7f5;--card:#fff;--soft:#e4eeea;--accent:#155b4e;--line:#dee6e1;--muted:#5b7069}
+body[data-design=clarity][data-theme=dark]{--bg:#101a18;--card:#182622;--soft:#233d34;--accent:#a2dec6;--line:#344940;--muted:#a7bdb2}
+@media(prefers-color-scheme:dark){body[data-design=clarity]:not([data-theme=light]){--bg:#101a18;--card:#182622;--soft:#233d34;--accent:#a2dec6;--line:#344940;--muted:#a7bdb2}}
+body[data-design=clarity] header{background:var(--card);border-bottom:1px solid var(--line);height:auto;min-height:80px}
+body[data-design=clarity] .brand{font-size:23px;letter-spacing:.06em;flex-shrink:0}body[data-design=clarity] .brand small{font-size:11px;font-weight:500;letter-spacing:0;max-width:240px}
+body[data-design=clarity] main:not(.login){max-width:1600px;padding-top:32px}
+body[data-design=clarity] .intro h1{font-size:clamp(1.8rem,3vw,2.5rem);margin:0;letter-spacing:-.045em}
+body[data-design=clarity] .eyebrow{font-size:.7rem;letter-spacing:.1em;margin-bottom:8px}
+body[data-design=clarity] .card{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:22px;box-shadow:0 2px 8px #163a2903}
+body[data-design=clarity] .today-grid .card{padding:22px}body[data-design=clarity] .grid{gap:20px}
+body[data-design=clarity] .today-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-design=clarity] .today-tasks{grid-row:auto}body[data-design=clarity] .today-notes,body[data-design=clarity] .today-finance.wide{grid-column:auto}
+body[data-design=clarity] .today-finance{background:var(--soft)}
+body[data-design=clarity] .row{padding:13px 0}.row:last-child{border-bottom:0}
+body[data-design=clarity] button,body[data-design=clarity] a.button{transition:background .15s,box-shadow .15s;min-height:44px}
+body[data-design=clarity] button.ghost{border:1px solid var(--line);background:var(--card)}
+body[data-design=clarity] button:hover{box-shadow:inset 0 0 0 99px #768c7b12}
+body[data-design=clarity] button:disabled{cursor:wait}
+.quick-actions{gap:10px;margin:0 0 24px}.quick-actions button{background:var(--card)!important;color:var(--accent)!important;border:1px solid var(--line);font-weight:550}
+.quick-actions button:first-child{background:var(--accent)!important;color:var(--button)!important;border-color:var(--accent)}
+.note-link{display:block!important;text-align:left;background:transparent!important;color:var(--ink)!important;width:100%;border-radius:0!important;border-bottom:1px solid var(--line)!important;padding:14px 0!important;white-space:pre-wrap;font-weight:400!important}
+.note-preview{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;line-height:1.7;font-size:.9375rem}
+.task-filters{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px}.task-filters label{margin-top:0}
+.calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}.calendar-toolbar h2{margin:0;text-align:center;text-transform:capitalize}
+.calendar-toolbar button{min-width:44px;font-size:24px!important}.calendar-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.weekday{text-align:center;font-size:.75rem;color:var(--muted);padding:6px 0;overflow-wrap:normal}
+body[data-design=clarity] .calendar-date{position:relative;display:flex;flex-direction:column;justify-content:flex-start;gap:2px;min-width:0;min-height:64px;padding:8px 2px;border:0;background:transparent;color:var(--ink);font-size:.875rem}
+body[data-design=clarity] .calendar-date[aria-pressed=true]{background:var(--accent);color:var(--button)}.calendar-date.is-today{box-shadow:inset 0 0 0 1px var(--accent)}
+.event-count{width:16px;height:16px;border-radius:50%;font-size:10px;background:var(--soft);color:var(--accent);line-height:16px}
+.event-row h3{font-weight:550}.event-row .small{font-size:.75rem}
+body[data-design=clarity] dialog{width:calc(100% - 32px);max-width:600px;max-height:calc(var(--visible-height,100dvh) - 32px);overscroll-behavior:contain;padding:24px;border-radius:20px}
+body[data-design=clarity] dialog .dialog-head{position:sticky;top:-24px;padding:14px 0;background:var(--card);z-index:3;border-bottom:1px solid var(--line)}
+body[data-design=clarity] dialog form>button[type=submit]{width:100%;position:sticky;bottom:0;z-index:2;box-shadow:0 -8px 12px var(--card)}
+body[data-design=clarity] dialog textarea{min-height:240px;line-height:1.7}
+body[data-design=clarity] button.danger{background:transparent;color:var(--expense);margin-top:12px;border:1px solid var(--line)}
+#alerts{display:flex;flex-direction:column;gap:8px;width:max-content;max-width:calc(100vw - 32px);padding:0!important;background:none!important;border:0!important;box-shadow:none!important;bottom:calc(var(--nav-height,80px) + 16px)}
+.toast{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:12px 16px;box-shadow:0 8px 32px #0002;font-size:.875rem;max-width:560px}.toast button{padding:6px 10px!important;white-space:nowrap}
+body[data-design=clarity] .login{border:1px solid var(--line);background:var(--card);border-radius:24px;margin:6vh auto;padding:36px;min-height:0}
+@media(min-width:760px){body[data-design=clarity] .nav{background:var(--card);width:192px;padding:24px 14px}body[data-design=clarity] main:not(.login){margin-left:192px;width:calc(100% - 192px);padding:32px 28px 80px}body[data-design=clarity] .nav button{flex-direction:row;justify-content:flex-start;text-align:left;gap:12px;padding:12px;font-size:.875rem}#alerts{bottom:24px}}
+@media(min-width:1250px){body[data-design=clarity] .nav{width:224px;padding:28px 18px}body[data-design=clarity] main:not(.login){margin-left:224px;width:calc(100% - 224px);padding:40px 44px 80px}.today-grid{align-items:start}.today-tasks{grid-row:1 / span 2!important}.today-finance{grid-column:2!important}}
+@media(max-width:1099px){.calendar-layout{grid-template-columns:1fr}.calendar-grid{max-width:600px;margin:auto}body[data-design=clarity] .today-grid{grid-template-columns:1fr}.today-finance.wide{grid-column:1!important}}
+@media(max-width:759px){body[data-design=clarity] main:not(.login){padding:24px 16px max(132px,calc(var(--nav-height,88px) + 32px))}body[data-design=clarity] header{padding:calc(12px + env(safe-area-inset-top)) 16px 12px;gap:12px}body[data-design=clarity] .brand{font-size:20px}body[data-design=clarity] .brand small{display:none}.workspace{max-width:52%;font-size:.875rem!important}body[data-design=clarity] .card,body[data-design=clarity] .today-grid .card{padding:18px}body[data-design=clarity] .grid{gap:14px}body[data-design=clarity] .nav{padding:8px 4px max(8px,env(safe-area-inset-bottom))}body[data-design=clarity] .nav button{font-size:.625rem;gap:4px;padding:6px 1px;overflow-wrap:normal}body[data-design=clarity] .nav button>span:last-child{max-width:100%;word-break:normal}.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick-actions button{padding:10px!important}.task-filters{grid-template-columns:1fr}.calendar-grid{gap:1px}body[data-design=clarity] .calendar-date{min-height:52px}.calendar-layout .card{padding:12px}body[data-design=clarity] .login{margin:24px 16px;width:auto;padding:24px}body[data-design=clarity] dialog{padding:20px}body[data-design=clarity] dialog .dialog-head{top:-20px}.finance-analysis .chart-controls{grid-template-columns:1fr 1fr}.finance-total strong{font-size:1.25rem}}
+@media(max-height:500px) and (orientation:landscape){body[data-design=clarity] .nav{padding:2px}.nav .symbol{display:none}.nav button{min-height:44px!important}body[data-design=clarity] dialog{max-height:calc(100dvh - 12px)}}

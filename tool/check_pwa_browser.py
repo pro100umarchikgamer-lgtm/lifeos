@@ -68,7 +68,7 @@ def main():
                     (OUT/'login-failure.json').write_text(json.dumps({'engine':ENGINE,'fixture':'HTTP loopback only; no production credentials','responses':responses,'cookies':[{'name':c['name'],'secure':c['secure'],'httpOnly':c['httpOnly']} for c in context.cookies()],'body':page.locator('body').inner_text(),'page_errors':errors},ensure_ascii=False,indent=2))
                     raise
                 page.screenshot(path=str(OUT/'iphone-today-light.png'),full_page=False)
-                assert page.locator('.nav svg[aria-hidden=true]').count()==5
+                assert page.locator('.nav svg[aria-hidden=true]').count()==6
                 for nav_button in page.locator('.nav button').all():
                     box=nav_button.bounding_box();assert box['width']>=44 and box['height']>=44
                 for w,h,n in [(820,1180,'ipad'),(1440,960,'desktop')]:
