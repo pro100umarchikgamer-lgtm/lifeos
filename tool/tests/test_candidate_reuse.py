@@ -23,3 +23,21 @@ class CandidateReuseTests(unittest.TestCase):
             apk.write_bytes(b'synthetic-untrusted-APK')
             with self.assertRaisesRegex(AssertionError, 'Candidate APK bytes changed'):
                 verify_candidate(apk, {})
+
+class LauncherDialogTests(unittest.TestCase):
+    def dialog(self, title, package='android'):
+        """Build a system-dialog fixture without application data."""
+        import xml.etree.ElementTree as ET
+        return ET.fromstring(f'''<hierarchy><node package="{package}" text="{title}"/><node package="android" resource-id="android:id/aerr_close" enabled="true" bounds="[0,0][100,100]"/></hierarchy>''')
+
+    def test_recognizes_only_emulator_pixel_launcher_anr(self):
+        """An unrelated launcher dialog must not obscure the app under test."""
+        from tool.check_release_upgrade import launcher_anr_close
+        self.assertIsNotNone(launcher_anr_close(self.dialog("Pixel Launcher isn't responding")))
+
+    def test_never_dismisses_uladim_or_other_application_anr(self):
+        """Application freezes remain failures rather than being hidden by tests."""
+        from tool.check_release_upgrade import launcher_anr_close
+        for title in ["ULADIM isn't responding", "Settings isn't responding"]:
+            self.assertIsNone(launcher_anr_close(self.dialog(title)))
+        self.assertIsNone(launcher_anr_close(self.dialog("Pixel Launcher isn't responding", 'app.lifeos.lifeos')))

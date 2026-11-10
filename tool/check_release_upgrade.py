@@ -52,14 +52,30 @@ def bounds(node):
     nums=list(map(int,re.findall(r'\d+',node.get('bounds',''))))
     return nums if len(nums)==4 and nums[2]>nums[0] and nums[3]>nums[1] else None
 
+def launcher_anr_close(root):
+    """Recognize only the CI system Pixel Launcher ANR, never an ULADIM ANR."""
+    nodes=list(root.iter('node'))
+    if not any(n.get('package')=='android' and n.get('text')=="Pixel Launcher isn't responding" for n in nodes):return None
+    return next((n for n in nodes if n.get('package')=='android' and n.get('resource-id')=='android:id/aerr_close' and n.get('enabled')=='true' and bounds(n)),None)
+
 def find(label=None,editable=False,reveal=False):
     root=ET.Element('hierarchy')
     deadline=time.monotonic()+60
     swipes=0
+    launcher_dismissed=False
     while time.monotonic()<deadline:
         try:root=xml()
         except (ET.ParseError,subprocess.SubprocessError):
             time.sleep(.5)
+            continue
+        launcher_close=launcher_anr_close(root)
+        if launcher_close is not None and not launcher_dismissed:
+            OUT.mkdir(exist_ok=True)
+            (OUT/'emulator-launcher-anr.xml').write_bytes(ET.tostring(root))
+            screenshot('emulator-launcher-anr')
+            tap_node(launcher_close)
+            launcher_dismissed=True
+            print('Closed CI Pixel Launcher ANR; ULADIM assertions remain unchanged',flush=True)
             continue
         nodes=[]
         for node in root.iter('node'):
