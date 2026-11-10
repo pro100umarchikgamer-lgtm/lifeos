@@ -59,25 +59,34 @@ uz-Latn, uz-Cyrl; other languages visibly say partial translation and fall back 
 English for new labels. Public/legal pages remain Russian. No claim of complete
 16-language support or professional Uzbek linguistic certification is made.
 
-## Infrastructure/coordination blockers
-- GitHub connected app rejected branch creation with HTTP 403 Resource not accessible
-  by integration. CLI git push has no credentials. Local commit is not a remote commit.
-- No PR exists; CodeRabbit has not run. Need repository Contents write and Pull requests
-  write through an authorized GitHub connection. Do not send credentials in chat.
-- Local Chromium cannot create its singleton socket (Operation not permitted).
-  Shared browser cannot reach executor localhost. Playwright download returned an
-  invalid archive. No screenshots or visual-regression baselines were accepted.
-- `stage1.yml` currently triggers on every push/PR, including web-only changes. It
-  belongs to the parallel release work. Coordinate a paths gate before publishing if
-  Android builds must not run; this branch intentionally did not edit that workflow.
-- Web CI includes a dedicated JS CodeQL job; actual repository availability and SARIF
-  permission need confirmation by a real run. Lighthouse thresholds are configured,
-  not measured. Existing Python/Flutter checks were not replaced.
-- No staging origin or test-account access to production was supplied or created.
-  Production Google OAuth, PostgreSQL round trips and Android device sync remain
-  release gates. Disposable SQLite/WSGI tests prove the application boundary only.
-- Legal notices now describe the actual processing and remaining operator/retention
-  questions. They remain preliminary, not legal approval for a public launch.
+## Infrastructure and current release gates
+- Original Git history is now published unchanged on work/uladim-web-platform;
+  Draft PR #3 targets feature/uladim-hostinger-launch. No force push or merge.
+- The connected GitHub integration still rejects Contents writes; the separately
+  authorized Codespaces credential successfully pushes and creates PRs. Owner
+  identity and integration permissions are different. Codespaces Actions write
+  is also denied, so automatic core runs from this branch could not be cancelled.
+- Existing stage1.yml triggers on every push/PR. This web branch did not alter its
+  signing/release policies. Coordinate paths filtering with the Android owner;
+  do not treat its independent results as the dedicated web workflow result.
+- CI 42906557524 passed all 187 backend tests with isolated PostgreSQL, without
+  skips, plus actual browser product checks and 56 screen/form captures. A later
+  PWA test exposed duplicated note text; that UI defect was fixed. Latest CI
+  results and artifacts, not this earlier run, determine final acceptance.
+- Codespaces PWA, financial browser checks and shell-update lifecycle passed.
+  CodeQL passed. Lighthouse and expanded browser/keyboard-height tests must be
+  verified on the final head. Physical iOS/Android keyboard acceptance remains
+  distinct from viewport-height simulation.
+- A private Codespaces preview now exists; see ULADIM_WEB_VALIDATION.md. It uses
+  the existing WSGI application with disposable synthetic records, not production
+  accounts. No alternative product backend was added.
+- CodeRabbit skips Draft PRs by default. A manual review cancelled because the
+  head changed is not a completed review. Request it again on the stable head.
+- Real Google OAuth and production/Android device synchronization remain release
+  gates coordinated with the Android/backend owner. No production credentials,
+  registration opening or deployment are part of this branch.
+- Legal notices remain preliminary pending operator identity, retention and
+  jurisdiction review; no legal approval for a public launch is claimed.
 
 ## Safe next integration steps
 Apply this branch to a checkout with write access; inspect for concurrent changes.

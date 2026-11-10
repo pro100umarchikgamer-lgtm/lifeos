@@ -29,7 +29,7 @@ contract gaps and results; commit, push and open draft PR without merge/deployme
 - Ruling: user explicitly requested immediate execution; use existing stack and execute
   without a design approval round. No extra product decisions are needed to begin.
 
-## Verification and handoff
+## Initial verification and blocked handoff (superseded below)
 - Domain logic implemented; 11 Vitest checks and existing money checks pass.
 - Event CRUD, task filters, note editing/cancel-delete, finance operation, theme and
   Uzbek verified with actual WSGI in supplemental DOM acceptance.
@@ -41,3 +41,13 @@ contract gaps and results; commit, push and open draft PR without merge/deployme
   unverified. GitHub write permission is missing (403); no remote branch/PR exists.
 - Source, incremental Git bundle and patches are packaged for transfer, without
   merging or production changes. See docs/ULADIM_WEB_CONTRACT_GAPS.md.
+
+
+## Recovery checkpoint — 2026-11-11
+Original commits were recovered in an independent Codespaces checkout and pushed
+unchanged; Draft PR #3 exists. A real CI run passed 187 backend tests including
+PostgreSQL with no skips and captured both themes/four widths. Browser-observed
+note duplication, navigation wrapping, Today grid gaps and stale system-theme
+canvas colors were reproduced and corrected. PWA/import/update checks passed in
+Codespaces. Final expanded web CI, Lighthouse and stable-head CodeRabbit review
+remain acceptance gates; do not infer production readiness from these checkpoints.
