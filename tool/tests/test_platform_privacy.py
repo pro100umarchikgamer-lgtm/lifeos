@@ -31,6 +31,7 @@ class PlatformPrivacyTests(unittest.TestCase):
             self.assertIn('minSdk = 24', gradle.read_text())
 
     def test_minimum_matches_retained_release_for_both_gradle_formats(self):
+        """Reject a stale effective SDK declaration in either Gradle format."""
         source = (ROOT / 'tool/configure_platforms.py').read_text()
         for suffix, declaration, expected in [
             ('.kts', 'minSdk = flutter.minSdkVersion', 'minSdk = 24'),
@@ -50,7 +51,7 @@ class PlatformPrivacyTests(unittest.TestCase):
                 injected = source.replace("ROOT = Path(__file__).resolve().parents[1]", 'ROOT = Path(test_root)')
                 for _ in range(2):
                     exec(compile(injected, 'configure_platforms.py', 'exec'), {'test_root': directory})
-                self.assertIn(expected, gradle.read_text())
+                self.assertIn('android { defaultConfig { ' + expected + ' } }', gradle.read_text())
 
     def test_native_components_permissions_and_desugaring_are_injected_once(self):
         source = (ROOT / 'tool/configure_platforms.py').read_text()

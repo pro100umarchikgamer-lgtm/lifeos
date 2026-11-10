@@ -4,6 +4,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      accept_built_candidate:
+        description: Verify signed APK174001 over APK134001 without rebuilding
+        type: boolean
+        default: false
       upgrade_probe:
         description: Verify retained APK upgrade UI automation without building any APK
         type: boolean
@@ -32,7 +36,7 @@ permissions:
   actions: read
 jobs:
   production_backend:
-    if: inputs.upgrade_probe != true
+    if: inputs.upgrade_probe != true && inputs.accept_built_candidate != true
     uses: ./.github/workflows/backend-production.yml
   focused:
     needs: production_backend
@@ -145,7 +149,7 @@ jobs:
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin --no-daemon
       - name: Enable KVM for encrypted storage integration tests
-        if: steps.validation.outputs.full == 'true'
+        if: steps.validation.outputs.full == 'true' || steps.validation.outputs.build == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -245,7 +249,7 @@ jobs:
           retention-days: 90
 
   upgrade_probe:
-    if: inputs.upgrade_probe == true
+    if: inputs.upgrade_probe == true || inputs.accept_built_candidate == true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -255,9 +259,19 @@ jobs:
       - name: Download and verify retained signed release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tool/check_release_upgrade.py --download
+        run: |
+          if [[ '${{ inputs.accept_built_candidate }}' == 'true' ]]; then
+            python3 tool/check_release_upgrade.py --download --baseline 134001
+          else
+            python3 tool/check_release_upgrade.py --download
+          fi
+      - name: Reuse verified signed APK174001 without compiling
+        if: inputs.accept_built_candidate == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/reuse_candidate_174.py --output "$RUNNER_TEMP/uladim-candidate.apk"
       - name: Reuse exact signed APK134001 for acceptance without rebuilding
-        if: inputs.reuse_signed_apk == true
+        if: inputs.reuse_signed_apk == true && inputs.accept_built_candidate != true
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tool/reuse_signed_apk.py --output "$RUNNER_TEMP/uladim-candidate.apk"
@@ -266,6 +280,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -273,7 +288,13 @@ jobs:
           target: google_apis
           profile: pixel_2
           disable-animations: true
-          script: bash tool/check_release_probe.sh "${{ inputs.reuse_signed_apk }}"
+          disable-linux-hw-accel: false
+          script: |
+            if [[ '${{ inputs.accept_built_candidate }}' == 'true' ]]; then
+              python3 tool/check_release_upgrade.py --baseline 134001 --candidate "$RUNNER_TEMP/uladim-candidate.apk"
+            else
+              bash tool/check_release_probe.sh "${{ inputs.reuse_signed_apk }}"
+            fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

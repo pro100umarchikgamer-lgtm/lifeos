@@ -5,6 +5,7 @@ from tool.release_policy import permits_signed_build
 
 class ReleasePolicyTests(unittest.TestCase):
     def test_android_core_review_branch_only_signs_manual_runs(self):
+        """Allow signing on this explicit branch only for manual dispatch."""
         branch = 'refs/heads/work/uladim-android-core-release'
         self.assertTrue(permits_signed_build(branch, 'workflow_dispatch'))
         for event in ['push', 'pull_request', 'workflow_run']:
