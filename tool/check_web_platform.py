@@ -147,6 +147,7 @@ def main():
                         d.locator('[name=label]').focus()
                         save=d.get_by_role('button',name='Сохранить',exact=True);save.scroll_into_view_if_needed()
                         box=save.bounding_box();assert box and box['y']>=0 and box['y']+box['height']<=420,'keyboard-height form button clipped'
+                        field=d.locator('[name=label]').bounding_box();assert field['y']+field['height']<=box['y'],'short-height submit overlays text field'
                         page.screenshot(path=str(OUT/f'keyboard-height-form-{theme}.png'))
                         page.set_viewport_size({'width':812,'height':375})
                         save.scroll_into_view_if_needed();box=save.bounding_box();assert box and box['y']>=0 and box['y']+box['height']<=375,'landscape form button clipped'
