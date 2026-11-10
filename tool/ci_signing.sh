@@ -43,7 +43,7 @@ android {
 LIFEOS_GRADLE_SIGNING
 [[ "${GITHUB_RUN_ATTEMPT}" -lt 1000 ]]
 version_code=$((GITHUB_RUN_NUMBER * 1000 + GITHUB_RUN_ATTEMPT))
-[[ "$version_code" -gt 112001 && "$version_code" -le 2147483647 ]]
+[[ "$version_code" -gt "${LIFEOS_MIN_VERSION_CODE:-134001}" && "$version_code" -le 2100000000 ]]
 build_args=(--release --build-number "$version_code")
 if [[ -n "${LIFEOS_API_ORIGIN:-}" ]]; then
     python3 tool/validate_api_origin.py
@@ -75,3 +75,26 @@ grep -q "application-label:'ULADIM'" apk-manifest.txt
 printf 'commit=%s\napplicationId=app.lifeos.lifeos\nversionCode=%s\ncertificateSHA256=%s\n' "$GITHUB_SHA" "$version_code" "$apk_cert" > apk-identity.txt
 printf 'displayName=ULADIM\napiOrigin=%s\n' "${LIFEOS_API_ORIGIN:-unconfigured}" >> apk-identity.txt
 cat apk-identity.txt
+
+# Produce the native Flutter bundle with exactly the same identity and version.
+# This runs only in an explicitly requested release build, after mandatory CI.
+flutter build appbundle "${build_args[@]}"
+aab=build/app/outputs/bundle/release/app-release.aab
+jarsigner -verify -verbose -certs "$aab" > aab-signature-check.txt
+grep -q 'jar verified.' aab-signature-check.txt
+keytool -printcert -rfc -jarfile "$aab" > aab-certificate.pem
+python3 - <<'ULADIM_AAB_CERT'
+from pathlib import Path
+import hashlib,re
+from cryptography import x509
+value=Path('aab-certificate.pem').read_bytes()
+blocks=re.findall(rb'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',value,re.S)
+assert len(blocks)==1, 'AAB must have exactly the pinned signer'
+from cryptography.hazmat.primitives.serialization import Encoding
+actual=hashlib.sha256(x509.load_pem_x509_certificate(blocks[0]).public_bytes(Encoding.DER)).hexdigest()
+assert actual==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip(), 'AAB signer mismatch'
+ULADIM_AAB_CERT
+bundletool=$(python3 tool/fetch_bundletool.py)
+java -jar "$bundletool" validate --bundle="$aab"
+java -jar "$bundletool" dump manifest --bundle="$aab" > aab-manifest.xml
+python3 tool/verify_android_bundle.py "$version_code"

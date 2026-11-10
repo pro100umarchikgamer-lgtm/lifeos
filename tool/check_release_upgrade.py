@@ -13,7 +13,23 @@ OUT=Path('upgrade_evidence')
 def run(*args,timeout=30):
     return subprocess.check_output(args,timeout=timeout)
 def adb(*args,timeout=30):return run('adb','-s','emulator-5554',*args,timeout=timeout)
-def previous():
+def previous(baseline=112001):
+    if baseline == 134001:
+        source='6acbde34f499d7c740322687416abc3aa542f9ac'
+        target=Path(os.environ['RUNNER_TEMP'])/'uladim-baseline-134001'
+        target.mkdir(exist_ok=True)
+        subprocess.run(['gh','run','download','38984254821','--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+source,'--dir',str(target)],check=True,timeout=90)
+        original=target/'build/app/outputs/flutter-apk/app-release.apk'
+        assert hashlib.sha256(original.read_bytes()).hexdigest()=='a7f93159a138e464227fa2259d9c54c67063a280708e8dafbd95c27ec3ab8356', 'Retained APK134001 bytes changed'
+        identity=dict(line.split('=',1) for line in (target/'apk-identity.txt').read_text().splitlines())
+        assert identity['versionCode']=='134001' and identity['commit']==source
+        assert identity['applicationId']==APP and identity['certificateSHA256']==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip()
+        path=Path(os.environ['RUNNER_TEMP'])/'uladim-134001.apk'
+        import shutil
+        shutil.copyfile(original,path)
+        return path
+    assert baseline == 112001
+
     source='f8632cdd5cf4dad40f0163a44183016d23121abd'
     target=Path(os.environ['RUNNER_TEMP'])/'uladim-baseline-112001'
     target.mkdir(exist_ok=True)
@@ -120,24 +136,24 @@ def device_timezone(zone):
         actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
     assert actual==zone, f'Emulator timezone mismatch: {actual} != {zone}'
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
-    if args.download:print('Retained signed 112001 verified:',previous());return
+    parser=argparse.ArgumentParser();parser.add_argument('--baseline',type=int,choices=[112001,134001],default=112001);parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
+    if args.download:print('Retained signed baseline verified:',args.baseline,previous(args.baseline));return
     assert args.candidate and args.candidate.is_file()
-    old=Path(os.environ['RUNNER_TEMP'])/'uladim-112001.apk';assert old.is_file()
+    old=Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.baseline}.apk';assert old.is_file()
     device_timezone('Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
     legacy_editor('Task');enter_text(PROBE);tap('Save');tap('Plans');find(PROBE,reveal=True)
-    screenshot('112001-control-task')
+    screenshot(str(args.baseline)+'-control-task')
     for kind,amount in [('Expense','12.50'),('Income','100.00')]:
         tap('Today');legacy_editor(kind);enter_text(amount);tap('Save')
     adb('install','-r',str(args.candidate),timeout=90)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
-    assert version==112001 if args.probe else version>112001
+    assert version==args.baseline if args.probe else version>args.baseline
     if not args.probe:device_timezone('Etc/UTC')
     start();tap('Plans');find(PROBE,reveal=True);screenshot('upgraded-control-task')
     start();tap('Plans');find(PROBE,reveal=True)
-    evidence={'previousVersionCode':112001,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
+    evidence={'previousVersionCode':args.baseline,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
     if not args.probe:
         for theme in ['light','dark']:
             adb('shell','cmd','uimode','night','no' if theme=='light' else 'yes');time.sleep(.7)

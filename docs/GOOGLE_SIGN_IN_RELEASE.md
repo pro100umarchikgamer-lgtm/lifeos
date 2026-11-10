@@ -73,7 +73,10 @@ Deletion also removes Google identity metadata and pending link requests.
 
 ## Required remaining acceptance
 
-1. Configure real OAuth clients and protected VPS values; migrate 011 only after a
+1. Configure real OAuth clients and protected VPS values. The deployment helper
+   rebuilds dependencies when requirements differ and passes Google environment
+   variables through the retained Compose configuration. Never use a code-only
+   overlay without PyJWT. Migrate 011 only after a
    fresh verified backup and checks. Registration remains closed and payments off.
 2. Real browser Google signup/login, cancellation, relogin, email-collision linking,
    unlink and ULADIM MFA. Check production callback log redaction.

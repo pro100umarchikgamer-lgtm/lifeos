@@ -54,6 +54,8 @@ jobs:
         run: PYTHONPATH=. python tool/check_sync_protocol.py --postgres
       - run: docker compose config --quiet
       - run: docker build -f backend/Dockerfile -t lifeos-backend-ci .
+      - name: Verify installed image dependency pins before migration
+        run: docker run --rm --network=none --entrypoint python lifeos-backend-ci -m backend.check_dependencies
       - name: Boot actual Compose API, migration and mail services
         run: |
           set -euo pipefail
@@ -130,6 +132,8 @@ jobs:
         run: python -m tool.check_pwa_browser
       - name: Verify password-first MFA and public registration on disposable accounts
         run: python -m tool.check_registration_browser
+      - name: Verify Google callback, cookies and ULADIM MFA with a synthetic RSA provider
+        run: python -m tool.check_google_browser
       - name: Verify exact finance, local statement import, lost responses and deduplication
         run: |
           node tool/check_money.js
