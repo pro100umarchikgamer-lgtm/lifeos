@@ -127,7 +127,7 @@ def main():
                     page.get_by_role('button',name='Создать личное пространство',exact=True).click()
                     page.get_by_role('dialog').get_by_label('Название',exact=True).fill('First personal space')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
-                    expect(page.locator('.getting-started')).to_be_visible()
+                    expect(page.locator('.quick-actions')).to_be_visible()
                     expect(page.locator('select[name=workspace]')).to_have_count(1)
                     page.get_by_role('button',name='Задача',exact=True).click()
                     page.get_by_label('Название задачи',exact=True).fill('First verified task')

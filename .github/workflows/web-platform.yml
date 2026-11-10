@@ -63,6 +63,7 @@ jobs:
           python -m tool.check_pwa_browser
           python -m tool.check_finance_browser
           python -m tool.check_web_browser
+          python -m tool.check_registration_browser
           python -m tool.check_pwa_update
           python -m tool.check_chart_theme
       - name: Lighthouse on disposable local service
