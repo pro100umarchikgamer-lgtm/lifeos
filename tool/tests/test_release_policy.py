@@ -4,6 +4,12 @@ from tool.release_policy import permits_signed_build
 
 
 class ReleasePolicyTests(unittest.TestCase):
+    def test_android_core_review_branch_only_signs_manual_runs(self):
+        branch = 'refs/heads/work/uladim-android-core-release'
+        self.assertTrue(permits_signed_build(branch, 'workflow_dispatch'))
+        for event in ['push', 'pull_request', 'workflow_run']:
+            self.assertFalse(permits_signed_build(branch, event))
+
     def test_hostinger_release_requires_explicit_manual_dispatch(self):
         branch = 'refs/heads/feature/uladim-hostinger-launch'
         self.assertTrue(permits_signed_build(branch, 'workflow_dispatch'))

@@ -27,7 +27,30 @@ class PlatformPrivacyTests(unittest.TestCase):
             for category in ['cloud-backup', 'device-transfer']:
                 domains = {node.attrib['domain'] for node in rules.findall(category + '/exclude')}
                 self.assertEqual(domains, {'root', 'file', 'database', 'sharedpref', 'external'})
-            self.assertIn('minSdk = 23', gradle.read_text())
+            # Retained signed APK134001 already requires API24 (verified manifest).
+            self.assertIn('minSdk = 24', gradle.read_text())
+
+    def test_minimum_matches_retained_release_for_both_gradle_formats(self):
+        source = (ROOT / 'tool/configure_platforms.py').read_text()
+        for suffix, declaration, expected in [
+            ('.kts', 'minSdk = flutter.minSdkVersion', 'minSdk = 24'),
+            ('.kts', 'minSdk = 23', 'minSdk = 24'),
+            ('.kts', 'minSdk = 24', 'minSdk = 24'),
+            ('', 'minSdkVersion flutter.minSdkVersion', 'minSdkVersion 24'),
+            ('', 'minSdkVersion 23', 'minSdkVersion 24'),
+            ('', 'minSdkVersion 24', 'minSdkVersion 24'),
+        ]:
+            with self.subTest(declaration=declaration), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                manifest = root / 'android/app/src/main/AndroidManifest.xml'
+                manifest.parent.mkdir(parents=True)
+                manifest.write_text('<manifest><application /></manifest>')
+                gradle = root / ('android/app/build.gradle' + suffix)
+                gradle.write_text('android { defaultConfig { ' + declaration + ' } }')
+                injected = source.replace("ROOT = Path(__file__).resolve().parents[1]", 'ROOT = Path(test_root)')
+                for _ in range(2):
+                    exec(compile(injected, 'configure_platforms.py', 'exec'), {'test_root': directory})
+                self.assertIn(expected, gradle.read_text())
 
     def test_native_components_permissions_and_desugaring_are_injected_once(self):
         source = (ROOT / 'tool/configure_platforms.py').read_text()
