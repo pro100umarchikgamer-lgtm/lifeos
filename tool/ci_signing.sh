@@ -85,13 +85,11 @@ grep -q 'jar verified.' aab-signature-check.txt
 keytool -printcert -rfc -jarfile "$aab" > aab-certificate.pem
 python3 - <<'ULADIM_AAB_CERT'
 from pathlib import Path
-import hashlib,re
-from cryptography import x509
+import hashlib,re,ssl
 value=Path('aab-certificate.pem').read_bytes()
 blocks=re.findall(rb'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',value,re.S)
 assert len(blocks)==1, 'AAB must have exactly the pinned signer'
-from cryptography.hazmat.primitives.serialization import Encoding
-actual=hashlib.sha256(x509.load_pem_x509_certificate(blocks[0]).public_bytes(Encoding.DER)).hexdigest()
+actual=hashlib.sha256(ssl.PEM_cert_to_DER_cert(blocks[0].decode('ascii'))).hexdigest()
 assert actual==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip(), 'AAB signer mismatch'
 ULADIM_AAB_CERT
 bundletool=$(python3 tool/fetch_bundletool.py)
