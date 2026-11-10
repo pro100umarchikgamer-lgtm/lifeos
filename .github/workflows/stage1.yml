@@ -293,11 +293,7 @@ jobs:
           disable-animations: true
           disable-linux-hw-accel: false
           script: |
-            if [[ '${{ inputs.accept_built_candidate }}' == 'true' ]]; then
-              python3 tool/check_release_upgrade.py --baseline 134001 --candidate "$RUNNER_TEMP/uladim-candidate.apk"
-            else
-              bash tool/check_release_probe.sh "${{ inputs.reuse_signed_apk }}"
-            fi
+            if [ '${{ inputs.accept_built_candidate }}' = 'true' ]; then python3 tool/check_release_upgrade.py --baseline 134001 --candidate "$RUNNER_TEMP/uladim-candidate.apk"; else bash tool/check_release_probe.sh "${{ inputs.reuse_signed_apk }}"; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
