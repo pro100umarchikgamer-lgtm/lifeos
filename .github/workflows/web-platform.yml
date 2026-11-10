@@ -28,6 +28,8 @@ jobs:
       ULADIM_WEB_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@localhost:5432/lifeos_test
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -69,7 +71,12 @@ jobs:
       - name: Lighthouse on disposable local service
         run: |
           python -m tool.serve_web_fixture > /tmp/uladim-fixture.log 2>&1 &
-          for i in $(seq 1 20); do curl -fsS http://localhost:8765/ > /dev/null && break; sleep 1; done
+          ready=0
+          for _ in $(seq 1 20); do
+            if curl -fsS http://localhost:8765/ > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then cat /tmp/uladim-fixture.log; exit 1; fi
           npx lhci autorun
       - uses: actions/upload-artifact@v4
         if: always()
@@ -87,6 +94,8 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript

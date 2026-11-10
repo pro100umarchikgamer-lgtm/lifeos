@@ -10,7 +10,9 @@ def main():
     OUT.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory() as folder:
         assets=Path(folder)/'webassets';shutil.copytree('backend/webassets',assets)
-        worker=assets/'app/sw.js';source=worker.read_text();old=re.search(r"const CACHE='([^']+)'",source)[1];new=old+'-update-test'
+        worker=assets/'app/sw.js';source=worker.read_text();match=re.search(r"const CACHE='([^']+)'",source)
+        assert match,"Expected sw.js to declare const CACHE='cache-name'"
+        old=match[1];new=old+'-update-test'
         with patch('backend.web.ASSETS',assets),fixture() as (origin,backend,actor,wid),sync_playwright() as p:
             browser=p.chromium.launch();context=browser.new_context();page=context.new_page()
             login(page,origin)

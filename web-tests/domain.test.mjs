@@ -21,6 +21,15 @@ describe('calendar shared schedule contract',()=>{
  });
  it('rejects invalid timezone and malformed dates without hanging',()=>{
   expect(()=>D.occurrences([event('bad')],'2026-01-01','2026-02-01','UTC')).toThrow();
+  expect(()=>D.occurrences([event('2026-01-05T09:00:00','none','Not/AZone')],'2026-01-01','2026-02-01','UTC')).toThrow();
+ });
+});
+describe('server schedule bounds',()=>{
+ it('rejects out-of-contract years and recurrence intervals',()=>{
+  for(const [start,interval] of [['1899-01-01T09:00:00',1],['2201-01-01T09:00:00',1],['2026-01-01T09:00:00',366],['2026-01-01T09:00:00',1.5]]){
+   const e=event(start);e.data.schedule.interval=interval;
+   expect(()=>D.occurrences([e],'2026-01-01','2026-02-01','UTC')).toThrow('invalid_schedule');
+  }
  });
 });
 describe('DST parity with Android',()=>{

@@ -17,7 +17,7 @@
   if(!Number.isFinite(lower)||!Number.isFinite(upper)||upper<=lower)throw new Error('invalid_date');
   for(const record of events){
    const s=record.data.schedule,base=new Date(s.localStart+'Z');
-   if(!Number.isFinite(+base)||!['none','daily','weekly','monthly','yearly'].includes(s.repeat)||!Number.isInteger(s.interval)||s.interval<1)throw new Error('invalid_schedule');
+   if(!Number.isFinite(+base)||!['none','daily','weekly','monthly','yearly'].includes(s.repeat)||!Number.isInteger(s.interval)||s.interval<1||s.interval>365||base.getUTCFullYear()<1900||base.getUTCFullYear()>2200)throw new Error('invalid_schedule');
    const zone=s.timezone==='device'?viewer:s.timezone;
    // Start near the requested view, never materialize years of occurrences.
    const days=Math.floor((lower-base)/dayMs),months=(new Date(lower).getUTCFullYear()-base.getUTCFullYear())*12+new Date(lower).getUTCMonth()-base.getUTCMonth();

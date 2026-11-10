@@ -77,3 +77,25 @@ is denied). These are distinct credential permission sets, not proof of a missin
 owner role or a branch-protection problem. No token was requested from the user.
 CodeRabbit skips Draft PRs by default; manual review is requested only after the
 head stabilizes. A request cancelled because the head changed is not a review.
+
+## Final review follow-up (2026-11-10)
+
+CodeRabbit review 5850147953 completed on dd18b19 with three actionable minor
+findings. Checkout credential persistence, fixture readiness diagnostics and
+schedule year/interval validation were verified and fixed. Added invalid-zone
+coverage and a diagnostic assertion for the PWA cache declaration. The CSS
+!important suggestion is deferred: current quick-action colors use theme
+variables, and removing overrides requires a separate visual change. The
+bot's default docstring percentage is not a repository release policy.
+
+Manual screenshot review then reproduced invisible unselected calendar dates
+(white text on white card). Excluded calendar dates from the generic primary
+button color rule, added actual browser contrast checks at all four widths and
+both themes, and bumped the shell cache. The previous green run
+42908963177 therefore describes dd18b19 only, not acceptance of the final head.
+
+The existing core workflow also exposed a stale `.getting-started` test selector
+after Today changed to quick actions. Updated the first-workspace acceptance
+selector and included that complete existing scenario in dedicated web CI.
+Registration remains closed in production; the test uses an isolated fixture.
+Read final PR checks and their artifacts for the new acceptance result.
