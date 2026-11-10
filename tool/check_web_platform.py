@@ -123,7 +123,16 @@ def main():
                             assert control.locator('span:last-child').evaluate('(s)=>{const r=document.createRange();r.selectNodeContents(s);return r.getClientRects().length===1}'),(width,tab,'nav-label-wrap')
                         if tab=='tasks':
                             page.locator('[name=task-search]').fill('');page.locator('[name=task-status]').select_option('all')
-                        if tab=='calendar':page.locator('[name=calendar-day]').fill('2026-11-12')
+                        if tab=='calendar':
+                            page.locator('[name=calendar-day]').fill('2026-11-12')
+                            contrasts=page.locator('.calendar-date').evaluate_all(r'''dates=>dates.map(d=>{
+                                const style=getComputedStyle(d),card=getComputedStyle(d.closest('.card'));
+                                const rgb=s=>s.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});
+                                const lum=s=>rgb(s).reduce((n,v,i)=>n+v*[.2126,.7152,.0722][i],0);
+                                const fg=lum(style.color),bg=lum(style.backgroundColor==='rgba(0, 0, 0, 0)'?card.backgroundColor:style.backgroundColor);
+                                return (Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05);
+                            })''')
+                            assert contrasts and min(contrasts)>=4.5,(theme,width,'calendar date contrast',min(contrasts))
                         if tab=='account':expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
                         page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=False)
                     page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
