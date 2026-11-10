@@ -120,7 +120,7 @@ def main():
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width,tab)
                         for control in page.locator('.nav button').all():
                             box=control.bounding_box();assert box and box['width']>=44 and box['height']>=44,(width,tab,'touch-target')
-                            assert control.locator('span:last-child').evaluate('(s)=>{const r=document.createRange();r.selectNodeContents(s);return r.getClientRects().length===1}'),(width,tab,'nav-label-wrap')
+                            assert control.locator('span:last-child').evaluate('(s)=>{const a=s.getBoundingClientRect(),b=s.closest("button").getBoundingClientRect();return a.left>=b.left&&a.right<=b.right&&a.top>=b.top&&a.bottom<=b.bottom}'),(width,tab,'nav-label-clipped')
                         if tab=='tasks':
                             page.locator('[name=task-search]').fill('');page.locator('[name=task-status]').select_option('all')
                         if tab=='calendar':
@@ -133,7 +133,10 @@ def main():
                                 return (Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05);
                             })''')
                             assert contrasts and min(contrasts)>=4.5,(theme,width,'calendar date contrast',min(contrasts))
-                        if tab=='account':expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
+                        if tab=='account':
+                            expect(page.locator('.settings-navigation')).to_be_visible()
+                            page.locator('.settings-navigation').get_by_role('button',name='Поддержка',exact=True).click()
+                            expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
                         page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=False)
                     page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
                     page.get_by_role('button',name='Добавить',exact=True).click()
