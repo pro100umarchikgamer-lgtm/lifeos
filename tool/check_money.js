@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict');
+require('../backend/webassets/app/money.js');
+const m=ULADIMMoney;
+assert.equal(m.parse('123','JPY'),123);
+assert.equal(m.parse('1.234','KWD'),1234);
+assert.equal(m.parse('-0.01','RUB',true),-1);
+assert.equal(m.format(-1,'RUB','en'),'-0.01 RUB');
+assert.equal(m.decimal(999999999999999,'KWD'),'999999999999.999');
+assert.equal(m.parse('999999999999.999','KWD'),999999999999999);
+for(const [raw,currency]of [['1.1','JPY'],['1.234','RUB'],['1e3','USD'],['10000000000000','USD'],['1.00','INVALID']])assert.throws(()=>m.parse(raw,currency));
+assert.equal(m.format(1234,'KWD','de'),'1,234 KWD');
+console.log('MONEY_CHECK_PASSED');

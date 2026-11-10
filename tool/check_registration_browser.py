@@ -66,12 +66,12 @@ def main():
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                         page.screenshot(path=str(OUT/(route[1:]+'-login-'+str(width)+'.png')),full_page=True)
                         page.get_by_label('Электронная почта',exact=True).fill(actor['email'])
-                        page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill('incorrect-password')
+                        page.locator('input[name=password]').fill('incorrect-password')
                         with page.expect_response('**/account/api/login') as response:
                             page.get_by_role('button',name='Войти',exact=True).click()
                         assert response.value.status==401
                         expect(page.locator('input[name=code]')).to_have_count(0)
-                        page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
+                        page.locator('input[name=password]').fill(PASSWORD)
                         page.get_by_role('button',name='Войти',exact=True).click()
                         expect(page.locator('input[name=code]')).to_be_visible()
                         expect(page.locator('input[type=password]')).to_have_count(0)
@@ -116,7 +116,7 @@ def main():
                     expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible()
                     expect(page.locator('input[type=password]')).to_be_visible()
                     page.get_by_label('Электронная почта',exact=True).fill(email)
-                    page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
+                    page.locator('input[name=password]').fill(PASSWORD)
                     with page.expect_response('**/account/api/login') as login_response:
                         page.get_by_role('button',name='Войти',exact=True).click()
                     assert login_response.value.status == 200, (route, login_response.value.status, login_response.value.json())
@@ -171,7 +171,7 @@ def main():
                 context=browser.new_context();page=context.new_page();page.goto(staff+'/')
                 expect(page.locator('input[name=code]')).to_have_count(0)
                 page.get_by_label('Электронная почта',exact=True).fill(actor['email'])
-                page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
+                page.locator('input[name=password]').fill(PASSWORD)
                 page.get_by_role('button',name='Войти',exact=True).click()
                 expect(page.locator('input[type=password]')).to_have_count(0)
                 page.locator('input[name=code]').fill(totp(staff_factor['totp_secret'],clock[0]//30))

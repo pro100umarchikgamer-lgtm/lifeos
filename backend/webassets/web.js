@@ -21,7 +21,7 @@ function field(form,name,label,type='text'){const id='field-'+name;const l=el('l
 function form(title,fields,submit,run){const f=el('form',undefined,'panel');f.append(el('h2',title));const inputs={};for(const [name,label,type]of fields)inputs[name]=field(f,name,label,type);const message=el('p');message.setAttribute('role','status');const button=el('button',submit);button.type='submit';f.append(message,button);f.addEventListener('submit',async e=>{e.preventDefault();button.disabled=true;message.textContent='';try{await run(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));message.textContent=tr('account_done');}catch(error){message.className='error';message.textContent=error.message;}finally{button.disabled=false;}});app.append(f);return f;}
 function login(){
  if(staff)controlNavigation=null;document.body.dataset.auth='true';app.classList.add('auth');heading(staff?'ULADIM Control':tr('family_login'));
- const f=form('',[['email',tr('family_email'),'email'],['password',tr('family_password'),'password']],tr('family_login'),async b=>{
+ const f=form('',[['email',tr('family_email'),'email'],['password',tr('web_password'),'password']],tr('family_login'),async b=>{
  let r;try{r=await api('login',b);}finally{f.elements.password.value='';b.password='';}
  if(r.mfa_required){loginMfa(r.challenge);return;}csrf=r.csrf;app.classList.remove('auth');await dashboard();
  });f.elements.email.autocomplete='username';
@@ -132,8 +132,9 @@ function makeControlNavigation(session,container){container.replaceChildren();co
 
 
 async function landing(){
+ const registrationConfig=await api('config');
  heading('Уладим день. Освободим голову.','Задачи, заметки, личные финансы и семейные планы — в одном пространстве. Начните с малого и собирайте свой порядок.');app.classList.add('landing');
- const hero=el('div',undefined,'hero-actions');add(hero,link('Начать бесплатно','/app?action=signup'),link('Войти','/account',true),link('Посмотреть возможности','/docs',true));app.append(hero);
+ const hero=el('div',undefined,'hero-actions');add(hero,link(registrationConfig.registration_open?'Начать бесплатно':'Получить доступ',registrationConfig.registration_open?'/app?action=signup':'/early-access'),link('Войти','/account',true),link('Посмотреть возможности','/docs',true));app.append(hero);if(!registrationConfig.registration_open)app.append(el('p','Сейчас доступ по приглашению. Уже получили его? Создайте аккаунт в веб-приложении.','small'));
  const preview=el('section',undefined,'product-preview');preview.setAttribute('aria-label','Пример интерфейса ULADIM');
  const day=el('div',undefined,'preview-day');add(day,el('span','Пример данных','eyebrow'),el('h2','Сегодня'),el('p','Место для важного. Без лишнего шума.'));
  for(const [time,label]of [['09:00','Подготовить план на неделю'],['12:30','Записать идею для проекта'],['18:00','Обсудить семейные планы']]){const row=el('div',undefined,'row');add(row,el('span',time,'preview-time'),el('span',label));day.append(row);}

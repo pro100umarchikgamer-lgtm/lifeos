@@ -130,6 +130,11 @@ jobs:
         run: python -m tool.check_pwa_browser
       - name: Verify password-first MFA and public registration on disposable accounts
         run: python -m tool.check_registration_browser
+      - name: Verify exact finance, local statement import, lost responses and deduplication
+        run: |
+          node tool/check_money.js
+          python tool/check_statement_build.py
+          python -m tool.check_finance_browser
       - name: Verify opt-in Clarity against the same accounts and API
         run: ULADIM_DESIGN=clarity python -m tool.check_pwa_browser
       - name: Render the three design concepts on phone, tablet and desktop

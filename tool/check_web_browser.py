@@ -67,7 +67,7 @@ def main():
                         page.screenshot(path=str(OUT/(name+'_'+theme+'.png')),full_page=True)
                         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),path
                     page.get_by_label('Электронная почта',exact=True).fill('tester@example.test')
-                    page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
+                    page.locator('input[name=password]').fill(PASSWORD)
                     page.get_by_role('button',name='Войти',exact=True).click()
                     expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
                     page.get_by_role('button',name='Профиль',exact=True).click()
@@ -94,7 +94,7 @@ def main():
                     # for the second theme, never regenerate or weaken the assertion.
                     if theme=='light':
                         page.get_by_label('Электронная почта',exact=True).fill('owner@example.test')
-                        page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
+                        page.locator('input[name=password]').fill(PASSWORD)
                         expect(page.locator('input[name=code]')).to_have_count(0)
                         page.get_by_role('button',name='Войти',exact=True).click()
                         expect(page.get_by_role('heading',name='Двухфакторная защита',exact=True)).to_be_visible()

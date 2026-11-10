@@ -1,6 +1,6 @@
 # Public registration preparation — 9 November 2026
 
-Owner authorization permits opening registration after mandatory acceptance.
+The 10 November final directive requires owner manual acceptance and a fresh final confirmation before opening registration. Earlier conditional authorization must not trigger automatic opening.
 No owner address or bootstrap capability belongs in this public repository.
 Matching an email never assigns staff authority. Owner enrollment still requires
 the private single-use operator grant, verified email, password reauthentication,
@@ -81,7 +81,7 @@ the whole website as translated into 16 languages.
 5. Confirm operator identity/contact/region, launch countries, actual storage
    location, processors/transfer basis and retention (including backups).
    Existing draft privacy/terms pages do not establish legal readiness.
-6. Only then apply the permitted `REGISTRATION_MODE=open` and necessary API
+6. Only after the owner completes manual acceptance and explicitly confirms public launch, apply `REGISTRATION_MODE=open` and necessary API
    routing. The existing staged app/API Caddy configuration keeps Control at
    503 and blocks operational health/metrics routes. Validate actual candidate
    Caddy configuration and HTTPS before acceptance. Do not publish DB ports.

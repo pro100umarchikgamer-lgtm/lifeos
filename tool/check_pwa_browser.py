@@ -59,7 +59,7 @@ def main():
                 expect(page.locator('dialog')).to_have_count(0)
                 checks.append('password_manager_and_otp_hints')
                 page.get_by_label('Электронная почта',exact=True).fill(actor['email'])
-                page.get_by_label('Пароль (минимум 7 символов)',exact=True).fill(PASSWORD)
+                page.locator('input[name=password]').fill(PASSWORD)
                 page.get_by_role('button',name='Войти',exact=True).click()
                 try:
                     expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
@@ -147,7 +147,7 @@ def main():
                 assert await_sw
                 page.wait_for_function('Boolean(navigator.serviceWorker.controller)')
                 cache_urls=page.evaluate('''async()=>{const out=[];for(const k of await caches.keys()){for(const r of await(await caches.open(k)).keys())out.push(new URL(r.url).pathname);}return out;}''')
-                assert cache_urls and all(x.startswith('/app/assets/') for x in cache_urls),cache_urls
+                assert cache_urls and all(x.startswith('/app/assets/') or x=='/assets/design.css' for x in cache_urls),cache_urls
                 assert not any('/api/' in x for x in cache_urls)
                 stored=page.evaluate('Object.keys(localStorage)')
                 assert stored==['uladim-interface'],stored

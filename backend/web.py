@@ -63,7 +63,7 @@ class Web:
             return self.app_asset(path, headers)
         if method == 'GET' and path == '/assets/locales.json':
             return (ASSETS / 'app' / 'locales.json').read_bytes(), headers
-        if method == 'GET' and path in ('/assets/web.js', '/assets/web.css'):
+        if method == 'GET' and path in ('/assets/web.js', '/assets/web.css', '/assets/design.css'):
             headers[0] = ('Content-Type', 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8')
             return (ASSETS / path.rsplit('/', 1)[-1]).read_bytes(), headers
         prefix = '/control/api/' if staff else '/account/api/'
@@ -230,7 +230,7 @@ class Web:
         import mimetypes
         root = ASSETS / 'app'
         relative = 'index.html' if path in ('/app', '/app/') else ('sw.js' if path == '/app/sw.js' else path[len('/app/assets/'):])
-        allowed = {'index.html', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
+        allowed = {'index.html', 'app.js', 'money.js', 'import.js', 'statement-worker.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
         require(relative in allowed and (root / relative).is_file(), 'not_found', 404)
         mime = {'.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.json': 'application/json'}.get(Path(relative).suffix, mimetypes.guess_type(relative)[0] or 'application/octet-stream')
         result = dict(headers)
