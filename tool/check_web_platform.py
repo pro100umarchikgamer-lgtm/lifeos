@@ -4,7 +4,7 @@ No production access. Screenshots are evidence, not automatically accepted basel
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
-import json, os, tempfile, threading, uuid
+import json, os, sys, tempfile, threading, uuid
 from wsgiref.simple_server import make_server
 from cryptography.fernet import Fernet
 from playwright.sync_api import sync_playwright, expect
@@ -71,59 +71,87 @@ def main():
     OUT.mkdir(parents=True,exist_ok=True);checks=[]
     with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
         browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
-        context=browser.new_context(viewport={'width':375,'height':812},timezone_id='Europe/Moscow',reduced_motion='reduce')
+        context=browser.new_context(viewport={'width':375,'height':812},timezone_id='Europe/Moscow',locale='ru-RU',reduced_motion='reduce')
+        context.tracing.start(screenshots=True,snapshots=True,sources=True)
         page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-        login(page,origin)
-        page.locator('.nav').get_by_role('button',name='Задачи',exact=True).click()
-        page.get_by_label('Поиск задач',exact=True).fill('заказ')
-        expect(page.get_by_text('Забрать заказ',exact=True)).to_be_visible()
-        expect(page.get_by_text('Подготовить план на неделю',exact=True)).to_have_count(0)
-        page.get_by_label('Статус задачи',exact=True).select_option('open')
-        expect(page.get_by_text('Забрать заказ',exact=True)).to_have_count(0);checks.append('task_search_and_completion_filter')
-        page.locator('.nav').get_by_role('button',name='Календарь',exact=True).click()
-        page.get_by_role('button',name='Добавить',exact=True).click()
-        d=page.get_by_role('dialog');d.get_by_label('Название',exact=True).fill('Проверяемое событие')
-        d.locator('[name=localStart]').fill('2026-11-12T14:30');d.locator('[name=timezone]').fill('Asia/Tashkent')
-        d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
-        events=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='event']
-        assert any(r['data']['title']=='Проверяемое событие' and r['data']['schedule']['timezone']=='Asia/Tashkent' for r in events)
-        checks.append('event_create_shared_protocol')
-        page.locator('.nav').get_by_role('button',name='Заметки',exact=True).click()
-        page.get_by_role('button',name='Редактировать',exact=True).first.click();d=page.get_by_role('dialog')
-        d.get_by_label('Текст заметки',exact=True).fill('Длинная заметка\n'+'Текст '*1000)
-        d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
-        assert any(r['data'].get('body','').startswith('Длинная заметка') for r in backend.pull(actor,wid,0)['records'])
-        page.get_by_role('button',name='Редактировать',exact=True).first.click();d=page.get_by_role('dialog')
-        d.get_by_role('button',name='Удалить',exact=True).click()
-        page.get_by_role('button',name='Отменить',exact=True).click()
-        assert not any(r['deleted'] for r in backend.pull(actor,wid,0)['records']);checks.append('note_edit_and_cancel_before_delete')
-        page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
-        expect(page.locator('.finance-total')).to_be_visible()
-        checks.append('real_finance_overview')
-        for theme in ('light','dark'):
-            page.evaluate("value=>{state.theme=value;preferences();}",theme)
-            for width in (375,768,1024,1440):
-                page.set_viewport_size({'width':width,'height':900})
-                for tab,label in [('today','Сегодня'),('calendar','Календарь'),('tasks','Задачи'),('notes','Заметки'),('money','Финансы'),('account','Профиль')]:
-                    page.locator('.nav').get_by_role('button',name=label,exact=True).click();expect(page.locator('.nav button[aria-current=page]')).to_have_text(label)
-                    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width,tab)
-                    for control in page.locator('.nav button').all():
-                        box=control.bounding_box();assert box and box['width']>=44 and box['height']>=44,(width,tab,'touch-target')
-                        assert control.locator('span:last-child').evaluate('(s)=>{const r=document.createRange();r.selectNodeContents(s);return r.getClientRects().length===1}'),(width,tab,'nav-label-wrap')
-                    page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=True)
-                page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
-                page.get_by_role('button',name='Добавить',exact=True).click()
-                page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
-                d=page.get_by_role('dialog');expect(d).to_be_visible()
-                d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Проверка экранной формы')
-                assert d.evaluate('(d)=>d.scrollWidth<=d.clientWidth'),(theme,width,'form-overflow')
-                page.screenshot(path=str(OUT/f'transaction-form-{width}-{theme}.png'),full_page=True)
-                d.get_by_role('button',name='Закрыть',exact=True).click()
-            checks.append('responsive_'+theme)
-        page.set_viewport_size({'width':375,'height':812});page.evaluate("document.documentElement.style.fontSize='24px'")
-        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');checks.append('text_scale_150_percent')
-        assert not errors,errors
-        context.close();browser.close()
+        try:
+            login(page,origin)
+            page.locator('.nav').get_by_role('button',name='Задачи',exact=True).click()
+            page.get_by_label('Поиск задач',exact=True).fill('заказ')
+            expect(page.get_by_text('Забрать заказ',exact=True)).to_be_visible()
+            expect(page.get_by_text('Подготовить план на неделю',exact=True)).to_have_count(0)
+            page.get_by_label('Статус задачи',exact=True).select_option('open')
+            expect(page.get_by_text('Забрать заказ',exact=True)).to_have_count(0);checks.append('task_search_and_completion_filter')
+            page.locator('.nav').get_by_role('button',name='Календарь',exact=True).click()
+            page.get_by_role('button',name='Добавить',exact=True).click()
+            d=page.get_by_role('dialog');d.get_by_label('Название',exact=True).fill('Проверяемое событие')
+            d.locator('[name=localStart]').fill('2026-11-12T14:30');d.locator('[name=timezone]').fill('Asia/Tashkent')
+            d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
+            events=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='event']
+            assert any(r['data']['title']=='Проверяемое событие' and r['data']['schedule']['timezone']=='Asia/Tashkent' for r in events)
+            checks.append('event_create_shared_protocol')
+            page.locator('.nav').get_by_role('button',name='Заметки',exact=True).click()
+            page.get_by_role('button',name='Редактировать',exact=True).first.click();d=page.get_by_role('dialog')
+            d.get_by_label('Текст заметки',exact=True).fill('Длинная заметка\n'+'Текст '*1000)
+            d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
+            assert any(r['data'].get('body','').startswith('Длинная заметка') for r in backend.pull(actor,wid,0)['records'])
+            page.get_by_role('button',name='Редактировать',exact=True).first.click();d=page.get_by_role('dialog')
+            d.get_by_role('button',name='Удалить',exact=True).click()
+            page.get_by_role('button',name='Отменить',exact=True).click()
+            assert not any(r['deleted'] for r in backend.pull(actor,wid,0)['records']);checks.append('note_edit_and_cancel_before_delete')
+            page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
+            expect(page.locator('.finance-total')).to_be_visible()
+            account_id=next(r['id'] for r in backend.pull(actor,wid,0)['records'] if r['kind']=='account')
+            page.get_by_role('button',name='Добавить',exact=True).click()
+            page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
+            d=page.get_by_role('dialog');d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Покупка из браузера')
+            d.locator('[name=account]').select_option(account_id);d.locator('[name=date]').fill('2026-11-12')
+            d.get_by_role('button',name='Сохранить',exact=True).click();expect(page.locator('.ledger')).to_contain_text('Покупка из браузера')
+            saved=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='transaction' and r['data']['label']=='Покупка из браузера']
+            assert len(saved)==1 and saved[0]['data']['amount_minor']==12550 and saved[0]['data']['account_id']==account_id
+            assert ''.join(page.locator('.account-balance strong').inner_text().split()).replace(',','.')=='266354.50RUB'
+            checks.append('browser_financial_write_and_exact_account_balance')
+            for theme in ('light','dark'):
+                page.evaluate("value=>{state.theme=value;preferences();}",theme)
+                for width in (375,768,1024,1440):
+                    page.set_viewport_size({'width':width,'height':900})
+                    for tab,label in [('today','Сегодня'),('calendar','Календарь'),('tasks','Задачи'),('notes','Заметки'),('money','Финансы'),('account','Профиль')]:
+                        page.locator('.nav').get_by_role('button',name=label,exact=True).click();expect(page.locator('.nav button[aria-current=page]')).to_have_text(label)
+                        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width,tab)
+                        for control in page.locator('.nav button').all():
+                            box=control.bounding_box();assert box and box['width']>=44 and box['height']>=44,(width,tab,'touch-target')
+                            assert control.locator('span:last-child').evaluate('(s)=>{const r=document.createRange();r.selectNodeContents(s);return r.getClientRects().length===1}'),(width,tab,'nav-label-wrap')
+                        if tab=='tasks':
+                            page.locator('[name=task-search]').fill('');page.locator('[name=task-status]').select_option('all')
+                        if tab=='calendar':page.locator('[name=calendar-day]').fill('2026-11-12')
+                        if tab=='account':expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
+                        page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=False)
+                    page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
+                    page.get_by_role('button',name='Добавить',exact=True).click()
+                    page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
+                    d=page.get_by_role('dialog');expect(d).to_be_visible()
+                    d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Проверка экранной формы')
+                    assert d.evaluate('(d)=>d.scrollWidth<=d.clientWidth'),(theme,width,'form-overflow')
+                    page.screenshot(path=str(OUT/f'transaction-form-{width}-{theme}.png'),full_page=False)
+                    if width==375:
+                        page.set_viewport_size({'width':375,'height':420})
+                        d.locator('[name=label]').focus()
+                        save=d.get_by_role('button',name='Сохранить',exact=True);save.scroll_into_view_if_needed()
+                        box=save.bounding_box();assert box and box['y']>=0 and box['y']+box['height']<=420,'keyboard-height form button clipped'
+                        page.screenshot(path=str(OUT/f'keyboard-height-form-{theme}.png'))
+                        page.set_viewport_size({'width':812,'height':375})
+                        save.scroll_into_view_if_needed();box=save.bounding_box();assert box and box['y']>=0 and box['y']+box['height']<=375,'landscape form button clipped'
+                        page.screenshot(path=str(OUT/f'landscape-form-{theme}.png'))
+                        page.set_viewport_size({'width':width,'height':900})
+                    d.get_by_role('button',name='Закрыть',exact=True).click()
+                checks.append('responsive_'+theme)
+            page.set_viewport_size({'width':375,'height':812});page.evaluate("document.documentElement.style.fontSize='24px'")
+            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');checks.append('text_scale_150_percent')
+            assert not errors,errors
+        finally:
+            if sys.exc_info()[0]:page.screenshot(path=str(OUT/'failure.png'),full_page=True)
+            context.tracing.stop(path=str(OUT/'trace.zip'))
+            context.close();browser.close()
     (OUT/'RESULT.json').write_text(json.dumps({'checks':checks,'result':'passed','backend':'actual WSGI / disposable PostgreSQL fixture' if os.environ.get('ULADIM_WEB_TEST_DATABASE_URL') else 'actual WSGI / disposable SQLite fixture; production not tested'},ensure_ascii=False,indent=2))
     print('Platform acceptance:',', '.join(checks))
 

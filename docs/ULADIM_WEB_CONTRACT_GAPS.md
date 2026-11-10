@@ -21,6 +21,19 @@ interval 1–365 and timezone policy match service.py and calendar_engine.dart.
 All-day events retain civil dates; timed events show viewer-local time and its timezone.
 DST overlap chooses earlier instant; gaps move forward by the actual gap.
 
+## Contract coordination
+
+Canonical existing contract: [PR #2](https://github.com/pro100umarchikgamer-lgtm/lifeos/pull/2),
+head 565927498a7d3fff97536a4652f492c4e1701ce0, document
+`docs/WEB_CLIENT_API_CONTRACT.md`. Compared with this branch: all nine current
+record field sets and browser transport are unchanged. PR #2 documents existing
+operations; it does not implement the missing features below. The web PR is #3.
+
+No new record kind or field is implemented or approved here. Each future change
+needs a versioned contract, migration, old Android compatibility and conflict,
+permissions and arithmetic tests in a separate backend-owned PR. A protocol bump
+must distinguish capability support; the web must not probe unknown writes.
+
 ## Missing contracts — backend/Android owner must coordinate
 These are verified gaps in service.py TABLES/FIELDS and `_record`, not guesses
 about fields the browser should silently submit. No proposed field below is active.
