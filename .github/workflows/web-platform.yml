@@ -49,7 +49,9 @@ jobs:
               db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
           PY
       - name: Full backend tests including PostgreSQL
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p web_evidence
           python -m unittest discover -s backend/tests -v 2>&1 | tee web_evidence/backend-tests.log
       - name: DOM integration with actual server records
