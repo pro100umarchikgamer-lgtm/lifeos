@@ -27,6 +27,7 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     expect(page.get_by_text('Проверка потерянного ответа',exact=True)).to_be_visible()
     assert len([r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='task' and r['data']['title']=='Проверка потерянного ответа'])==1
     checks.append('lost_response_retry_no_duplicate')
+    expect(page.locator('#alerts .toast')).to_have_count(0,timeout=6000)
     for theme in ('light','dark'):
         page.evaluate('v=>{state.theme=v;preferences()}',theme)
         for width in (320,375,390,430,768,1024,1280,1440):
@@ -45,6 +46,13 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
                     page.locator('.settings-navigation').get_by_role('button',name='Оформление',exact=True).click()
                     expect(page.get_by_label('Язык',exact=True)).to_be_visible()
         checks.append(theme+'_responsive_8_widths')
+    page.goto(origin+'/');expect(page.locator('.product-hero')).to_be_visible()
+    for theme in ('light','dark'):
+        page.evaluate('v=>document.body.dataset.theme=v',theme)
+        for width in (375,768,1440):
+            page.set_viewport_size({'width':width,'height':900})
+            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            page.screenshot(path=str(OUT/f'public-{width}-{theme}.png'))
     assert not errors,errors
     (OUT/'results.json').write_text(json.dumps({'checks':checks,'geometry':geometry,'page_errors':errors},ensure_ascii=False,indent=2))
     browser.close()
