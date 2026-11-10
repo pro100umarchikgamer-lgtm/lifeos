@@ -24,8 +24,8 @@ if android.exists():
         gradle = ROOT / ('android/app/build.gradle' + ('.' + extension if extension else ''))
         if gradle.exists():
             text = gradle.read_text()
-            text = re.sub(r'minSdk\s*=\s*flutter.minSdkVersion', 'minSdk = 23', text)
-            text = re.sub(r'minSdkVersion\s+flutter.minSdkVersion', 'minSdkVersion 23', text)
+            text = re.sub(r'minSdk\s*=\s*(?:flutter\.minSdkVersion|[0-9]+)', 'minSdk = 23', text)
+            text = re.sub(r'minSdkVersion\s+(?:flutter\.minSdkVersion|[0-9]+)', 'minSdkVersion 23', text)
             text = re.sub(r'targetSdk\s*=\s*flutter.targetSdkVersion', 'targetSdk = 36', text)
             text = re.sub(r'targetSdkVersion\s+flutter.targetSdkVersion', 'targetSdkVersion 36', text)
             text = re.sub(r'compileSdk\s*=\s*flutter.compileSdkVersion', 'compileSdk = maxOf(36, flutter.compileSdkVersion)', text)
