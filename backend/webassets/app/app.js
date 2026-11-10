@@ -218,7 +218,7 @@ function summaries(container){const currencies=[...new Set([...records('transact
 function balance(a){let result=BigInt(a.data.opening_minor);for(const r of records('transaction').filter(r=>r.data.account_id===a.id))result+=(r.data.kind==='income'?1n:-1n)*BigInt(r.data.amount_minor);for(const r of records('transfer')){if(r.data.from_id===a.id)result-=BigInt(r.data.sent_minor);if(r.data.to_id===a.id)result+=BigInt(r.data.received_minor);}return result;}
 function finance(m){
  title(m,'finances',chooseAdd);const toolbar=E('div',undefined,'finance-toolbar');toolbar.append(button(t('import_file'),importStatement));m.append(toolbar);
- const filters=E('section',undefined,'finance-filters');m.append(filters);
+ const filterPanel=E('details',undefined,'finance-filter-panel');filterPanel.open=matchMedia('(min-width:760px)').matches;filterPanel.append(E('summary',t('search')));const filters=E('section',undefined,'finance-filters');filterPanel.append(filters);m.append(filterPanel);
  const group=(name,label,type='search')=>{const wrap=E('div');filters.append(wrap);return input(wrap,name,label,type,state.financeFilters[name]||'',false);};
  const search=group('finance-search',t('search')),from=group('finance-from',t('web_period_start'),'date'),to=group('finance-to',t('web_period_end'),'date');
  const wrap=E('div');filters.append(wrap);const accountFilter=select(wrap,'finance-account',t('web_accounts'),[['',t('web_all_accounts')],...records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency])],state.financeFilters.account||'');
@@ -236,7 +236,7 @@ function finance(m){
  budgets.append(addButton(t('family_kind_budget'),()=>editRecord('budget')));
  const ledger=card(t('family_kind_transaction'));ledger.classList.add('wide','ledger');grid.append(ledger);
  function draw(){
-  state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};const filtered=rows();summary.replaceChildren(E('h2',t('feature_finance')));
+  state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};const active=Object.values(state.financeFilters).filter(Boolean).length;filterPanel.querySelector('summary').textContent=t('search')+(active?' · '+active:'');const filtered=rows();summary.replaceChildren(E('h2',t('feature_finance')));
   for(const code of currencies){const values=financeTotals(filtered,code),row=E('div',undefined,'finance-total');append(row,E('span',code,'currency-code'),E('div',undefined,'income'),E('div',undefined,'expense'));row.children[1].append(E('span',t('income'),'small'),E('strong',money(values.income,code)));row.children[2].append(E('span',t('expense'),'small'),E('strong',money(values.expense,code)));summary.append(row);}if(!currencies.length)summary.append(E('p',t('empty_money')));summary.append(E('p',t('web_totals'),'small'));
   const values=financeTotals(filtered,currency.value);legend.replaceChildren();if(currency.value){legend.append(E('span',t('income')+' · '+money(values.income,currency.value),'income'),E('span',t('expense')+' · '+money(values.expense,currency.value),'expense'));}
   state.chart=mode.value;preferences();canvas.hidden=mode.value==='compact'||!currency.value;drawChart(canvas,currency.value,filtered);
