@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Рамзҳои барқароркуниро офлайн нигоҳ доред. Ҳар кадом бо парол як бор кор мекунад. Пас аз танзим бо рамзи нави аутентификатор ворид шавед.",
     "account_mfa_disable": "Хомӯш кардани муҳофизати дуомила",
     "account_transfer": "Супоридани моликияти фазои оила",
-    "account_accept_transfer": "Қабули моликияти фазои оила"
+    "account_accept_transfer": "Қабули моликияти фазои оила",
+    "account_google_sign_in": "Бо Google идома диҳед",
+    "account_google_methods": "Усулҳои воридшавӣ",
+    "account_google_connect": "Пайваст кардани Google",
+    "account_google_disconnect": "Ҷудо кардани Google ва баромадан",
+    "account_google_linked": "Google пайваст аст",
+    "account_google_unlinked": "Google пайваст нест",
+    "account_google_password_first": "Аввал тавассути барқарорсозии дастрасӣ бо почта гузарвожа таъин кунед. Баъд метавонед усулҳои воридшавиро идора кунед.",
+    "family_error_google_link_required": "Бо усули мавҷуда ворид шуда, Google-ро дар танзимоти амният пайваст кунед. Ҳисобҳо худкор якҷо намешаванд.",
+    "family_error_google_invalid": "Воридшавӣ бо Google тасдиқ нашуд. Аз нав оғоз кунед.",
+    "family_error_google_unavailable": "Google дастнорас аст. Пайвастшавиро санҷед ё бо гузарвожа ворид шавед.",
+    "family_error_google_unconfigured": "Google дастнорас аст. Пайвастшавиро санҷед ё бо гузарвожа ворид шавед.",
+    "family_error_google_cancelled": "Майдонҳои воридкардаро санҷед.",
+    "family_error_google_already_linked": "Майдонҳои воридкардаро санҷед.",
+    "family_error_google_last_method": "Майдонҳои воридкардаро санҷед.",
+    "family_error_google_no_account": "Google дастнорас аст. Пайвастшавиро санҷед ё бо гузарвожа ворид шавед."
   },
   "plurals": {
     "record_count": {

@@ -1,6 +1,6 @@
 'use strict';
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
-const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',lang:'ru',theme:'system',palette:'forest',chart:'bar',generation:0,busy:false};
+const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',lang:'ru',theme:'system',palette:'forest',chart:'bar',generation:0,busy:false,googleEnabled:false};
 let packs={},alertTimer,navObserver,privateEpoch=0;
 try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
 // Persist only interface preferences. Accounts, spaces, records and tokens stay in memory.
@@ -60,7 +60,19 @@ async function start(){state.session=await call('session');state.csrf=state.sess
 function login(){
  root.replaceChildren();const m=E('main',undefined,'login');const brand=E('a','ULADIM','brand');brand.href='/';append(m,brand,E('h1',t('family_login')));root.append(m);
  form(m,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('web_password'),'password')}),async v=>{let r;try{r=await call('login',{email:v.email.value,password:v.password.value});}finally{v.password.value='';}if(r.mfa_required){mfaStep(r.challenge);return;}state.csrf=r.csrf;await start();},t('family_login'));
+ if(state.googleEnabled)m.append(button(t('account_google_sign_in'),()=>beginGoogle()));
  const actions=E('div',undefined,'actions');append(actions,button(t('family_register'),signup),button(t('family_recovery'),recover));m.append(actions);language(m);
+}
+async function beginGoogle(invitation){
+ const result=await call('google/start',invitation?{invitation}:{});
+ location.assign(result.authorization_url);
+}
+async function googleReturn(){
+ history.replaceState(null,'','/app');
+ const result=await call('google/complete',{});
+ if(result.error)throw {code:result.error};
+ if(result.mfa_required){mfaStep(result.challenge);return;}
+ await start();if(result.linked)toast(t('account_done'));
 }
 function mfaStep(challenge){
  root.replaceChildren();const m=E('main',undefined,'login');append(m,E('a','ULADIM','brand'),E('h1',t('account_mfa')),E('p',t('web_mfa_hint')));root.append(m);
@@ -74,7 +86,7 @@ function shell(){
  const spaces=select(E('div'),'workspace','',state.spaces.map(s=>[s.id,s.name]),state.space);spaces.setAttribute('aria-label',t('family_account'));spaces.className='workspace';spaces.addEventListener('change',async()=>{state.space=spaces.value;state.records=[];state.roster=null;render();try{await readSpace();render();}catch(e){report(e);}});if(state.spaces.length)header.append(spaces);root.append(header);
  if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
  const m=E('main');m.id='content';root.append(m);const nav=E('nav',undefined,'nav');nav.setAttribute('aria-label','ULADIM');
- for(const [key,label]of [['today','today'],['tasks','widget_tasks'],['notes','widget_notes'],['money','finances'],['account','profile']]){const b=button('',()=>{state.tab=key;render();});const symbol=E('span',undefined,'symbol');symbol.append(icon(key));append(b,symbol,E('span',t(label)));if(state.tab===key)b.setAttribute('aria-current','page');nav.append(b);}root.append(nav);navObserver=new ResizeObserver(()=>document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px'));navObserver.observe(nav);return m;
+ for(const [key,label]of [['today','today'],['tasks','widget_tasks'],['notes','widget_notes'],['money','finances'],['account','profile']]){const b=button('',()=>{state.tab=key;render();});const symbol=E('span',undefined,'symbol');symbol.append(icon(key));append(b,symbol,E('span',t(label)));if(state.tab===key)b.setAttribute('aria-current','page');nav.append(b);}root.append(nav);navObserver=new ResizeObserver(()=>{document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');});navObserver.observe(nav);navObserver.observe(header);return m;
 }
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');append(a,E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'),E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
 function render(){if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){title(m,'today');m.append(card(t('welcome_title'),t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')),button(t('family_create'),()=>createSpace('family')),button(t('family_accept'),acceptInvite));return;}
@@ -187,7 +199,7 @@ async function openThread(id){const result=await call('thread?id='+encodeURIComp
 window.addEventListener('online',()=>{if(state.session)refresh().then(render).catch(report);});window.addEventListener('offline',()=>{toast(t('web_online'));});window.addEventListener('pagehide',()=>{clearIdentity();root.replaceChildren();document.querySelector('#alerts').replaceChildren();});window.addEventListener('pageshow',e=>{if(e.persisted)start().catch(error=>{clearIdentity();login();if(error.code!=='unauthorized')toast(errorText(error));});});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.session&&!document.querySelector('dialog'))refresh().then(render).catch(report);});
 setInterval(()=>{if(state.session&&document.visibilityState==='visible'&&!document.querySelector('dialog')&&navigator.onLine)refresh().then(render).catch(report);},30000);
-(async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';applyTheme();try{await start();}catch(error){if(error.code==='unauthorized'){login();if(new URLSearchParams(location.search).get('action')==='signup')await signup();}else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
+(async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';applyTheme();const config=await call('config');state.googleEnabled=Boolean(config.google_enabled);try{if(new URLSearchParams(location.search).get('google')==='return')await googleReturn();else await start();}catch(error){if(error.code==='unauthorized'){login();if(new URLSearchParams(location.search).get('action')==='signup')await signup();}else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
 
 async function signup(){
  const config=await call('config');
@@ -198,13 +210,14 @@ async function signup(){
  form(container,'',f=>({code:input(f,'code',t('family_code'))}),async fields=>{await call('confirm-signup',{email,code:fields.code.value.trim()});fields.code.value='';d.close();login();toast(t('account_done'));},t('family_verify'));
  container.append(button(t('ux3_resend_verification'),async()=>{await call('resend-signup',{email});toast(t('family_verify_hint'));}));
  },t('family_register'));
+ if(config.google_enabled)container.append(button(t('account_google_sign_in'),()=>beginGoogle(container.querySelector('[name=invitation]')?.value)));
  const legal=E('p',undefined,'small');append(legal,anchor(t('account_privacy'),'/privacy'));container.append(legal);
  });
 }
 
 function recover(){const d=dialog(t('family_recovery'),container=>form(container,'',f=>({email:input(f,'email',t('family_email'),'email')}),async v=>{const email=v.email.value;await call('recovery',{email});replaceDialog(container,E('h2',t('family_recovery')),E('p',t('family_recovery_hint')));form(container,'',f=>({code:input(f,'code',t('family_code')),password:input(f,'new-password',t('family_new_password'),'password')}),async fields=>{await call('reset',{email,code:fields.code.value,password:fields.password.value});d.close();login();toast(t('account_done'));});}));}
 async function privacy(){const status=await call('deletion');dialog(t('account_privacy'),d=>{
- d.append(button(t('account_mfa'),customerMfa),button(t('account_devices'),devices));
+ d.append(button(t('account_mfa'),customerMfa),button(t('account_devices'),devices),button(t('account_google_methods'),googleMethods));
  form(d,t('family_password_change'),f=>({old:input(f,'old',t('family_old_password'),'password'),next:input(f,'new',t('family_new_password'),'password')}),async v=>{await call('password',{old_password:v.old.value,new_password:v.next.value});d.close();clearIdentity();login();});
  form(d,t('account_email_change'),f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('email',{email:v.email.value,password:v.password.value});dialog(t('family_verify'),c=>form(c,'',f=>({code:input(f,'code',t('family_code')),password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('confirm-email',{code:v.code.value,password:v.password.value});clearIdentity();login();}));});
  d.append(E('h2',t('account_delete')),E('p',t('account_delete_notice')));
@@ -213,6 +226,19 @@ async function privacy(){const status=await call('deletion');dialog(t('account_p
  else if(status.request?.state==='pending')form(d,t('account_cancel_delete'),f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('cancel-deletion',{password:v.password.value});d.close();await privacy();});
  else form(d,t('account_delete'),f=>({password:input(f,'password',t('family_old_password'),'password'),confirmation:input(f,'confirmation','DELETE')}),async v=>{await call('deletion',{password:v.password.value,confirmation:v.confirmation.value});d.close();await privacy();});
  });}
+async function googleMethods(){
+ const status=await call('google'),mfa=await call('mfa');
+ dialog(t('account_google_methods'),d=>{
+  d.append(E('p',t(status.google_linked?'account_google_linked':'account_google_unlinked')));
+  if(!status.has_password){d.append(E('p',t('account_google_password_first')),button(t('family_recovery'),recover));return;}
+  if(!status.google_linked&&!status.google_web_enabled)return;
+  form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password'),...(mfa.enabled?{code:input(f,'code',t('family_code'))}:{})}),async v=>{
+   let value;try{value=await call(status.google_linked?'google/unlink':'google/link',{password:v.password.value,code:v.code?.value});}finally{v.password.value='';if(v.code)v.code.value='';}
+   if(value.authorization_url){location.assign(value.authorization_url);return;}
+   d.close();clearIdentity();login();
+  },t(status.google_linked?'account_google_disconnect':'account_google_connect'));
+ });
+}
 async function devices(){const result=await call('devices');dialog(t('account_devices'),d=>{for(const device of result.devices){const c=card(device.label);c.append(E('p',new Date(device.last_seen_at*1000).toLocaleString(state.lang)));form(c,t('account_revoke'),f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('devices/revoke',{device_id:device.id,password:v.password.value});d.close();await start();});d.append(c);}});}
 async function customerMfa(){const status=await call('mfa');dialog(t('account_mfa'),d=>{
  if(status.enabled)form(d,t('account_mfa_disable'),f=>({password:input(f,'password',t('family_old_password'),'password'),code:input(f,'code',t('family_code'))}),async v=>{await call('mfa/disable',{password:v.password.value,code:v.code.value});d.close();clearIdentity();login();toast(t('account_done'));});

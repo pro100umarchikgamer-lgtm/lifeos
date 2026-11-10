@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Guarda estos códigos de recuperación sin conexión. Cada uno sirve una vez junto con tu contraseña. Tras configurar la protección, inicia sesión con un código nuevo.",
     "account_mfa_disable": "Desactivar autenticación de dos factores",
     "account_transfer": "Transferir la propiedad familiar",
-    "account_accept_transfer": "Aceptar la propiedad familiar"
+    "account_accept_transfer": "Aceptar la propiedad familiar",
+    "account_google_sign_in": "Continuar con Google",
+    "account_google_methods": "Métodos de acceso",
+    "account_google_connect": "Vincular Google",
+    "account_google_disconnect": "Desvincular Google y salir",
+    "account_google_linked": "Google está vinculado",
+    "account_google_unlinked": "Google no está vinculado",
+    "account_google_password_first": "Primero establece una contraseña mediante la recuperación por correo. Después podrás gestionar los métodos de acceso.",
+    "family_error_google_link_required": "Accede con tu método habitual y vincula Google en los ajustes de seguridad. Las cuentas no se fusionan automáticamente.",
+    "family_error_google_invalid": "No se pudo verificar el acceso con Google. Empieza de nuevo.",
+    "family_error_google_unavailable": "Google no está disponible. Revisa la conexión o usa tu contraseña.",
+    "family_error_google_unconfigured": "Google no está disponible. Revisa la conexión o usa tu contraseña.",
+    "family_error_google_cancelled": "Revisa los campos introducidos.",
+    "family_error_google_already_linked": "Revisa los campos introducidos.",
+    "family_error_google_last_method": "Revisa los campos introducidos.",
+    "family_error_google_no_account": "Google no está disponible. Revisa la conexión o usa tu contraseña."
   },
   "plurals": {
     "record_count": {

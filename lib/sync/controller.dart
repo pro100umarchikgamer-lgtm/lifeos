@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import '../platform/native_bridge.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
@@ -11,12 +13,18 @@ import 'api.dart';
 import 'engine.dart';
 
 class FamilyController extends ChangeNotifier {
-  FamilyController(this.store, {FlutterSecureStorage? secure})
-    : secure =
-          secure ??
-          const FlutterSecureStorage(
-            aOptions: AndroidOptions(encryptedSharedPreferences: true),
-          );
+  FamilyController(this.store,
+      {FlutterSecureStorage? secure,
+      FamilyApi Function(String)? apiFactory,
+      NativeBridge? native})
+      : secure = secure ??
+            const FlutterSecureStorage(
+              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+            ),
+        _apiFactory = apiFactory ?? FamilyApi.new,
+        _native = native ?? NativeBridge();
+  final FamilyApi Function(String) _apiFactory;
+  final NativeBridge _native;
   final SyncStore store;
   final FlutterSecureStorage secure;
   static const uuid = Uuid();
@@ -27,7 +35,8 @@ class FamilyController extends ChangeNotifier {
   List<Json> spaces = [], records = [], pending = [], issues = [];
   String? workspace, error, pendingRegistrationEmail;
   bool busy = false;
-  bool loginMfaRequired = false;
+  bool loginMfaRequired = false, googleAvailable = false;
+  String? _loginChallenge, _loginEndpoint, _loginEmail;
   bool _disposed = false;
   Timer? _retry;
   int _recoveryFailures = 0;
@@ -74,7 +83,7 @@ class FamilyController extends ChangeNotifier {
       final endpoint = saved?['endpoint'] as String? ??
           await secure.read(key: 'lifeos.sync.endpoint');
       if (endpoint == null) return;
-      api = FamilyApi(endpoint);
+      api = _apiFactory(endpoint);
       api!.token = saved?['token'] as String? ??
           await secure.read(key: 'lifeos.sync.token');
       api!.refreshToken = saved?['refresh_token'] as String?;
@@ -112,7 +121,9 @@ class FamilyController extends ChangeNotifier {
     if (_disposed || _retry != null) return;
     final base = _recoveryFailures > 0
         ? math.min(900, 30 * (1 << math.min(_recoveryFailures - 1, 5)))
-        : pending.isNotEmpty ? 15 : 120;
+        : pending.isNotEmpty
+            ? 15
+            : 120;
     final seconds = (base * (0.85 + math.Random().nextDouble() * 0.30)).round();
     _retry = Timer(Duration(seconds: seconds), () async {
       _retry = null;
@@ -160,63 +171,149 @@ class FamilyController extends ChangeNotifier {
     bool register = false,
     String? verificationCode,
     String? mfaCode,
-  }) => run(() async {
-    final candidate = FamilyApi(endpoint);
-    try {
-      if (register && verificationCode == null) {
-        await candidate.request('/v1/auth/signup', body: {'email': email, 'password': password});
-        loginMfaRequired = false;
-        pendingRegistrationEmail = email;
-        candidate.close();
-        return;
-      }
-      final result = await candidate.request(
-        '/v1/auth/${register ? 'signup/confirm' : 'login'}',
-        body: {'email': email, if (register) 'code': verificationCode else 'password': password, if (!register && mfaCode != null) 'code': mfaCode},
-      );
-      if (result['mfa_required'] == true) {
-        loginMfaRequired = true;
-        candidate.close();
-        return;
-      }
-      loginMfaRequired = false;
-      pendingRegistrationEmail = null;
-      candidate.token = result['token'] as String;
-      candidate.refreshToken = result['refresh_token'] as String?;
-      candidate.userId = result['user_id'] as String;
-      candidate.onRotated = (value) => _acceptRotation(candidate, value);
-      await _persistSession(candidate, result);
-      // A failed login cannot overwrite a saved identity or its outbox.
-      await secure.write(
-        key: 'lifeos.sync.endpoint',
-        value: candidate.base.origin,
-      );
-      await secure.write(key: 'lifeos.sync.token', value: candidate.token);
-      await secure.write(
-        key: 'lifeos.sync.user',
-        value: result['user_id'] as String,
-      );
-      await secure.delete(key: 'lifeos.sync.workspace');
-      api?.close();
-      api = candidate;
-      account = {'user_id': result['user_id'], 'verified': result['verified'], 'email': email};
-      workspace = null;
-      roster = null;
-      spaces = [];
-      records = [];
-      pending = [];
-      issues = [];
-      _engine = null;
-      _generation++;
-      if (verified) await _refresh();
-      startRecovery();
-    } catch (_) {
-      if (!identical(api, candidate)) candidate.close();
-      rethrow;
+  }) =>
+      run(() async {
+        final candidate = _apiFactory(endpoint);
+        try {
+          if (register && verificationCode == null) {
+            await candidate.request('/v1/auth/signup',
+                body: {'email': email, 'password': password});
+            loginMfaRequired = false;
+            pendingRegistrationEmail = email;
+            candidate.close();
+            return;
+          }
+          final secondStep =
+              !register && _loginChallenge != null && mfaCode != null;
+          if (secondStep && candidate.base.origin != _loginEndpoint) {
+            cancelLogin();
+            throw const SyncFailure('invalid_credentials');
+          }
+          final result = await candidate.request(
+            register
+                ? '/v1/auth/signup/confirm'
+                : secondStep
+                    ? '/v1/auth/login/finish'
+                    : '/v1/auth/login/start',
+            body: register
+                ? {'email': email, 'code': verificationCode}
+                : secondStep
+                    ? {'challenge': _loginChallenge, 'code': mfaCode}
+                    : {'email': email, 'password': password},
+          );
+          if (result['mfa_required'] == true) {
+            _rememberLogin(candidate, result, email);
+            candidate.close();
+            return;
+          }
+          await _acceptLogin(
+              candidate, result, secondStep ? (_loginEmail ?? email) : email);
+        } catch (_) {
+          if (!identical(api, candidate)) candidate.close();
+          rethrow;
+        }
+      });
+  void cancelLogin() {
+    loginMfaRequired = false;
+    _loginChallenge = null;
+    _loginEndpoint = null;
+    _loginEmail = null;
+  }
+
+  void _rememberLogin(FamilyApi candidate, Json result, String email) {
+    final challenge = result['challenge'];
+    if (challenge is! String || challenge.length != 43) {
+      throw const SyncFailure('invalid_sync_response');
     }
-  });
+    _loginChallenge = challenge;
+    _loginEndpoint = candidate.base.origin;
+    _loginEmail = email;
+    loginMfaRequired = true;
+  }
+
+  Future<void> refreshLoginMethods() async {
+    if (accountOrigin.isEmpty) return;
+    final candidate = _apiFactory(accountOrigin);
+    try {
+      final result = await candidate.request('/v1/auth/google/config');
+      googleAvailable = result['google_enabled'] == true;
+    } catch (_) {
+      googleAvailable = false;
+    } finally {
+      candidate.close();
+      publish();
+    }
+  }
+
+  Future<void> signInGoogle(String endpoint) => run(() async {
+        final candidate = _apiFactory(endpoint);
+        try {
+          cancelLogin();
+          final grant =
+              await candidate.request('/v1/auth/google/start', body: {});
+          final token = await _native.googleSignIn(
+              grant['client_id'] as String, grant['nonce'] as String);
+          final result =
+              await candidate.request('/v1/auth/google/finish', body: {
+            'challenge': grant['challenge'],
+            'id_token': token,
+          });
+          if (result['mfa_required'] == true) {
+            _rememberLogin(candidate, result, '');
+            candidate.close();
+            return;
+          }
+          await _acceptLogin(
+              candidate, result, result['email'] as String? ?? '');
+        } on PlatformException catch (error) {
+          if (error.code != 'google_cancelled') throw SyncFailure(error.code);
+        } finally {
+          if (!identical(api, candidate)) candidate.close();
+        }
+      });
+
+  Future<void> _acceptLogin(
+      FamilyApi candidate, Json result, String email) async {
+    cancelLogin();
+    pendingRegistrationEmail = null;
+    candidate.token = result['token'] as String;
+    candidate.refreshToken = result['refresh_token'] as String?;
+    candidate.userId = result['user_id'] as String;
+    candidate.onRotated = (value) => _acceptRotation(candidate, value);
+    await _persistSession(candidate, result);
+    // A failed login cannot overwrite a saved identity or its outbox.
+    await secure.write(
+      key: 'lifeos.sync.endpoint',
+      value: candidate.base.origin,
+    );
+    await secure.write(key: 'lifeos.sync.token', value: candidate.token);
+    await secure.write(
+      key: 'lifeos.sync.user',
+      value: result['user_id'] as String,
+    );
+    await secure.delete(key: 'lifeos.sync.workspace');
+    api?.close();
+    api = candidate;
+    account = {
+      'user_id': result['user_id'],
+      'verified': result['verified'],
+      'email': email
+    };
+    workspace = null;
+    roster = null;
+    spaces = [];
+    records = [];
+    pending = [];
+    issues = [];
+    _engine = null;
+    _generation++;
+    if (verified) await _refresh();
+    startRecovery();
+  }
+
   Future<void> _acceptRotation(FamilyApi client, Json result) {
-    if (_disposed || !identical(api, client) ||
+    if (_disposed ||
+        !identical(api, client) ||
         account?['user_id'] != result['user_id']) {
       throw const SyncFailure('identity_mismatch');
     }
@@ -224,48 +321,49 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> _persistSession(FamilyApi client, Json result) => secure.write(
-    key: 'lifeos.sync.session',
-    value: jsonEncode({
-      'endpoint': client.base.origin,
-      'user_id': result['user_id'],
-      'token': result['token'],
-      'refresh_token': result['refresh_token'],
-      'device_id': result['device_id'],
-    }),
-  );
+        key: 'lifeos.sync.session',
+        value: jsonEncode({
+          'endpoint': client.base.origin,
+          'user_id': result['user_id'],
+          'token': result['token'],
+          'refresh_token': result['refresh_token'],
+          'device_id': result['device_id'],
+        }),
+      );
 
   Future<void> recover(String endpoint, String email) => run(() async {
-    final candidate = FamilyApi(endpoint);
-    try {
-      await candidate.request('/v1/auth/recovery', body: {'email': email});
-    } finally {
-      candidate.close();
-    }
-  });
+        final candidate = _apiFactory(endpoint);
+        try {
+          await candidate.request('/v1/auth/recovery', body: {'email': email});
+        } finally {
+          candidate.close();
+        }
+      });
   Future<void> resetPassword(
     String endpoint,
     String email,
     String code,
     String password,
-  ) => run(() async {
-    final candidate = FamilyApi(endpoint);
-    try {
-      await candidate.request(
-        '/v1/auth/reset',
-        body: {'email': email, 'code': code, 'password': password},
-      );
-    } finally {
-      candidate.close();
-    }
-  });
+  ) =>
+      run(() async {
+        final candidate = _apiFactory(endpoint);
+        try {
+          await candidate.request(
+            '/v1/auth/reset',
+            body: {'email': email, 'code': code, 'password': password},
+          );
+        } finally {
+          candidate.close();
+        }
+      });
   Future<void> verify(String code) => run(() async {
-    await api!.request('/v1/auth/verify', body: {'code': code});
-    account!['verified'] = true;
-    await _refresh();
-  });
+        await api!.request('/v1/auth/verify', body: {'code': code});
+        account!['verified'] = true;
+        await _refresh();
+      });
   Future<void> resendVerification() => run(() async {
-    await api!.request('/v1/auth/verification/resend', body: {});
-  });
+        await api!.request('/v1/auth/verification/resend', body: {});
+      });
   Future<void> refresh() => run(_refresh);
   Future<void> _refresh() async {
     if (api == null || account == null) return;
@@ -278,7 +376,9 @@ class FamilyController extends ChangeNotifier {
     if (!verified) return;
     spaces = (await api!.request(
       '/v1/spaces',
-    ))['spaces'].map<Json>(object).toList();
+    ))['spaces']
+        .map<Json>(object)
+        .toList();
     await store.saveMetadata(scope, 'spaces', {'spaces': spaces});
     if (workspace != null && !spaces.any((s) => s['id'] == workspace)) {
       await store.forgetAccess(scope, workspace!);
@@ -307,16 +407,16 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> select(String id) => run(() async {
-    if (!spaces.any((s) => s['id'] == id)) {
-      throw const SyncFailure('workspace_forbidden');
-    }
-    workspace = id;
-    _engine = null;
-    roster = await store.metadata(scope, 'roster:$id');
-    await secure.write(key: 'lifeos.sync.workspace', value: id);
-    await reloadLocal();
-    await _refresh();
-  });
+        if (!spaces.any((s) => s['id'] == id)) {
+          throw const SyncFailure('workspace_forbidden');
+        }
+        workspace = id;
+        _engine = null;
+        roster = await store.metadata(scope, 'roster:$id');
+        await secure.write(key: 'lifeos.sync.workspace', value: id);
+        await reloadLocal();
+        await _refresh();
+      });
   Future<void> reloadLocal() async {
     if (workspace == null || account == null) return;
     final version = _generation, s = scope, w = workspace!;
@@ -345,44 +445,44 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> accept(String invitation) => run(() async {
-    await api!.request(
-      '/v1/invitations/accept',
-      body: {'id': uuid.v4(), 'invitation': invitation},
-    );
-    await _refresh();
-  });
+        await api!.request(
+          '/v1/invitations/accept',
+          body: {'id': uuid.v4(), 'invitation': invitation},
+        );
+        await _refresh();
+      });
   Future<void> enqueue(Json operation) => run(() async {
-    if (workspace == null || !verified || roster == null) {
-      throw const SyncFailure('verify_email');
-    }
-    // A second local edit of the same record requires the first acknowledgement.
-    if ([
-      ...pending,
-      ...issues.map((i) => object(i['operation'])),
-    ].any((p) => p['record_id'] == operation['record_id'])) {
-      throw const SyncFailure('record_pending');
-    }
-    await store.enqueue(scope, workspace!, operation);
-    await reloadLocal();
-    await _refresh();
-  });
+        if (workspace == null || !verified || roster == null) {
+          throw const SyncFailure('verify_email');
+        }
+        // A second local edit of the same record requires the first acknowledgement.
+        if ([
+          ...pending,
+          ...issues.map((i) => object(i['operation'])),
+        ].any((p) => p['record_id'] == operation['record_id'])) {
+          throw const SyncFailure('record_pending');
+        }
+        await store.enqueue(scope, workspace!, operation);
+        await reloadLocal();
+        await _refresh();
+      });
   Future<void> resolve(Json issue, bool keepLocal) => run(() async {
-    final op = object(issue['operation']), result = object(issue['result']);
-    Json? replacement;
-    if (keepLocal) {
-      if (result['status'] != 'conflict' || result['server'] == null) {
-        throw const SyncFailure('record_forbidden');
-      }
-      replacement = {
-        ...op,
-        'id': uuid.v4(),
-        'revision': object(result['server'])['revision'],
-      };
-    }
-    await store.resolve(scope, workspace!, op['id'] as String, replacement);
-    await reloadLocal();
-    await _refresh();
-  });
+        final op = object(issue['operation']), result = object(issue['result']);
+        Json? replacement;
+        if (keepLocal) {
+          if (result['status'] != 'conflict' || result['server'] == null) {
+            throw const SyncFailure('record_forbidden');
+          }
+          replacement = {
+            ...op,
+            'id': uuid.v4(),
+            'revision': object(result['server'])['revision'],
+          };
+        }
+        await store.resolve(scope, workspace!, op['id'] as String, replacement);
+        await reloadLocal();
+        await _refresh();
+      });
   Future<void> password(String oldPassword, String newPassword) =>
       run(() async {
         await api!.request(
@@ -392,17 +492,20 @@ class FamilyController extends ChangeNotifier {
         await _clearSession();
       });
   Future<void> signOut() => run(() async {
-    // Always detach locally, even when remote session revocation is offline.
-    try {
-      await api?.request('/v1/auth/logout', body: {});
-    } finally {
-      await _clearSession();
-    }
-  });
+        // Always detach locally, even when remote session revocation is offline.
+        try {
+          await api?.request('/v1/auth/logout', body: {});
+        } finally {
+          await _clearSession();
+        }
+      });
   Future<void> _clearSession() async {
     _generation++;
     pendingRegistrationEmail = null;
-    loginMfaRequired = false;
+    cancelLogin();
+    try {
+      await _native.googleSignOut();
+    } catch (_) {}
     api?.token = null;
     api?.refreshToken = null;
     api?.userId = null;

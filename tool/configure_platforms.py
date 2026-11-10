@@ -65,3 +65,19 @@ if android.exists():
                 dependency = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' if extension else "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'"
                 text += '\ndependencies {\n    ' + dependency + '\n}\n'
             gradle.write_text(text)
+
+# Explicit supported Google Sign-In dependencies. Never select dynamic versions.
+for extension in ['kts', '']:
+    gradle = ROOT / ('android/app/build.gradle' + ('.' + extension if extension else ''))
+    if not gradle.exists():
+        continue
+    text = gradle.read_text()
+    if '// ULADIM Google Credential Manager' not in text:
+        dependencies = ['androidx.credentials:credentials:1.6.0',
+                        'androidx.credentials:credentials-play-services-auth:1.6.0',
+                        'com.google.android.libraries.identity.googleid:googleid:1.2.1']
+        text += '\n// ULADIM Google Credential Manager\ndependencies {\n'
+        for value in dependencies:
+            text += ('    implementation("' + value + '")\n') if extension else ("    implementation '" + value + "'\n")
+        text += '}\n'
+    gradle.write_text(text)

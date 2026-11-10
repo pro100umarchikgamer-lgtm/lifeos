@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Conservez ces codes de récupération hors ligne. Chacun fonctionne une fois avec votre mot de passe. Après la configuration, connectez-vous avec un nouveau code d’authentification.",
     "account_mfa_disable": "Désactiver l’authentification à deux facteurs",
     "account_transfer": "Transférer la propriété de l’espace familial",
-    "account_accept_transfer": "Accepter la propriété de l’espace familial"
+    "account_accept_transfer": "Accepter la propriété de l’espace familial",
+    "account_google_sign_in": "Continuer avec Google",
+    "account_google_methods": "Méthodes de connexion",
+    "account_google_connect": "Associer Google",
+    "account_google_disconnect": "Dissocier Google et se déconnecter",
+    "account_google_linked": "Google est associé",
+    "account_google_unlinked": "Google n’est pas associé",
+    "account_google_password_first": "Définissez d’abord un mot de passe via la récupération par e-mail. Vous pourrez ensuite gérer les méthodes de connexion.",
+    "family_error_google_link_required": "Connectez-vous avec votre méthode actuelle, puis associez Google dans les paramètres de sécurité. Les comptes ne sont pas fusionnés automatiquement.",
+    "family_error_google_invalid": "La connexion Google n’a pas pu être vérifiée. Recommencez.",
+    "family_error_google_unavailable": "Google est indisponible. Vérifiez la connexion ou utilisez votre mot de passe.",
+    "family_error_google_unconfigured": "Google est indisponible. Vérifiez la connexion ou utilisez votre mot de passe.",
+    "family_error_google_cancelled": "Vérifiez les champs saisis.",
+    "family_error_google_already_linked": "Vérifiez les champs saisis.",
+    "family_error_google_last_method": "Vérifiez les champs saisis.",
+    "family_error_google_no_account": "Google est indisponible. Vérifiez la connexion ou utilisez votre mot de passe."
   },
   "plurals": {
     "record_count": {

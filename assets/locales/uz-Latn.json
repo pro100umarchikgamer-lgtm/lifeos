@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Tiklash kodlarini oflayn saqlang. Har biri parol bilan bir marta ishlaydi. Sozlashdan keyin autentifikatorning yangi kodi bilan kiring.",
     "account_mfa_disable": "Ikki bosqichli himoyani o‘chirish",
     "account_transfer": "Oila egaligini topshirish",
-    "account_accept_transfer": "Oila egaligini qabul qilish"
+    "account_accept_transfer": "Oila egaligini qabul qilish",
+    "account_google_sign_in": "Google bilan davom etish",
+    "account_google_methods": "Kirish usullari",
+    "account_google_connect": "Google hisobini ulash",
+    "account_google_disconnect": "Google hisobini uzish va chiqish",
+    "account_google_linked": "Google ulangan",
+    "account_google_unlinked": "Google ulanmagan",
+    "account_google_password_first": "Avval email orqali kirishni tiklab, parol o‘rnating. Keyin kirish usullarini boshqarishingiz mumkin.",
+    "family_error_google_link_required": "Mavjud usul bilan kiring va xavfsizlik sozlamalarida Google hisobini ulang. Hisoblar avtomatik birlashtirilmaydi.",
+    "family_error_google_invalid": "Google orqali kirish tasdiqlanmadi. Qaytadan boshlang.",
+    "family_error_google_unavailable": "Google hozir mavjud emas. Ulanishni tekshiring yoki parol bilan kiring.",
+    "family_error_google_unconfigured": "Google hozir mavjud emas. Ulanishni tekshiring yoki parol bilan kiring.",
+    "family_error_google_cancelled": "Kiritgan maydonlaringizni tekshiring.",
+    "family_error_google_already_linked": "Kiritgan maydonlaringizni tekshiring.",
+    "family_error_google_last_method": "Kiritgan maydonlaringizni tekshiring.",
+    "family_error_google_no_account": "Google hozir mavjud emas. Ulanishni tekshiring yoki parol bilan kiring."
   },
   "plurals": {
     "record_count": {

@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Conserva questi codici di recupero offline. Ognuno funziona una volta insieme alla password. Dopo la configurazione, accedi con un nuovo codice dell’app di autenticazione.",
     "account_mfa_disable": "Disattiva autenticazione a due fattori",
     "account_transfer": "Trasferisci la proprietà della famiglia",
-    "account_accept_transfer": "Accetta la proprietà della famiglia"
+    "account_accept_transfer": "Accetta la proprietà della famiglia",
+    "account_google_sign_in": "Continua con Google",
+    "account_google_methods": "Metodi di accesso",
+    "account_google_connect": "Collega Google",
+    "account_google_disconnect": "Scollega Google ed esci",
+    "account_google_linked": "Google è collegato",
+    "account_google_unlinked": "Google non è collegato",
+    "account_google_password_first": "Imposta prima una password tramite il recupero via email. Poi potrai gestire i metodi di accesso.",
+    "family_error_google_link_required": "Accedi con il metodo esistente e collega Google nelle impostazioni di sicurezza. Gli account non vengono uniti automaticamente.",
+    "family_error_google_invalid": "Impossibile verificare l’accesso con Google. Ricomincia.",
+    "family_error_google_unavailable": "Google non è disponibile. Controlla la connessione o usa la password.",
+    "family_error_google_unconfigured": "Google non è disponibile. Controlla la connessione o usa la password.",
+    "family_error_google_cancelled": "Controlla i campi inseriti.",
+    "family_error_google_already_linked": "Controlla i campi inseriti.",
+    "family_error_google_last_method": "Controlla i campi inseriti.",
+    "family_error_google_no_account": "Google non è disponibile. Controlla la connessione o usa la password."
   },
   "plurals": {
     "record_count": {

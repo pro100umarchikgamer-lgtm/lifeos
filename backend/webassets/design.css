@@ -20,3 +20,8 @@ body[data-design=clarity] dialog{max-height:calc(100dvh - 32px - env(safe-area-i
 body[data-design=clarity] .nav{overflow-y:auto;overscroll-behavior:contain}body[data-design=clarity] label{font-size:.875rem}body[data-design=clarity] .small{font-size:.8125rem}
 
 body[data-design=clarity] .card{box-shadow:none}
+
+/* A tablet rail must never wrap navigation labels character by character. */
+@media(min-width:760px) and (max-width:1099px){body[data-design=clarity] .nav{width:11rem;align-items:stretch}body[data-design=clarity] .nav button{display:flex;flex-direction:row;align-items:center;gap:.625rem;padding:.75rem;min-width:0;text-align:left;overflow-wrap:normal;word-break:normal}body[data-design=clarity] .nav button>span:last-child{white-space:normal;overflow-wrap:break-word}body[data-design=clarity] .nav .symbol{flex:0 0 24px}body[data-design=clarity] main:not(.login){margin-left:11rem;width:auto}}
+
+@media(min-width:760px){body[data-design=clarity] .nav{top:var(--app-header-height,80px)}}

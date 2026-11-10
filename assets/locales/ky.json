@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Калыбына келтирүү коддорун офлайн сактаңыз. Ар бири сырсөз менен бирге бир жолу иштейт. Жөндөөдөн кийин аутентификатордун жаңы коду менен кириңиз.",
     "account_mfa_disable": "Эки факторлуу коргоону өчүрүү",
     "account_transfer": "Үй-бүлө мейкиндигинин ээлигин өткөрүү",
-    "account_accept_transfer": "Үй-бүлө мейкиндигинин ээлигин кабыл алуу"
+    "account_accept_transfer": "Үй-бүлө мейкиндигинин ээлигин кабыл алуу",
+    "account_google_sign_in": "Google менен улантуу",
+    "account_google_methods": "Кирүү ыкмалары",
+    "account_google_connect": "Google туташтыруу",
+    "account_google_disconnect": "Google байланышын үзүп чыгуу",
+    "account_google_linked": "Google туташтырылган",
+    "account_google_unlinked": "Google туташтырылган эмес",
+    "account_google_password_first": "Адегенде почта аркылуу кирүүнү калыбына келтирип, сырсөз коюңуз. Андан кийин кирүү ыкмаларын өзгөртө аласыз.",
+    "family_error_google_link_required": "Учурдагы ыкма менен кирип, коопсуздук жөндөөлөрүнөн Google туташтырыңыз. Аккаунттар автоматтык бириктирилбейт.",
+    "family_error_google_invalid": "Google аркылуу кирүү ырасталган жок. Кайра баштаңыз.",
+    "family_error_google_unavailable": "Google жеткиликсиз. Байланышты текшериңиз же сырсөз менен кириңиз.",
+    "family_error_google_unconfigured": "Google жеткиликсиз. Байланышты текшериңиз же сырсөз менен кириңиз.",
+    "family_error_google_cancelled": "Киргизген талааларыңызды текшериңиз.",
+    "family_error_google_already_linked": "Киргизген талааларыңызды текшериңиз.",
+    "family_error_google_last_method": "Киргизген талааларыңызды текшериңиз.",
+    "family_error_google_no_account": "Google жеткиликсиз. Байланышты текшериңиз же сырсөз менен кириңиз."
   },
   "plurals": {
     "record_count": {

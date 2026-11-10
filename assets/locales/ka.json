@@ -702,7 +702,22 @@
     "account_mfa_recovery": "აღდგენის კოდები ოფლაინ შეინახეთ. თითოეული პაროლთან ერთად ერთხელ მოქმედებს. დაყენების შემდეგ ახალი ავთენტიფიკაციის კოდით შედით.",
     "account_mfa_disable": "ორფაქტორიანი დაცვის გამორთვა",
     "account_transfer": "ოჯახის სივრცის მფლობელობის გადაცემა",
-    "account_accept_transfer": "ოჯახის სივრცის მფლობელობის მიღება"
+    "account_accept_transfer": "ოჯახის სივრცის მფლობელობის მიღება",
+    "account_google_sign_in": "Google-ით გაგრძელება",
+    "account_google_methods": "შესვლის მეთოდები",
+    "account_google_connect": "Google-ის დაკავშირება",
+    "account_google_disconnect": "Google-ის გათიშვა და გამოსვლა",
+    "account_google_linked": "Google დაკავშირებულია",
+    "account_google_unlinked": "Google არ არის დაკავშირებული",
+    "account_google_password_first": "ჯერ ელფოსტით აღდგენის გზით დააყენეთ პაროლი. შემდეგ შეძლებთ შესვლის მეთოდების მართვას.",
+    "family_error_google_link_required": "შედით არსებული მეთოდით და უსაფრთხოების პარამეტრებში დააკავშირეთ Google. ანგარიშები ავტომატურად არ ერთიანდება.",
+    "family_error_google_invalid": "Google-ით შესვლა ვერ დადასტურდა. დაიწყეთ თავიდან.",
+    "family_error_google_unavailable": "Google მიუწვდომელია. შეამოწმეთ კავშირი ან გამოიყენეთ პაროლი.",
+    "family_error_google_unconfigured": "Google მიუწვდომელია. შეამოწმეთ კავშირი ან გამოიყენეთ პაროლი.",
+    "family_error_google_cancelled": "შეამოწმეთ შეყვანილი ველები.",
+    "family_error_google_already_linked": "შეამოწმეთ შეყვანილი ველები.",
+    "family_error_google_last_method": "შეამოწმეთ შეყვანილი ველები.",
+    "family_error_google_no_account": "Google მიუწვდომელია. შეამოწმეთ კავშირი ან გამოიყენეთ პაროლი."
   },
   "plurals": {
     "record_count": {

@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Bewahren Sie diese Wiederherstellungscodes offline auf. Jeder gilt einmal zusammen mit Ihrem Passwort. Melden Sie sich nach der Einrichtung mit einem neuen Authenticator-Code an.",
     "account_mfa_disable": "Zwei-Faktor-Authentifizierung deaktivieren",
     "account_transfer": "Familieninhaberschaft übertragen",
-    "account_accept_transfer": "Familieninhaberschaft übernehmen"
+    "account_accept_transfer": "Familieninhaberschaft übernehmen",
+    "account_google_sign_in": "Mit Google fortfahren",
+    "account_google_methods": "Anmeldemethoden",
+    "account_google_connect": "Google verbinden",
+    "account_google_disconnect": "Google trennen und abmelden",
+    "account_google_linked": "Google ist verbunden",
+    "account_google_unlinked": "Google ist nicht verbunden",
+    "account_google_password_first": "Lege zuerst über die Kontowiederherstellung per E-Mail ein Passwort fest. Danach kannst du Anmeldemethoden verwalten.",
+    "family_error_google_link_required": "Melde dich wie bisher an und verbinde Google in den Sicherheitseinstellungen. Konten werden nicht automatisch zusammengeführt.",
+    "family_error_google_invalid": "Die Google-Anmeldung konnte nicht bestätigt werden. Starte erneut.",
+    "family_error_google_unavailable": "Google ist nicht verfügbar. Prüfe deine Verbindung oder nutze dein Passwort.",
+    "family_error_google_unconfigured": "Google ist nicht verfügbar. Prüfe deine Verbindung oder nutze dein Passwort.",
+    "family_error_google_cancelled": "Prüfen Sie Ihre Eingaben.",
+    "family_error_google_already_linked": "Prüfen Sie Ihre Eingaben.",
+    "family_error_google_last_method": "Prüfen Sie Ihre Eingaben.",
+    "family_error_google_no_account": "Google ist nicht verfügbar. Prüfe deine Verbindung oder nutze dein Passwort."
   },
   "plurals": {
     "record_count": {

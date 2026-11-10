@@ -13,15 +13,20 @@ import org.json.*
 import java.time.ZoneId
 
 class MainActivity : FlutterActivity() {
+    private val googleIdentity by lazy { GoogleIdentityBridge(this) }
     private var documentResult: MethodChannel.Result? = null
     private var backupBytes: ByteArray? = null
     private var launchId: String? = null
+    override fun onDestroy() { googleIdentity.cancel(); super.onDestroy() }
     override fun configureFlutterEngine(engine: FlutterEngine) {
         super.configureFlutterEngine(engine)
         launchId = intent?.data?.lastPathSegment
         MethodChannel(engine.dartExecutor.binaryMessenger, "lifeos/native").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
+                    "googleSignIn" -> googleIdentity.signIn(call.argument<String>("clientId") ?: "", call.argument<String>("nonce") ?: "", result)
+                    "googleSignOut" -> googleIdentity.signOut(result)
+                    "googleCancel" -> { googleIdentity.cancel(); result.success(null) }
                     "wallpaperSeed" -> {
                         val id = if (Build.VERSION.SDK_INT >= 31) resources.getIdentifier("system_accent1_600", "color", "android") else 0
                         result.success(if (id != 0) resources.getColor(id, theme).toLong() and 0xffffffffL else null)

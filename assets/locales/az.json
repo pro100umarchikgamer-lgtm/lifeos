@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Bərpa kodlarını oflayn saxlayın. Hər biri parolla birlikdə bir dəfə işləyir. Quraşdırmadan sonra autentifikatorun yeni kodu ilə daxil olun.",
     "account_mfa_disable": "İki mərhələli qorumanı söndür",
     "account_transfer": "Ailə sahəsinin sahibliyini ötür",
-    "account_accept_transfer": "Ailə sahəsinin sahibliyini qəbul et"
+    "account_accept_transfer": "Ailə sahəsinin sahibliyini qəbul et",
+    "account_google_sign_in": "Google ilə davam et",
+    "account_google_methods": "Giriş üsulları",
+    "account_google_connect": "Google hesabını bağla",
+    "account_google_disconnect": "Google bağlantısını kəs və çıx",
+    "account_google_linked": "Google bağlıdır",
+    "account_google_unlinked": "Google bağlı deyil",
+    "account_google_password_first": "Əvvəlcə e-poçt vasitəsilə hesabın bərpası ilə şifrə təyin edin. Sonra giriş üsullarını idarə edə bilərsiniz.",
+    "family_error_google_link_required": "Mövcud üsulla daxil olun və təhlükəsizlik ayarlarında Google hesabını bağlayın. Hesablar avtomatik birləşdirilmir.",
+    "family_error_google_invalid": "Google girişi təsdiqlənmədi. Yenidən başlayın.",
+    "family_error_google_unavailable": "Google əlçatan deyil. Bağlantını yoxlayın və ya şifrə ilə daxil olun.",
+    "family_error_google_unconfigured": "Google əlçatan deyil. Bağlantını yoxlayın və ya şifrə ilə daxil olun.",
+    "family_error_google_cancelled": "Daxil etdiyiniz xanaları yoxlayın.",
+    "family_error_google_already_linked": "Daxil etdiyiniz xanaları yoxlayın.",
+    "family_error_google_last_method": "Daxil etdiyiniz xanaları yoxlayın.",
+    "family_error_google_no_account": "Google əlçatan deyil. Bağlantını yoxlayın və ya şifrə ilə daxil olun."
   },
   "plurals": {
     "record_count": {

@@ -65,6 +65,7 @@ class _FamilyPageState extends State<FamilyPage> {
   @override
   void initState() {
     super.initState();
+    c.refreshLoginMethods();
   }
 
   @override
@@ -105,8 +106,8 @@ class _FamilyPageState extends State<FamilyPage> {
   }
 
   Future<void> command(String action, Json values) => c.run(() async {
-    await c.family(action, values);
-  });
+        await c.family(action, values);
+      });
   Future<void> invite() async {
     final mail = await ask(t('family_invite_email'));
     if (mail == null || mail.isEmpty || !mounted) return;
@@ -128,9 +129,8 @@ class _FamilyPageState extends State<FamilyPage> {
     if (choice == null || !mounted) return;
     role = choice;
     if (role == 'child') {
-      final profiles = (c.roster?['profiles'] as List? ?? [])
-          .map(object)
-          .toList();
+      final profiles =
+          (c.roster?['profiles'] as List? ?? []).map(object).toList();
       profile = await showDialog<String>(
         context: context,
         builder: (ctx) => SimpleDialog(
@@ -318,500 +318,571 @@ class _FamilyPageState extends State<FamilyPage> {
   }
 
   Widget button(String label, VoidCallback action, {IconData? icon}) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: OutlinedButton.icon(
-      onPressed: c.busy ? null : action,
-      icon: Icon(icon ?? Icons.chevron_right),
-      label: Text(t(label)),
-    ),
-  );
+        padding: const EdgeInsets.only(bottom: 8),
+        child: OutlinedButton.icon(
+          onPressed: c.busy ? null : action,
+          icon: Icon(icon ?? Icons.chevron_right),
+          label: Text(t(label)),
+        ),
+      );
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: c,
-    builder: (context, _) => Scaffold(
-      appBar: AppBar(
-        toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 28
-            ? 96
-            : null,
-        title: Text(t('family_account'), maxLines: 2),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.symmetric(
-            horizontal: MediaQuery.sizeOf(context).width > 720
-                ? (MediaQuery.sizeOf(context).width - 640) / 2
-                : 20,
-            vertical: 20,
+        listenable: c,
+        builder: (context, _) => Scaffold(
+          appBar: AppBar(
+            toolbarHeight:
+                MediaQuery.textScalerOf(context).scale(20) > 28 ? 96 : null,
+            title: Text(t('family_account'), maxLines: 2),
           ),
-          children: [
-            if (c.busy) const LinearProgressIndicator(),
-            if (c.error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  t('family_error_${c.error}'),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+          body: SafeArea(
+            child: ListView(
+              padding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.sizeOf(context).width > 720
+                    ? (MediaQuery.sizeOf(context).width - 640) / 2
+                    : 20,
+                vertical: 20,
               ),
-            if (c.account == null) ...[
-              LifeCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              children: [
+                if (c.busy) const LinearProgressIndicator(),
+                if (c.error != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      t('family_error_${c.error}'),
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                if (c.account == null) ...[
+                  LifeCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.shield_outlined),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            t('ux3_account_title'),
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.shield_outlined),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                t('ux3_account_title'),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        Text(t('ux3_account_body')),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(t('ux3_account_body')),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (c.accountOrigin.isEmpty)
-                LifeCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        t('ux3_cloud_unavailable'),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(t('ux3_cloud_unavailable_body')),
-                    ],
                   ),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                t('family_optional'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => Navigator.maybePop(context),
-                icon: const Icon(Icons.phone_android),
-                label: Text(t('ux3_continue_local')),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: Text(t('family_login')),
-                      selected: !register,
-                      onSelected: c.busy
-                          ? null
-                          : (_) => setState(() => register = false),
-                    ),
-                    ChoiceChip(
-                      label: Text(t('family_register')),
-                      selected: register,
-                      onSelected: c.busy
-                          ? null
-                          : (_) => setState(() => register = true),
-                    ),
-                  ],
-                ),
-              ),
-              Text(t('family_email')),
-              const SizedBox(height: 6),
-              TextField(
-                controller: email,
-                onChanged: (_) => setState(() {}),
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.email],
-                textInputAction: TextInputAction.next,
-                autocorrect: false,
-                decoration: const InputDecoration(),
-              ),
-              if (!(register && c.pendingRegistrationEmail == email.text.trim())) ...[
-              const SizedBox(height: 12),
-              Text(t('family_password')),
-              const SizedBox(height: 6),
-              TextField(
-                controller: password,
-                obscureText: !showPassword,
-                autocorrect: false,
-                enableSuggestions: false,
-                autofillHints: [
-                  register ? AutofillHints.newPassword : AutofillHints.password,
-                ],
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    tooltip: t(
-                      showPassword ? 'ux3_hide_password' : 'ux3_show_password',
-                    ),
-                    onPressed: () =>
-                        setState(() => showPassword = !showPassword),
-                    icon: Icon(
-                      showPassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
-                  ),
-                ),
-              ),
-              if (register) ...[
-                const SizedBox(height: 12),
-                Text(t('repeat_password')),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: passwordAgain,
-                  obscureText: true,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  decoration: const InputDecoration(),
-                ),
-              ],
-              ],
-              if (formError != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(t(formError!)),
-                ),
-              ExpansionTile(
-                title: Text(t('family_recovery')),
-                children: [
-                  Text(t('family_recovery_hint')),
-                  TextField(
-                    controller: code,
-                    decoration: InputDecoration(labelText: t('family_code')),
-                  ),
-                  TextButton(
-                    onPressed: c.busy || c.accountOrigin.isEmpty
-                        ? null
-                        : () => c.recover(c.accountOrigin, email.text.trim()),
-                    child: Text(t('family_recovery_send')),
-                  ),
-                  TextButton(
-                    onPressed: c.busy || c.accountOrigin.isEmpty
-                        ? null
-                        : () async {
-                            await c.resetPassword(
-                              c.accountOrigin,
-                              email.text.trim(),
-                              code.text.trim(),
-                              password.text,
-                            );
-                            if (c.error == null) {
-                              password.clear();
-                              code.clear();
-                            }
-                          },
-                    child: Text(t('family_recovery_reset')),
-                  ),
-                ],
-              ),
-              if (!register && c.loginMfaRequired) ...[
-                Text(t('account_mfa')),
-                TextField(controller: code, decoration: InputDecoration(labelText: t('family_code')), textInputAction: TextInputAction.done),
-                const SizedBox(height: 12),
-              ],
-              if (register && c.pendingRegistrationEmail == email.text.trim()) ...[
-                Text(t('family_verify_hint')),
-                TextField(controller: code, autofocus: true, decoration: InputDecoration(labelText: t('family_code')),
-                  textInputAction: TextInputAction.done),
-                const SizedBox(height: 12),
-              ],
-              FilledButton(
-                onPressed: c.busy || c.accountOrigin.isEmpty
-                    ? null
-                    : () async {
-                        if (register && c.pendingRegistrationEmail != email.text.trim() &&
-                            (password.text.length < 7 ||
-                                password.text.length > 256)) {
-                          setState(
-                            () => formError = 'family_error_password_length',
-                          );
-                          return;
-                        }
-                        if (register && c.pendingRegistrationEmail != email.text.trim() && password.text != passwordAgain.text) {
-                          setState(() => formError = 'password_mismatch');
-                          return;
-                        }
-                        setState(() => formError = null);
-                        await c.signIn(
-                          c.accountOrigin,
-                          email.text.trim(),
-                          password.text,
-                          register: register,
-                          mfaCode: !register && c.loginMfaRequired ? code.text.trim() : null,
-                          verificationCode: register && c.pendingRegistrationEmail == email.text.trim() ? code.text.trim() : null,
-                        );
-                        if (!c.loginMfaRequired) {
-                          password.clear();
-                          passwordAgain.clear();
-                          code.clear();
-                        }
-                      },
-                child: Text(t(register ? (c.pendingRegistrationEmail == email.text.trim() ? 'family_verify' : 'family_register') : 'family_login')),
-              ),
-            ] else ...[
-              Text(
-                c.account!['email'] as String? ?? t('family_account'),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              button('account_manage', () => Navigator.of(context).push<void>(MaterialPageRoute(
-                builder: (_) => AccountCenter(controller: c, pack: widget.pack),
-              )), icon: Icons.manage_accounts_outlined),
-              button('family_logout', () => c.signOut(), icon: Icons.logout),
-              button('family_password_change', () async {
-                final old = await ask(t('family_old_password'), secret: true);
-                if (old == null || !mounted) return;
-                final next = await ask(t('family_new_password'), secret: true);
-                if (next != null) await c.password(old, next);
-              }),
-              if (!c.verified) ...[
-                Text(t('family_verify_hint')),
-                TextField(
-                  controller: code,
-                  decoration: InputDecoration(labelText: t('family_code')),
-                ),
-                button('family_verify', () => c.verify(code.text.trim())),
-                button(
-                  'ux3_resend_verification',
-                  () => c.resendVerification(),
-                  icon: Icons.mark_email_unread_outlined,
-                ),
-              ] else ...[
-                LifeHero(
-                  icon: Icons.people_outline,
-                  title: t('ux3_family_title'),
-                  body: t(
-                    c.spaces.isEmpty
-                        ? 'ux3_family_steps'
-                        : 'ux3_family_manage_body',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                button('family_sync', () => c.refresh(), icon: Icons.sync),
-                button('family_create', () async {
-                  final name = await ask(t('family_name'));
-                  if (name != null) {
-                    await command('workspace.create', {
-                      'name': name,
-                      'kind': 'family',
-                      'workspace_id': FamilyController.uuid.v4(),
-                    });
-                  }
-                }),
-                button('family_accept', () async {
-                  final value = await ask(t('family_invitation'));
-                  if (value != null) await c.accept(value);
-                }),
-                for (final space in c.spaces)
-                  ListTile(
-                    title: Text(space['name'] as String),
-                    subtitle: Text(t('family_${space['role']}')),
-                    selected: c.workspace == space['id'],
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: c.busy
-                        ? null
-                        : () => c.select(space['id'] as String),
-                  ),
-                if (c.workspace != null) ...[
-                  for (final raw in c.roster?['invitations'] as List? ?? [])
-                    ListTile(
-                      title: Text(object(raw)['email'] as String),
-                      subtitle: Text(t('family_${object(raw)['role']}')),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.cancel_outlined),
-                        onPressed: c.busy
-                            ? null
-                            : () => confirm(
-                                t('family_invite_revoke'),
-                                () => command('invite.revoke', {
-                                  'invitation_id': object(raw)['id'],
-                                }),
-                              ),
-                      ),
-                    ),
-                  for (final raw in c.roster?['parent_changes'] as List? ?? [])
-                    if (object(raw)['target_id'] == c.account!['user_id'])
-                      button(
-                        'family_consent_approve',
-                        () => confirm(
-                          t('family_consent_approve'),
-                          () => command('parent.change.approve', {
-                            'change_id': object(raw)['id'],
-                            'revision': object(raw)['revision'],
-                          }),
-                        ),
-                      ),
-                  if (c.parent)
-                    for (final raw in c.roster?['members'] as List? ?? [])
-                      if (object(raw)['role'] == 'parent' &&
-                          object(raw)['user_id'] !=
-                              c.roster!['space']['creator_id'])
-                        button(
-                          'family_parent_consent',
-                          () => confirm(
-                            t('family_parent_consent'),
-                            () => command('parent.change.request', {
-                              'change_id': FamilyController.uuid.v4(),
-                              'user_id': object(raw)['user_id'],
-                              'role': 'adult',
-                              'revision': object(raw)['revision'],
-                            }),
-                          ),
-                        ),
-
-                  const Divider(),
-                  Text(t('family_sync_hint')),
-                  Text('${t('family_pending')}: ${c.pending.length}'),
-                  if (c.parent) ...[
-                    button(
-                      'family_invite',
-                      invite,
-                      icon: Icons.person_add_outlined,
-                    ),
-                    button(
-                      'family_child_add',
-                      () => child(),
-                      icon: Icons.child_care,
-                    ),
-                  ],
-                  for (final raw in c.roster?['profiles'] as List? ?? [])
-                    ListTile(
-                      title: Text(object(raw)['name'] as String),
-                      subtitle: Text(t('family_child')),
-                      onTap: c.parent && !c.busy
-                          ? () => child(object(raw))
-                          : null,
-                    ),
-                  for (final raw in c.roster?['members'] as List? ?? []) ...[
-                    ListTile(
-                      title: Text(t('family_${object(raw)['role']}')),
-                      subtitle: object(raw)['user_id'] == c.account!['user_id']
-                          ? Text(t('family_you'))
-                          : null,
-                      trailing:
-                          c.parent &&
-                              !['parent', 'owner'].contains(object(raw)['role'])
-                          ? IconButton(
-                              icon: const Icon(Icons.person_remove_outlined),
-                              onPressed: c.busy
-                                  ? null
-                                  : () => confirm(
-                                      t('family_remove'),
-                                      () => command('member.remove', {
-                                        'user_id': object(raw)['user_id'],
-                                        'revision': object(raw)['revision'],
-                                      }),
-                                    ),
-                            )
-                          : null,
-                    ),
-                  ],
-                  if (c.roster != null)
-                    button('family_record_add', () => edit(), icon: Icons.add),
-                  for (final issue in c.issues)
+                  const SizedBox(height: 16),
+                  if (c.accountOrigin.isEmpty)
                     LifeCard(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t('family_conflict')),
-                          Text(t('family_local_version')),
-                          SelectableText(describe(issue['operation'])),
-                          Text(t('family_server_version')),
-                          SelectableText(
-                            object(issue['result'])['server'] == null
-                                ? t('family_error_${object(issue['result'])['error']}')
-                                : describe(object(issue['result'])['server']),
+                          Text(
+                            t('ux3_cloud_unavailable'),
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          if (object(issue['result'])['status'] == 'conflict' &&
-                              object(issue['result'])['server'] != null)
-                            button(
-                              'family_keep_local',
-                              () => confirm(
-                                t('family_keep_local'),
-                                () => c.resolve(issue, true),
-                              ),
-                            ),
-                          button(
-                            'family_use_server',
-                            () => confirm(
-                              t('family_use_server'),
-                              () => c.resolve(issue, false),
-                            ),
+                          const SizedBox(height: 8),
+                          Text(t('ux3_cloud_unavailable_body')),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  Text(
+                    t('family_optional'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () => Navigator.maybePop(context),
+                    icon: const Icon(Icons.phone_android),
+                    label: Text(t('ux3_continue_local')),
+                  ),
+                  if (!c.loginMfaRequired) ...[
+                    if (c.googleAvailable)
+                      OutlinedButton(
+                        onPressed: c.busy
+                            ? null
+                            : () async {
+                                password.clear();
+                                passwordAgain.clear();
+                                code.clear();
+                                setState(() => register = false);
+                                await c.signInGoogle(c.accountOrigin);
+                              },
+                        child: Text(t('account_google_sign_in')),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: Text(t('family_login')),
+                            selected: !register,
+                            onSelected: c.busy
+                                ? null
+                                : (_) => setState(() => register = false),
+                          ),
+                          ChoiceChip(
+                            label: Text(t('family_register')),
+                            selected: register,
+                            onSelected: c.busy
+                                ? null
+                                : (_) => setState(() => register = true),
                           ),
                         ],
                       ),
                     ),
-                  for (final op in c.pending)
-                    ListTile(
-                      leading: const Icon(Icons.schedule),
-                      title: Text(t('family_pending')),
-                      subtitle: Text(
-                        (op['data']?['title'] ??
-                                op['data']?['name'] ??
-                                op['data']?['body'] ??
-                                op['record_id'])
-                            .toString(),
-                        maxLines: 2,
-                      ),
+                    Text(t('family_email')),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: email,
+                      onChanged: (_) => setState(() {}),
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
+                      textInputAction: TextInputAction.next,
+                      autocorrect: false,
+                      decoration: const InputDecoration(),
                     ),
-                  for (final record in c.records)
-                    ListTile(
-                      leading: Icon(
-                        record['visibility'] == 'private'
-                            ? Icons.lock_outline
-                            : Icons.people_outline,
+                    if (!(register &&
+                        c.pendingRegistrationEmail == email.text.trim())) ...[
+                      const SizedBox(height: 12),
+                      Text(t('family_password')),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: password,
+                        obscureText: !showPassword,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        autofillHints: [
+                          register
+                              ? AutofillHints.newPassword
+                              : AutofillHints.password,
+                        ],
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            tooltip: t(
+                              showPassword
+                                  ? 'ux3_hide_password'
+                                  : 'ux3_show_password',
+                            ),
+                            onPressed: () =>
+                                setState(() => showPassword = !showPassword),
+                            icon: Icon(
+                              showPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
                       ),
-                      title: Text(
-                        (record['data']['title'] ??
-                                record['data']['name'] ??
-                                record['data']['label'] ??
-                                record['data']['body'] ??
-                                t('family_kind_${record['kind']}'))
-                            .toString(),
-                        maxLines: 3,
+                      if (register) ...[
+                        const SizedBox(height: 12),
+                        Text(t('repeat_password')),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: passwordAgain,
+                          obscureText: true,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          decoration: const InputDecoration(),
+                        ),
+                      ],
+                    ],
+                    if (formError != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(t(formError!)),
                       ),
-                      subtitle: Text(t('family_kind_${record['kind']}')),
-                      onTap: c.busy ? null : () => edit(record),
+                    ExpansionTile(
+                      title: Text(t('family_recovery')),
+                      children: [
+                        Text(t('family_recovery_hint')),
+                        TextField(
+                          controller: code,
+                          decoration:
+                              InputDecoration(labelText: t('family_code')),
+                        ),
+                        TextButton(
+                          onPressed: c.busy || c.accountOrigin.isEmpty
+                              ? null
+                              : () =>
+                                  c.recover(c.accountOrigin, email.text.trim()),
+                          child: Text(t('family_recovery_send')),
+                        ),
+                        TextButton(
+                          onPressed: c.busy || c.accountOrigin.isEmpty
+                              ? null
+                              : () async {
+                                  await c.resetPassword(
+                                    c.accountOrigin,
+                                    email.text.trim(),
+                                    code.text.trim(),
+                                    password.text,
+                                  );
+                                  if (c.error == null) {
+                                    password.clear();
+                                    code.clear();
+                                  }
+                                },
+                          child: Text(t('family_recovery_reset')),
+                        ),
+                      ],
                     ),
-                  if (c.roster?['space']?['creator_id'] ==
-                      c.account!['user_id'])
+                  ],
+                  if (!register && c.loginMfaRequired) ...[
+                    Text(t('account_mfa')),
+                    TextButton(
+                        onPressed: c.busy
+                            ? null
+                            : () {
+                                c.cancelLogin();
+                                code.clear();
+                                setState(() {});
+                              },
+                        child: Text(t('cancel'))),
+                    TextField(
+                        controller: code,
+                        decoration:
+                            InputDecoration(labelText: t('family_code')),
+                        textInputAction: TextInputAction.done),
+                    const SizedBox(height: 12),
+                  ],
+                  if (register &&
+                      c.pendingRegistrationEmail == email.text.trim()) ...[
+                    Text(t('family_verify_hint')),
+                    TextField(
+                        controller: code,
+                        autofocus: true,
+                        decoration:
+                            InputDecoration(labelText: t('family_code')),
+                        textInputAction: TextInputAction.done),
+                    const SizedBox(height: 12),
+                  ],
+                  FilledButton(
+                    onPressed: c.busy || c.accountOrigin.isEmpty
+                        ? null
+                        : () async {
+                            if (register &&
+                                c.pendingRegistrationEmail !=
+                                    email.text.trim() &&
+                                (password.text.length < 7 ||
+                                    password.text.length > 256)) {
+                              setState(
+                                () =>
+                                    formError = 'family_error_password_length',
+                              );
+                              return;
+                            }
+                            if (register &&
+                                c.pendingRegistrationEmail !=
+                                    email.text.trim() &&
+                                password.text != passwordAgain.text) {
+                              setState(() => formError = 'password_mismatch');
+                              return;
+                            }
+                            setState(() => formError = null);
+                            await c.signIn(
+                              c.accountOrigin,
+                              email.text.trim(),
+                              password.text,
+                              register: register,
+                              mfaCode: !register && c.loginMfaRequired
+                                  ? code.text.trim()
+                                  : null,
+                              verificationCode: register &&
+                                      c.pendingRegistrationEmail ==
+                                          email.text.trim()
+                                  ? code.text.trim()
+                                  : null,
+                            );
+                            password.clear();
+                            passwordAgain.clear();
+                            code.clear();
+                          },
+                    child: Text(t(register
+                        ? (c.pendingRegistrationEmail == email.text.trim()
+                            ? 'family_verify'
+                            : 'family_register')
+                        : 'family_login')),
+                  ),
+                ] else ...[
+                  Text(
+                    c.account!['email'] as String? ?? t('family_account'),
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  button(
+                      'account_manage',
+                      () => Navigator.of(context).push<void>(MaterialPageRoute(
+                            builder: (_) =>
+                                AccountCenter(controller: c, pack: widget.pack),
+                          )),
+                      icon: Icons.manage_accounts_outlined),
+                  button('family_logout', () => c.signOut(),
+                      icon: Icons.logout),
+                  button('family_password_change', () async {
+                    final old =
+                        await ask(t('family_old_password'), secret: true);
+                    if (old == null || !mounted) return;
+                    final next =
+                        await ask(t('family_new_password'), secret: true);
+                    if (next != null) await c.password(old, next);
+                  }),
+                  if (!c.verified) ...[
+                    Text(t('family_verify_hint')),
+                    TextField(
+                      controller: code,
+                      decoration: InputDecoration(labelText: t('family_code')),
+                    ),
+                    button('family_verify', () => c.verify(code.text.trim())),
                     button(
-                      'family_dissolve',
-                      () => confirm(
-                        t('family_dissolve_confirm'),
-                        () => command('workspace.dissolve', {
-                          'revision': c.roster!['space']['revision'],
-                        }),
-                      ),
-                    )
-                  else if (c.roster != null)
-                    button(
-                      'family_leave',
-                      () => confirm(
-                        t('family_leave'),
-                        () => command('workspace.leave', {
-                          'revision': c.roster!['space']['member_revision'],
-                        }),
+                      'ux3_resend_verification',
+                      () => c.resendVerification(),
+                      icon: Icons.mark_email_unread_outlined,
+                    ),
+                  ] else ...[
+                    LifeHero(
+                      icon: Icons.people_outline,
+                      title: t('ux3_family_title'),
+                      body: t(
+                        c.spaces.isEmpty
+                            ? 'ux3_family_steps'
+                            : 'ux3_family_manage_body',
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    button('family_sync', () => c.refresh(), icon: Icons.sync),
+                    button('family_create', () async {
+                      final name = await ask(t('family_name'));
+                      if (name != null) {
+                        await command('workspace.create', {
+                          'name': name,
+                          'kind': 'family',
+                          'workspace_id': FamilyController.uuid.v4(),
+                        });
+                      }
+                    }),
+                    button('family_accept', () async {
+                      final value = await ask(t('family_invitation'));
+                      if (value != null) await c.accept(value);
+                    }),
+                    for (final space in c.spaces)
+                      ListTile(
+                        title: Text(space['name'] as String),
+                        subtitle: Text(t('family_${space['role']}')),
+                        selected: c.workspace == space['id'],
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: c.busy
+                            ? null
+                            : () => c.select(space['id'] as String),
+                      ),
+                    if (c.workspace != null) ...[
+                      for (final raw in c.roster?['invitations'] as List? ?? [])
+                        ListTile(
+                          title: Text(object(raw)['email'] as String),
+                          subtitle: Text(t('family_${object(raw)['role']}')),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.cancel_outlined),
+                            onPressed: c.busy
+                                ? null
+                                : () => confirm(
+                                      t('family_invite_revoke'),
+                                      () => command('invite.revoke', {
+                                        'invitation_id': object(raw)['id'],
+                                      }),
+                                    ),
+                          ),
+                        ),
+                      for (final raw
+                          in c.roster?['parent_changes'] as List? ?? [])
+                        if (object(raw)['target_id'] == c.account!['user_id'])
+                          button(
+                            'family_consent_approve',
+                            () => confirm(
+                              t('family_consent_approve'),
+                              () => command('parent.change.approve', {
+                                'change_id': object(raw)['id'],
+                                'revision': object(raw)['revision'],
+                              }),
+                            ),
+                          ),
+                      if (c.parent)
+                        for (final raw in c.roster?['members'] as List? ?? [])
+                          if (object(raw)['role'] == 'parent' &&
+                              object(raw)['user_id'] !=
+                                  c.roster!['space']['creator_id'])
+                            button(
+                              'family_parent_consent',
+                              () => confirm(
+                                t('family_parent_consent'),
+                                () => command('parent.change.request', {
+                                  'change_id': FamilyController.uuid.v4(),
+                                  'user_id': object(raw)['user_id'],
+                                  'role': 'adult',
+                                  'revision': object(raw)['revision'],
+                                }),
+                              ),
+                            ),
+                      const Divider(),
+                      Text(t('family_sync_hint')),
+                      Text('${t('family_pending')}: ${c.pending.length}'),
+                      if (c.parent) ...[
+                        button(
+                          'family_invite',
+                          invite,
+                          icon: Icons.person_add_outlined,
+                        ),
+                        button(
+                          'family_child_add',
+                          () => child(),
+                          icon: Icons.child_care,
+                        ),
+                      ],
+                      for (final raw in c.roster?['profiles'] as List? ?? [])
+                        ListTile(
+                          title: Text(object(raw)['name'] as String),
+                          subtitle: Text(t('family_child')),
+                          onTap: c.parent && !c.busy
+                              ? () => child(object(raw))
+                              : null,
+                        ),
+                      for (final raw
+                          in c.roster?['members'] as List? ?? []) ...[
+                        ListTile(
+                          title: Text(t('family_${object(raw)['role']}')),
+                          subtitle:
+                              object(raw)['user_id'] == c.account!['user_id']
+                                  ? Text(t('family_you'))
+                                  : null,
+                          trailing: c.parent &&
+                                  !['parent', 'owner']
+                                      .contains(object(raw)['role'])
+                              ? IconButton(
+                                  icon:
+                                      const Icon(Icons.person_remove_outlined),
+                                  onPressed: c.busy
+                                      ? null
+                                      : () => confirm(
+                                            t('family_remove'),
+                                            () => command('member.remove', {
+                                              'user_id': object(raw)['user_id'],
+                                              'revision':
+                                                  object(raw)['revision'],
+                                            }),
+                                          ),
+                                )
+                              : null,
+                        ),
+                      ],
+                      if (c.roster != null)
+                        button('family_record_add', () => edit(),
+                            icon: Icons.add),
+                      for (final issue in c.issues)
+                        LifeCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(t('family_conflict')),
+                              Text(t('family_local_version')),
+                              SelectableText(describe(issue['operation'])),
+                              Text(t('family_server_version')),
+                              SelectableText(
+                                object(issue['result'])['server'] == null
+                                    ? t(
+                                        'family_error_${object(issue['result'])['error']}')
+                                    : describe(
+                                        object(issue['result'])['server']),
+                              ),
+                              if (object(issue['result'])['status'] ==
+                                      'conflict' &&
+                                  object(issue['result'])['server'] != null)
+                                button(
+                                  'family_keep_local',
+                                  () => confirm(
+                                    t('family_keep_local'),
+                                    () => c.resolve(issue, true),
+                                  ),
+                                ),
+                              button(
+                                'family_use_server',
+                                () => confirm(
+                                  t('family_use_server'),
+                                  () => c.resolve(issue, false),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      for (final op in c.pending)
+                        ListTile(
+                          leading: const Icon(Icons.schedule),
+                          title: Text(t('family_pending')),
+                          subtitle: Text(
+                            (op['data']?['title'] ??
+                                    op['data']?['name'] ??
+                                    op['data']?['body'] ??
+                                    op['record_id'])
+                                .toString(),
+                            maxLines: 2,
+                          ),
+                        ),
+                      for (final record in c.records)
+                        ListTile(
+                          leading: Icon(
+                            record['visibility'] == 'private'
+                                ? Icons.lock_outline
+                                : Icons.people_outline,
+                          ),
+                          title: Text(
+                            (record['data']['title'] ??
+                                    record['data']['name'] ??
+                                    record['data']['label'] ??
+                                    record['data']['body'] ??
+                                    t('family_kind_${record['kind']}'))
+                                .toString(),
+                            maxLines: 3,
+                          ),
+                          subtitle: Text(t('family_kind_${record['kind']}')),
+                          onTap: c.busy ? null : () => edit(record),
+                        ),
+                      if (c.roster?['space']?['creator_id'] ==
+                          c.account!['user_id'])
+                        button(
+                          'family_dissolve',
+                          () => confirm(
+                            t('family_dissolve_confirm'),
+                            () => command('workspace.dissolve', {
+                              'revision': c.roster!['space']['revision'],
+                            }),
+                          ),
+                        )
+                      else if (c.roster != null)
+                        button(
+                          'family_leave',
+                          () => confirm(
+                            t('family_leave'),
+                            () => command('workspace.leave', {
+                              'revision': c.roster!['space']['member_revision'],
+                            }),
+                          ),
+                        ),
+                    ],
+                  ],
                 ],
               ],
-            ],
-          ],
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class FamilyRecordEditor extends StatefulWidget {
@@ -899,16 +970,15 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       visibility = r['visibility'] as String;
       audience = (r['audience'] as List).cast<String>().toSet();
       final d = object(r['data']);
-      title.text = (d['body'] ?? d['title'] ?? d['name'] ?? d['label'] ?? '')
-          .toString();
+      title.text =
+          (d['body'] ?? d['title'] ?? d['name'] ?? d['label'] ?? '').toString();
       currency.text = d['currency'] as String? ?? 'RUB';
       amount.text = amountText(
         (d['amount_minor'] ??
-                d['opening_minor'] ??
-                d['limit_minor'] ??
-                d['sent_minor'] ??
-                0)
-            as int,
+            d['opening_minor'] ??
+            d['limit_minor'] ??
+            d['sent_minor'] ??
+            0) as int,
         currency.text,
       );
       date.text = (d['date'] ?? d['start_on'] ?? date.text) as String;
@@ -917,8 +987,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       review = d['review'] == 1;
       if (role == 'child' && kind == 'task') {
         final marks = (r['progress'] as List? ?? []).map(object);
-        completed =
-            marks
+        completed = marks
                 .where(
                   (m) => m['profile_id'] == c.roster?['space']?['profile_id'],
                 )
@@ -946,9 +1015,8 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         }
       }
       if (kind == 'shopping') {
-        items.text = (d['items'] as List)
-            .map((i) => object(i)['name'])
-            .join('\n');
+        items.text =
+            (d['items'] as List).map((i) => object(i)['name']).join('\n');
       }
       if (kind == 'event') {
         final schedule = object(d['schedule']);
@@ -1018,8 +1086,8 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
           'completed': role == 'child'
               ? old['completed'] ?? 0
               : completed
-              ? 1
-              : 0,
+                  ? 1
+                  : 0,
           'assignment': assignment,
           'assignees': audience.toList(),
           'review': review ? 1 : 0,
@@ -1298,41 +1366,43 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
     TextEditingController controller,
     String label, {
     int lines = 1,
-  }) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(t(label), style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          maxLines: lines,
-          keyboardType: ['amount', 'family_received'].contains(label)
-              ? const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                )
-              : TextInputType.text,
-          decoration: const InputDecoration(),
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(t(label), style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 6),
+            TextField(
+              controller: controller,
+              maxLines: lines,
+              keyboardType: ['amount', 'family_received'].contains(label)
+                  ? const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    )
+                  : TextInputType.text,
+              decoration: const InputDecoration(),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
   Widget select(
     String label,
     String value,
     Map<String, String> choices,
     void Function(String) change,
-  ) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: LifeSelect<String>(
-      label: t(label),
-      value: value,
-      choices: choices,
-      onChanged: (v) => setState(() => change(v)),
-    ),
-  );
+  ) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: LifeSelect<String>(
+          label: t(label),
+          value: value,
+          choices: choices,
+          onChanged: (v) => setState(() => change(v)),
+        ),
+      );
   @override
   Widget build(BuildContext context) {
     final choices = {for (final k in c.creatableKinds) k: t('family_kind_$k')};
@@ -1343,9 +1413,8 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
     };
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 28
-            ? 96
-            : null,
+        toolbarHeight:
+            MediaQuery.textScalerOf(context).scale(20) > 28 ? 96 : null,
         title: Text(t('family_record_add'), maxLines: 2),
       ),
       body: SafeArea(
@@ -1379,18 +1448,20 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 ),
               if (kind == 'transaction') ...[
                 if (role != 'child')
-                  select('family_record_type', flow, {
-                    'expense': t('family_expense'),
-                    'income': t('family_income'),
-                  }, (v) => flow = v),
+                  select(
+                      'family_record_type',
+                      flow,
+                      {
+                        'expense': t('family_expense'),
+                        'income': t('family_income'),
+                      },
+                      (v) => flow = v),
                 select('family_account_select', account, accountChoices, (v) {
                   account = v;
                   if (v.isNotEmpty) {
-                    currency.text =
-                        accounts.singleWhere(
-                              (r) => r['id'] == v,
-                            )['data']['currency']
-                            as String;
+                    currency.text = accounts.singleWhere(
+                      (r) => r['id'] == v,
+                    )['data']['currency'] as String;
                   }
                 }),
               ],
@@ -1401,15 +1472,23 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 field(received, 'family_received'),
               ],
               if (kind == 'budget') ...[
-                select('family_period', period, {
-                  for (final p in ['week', 'month', 'year', 'custom'])
-                    p: t('family_$p'),
-                }, (v) => period = v),
+                select(
+                    'family_period',
+                    period,
+                    {
+                      for (final p in ['week', 'month', 'year', 'custom'])
+                        p: t('family_$p'),
+                    },
+                    (v) => period = v),
                 if (period == 'custom') dateControl(end, 'family_end'),
-                select('family_rollover', rollover, {
-                  for (final p in ['none', 'positive', 'negative', 'both'])
-                    p: t('family_roll_$p'),
-                }, (v) => rollover = v),
+                select(
+                    'family_rollover',
+                    rollover,
+                    {
+                      for (final p in ['none', 'positive', 'negative', 'both'])
+                        p: t('family_roll_$p'),
+                    },
+                    (v) => rollover = v),
               ],
               if (kind == 'event') ...[
                 dateControl(start, 'family_date', timestamp: true),
@@ -1440,20 +1519,29 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                   value: allDay,
                   onChanged: (v) => setState(() => allDay = v),
                 ),
-                select('repeat', repeat, {
-                  for (final r in [
-                    'none',
-                    'daily',
-                    'weekly',
-                    'monthly',
-                    'yearly',
-                  ])
-                    r: t('repeat_$r'),
-                }, (v) => repeat = v),
+                select(
+                    'repeat',
+                    repeat,
+                    {
+                      for (final r in [
+                        'none',
+                        'daily',
+                        'weekly',
+                        'monthly',
+                        'yearly',
+                      ])
+                        r: t('repeat_$r'),
+                    },
+                    (v) => repeat = v),
                 if (repeat != 'none') ...[
-                  select('repeat_interval', '$interval', {
-                    for (final i in {1, 2, 3, 4, 6, 12, interval}) '$i': '$i',
-                  }, (v) => interval = int.parse(v)),
+                  select(
+                      'repeat_interval',
+                      '$interval',
+                      {
+                        for (final i in {1, 2, 3, 4, 6, 12, interval})
+                          '$i': '$i',
+                      },
+                      (v) => interval = int.parse(v)),
                   OutlinedButton(
                     onPressed: () async {
                       final chosen = await showDatePicker(
@@ -1488,10 +1576,14 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
               ],
               if (kind == 'shopping') field(items, 'family_items', lines: 8),
               if (kind == 'task')
-                select('family_assignment', assignment, {
-                  for (final p in ['single', 'each', 'joint', 'any'])
-                    p: t('family_$p'),
-                }, (v) => assignment = v),
+                select(
+                    'family_assignment',
+                    assignment,
+                    {
+                      for (final p in ['single', 'each', 'joint', 'any'])
+                        p: t('family_$p'),
+                    },
+                    (v) => assignment = v),
             ],
             if (kind == 'shopping')
               for (final item
@@ -1517,9 +1609,9 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 onPressed: c.busy
                     ? null
                     : () => action('task.complete', {
-                        'profile_id': c.roster!['space']['profile_id'],
-                        'completed': !completed,
-                      }),
+                          'profile_id': c.roster!['space']['profile_id'],
+                          'completed': !completed,
+                        }),
                 child: Text(t(completed ? 'family_task_undo' : 'complete')),
               ),
             if (kind == 'task' && c.parent)
@@ -1527,12 +1619,11 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 ListTile(
                   title: Text(
                     (c.roster?['profiles'] as List? ?? [])
-                                .map(object)
-                                .where(
-                                  (p) => p['id'] == object(raw)['profile_id'],
-                                )
-                                .firstOrNull?['name']
-                            as String? ??
+                            .map(object)
+                            .where(
+                              (p) => p['id'] == object(raw)['profile_id'],
+                            )
+                            .firstOrNull?['name'] as String? ??
                         t('family_child'),
                   ),
                   subtitle: Text(
@@ -1542,16 +1633,15 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                           : 'family_review_pending',
                     ),
                   ),
-                  trailing:
-                      object(raw)['completed'] == 1 &&
+                  trailing: object(raw)['completed'] == 1 &&
                           object(raw)['approved'] == 0
                       ? TextButton(
                           onPressed: c.busy
                               ? null
                               : () => action('task.review', {
-                                  'profile_id': object(raw)['profile_id'],
-                                  'completed': true,
-                                }),
+                                    'profile_id': object(raw)['profile_id'],
+                                    'completed': true,
+                                  }),
                           child: Text(t('confirm')),
                         )
                       : null,
@@ -1563,10 +1653,14 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 onChanged: (v) => setState(() => completed = v!),
               ),
             if (role != 'child' && own) ...[
-              select('family_visibility', visibility, {
-                'private': t('family_private'),
-                'shared': t('family_shared'),
-              }, (v) => visibility = v),
+              select(
+                  'family_visibility',
+                  visibility,
+                  {
+                    'private': t('family_private'),
+                    'shared': t('family_shared'),
+                  },
+                  (v) => visibility = v),
               if (visibility == 'shared')
                 for (final raw in c.roster?['profiles'] as List? ?? [])
                   CheckboxListTile(
@@ -1585,8 +1679,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
             if (c.error != null) Text(t('family_error_${c.error}')),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed:
-                  saving ||
+              onPressed: saving ||
                       c.busy ||
                       !canEdit ||
                       widget.record == null && choices.isEmpty

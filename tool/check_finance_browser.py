@@ -112,7 +112,10 @@ def main():
                     for theme in ['light','dark']:
                         page.set_viewport_size({'width':width,'height':900 if width>600 else 844})
                         page.evaluate("theme=>{state.theme=theme;preferences();}",theme)
+                        page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(width,theme,'page overflow')
+                        if width>=760:
+                            assert page.evaluate("document.querySelector('.nav').getBoundingClientRect().top>=document.querySelector('header').getBoundingClientRect().bottom-1"),(width,theme,'navigation overlaps header')
                         violations=page.locator('.finance-filters input,.finance-filters select,.intro button,.nav button').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width<24||r.height<24||r.left<0||r.right>innerWidth+1;}).map(e=>e.name||e.textContent)''')
                         assert not violations,(width,theme,violations)
                         if width in [390,768,1440]:

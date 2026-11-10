@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Վերականգնման կոդերը պահեք անցանց։ Յուրաքանչյուրը գաղտնաբառի հետ գործում է մեկ անգամ։ Կարգավորումից հետո մուտք գործեք նույնականացման նոր կոդով։",
     "account_mfa_disable": "Անջատել երկգործոն պաշտպանությունը",
     "account_transfer": "Փոխանցել ընտանիքի տարածքի սեփականությունը",
-    "account_accept_transfer": "Ընդունել ընտանիքի տարածքի սեփականությունը"
+    "account_accept_transfer": "Ընդունել ընտանիքի տարածքի սեփականությունը",
+    "account_google_sign_in": "Շարունակել Google-ով",
+    "account_google_methods": "Մուտքի եղանակներ",
+    "account_google_connect": "Կապել Google-ը",
+    "account_google_disconnect": "Անջատել Google-ը և դուրս գալ",
+    "account_google_linked": "Google-ը կապված է",
+    "account_google_unlinked": "Google-ը կապված չէ",
+    "account_google_password_first": "Նախ էլփոստով վերականգնման միջոցով սահմանեք գաղտնաբառ։ Այնուհետև կարող եք կառավարել մուտքի եղանակները։",
+    "family_error_google_link_required": "Մուտք գործեք գործող եղանակով և անվտանգության կարգավորումներում կապեք Google-ը։ Հաշիվներն ինքնաբերաբար չեն միավորվում։",
+    "family_error_google_invalid": "Չհաջողվեց հաստատել Google-ով մուտքը։ Սկսեք նորից։",
+    "family_error_google_unavailable": "Google-ը հասանելի չէ։ Ստուգեք կապը կամ օգտագործեք գաղտնաբառը։",
+    "family_error_google_unconfigured": "Google-ը հասանելի չէ։ Ստուգեք կապը կամ օգտագործեք գաղտնաբառը։",
+    "family_error_google_cancelled": "Ստուգեք մուտքագրված դաշտերը։",
+    "family_error_google_already_linked": "Ստուգեք մուտքագրված դաշտերը։",
+    "family_error_google_last_method": "Ստուգեք մուտքագրված դաշտերը։",
+    "family_error_google_no_account": "Google-ը հասանելի չէ։ Ստուգեք կապը կամ օգտագործեք գաղտնաբառը։"
   },
   "plurals": {
     "record_count": {

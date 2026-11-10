@@ -702,7 +702,22 @@
     "account_mfa_recovery": "Тиклаш кодларини офлайн сақланг. Ҳар бири парол билан бир марта ишлайди. Созлашдан кейин аутентификаторнинг янги коди билан киринг.",
     "account_mfa_disable": "Икки босқичли ҳимояни ўчириш",
     "account_transfer": "Оила эгалигини топшириш",
-    "account_accept_transfer": "Оила эгалигини қабул қилиш"
+    "account_accept_transfer": "Оила эгалигини қабул қилиш",
+    "account_google_sign_in": "Google билан давом этиш",
+    "account_google_methods": "Кириш усуллари",
+    "account_google_connect": "Google ҳисобини улаш",
+    "account_google_disconnect": "Google ҳисобини узиш ва чиқиш",
+    "account_google_linked": "Google уланган",
+    "account_google_unlinked": "Google уланмаган",
+    "account_google_password_first": "Аввал email орқали киришни тиклаб, парол ўрнатинг. Кейин кириш усулларини бошқаришингиз мумкин.",
+    "family_error_google_link_required": "Мавжуд усул билан киринг ва хавфсизлик созламаларида Google ҳисобини уланг. Ҳисоблар автоматик бирлаштирилмайди.",
+    "family_error_google_invalid": "Google орқали кириш тасдиқланмади. Қайтадан бошланг.",
+    "family_error_google_unavailable": "Google ҳозир мавжуд эмас. Уланишни текширинг ёки парол билан киринг.",
+    "family_error_google_unconfigured": "Google ҳозир мавжуд эмас. Уланишни текширинг ёки парол билан киринг.",
+    "family_error_google_cancelled": "Киритган майдонларингизни текширинг.",
+    "family_error_google_already_linked": "Киритган майдонларингизни текширинг.",
+    "family_error_google_last_method": "Киритган майдонларингизни текширинг.",
+    "family_error_google_no_account": "Google ҳозир мавжуд эмас. Уланишни текширинг ёки парол билан киринг."
   },
   "plurals": {
     "record_count": {

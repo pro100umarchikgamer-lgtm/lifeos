@@ -5,7 +5,7 @@ if(staff){document.body.dataset.control='true';document.title='ULADIM Control';}
 const prefix=staff?'/control/api/':'/account/api/';
 let csrf='',viewEpoch=0;
 let controlNavigation=null;
-let authPacks={},authLanguage='ru';
+let authPacks={},authLanguage='ru',googleEnabled=false;
 try{authLanguage=JSON.parse(localStorage.getItem('uladim-interface')||'{}').lang||'ru';}catch{}
 const tr=k=>authPacks[authLanguage]?.strings[k]||authPacks.ru?.strings[k]||k;
 function authLanguages(){const f=el('div',undefined,'auth-language');const label=el('label',tr('language'));const select=el('select');select.setAttribute('aria-label',tr('language'));for(const [key,value]of Object.entries(authPacks)){const option=el('option',value.name);option.value=key;select.append(option);}select.value=authLanguage;select.addEventListener('change',()=>{authLanguage=select.value;try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');saved.lang=authLanguage;localStorage.setItem('uladim-interface',JSON.stringify(saved));}catch{}login();});add(f,label,select);app.append(f);document.documentElement.lang=authLanguage;}
@@ -25,6 +25,7 @@ function login(){
  let r;try{r=await api('login',b);}finally{f.elements.password.value='';b.password='';}
  if(r.mfa_required){loginMfa(r.challenge);return;}csrf=r.csrf;app.classList.remove('auth');await dashboard();
  });f.elements.email.autocomplete='username';
+ if(!staff&&googleEnabled)action(tr('account_google_sign_in'),async()=>{const value=await api('google/start',{});location.assign(value.authorization_url);});
  if(!staff){action(tr('family_register'),registration);action(tr('family_recovery'),recovery);}authLanguages();
 }
 function loginMfa(challenge){
@@ -45,13 +46,14 @@ async function publicPage(){const path=location.pathname;if(path==='/early-acces
 '/status':['Состояние сервиса','Если страница не загружается или синхронизация не завершается, повторите действие после восстановления соединения и обратитесь в поддержку. Эта страница не показывает внутренние метрики сервера.','Локальные функции Android работают независимо от облачного аккаунта.'],
 '/download':['Android-приложение','Новая подписанная сборка будет доступна после полного CI и проверки обновления с сохранением данных.','Ссылка на непроверенный APK не публикуется.'],
 '/faq':['Частые вопросы','Нужен ли интернет? Веб-приложению — да. В Android локальные функции работают без сети; для регистрации, восстановления и синхронизации требуется соединение.','Где мои данные? Локальные записи Android — в SQLCipher-базе устройства. Записи, созданные в вебе или отправленные через синхронизацию, — в PostgreSQL на сервере. Права личных и семейных пространств проверяет сервер. Реальные платежи отключены.']};const page=pages[path];heading(page[0],page[1]);app.append(panel('Что важно знать',page[2]));if(path==='/support'||path==='/delete-account')app.append(link('Открыть аккаунт','/account'));}
-(async()=>{try{authPacks=await (await fetch('/assets/locales.json',{cache:'no-store'})).json();if(!authPacks[authLanguage])authLanguage='ru';if(staff){try{await dashboard();}catch(e){if((e.code==='unauthorized'||e.code==='staff_unauthorized'))login();else throw e;}}else await publicPage();}catch(e){heading('Не удалось загрузить');notice(e.message);}})();
+(async()=>{try{authPacks=await (await fetch('/assets/locales.json',{cache:'no-store'})).json();if(!authPacks[authLanguage])authLanguage='ru';if(!staff){const config=await api('config');googleEnabled=Boolean(config.google_enabled);}if(staff){try{await dashboard();}catch(e){if((e.code==='unauthorized'||e.code==='staff_unauthorized'))login();else throw e;}}else await publicPage();}catch(e){heading('Не удалось загрузить');notice(e.message);}})();
 
 async function registration(){
  const config=await api('config');heading(tr('family_register'));
  const fields=[['email',tr('family_email'),'email'],['password',tr('family_password'),'password']];if(!config.registration_open)fields.push(['invitation',tr('family_invitation'),'text']);
  const f=form('',fields,tr('family_register'),async b=>{const email=b.email;try{await api('signup',b);}finally{f.elements.password.value='';b.password='';}heading(tr('family_verify'),tr('family_verify_hint'));
  form('',[['code',tr('family_code'),'text']],tr('family_verify'),async code=>{await api('confirm-signup',{email,code:code.code.trim()});login();notice(tr('account_done'));});action(tr('ux3_resend_verification'),async()=>{await api('resend-signup',{email});notice(tr('family_verify_hint'));});});
+ if(config.google_enabled)action(tr('account_google_sign_in'),async()=>{const result=await api('google/start',{invitation:f.elements.invitation?.value});location.assign(result.authorization_url);});
  f.elements.password.autocomplete='new-password';app.append(link(tr('account_privacy'),'/privacy',true));
 }
 
