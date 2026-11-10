@@ -219,7 +219,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lifeos-signing-diagnostics-${{ github.run_number }}
-          path: apk-certificate.txt
+          path: |
+            apk-certificate.txt
+            apk-manifest.txt
+            aab-manifest.xml
+            aab-signature-check.txt
           if-no-files-found: ignore
           retention-days: 14
       - name: Upload signed APK and public certificate evidence
