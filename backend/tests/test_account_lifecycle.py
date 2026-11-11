@@ -106,7 +106,11 @@ class LifecycleScenarios:
     def test_creator_deletion_requires_consented_parent_transfer(self):
         with self.assertRaises(Failure):self.lifecycle.request_deletion(self.p1,PASSWORD,'DELETE')
         tid=self.lifecycle.transfer(self.p1,self.wid,self.p2['id'],PASSWORD)['transfer_id']
-        self.assertEqual(self.lifecycle.deletion_status(self.p2)['incoming_transfers'][0]['id'],tid)
+        self.assertEqual(self.lifecycle.transfer(self.p1,self.wid,self.p2['id'],PASSWORD)['transfer_id'],tid)
+        incoming = self.lifecycle.deletion_status(self.p2)['incoming_transfers']
+        self.assertEqual([item['id'] for item in incoming], [tid])
+        outgoing = self.lifecycle.deletion_status(self.p1)['ownership_transfer_required']
+        self.assertEqual(outgoing[0]['pending_until'], incoming[0]['expires_at'])
         self.assertEqual(self.lifecycle.deletion_status(self.p1)['incoming_transfers'],[])
         with self.assertRaises(Failure):self.lifecycle.accept_transfer(self.p1,tid,PASSWORD)
         self.lifecycle.accept_transfer(self.p2,tid,PASSWORD)

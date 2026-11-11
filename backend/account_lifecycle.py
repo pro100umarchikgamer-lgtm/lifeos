@@ -75,14 +75,21 @@ class AccountLifecycle:
         return {'updated': True, 'sign_in_required': True}
 
     def deletion_status(self, actor):
+        now = int(self.backend.clock())
         with self.backend.connect() as db:
             job = db.execute('SELECT id,requested_at,due_at,state,last_error FROM deletion_jobs WHERE user_id=?', (actor['id'],)).fetchone()
             families = db.execute("SELECT w.id,w.name FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (actor['id'], actor['id'])).fetchall()
-            transfers=db.execute("SELECT t.id,t.workspace_id,w.name,t.from_id,t.expires_at FROM ownership_transfers t JOIN workspaces w ON w.id=t.workspace_id JOIN memberships m ON m.workspace_id=w.id AND m.user_id=t.to_id WHERE t.to_id=? AND t.expires_at>? AND t.accepted_at=0 AND w.creator_id=t.from_id AND w.dissolved=0 AND m.role='parent' AND m.active=1",(actor['id'],int(self.backend.clock()))).fetchall()
+            transfers=db.execute("SELECT t.id,t.workspace_id,w.name,t.from_id,t.expires_at FROM ownership_transfers t JOIN workspaces w ON w.id=t.workspace_id JOIN memberships m ON m.workspace_id=w.id AND m.user_id=t.to_id WHERE t.to_id=? AND t.expires_at>? AND t.accepted_at=0 AND w.creator_id=t.from_id AND w.dissolved=0 AND m.role='parent' AND m.active=1",(actor['id'],now)).fetchall()
             outgoing=[]
             for family in families:
                 parent=db.execute("SELECT user_id FROM memberships WHERE workspace_id=? AND user_id<>? AND role='parent' AND active=1 ORDER BY user_id LIMIT 1",(family['id'],actor['id'])).fetchone()
-                outgoing.append(dict(family,eligible_parent_id=parent['user_id'] if parent else None))
+                recipient = parent['user_id'] if parent else None
+                pending = db.execute(
+                    'SELECT MAX(expires_at) AS deadline FROM ownership_transfers WHERE workspace_id=? AND from_id=? AND to_id=? AND accepted_at=0 AND expires_at>?',
+                    (family['id'], actor['id'], recipient, now),
+                ).fetchone() if recipient else None
+                outgoing.append(dict(family, eligible_parent_id=recipient,
+                                     pending_until=pending['deadline'] if pending else None))
         return {'request': dict(job) if job else None, 'ownership_transfer_required': outgoing, 'incoming_transfers':[dict(t) for t in transfers], 'local_data_deleted': False, 'backup_erasure': 'operator_retention_review_required'}
 
     def request_deletion(self, actor, password, confirmation):
@@ -115,7 +122,14 @@ class AccountLifecycle:
             self.backend.reauthenticate(db, actor, password)
             row = db.execute("SELECT 1 FROM workspaces w JOIN memberships m ON m.workspace_id=w.id WHERE w.id=? AND w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND m.user_id=? AND m.role='parent' AND m.active=1", (wid, actor['id'], target)).fetchone()
             require(row and target != actor['id'], 'transfer_forbidden', 403)
-            db.execute('INSERT INTO ownership_transfers VALUES(?,?,?,?,?,0)', (tid, wid, actor['id'], target, now + 86400))
+            pending = db.execute(
+                'SELECT id FROM ownership_transfers WHERE workspace_id=? AND from_id=? AND to_id=? AND accepted_at=0 AND expires_at>? ORDER BY expires_at DESC,id LIMIT 1',
+                (wid, actor['id'], target, now),
+            ).fetchone()
+            if pending:
+                tid = pending['id']
+            else:
+                db.execute('INSERT INTO ownership_transfers VALUES(?,?,?,?,?,0)', (tid, wid, actor['id'], target, now + 86400))
         return {'transfer_id': tid, 'recipient_confirmation_required': True}
 
     def accept_transfer(self, actor, tid, password):

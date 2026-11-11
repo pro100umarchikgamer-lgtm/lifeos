@@ -43,10 +43,10 @@ function queueDelete(r,workspace){
 }
 
 const CLARITY_COPY={
- ru:{web_more:'Ещё',web_back_settings:'К настройкам',web_account_data:'Данные аккаунта',web_confirm_delete:'Введите DELETE',web_current_session:'Текущий сеанс',web_last_active:'Последняя активность',web_revoked_on:'Доступ отозван',web_no_sessions:'Нет активных сеансов',web_active_sessions:'Активные сеансы',web_revoked_sessions:'Завершённые сеансы',web_revoke_current_hint:'Вы выйдете из аккаунта в этом браузере.',web_revoke_device_hint:'На выбранном устройстве потребуется войти снова.',web_add_operation:'Добавить операцию',web_history:'История операций',web_filters:'Фильтры',web_analysis:'Аналитика',web_finance_summary:'Сводка',web_all_operations:'Все операции',web_open_task_form:'Задача с деталями'},
- en:{web_more:'More',web_back_settings:'Back to settings',web_account_data:'Account data',web_confirm_delete:'Type DELETE',web_current_session:'Current session',web_last_active:'Last active',web_revoked_on:'Access revoked',web_no_sessions:'No active sessions',web_active_sessions:'Active sessions',web_revoked_sessions:'Ended sessions',web_revoke_current_hint:'You will be signed out in this browser.',web_revoke_device_hint:'This device will need to sign in again.',web_add_operation:'Add transaction',web_history:'Transaction history',web_filters:'Filters',web_analysis:'Analysis',web_finance_summary:'Summary',web_all_operations:'All transactions',web_open_task_form:'Task with details'},
- 'uz-Latn':{web_more:'Yana',web_back_settings:'Sozlamalarga qaytish',web_account_data:'Hisob ma’lumotlari',web_confirm_delete:'DELETE yozing',web_current_session:'Joriy seans',web_last_active:'So‘nggi faollik',web_revoked_on:'Ruxsat bekor qilindi',web_no_sessions:'Faol seanslar yo‘q',web_active_sessions:'Faol seanslar',web_revoked_sessions:'Yakunlangan seanslar',web_revoke_current_hint:'Bu brauzerda hisobdan chiqasiz.',web_revoke_device_hint:'Bu qurilmada qayta kirish kerak bo‘ladi.',web_add_operation:'Operatsiya qo‘shish',web_history:'Operatsiyalar tarixi',web_filters:'Filtrlar',web_analysis:'Tahlil',web_finance_summary:'Umumiy holat',web_all_operations:'Barcha operatsiyalar',web_open_task_form:'Tafsilotli vazifa'},
- 'uz-Cyrl':{web_more:'Яна',web_back_settings:'Созламаларга қайтиш',web_account_data:'Ҳисоб маълумотлари',web_confirm_delete:'DELETE ёзинг',web_current_session:'Жорий сеанс',web_last_active:'Сўнгги фаоллик',web_revoked_on:'Рухсат бекор қилинди',web_no_sessions:'Фаол сеанслар йўқ',web_active_sessions:'Фаол сеанслар',web_revoked_sessions:'Якунланган сеанслар',web_revoke_current_hint:'Бу браузерда ҳисобдан чиқасиз.',web_revoke_device_hint:'Бу қурилмада қайта кириш керак бўлади.',web_add_operation:'Операция қўшиш',web_history:'Операциялар тарихи',web_filters:'Фильтрлар',web_analysis:'Таҳлил',web_finance_summary:'Умумий ҳолат',web_all_operations:'Барча операциялар',web_open_task_form:'Тафсилотли вазифа'}
+ ru:{web_more:'Ещё',web_transfer_pending:'Ожидает подтверждения до',web_family_transfer:'Передача семейного пространства',web_back_settings:'К настройкам',web_account_data:'Данные аккаунта',web_confirm_delete:'Введите DELETE',web_current_session:'Текущий сеанс',web_last_active:'Последняя активность',web_revoked_on:'Доступ отозван',web_no_sessions:'Нет активных сеансов',web_active_sessions:'Активные сеансы',web_revoked_sessions:'Завершённые сеансы',web_revoke_current_hint:'Вы выйдете из аккаунта в этом браузере.',web_revoke_device_hint:'На выбранном устройстве потребуется войти снова.',web_add_operation:'Добавить операцию',web_history:'История операций',web_filters:'Фильтры',web_analysis:'Аналитика',web_finance_summary:'Сводка',web_all_operations:'Все операции',web_open_task_form:'Задача с деталями'},
+ en:{web_more:'More',web_transfer_pending:'Awaiting confirmation until',web_family_transfer:'Family workspace transfer',web_back_settings:'Back to settings',web_account_data:'Account data',web_confirm_delete:'Type DELETE',web_current_session:'Current session',web_last_active:'Last active',web_revoked_on:'Access revoked',web_no_sessions:'No active sessions',web_active_sessions:'Active sessions',web_revoked_sessions:'Ended sessions',web_revoke_current_hint:'You will be signed out in this browser.',web_revoke_device_hint:'This device will need to sign in again.',web_add_operation:'Add transaction',web_history:'Transaction history',web_filters:'Filters',web_analysis:'Analysis',web_finance_summary:'Summary',web_all_operations:'All transactions',web_open_task_form:'Task with details'},
+ 'uz-Latn':{web_more:'Yana',web_transfer_pending:'Tasdiqlash muddati',web_family_transfer:'Oilaviy makonni topshirish',web_back_settings:'Sozlamalarga qaytish',web_account_data:'Hisob ma’lumotlari',web_confirm_delete:'DELETE yozing',web_current_session:'Joriy seans',web_last_active:'So‘nggi faollik',web_revoked_on:'Ruxsat bekor qilindi',web_no_sessions:'Faol seanslar yo‘q',web_active_sessions:'Faol seanslar',web_revoked_sessions:'Yakunlangan seanslar',web_revoke_current_hint:'Bu brauzerda hisobdan chiqasiz.',web_revoke_device_hint:'Bu qurilmada qayta kirish kerak bo‘ladi.',web_add_operation:'Operatsiya qo‘shish',web_history:'Operatsiyalar tarixi',web_filters:'Filtrlar',web_analysis:'Tahlil',web_finance_summary:'Umumiy holat',web_all_operations:'Barcha operatsiyalar',web_open_task_form:'Tafsilotli vazifa'},
+ 'uz-Cyrl':{web_more:'Яна',web_transfer_pending:'Тасдиқлаш муддати',web_family_transfer:'Оилавий маконни топшириш',web_back_settings:'Созламаларга қайтиш',web_account_data:'Ҳисоб маълумотлари',web_confirm_delete:'DELETE ёзинг',web_current_session:'Жорий сеанс',web_last_active:'Сўнгги фаоллик',web_revoked_on:'Рухсат бекор қилинди',web_no_sessions:'Фаол сеанслар йўқ',web_active_sessions:'Фаол сеанслар',web_revoked_sessions:'Якунланган сеанслар',web_revoke_current_hint:'Бу браузерда ҳисобдан чиқасиз.',web_revoke_device_hint:'Бу қурилмада қайта кириш керак бўлади.',web_add_operation:'Операция қўшиш',web_history:'Операциялар тарихи',web_filters:'Фильтрлар',web_analysis:'Таҳлил',web_finance_summary:'Умумий ҳолат',web_all_operations:'Барча операциялар',web_open_task_form:'Тафсилотли вазифа'}
 };
 const t=k=>CLARITY_COPY[state.lang]?.[k]||WEB_COPY[state.lang]?.[k]||WEB_COPY.en[k]||packs[state.lang]?.strings[k]||CLARITY_COPY.en[k]||packs.ru?.strings[k]||k;
 const E=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
@@ -187,7 +187,7 @@ function today(m){
  for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(E('p',t('empty_tasks'),'empty'));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>{state.tab='tasks';render();},'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
  const agenda=card(t('web_upcoming'));agenda.classList.add('today-agenda');for(const o of occurrences.slice(0,3))agenda.append(eventRow(o));if(!occurrences.length)agenda.append(E('p',t('web_no_events'),'empty'));agenda.append(button(t('family_kind_event'),()=>editRecord('event'),'text-button'));side.append(agenda);
  const finance=card(t('finances'));finance.classList.add('today-finance');summaries(finance);const financeActions=E('div',undefined,'task-actions');append(financeActions,button(t('finances'),()=>{state.tab='money';render();},'text-button'),button(t('web_add_operation'),()=>editRecord('transaction'),'text-button'));finance.append(financeActions);side.append(finance);
- const notes=card(t('recent_notes'));notes.classList.add('today-notes');for(const r of records('note').slice(-2).reverse())notes.append(button(r.data.body.slice(0,110),()=>editRecord('note',r),'note-link'));if(!records('note').length)notes.append(E('p',t('empty_notes'),'empty'));notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));side.append(notes);
+ const notes=card(t('recent_notes'));notes.classList.add('today-notes');for(const r of records('note').sort((a,b)=>b.seq-a.seq).slice(0,2))notes.append(button(r.data.body.slice(0,110),()=>editRecord('note',r),'note-link'));if(!records('note').length)notes.append(E('p',t('empty_notes'),'empty'));notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));side.append(notes);
 
 }
 function taskRow(r){const row=E('div',undefined,'row');const check=E('input');check.type='checkbox';check.checked=!!r.data.completed;check.disabled=!r.editable;check.setAttribute('aria-label',r.data.title);check.addEventListener('change',async()=>{check.disabled=true;try{if(r.data.assignees.length){editRecord('task',r);return;}await saveOperation({id:crypto.randomUUID(),action:'record.put',record_id:r.id,revision:r.revision,kind:r.kind,visibility:r.visibility,audience:r.audience,data:{...r.data,completed:check.checked?1:0}});await refresh();render();}catch(e){check.checked=!!r.data.completed;report(e);}finally{check.disabled=!r.editable;}});append(row,check,E('span',r.data.title,'text'+(r.data.completed?' done':'')),iconButton('more',t('edit')+' · '+r.data.title,()=>editRecord('task',r)));return row;}
@@ -307,8 +307,9 @@ function finance(m){
    const label=isTransfer?t('family_kind_transfer'):data.label||t(kind);
    const account=isTransfer?[accountsById.get(data.from_id)?.name,accountsById.get(data.to_id)?.name].filter(Boolean).join(' → '):accountsById.get(data.account_id)?.name;
    append(text,E('h3',label),E('p',[displayDate(data.date),account].filter(Boolean).join(' · '),'small'));
-   const transferCurrency=accountsById.get(data.from_id)?.currency;
-   const amount=isTransfer?(transferCurrency?money(data.sent_minor,transferCurrency):''):(kind==='expense'?'− ':'+ ')+money(data.amount_minor,data.currency);
+   const receiving=isTransfer&&accountFilter.value===data.to_id;
+   const transferCurrency=accountsById.get(receiving?data.to_id:data.from_id)?.currency;
+   const amount=isTransfer?(transferCurrency?money(receiving?data.received_minor:data.sent_minor,transferCurrency):''):(kind==='expense'?'− ':'+ ')+money(data.amount_minor,data.currency);
    append(row,text,E('strong',amount,kind),iconButton('more',t('edit')+' · '+label,()=>editRecord(entry.kind,entry)));
    (index<6?ledgerRows:older).append(row);
   }
@@ -363,7 +364,7 @@ async function account(m){
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
  if(section==='security')privacy(content);
  if(section==='family'){familyPanel(content);familyPermissions(content);}
- try{if(section==='plan'){const ent=await call('entitlements');if(state.tab!=='account'||state.settingsTab!==section)return;const plans=card(t('account_access'));append(plans,E('div',ent.tier,'stat'),E('p',t('account_no_payment')));content.append(plans);}if(section==='support')await support(content);}catch(e){report(e);}
+ try{if(section==='family')await incomingOwnership(content);if(section==='plan'){const ent=await call('entitlements');if(state.tab!=='account'||state.settingsTab!==section)return;const plans=card(t('account_access'));append(plans,E('div',ent.tier,'stat'),E('p',t('account_no_payment')));content.append(plans);}if(section==='support')await support(content);}catch(e){report(e);}
 }
 function enrollStaff(){dialog('ULADIM Control',container=>{const owner=new URLSearchParams(location.search).get('setup')==='owner';const d=container;form(container,t('account_manage'),f=>({password:input(f,'password',t('family_password'),'password'),invitation:input(f,'invitation',t('family_invitation'))}),async v=>{const result=await call('staff/enrollment',{owner,password:v.password.value,invitation:v.invitation.value});replaceDialog(container,E('h2',t('account_mfa')),E('p',t('account_mfa_setup')),E('pre',result.totp_secret));form(container,'',f=>({code:input(f,'code',t('family_code'))}),async code=>{const r=await call('staff/confirm',{owner,enrollment:result.enrollment,code:code.code.value});replaceDialog(container,E('h2',t('account_mfa_recovery')),E('pre',r.recovery_codes.join('\n')),button(t('close'),()=>d.close()));});});});}
 async function support(m){const result=await call('support');if(state.tab!=='account')return;const c=card(t('account_support'));m.append(c);for(const ticket of result.tickets||[])c.append(button(ticket.subject,()=>openThread(ticket.id)));form(c,'',f=>({subject:input(f,'subject',t('account_subject')),message:input(f,'message',t('account_message'),'textarea')}),async v=>{await call('support',{category:'other',subject:v.subject.value,message:v.message.value});toast(t('account_done'));render();},t('account_send'));}
@@ -421,20 +422,35 @@ function changeEmail(){
   d.querySelector('input').focus();
  },label));
 }
+async function incomingOwnership(content){
+ const {incoming_transfers:transfers}=await call('deletion');
+ if(!content.isConnected||!transfers?.length)return;
+ const section=E('section',undefined,'settings-group');
+ section.append(E('h2',t('web_family_transfer')));
+ for(const transfer of transfers){
+  const label=t('account_accept_transfer')+' · '+transfer.name;
+  section.append(settingsRow(label,()=>dialog(label,d=>{
+   form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+    try{await call('accept-transfer',{transfer_id:transfer.id,password:v.password.value});}finally{v.password.value='';}
+    d.close();await refresh();render();
+   },t('account_accept_transfer'));
+  })));
+ }
+ content.prepend(section);
+}
 async function deletion(){
  const status=await call('deletion');
  dialog(t('account_delete'),d=>{
   d.append(E('p',t('account_delete_notice')));
-  for(const transfer of status.incoming_transfers||[]){
-   const label=t('account_accept_transfer')+' · '+transfer.name;
-   form(d,label,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
-    await call('accept-transfer',{transfer_id:transfer.id,password:v.password.value});d.close();await deletion();
-   },t('account_accept_transfer'));
-  }
   if(status.ownership_transfer_required.length){
-   for(const family of status.ownership_transfer_required)if(family.eligible_parent_id){
-    form(d,t('account_transfer')+' · '+family.name,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
-     await call('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:v.password.value});toast(t('account_done'));
+   for(const family of status.ownership_transfer_required){
+    if(family.pending_until){
+     d.append(E('p',family.name+' · '+t('web_transfer_pending')+' '+new Date(family.pending_until*1000).toLocaleString(state.lang),'small'));
+     continue;
+    }
+    if(family.eligible_parent_id)form(d,t('account_transfer')+' · '+family.name,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+     try{await call('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:v.password.value});}finally{v.password.value='';}
+     d.close();await deletion();
     },t('account_transfer'));
    }
   }else if(status.request?.state==='pending'){
