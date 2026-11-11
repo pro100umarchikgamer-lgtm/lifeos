@@ -60,11 +60,11 @@ function importStatement() {
   function openAccount() {
    if(running||pending)return;
    const before=new Set(accounts.map(a=>a.id)), selected=account.value;
-   editRecord('account',null,()=>{
+   editRecord('account',null,{onSaved:()=>{
     ensureContext();accounts=records('account');
     syncAccounts(selected||accounts.find(a=>!before.has(a.id))?.id);
     if(parsed)reidentify().catch(showError);else file.focus();
-   });
+   }});
   }
   const defaultAccount=()=>accounts.find(a=>a.id===account.value);
   function destination(currency){

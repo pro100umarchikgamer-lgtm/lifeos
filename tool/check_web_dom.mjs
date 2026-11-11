@@ -33,7 +33,13 @@ try{
  const search=w.document.querySelector('[name=task-search]');search.value='заказ';search.dispatchEvent(new w.Event('input'));
  assert(w.document.querySelector('main').textContent.includes('Забрать заказ'));assert(!w.document.querySelector('main').textContent.includes('Подготовить план'));
  change(w.document.querySelector('[name=task-status]'),'open');assert(!w.document.querySelector('main').textContent.includes('Забрать заказ'));
- button('Календарь').click();button('Добавить').click();
+ button('Календарь').click();
+ change(w.document.querySelector('[name=calendar-day]'),'2026-11-12');
+ const agenda=w.document.querySelector('.calendar-agenda');
+ assert(agenda?.querySelector('h2').textContent.includes('12'),'Calendar agenda must show the selected date');
+ agenda.querySelector('button').click();
+ assert.equal(w.document.activeElement.tagName,'H2','Opening a dialog must focus its title');
+ assert.equal(w.document.querySelector('[name=localStart]').value,'2026-11-12T09:00');
  w.document.querySelector('dialog [name=name]').value='DOM shared event';w.document.querySelector('[name=localStart]').value='2026-11-12T14:30';w.document.querySelector('[name=timezone]').value='Asia/Tashkent';submit();
  await wait(()=>!w.document.querySelector('dialog'));assert.equal(w.document.querySelector('.error')?.textContent||'','');
  change(w.document.querySelector('[name=calendar-day]'),'2026-11-12');await wait(()=>w.document.querySelector('main').textContent.includes('DOM shared event'));
@@ -44,8 +50,12 @@ try{
  button('Добавить операцию').click();
  w.document.querySelector('[name=amount]').value='125,50';w.document.querySelector('[name=label]').value='DOM coffee';submit();
  await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM coffee'));
- button('Профиль',w.document.querySelector('.nav')).click();button('Оформление',w.document.querySelector('.settings-navigation')).click();await wait(()=>w.document.querySelector('[name=theme]'));change(w.document.querySelector('[name=theme]'),'dark');assert.equal(w.document.body.dataset.theme,'dark');
+ button('Профиль',w.document.querySelector('.nav')).click();
+ w.document.querySelector('.settings-navigation [data-section=security]').click();
+ await wait(()=>w.document.querySelector('.settings-row-status')?.textContent==='Google не подключён');
+ assert.equal(w.document.querySelectorAll('.settings-content .settings-group').length,3);
+ button('Оформление',w.document.querySelector('.settings-navigation')).click();await wait(()=>w.document.querySelector('[name=theme]'));change(w.document.querySelector('[name=theme]'),'dark');assert.equal(w.document.body.dataset.theme,'dark');
  change(w.document.querySelector('[name=language]'),'uz-Latn');await wait(()=>w.document.querySelector('.nav').textContent.includes('Taqvim'));assert.equal(w.document.documentElement.lang,'uz-Latn');
  const response=await w.fetch('/account/api/sync?workspace='+encodeURIComponent(w.fixtureSpace()));const data=await response.json();assert(data.records.some(r=>r.data.title==='DOM shared event'));assert(data.records.some(r=>r.data.body==='DOM changed note'&&!r.deleted));assert(data.records.some(r=>r.kind==='transaction'&&r.data.label==='DOM coffee'&&r.data.amount_minor===12550));
- assert(!w.localStorage.getItem('uladim-interface').includes('DOM changed'));console.log('DOM_INTEGRATION_PASSED: task filters, event save, note save/undo, finance, theme, Uzbek, real server records');
+ assert(!w.localStorage.getItem('uladim-interface').includes('DOM changed'));console.log('DOM_INTEGRATION_PASSED: task filters, event save, note save/undo, finance, Google status, theme, Uzbek, real server records');
 }finally{w.close();}

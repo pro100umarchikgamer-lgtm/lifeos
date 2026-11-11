@@ -2,7 +2,7 @@ name: ULADIM Web client
 on:
   pull_request:
     branches: [feature/uladim-hostinger-launch]
-    paths: ['backend/webassets/**', 'backend/web.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'backend/tests/**', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
+    paths: ['backend/webassets/**', 'backend/web.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'backend/tests/**', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r backend/requirements.txt -r tool/web-requirements.txt
-      - run: python -m playwright install --with-deps chromium
+      - run: python -m playwright install --with-deps chromium firefox webkit
       - name: Create isolated non-admin PostgreSQL role
         run: |
           python - <<'PY'
@@ -62,6 +62,11 @@ jobs:
         run: python -m tool.check_web_platform
       - name: Clarity hierarchy and selected-device revocation
         run: python -m tool.check_clarity_review
+      - name: Workspace recovery in Chromium, WebKit and Firefox
+        run: |
+          for engine in chromium webkit firefox; do
+            python -m tool.check_workspace_recovery --engine "$engine" --output "web_evidence/workspace-$engine"
+          done
       - name: Existing PWA and financial acceptance
         run: |
           python -m tool.check_pwa_browser
