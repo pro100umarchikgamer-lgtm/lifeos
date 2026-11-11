@@ -2,7 +2,7 @@ name: ULADIM Web client
 on:
   pull_request:
     branches: [feature/uladim-hostinger-launch]
-    paths: ['backend/webassets/**', 'backend/web.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'backend/tests/**', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
+    paths: ['backend/webassets/**', 'backend/web.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'tool/check_statement*', 'backend/tests/**', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -66,6 +66,13 @@ jobs:
         run: |
           for engine in chromium webkit firefox; do
             python -m tool.check_workspace_recovery --engine "$engine" --output "web_evidence/workspace-$engine"
+          done
+      - name: Save bank imports in Chromium, WebKit and Firefox
+        run: |
+          node tool/check_statement_formats.cjs
+          for engine in chromium webkit firefox; do
+            ULADIM_BROWSER="$engine" python -m tool.check_statement_browser
+            python -m tool.check_statement_documents --engine "$engine"
           done
       - name: Existing PWA and financial acceptance
         run: |

@@ -16,7 +16,7 @@ from tool.check_pwa_browser import Quiet
 from tool.check_statement_documents import statement_pdf, statement_xlsx
 
 PASSWORD = 'synthetic-statement-acceptance-pass'
-OUT = Path('web_evidence/statement-import')
+OUT = Path('web_evidence/statement-import-' + os.environ.get('ULADIM_BROWSER', 'chromium'))
 
 
 def main():
@@ -74,6 +74,8 @@ def run(browser, backend, actor, workspace, origin):
     editor.locator('input[name=name]').fill('Основной счёт')
     editor.get_by_role('button', name='Сохранить', exact=True).click()
     expect(dialog.locator('input[type=file]')).to_be_visible()
+    with page.expect_file_chooser():
+        dialog.locator('input[type=file]').click()
     assert dialog.locator('input[type=file]').get_attribute('accept') is None
 
     def upload(name, contents):
@@ -90,7 +92,7 @@ def run(browser, backend, actor, workspace, origin):
         while True:
             batch = backend.pull(actor, workspace, cursor)
             result.extend(row for row in batch['records'] if row['kind'] == 'transaction')
-            if len(batch['records']) < 100:
+            if not batch['more']:
                 return result
             cursor = batch['cursor']
 
