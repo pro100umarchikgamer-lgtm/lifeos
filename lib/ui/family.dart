@@ -416,7 +416,9 @@ class _FamilyPageState extends State<FamilyPage> {
                     if (c.googleConfigUnavailable)
                       Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: Text(t('family_error_service_unavailable'))),
+                          child: Text(t(c.googleConfigFailure == 'offline'
+                              ? 'family_error_offline'
+                              : 'family_error_service_unavailable'))),
                     if (c.googleAvailable || c.googleConfigUnavailable)
                       FilledButton.tonal(
                         onPressed: c.busy
