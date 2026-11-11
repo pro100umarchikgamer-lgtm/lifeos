@@ -306,9 +306,9 @@ class Web:
         import mimetypes
         root = ASSETS / 'app'
         relative = 'index.html' if path in ('/app', '/app/') else ('sw.js' if path == '/app/sw.js' else path[len('/app/assets/'):])
-        allowed = {'index.html', 'app.js', 'domain.js', 'money.js', 'import.js', 'statement-worker.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
+        allowed = {'index.html', 'app.js', 'domain.js', 'money.js', 'statement-formats.js', 'statement-pdf.js', 'statement-xlsx.js', 'pdf-lib.mjs', 'pdf-worker.mjs', 'import.js', 'statement-worker.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
         require(relative in allowed and (root / relative).is_file(), 'not_found', 404)
-        mime = {'.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.json': 'application/json'}.get(Path(relative).suffix, mimetypes.guess_type(relative)[0] or 'application/octet-stream')
+        mime = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.webmanifest': 'application/manifest+json', '.json': 'application/json'}.get(Path(relative).suffix, mimetypes.guess_type(relative)[0] or 'application/octet-stream')
         result = dict(headers)
         result.update({'Content-Type': mime, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow',
                        'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})

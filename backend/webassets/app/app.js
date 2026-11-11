@@ -202,7 +202,7 @@ function listTasks(m){
 }
 function listNotes(m){title(m,'widget_notes',()=>editRecord('note'));const search=input(m,'search',t('search'),'search','',false);const grid=E('div',undefined,'grid');m.append(grid);const draw=()=>{grid.replaceChildren();const rows=records('note').filter(r=>r.data.body.toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang)));for(const r of rows){const c=card();const firstLine=r.data.body.split('\n')[0],preview=(firstLine.length>100?r.data.body.slice(100):r.data.body.slice(firstLine.length)).trimStart();c.append(E('h2',firstLine.slice(0,100)||t('family_kind_note')));if(preview)c.append(E('p',preview.slice(0,280),'note note-preview'));c.append(button(t('edit'),()=>editRecord('note',r)));grid.append(c);}if(!rows.length)grid.append(E('p',t('empty_notes'),'empty'));};search.addEventListener('input',draw);draw();}
 async function saveOperation(operation,workspace=state.space){const result=await call('sync',{workspace_id:workspace,operations:[operation]});const item=result.results[0];if(item.status!=='accepted')throw {code:item.status==='conflict'?'conflict':item.error};return item;}
-function editRecord(kind,r=null){
+function editRecord(kind,r=null,onSaved=null){
  const workspace=state.space;const d=dialog(t('family_kind_'+kind),container=>{
  let operation=null,accepted=false;const fields={};
  form(container,'',f=>{
@@ -247,7 +247,7 @@ function editRecord(kind,r=null){
    operation={id:crypto.randomUUID(),action:'record.put',record_id:r?.id||crypto.randomUUID(),revision:r?.revision||0,kind,visibility:v.visibility.value,audience:r?.audience||(currentSpace()?.role==='child'?[currentSpace().profile_id]:[]),data};
   }
   if(!accepted){try{await saveOperation(operation,workspace);accepted=true;}catch(error){if(!error.uncertain)operation=null;throw error;}}
-  await refresh();d.close();render();
+  await refresh();d.close();render();onSaved?.();
  });
  if(r)container.append(button(t('family_use_server'),async()=>{d.close();await refresh();render();}));
  if(r?.editable)container.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));
@@ -259,7 +259,7 @@ function balance(a){let result=BigInt(a.data.opening_minor);for(const r of recor
 function finance(m){
  title(m,'finances');m.classList.add('finance-page');
  const toolbar=E('div',undefined,'finance-toolbar');
- append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'text-button'),button(t('import_file'),importStatement,'secondary'));
+ append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'text-button'),button(statementCopy('title'),importStatement,'secondary'));
  m.querySelector('.intro').append(toolbar);
  const grid=E('div',undefined,'finance-grid');
  const activity=E('div',undefined,'finance-activity'),details=E('aside',undefined,'finance-details');

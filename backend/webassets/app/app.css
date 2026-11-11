@@ -27,3 +27,33 @@ body[data-design=clarity] .nav{gap:4px;padding:8px 8px max(8px,env(safe-area-ins
 body[data-design=clarity] .today-grid .card{padding-top:18px;padding-bottom:18px}body[data-design=clarity] .today-grid .today-tasks{padding-top:0}body[data-design=clarity] .today-finance .row{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}body[data-design=clarity] .today-finance .row>strong{grid-column:1/-1;font-size:12px;color:var(--muted)}body[data-design=clarity] .today-finance .income,body[data-design=clarity] .today-finance .expense{font-size:14px}body[data-design=clarity] .today-grid h2{margin-bottom:12px}body[data-design=clarity] .today-grid .today-finance{padding:18px 20px}body[data-design=clarity] .today-notes .note{padding:8px 0;margin:0}
 @media(max-width:759px){body[data-design=clarity] .today-grid{gap:0}body[data-design=clarity] .today-tasks .row{padding:12px 0}body[data-design=clarity] .intro{margin-bottom:18px}body[data-design=clarity] .today-grid .today-finance{margin-top:8px}}
 @media(max-width:360px){body[data-design=clarity] .today-finance .row{grid-template-columns:1fr}}
+
+.statement-dialog [hidden]{display:none}
+.statement-dialog .statement-controls,.statement-dialog .statement-mapping{min-width:0}
+.statement-dialog input[type=file]{width:100%;min-width:0}
+.statement-dialog .statement-advanced{margin-block:1rem}
+.statement-dialog .statement-advanced>summary{cursor:pointer;min-height:44px;align-content:center}
+.statement-dialog .statement-mapping{display:grid;gap:.35rem}
+.statement-dialog .statement-totals:empty,.statement-dialog .import-status:empty{display:none}
+.statement-dialog .statement-totals{margin-block:.7rem}
+.statement-dialog .statement-currency{display:flex;align-items:baseline;flex-wrap:wrap;gap:.4rem .8rem;margin-block:.25rem}
+.statement-dialog .import-table table{min-width:42rem}
+.statement-dialog .import-table td{overflow-wrap:anywhere}
+.statement-dialog .import-table td:nth-child(4){white-space:nowrap}
+.statement-dialog .import-table td:last-child button{display:block;margin-block:.3rem}
+.statement-dialog .import-table td input[type=checkbox]{width:1.35rem;height:1.35rem;margin:.45rem}
+.statement-dialog .statement-actions{margin-block:.8rem .1rem}
+@media(max-width:640px){
+ .statement-dialog .import-table{overflow:visible}
+ .statement-dialog .import-table table,.statement-dialog .import-table tbody{display:block;width:100%;min-width:0}
+ .statement-dialog .import-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .statement-dialog .import-table tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.15rem .5rem;padding:.45rem 0;border-bottom:1px solid var(--line)}
+ .statement-dialog .import-table td{padding:.12rem;min-width:0;border:0}
+ .statement-dialog .import-table td:nth-child(1){grid-row:1 / span 2;align-self:start}
+ .statement-dialog .import-table td:nth-child(2){grid-column:2;grid-row:2}
+ .statement-dialog .import-table td:nth-child(3){grid-column:2;grid-row:1;font-weight:600}
+ .statement-dialog .import-table td:nth-child(4){grid-column:3;grid-row:1;font-weight:600}
+ .statement-dialog .import-table td:nth-child(5){grid-column:3;grid-row:2}
+ .statement-dialog .import-table td:nth-child(6),.statement-dialog .import-table td:nth-child(7){grid-column:2 / -1}
+ .statement-dialog .import-table td:nth-child(6) label{display:block}
+}

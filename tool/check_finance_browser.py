@@ -45,7 +45,7 @@ def main():
                 page.goto(origin+'/app');page.locator('input[name=email]').fill(actor['email']);page.locator('input[name=password]').fill(PASSWORD);page.get_by_role('button',name='Войти',exact=True).click()
                 expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
                 page.get_by_role('navigation').get_by_role('button',name='Финансы',exact=True).click()
-                expect(page.get_by_role('button',name='Импорт из файла',exact=True)).to_be_visible()
+                expect(page.get_by_role('button',name='Импортировать выписку',exact=True)).to_be_visible()
                 checks.append({'case':'shared domain worker preserves exact KWD/JPY and rejects unsafe inputs','expected':'exact minor units or explicit rejection','actual':page.evaluate('''async()=>{
                   const parse=async(text,extension='csv')=>statementWorker({action:'parse',bytes:btoa(unescape(encodeURIComponent(text))),extension,encoding:'auto',delimiter:'auto',currency:'RUB'});
                   const mapping={header:0,date:0,amount:1,description:2,currency:3,dateFormat:'iso',decimal:'.',defaultCurrency:'RUB',direction:'signed'};
@@ -65,11 +65,8 @@ def main():
                 }""")
                 checks.append({'case':'10,000 rows, row limit and shared budget carry','expected':'bounded parser; exact Android budget remainder','actual':'passed'})
                 statement='date;amount;description;currency\n2026-11-10;-1 234,56;Магазин;RUB\n2026-11-10;2000,00;<img src=x onerror=alert(1)>;RUB\n2026-02-30;10,00;Неверная дата;RUB'
-                page.get_by_role('button',name='Импорт из файла',exact=True).click();dialog=page.get_by_role('dialog')
+                page.get_by_role('button',name='Импортировать выписку',exact=True).click();dialog=page.get_by_role('dialog')
                 dialog.locator('input[type=file]').set_input_files({'name':'statement.csv','mimeType':'text/csv','buffer':statement.encode()})
-                expect(dialog.get_by_role('button',name='Проверить записи',exact=True)).to_be_visible()
-                dialog.locator('select[name=date]').select_option('0');dialog.locator('select[name=amount]').select_option('1');dialog.locator('select[name=description]').select_option('2');dialog.locator('select[name=decimal]').select_option(',')
-                dialog.get_by_role('button',name='Проверить записи',exact=True).click()
                 expect(dialog.locator('tbody tr')).to_have_count(3)
                 assert dialog.locator('tbody input:checked').count()==2
                 assert dialog.locator('tbody img').count()==0
@@ -92,10 +89,9 @@ def main():
                 dialog.get_by_role('button',name='Закрыть',exact=True).click()
                 expect(page.locator('.account-balance strong')).to_have_text('865,44 RUB')
                 checks.append({'case':'visible account balance immediately after import','expected':'865.44 RUB, including opening balance','actual':'passed'})
-                page.get_by_role('button',name='Импорт из файла',exact=True).click();dialog=page.get_by_role('dialog')
+                page.get_by_role('button',name='Импортировать выписку',exact=True).click();dialog=page.get_by_role('dialog')
                 dialog.locator('input[type=file]').set_input_files({'name':'renamed.csv','mimeType':'text/csv','buffer':statement.encode()})
-                dialog.locator('select[name=date]').select_option('0');dialog.locator('select[name=amount]').select_option('1');dialog.locator('select[name=description]').select_option('2');dialog.locator('select[name=decimal]').select_option(',')
-                dialog.get_by_role('button',name='Проверить записи',exact=True).click();expect(dialog.locator('tbody tr')).to_have_count(3)
+                expect(dialog.locator('tbody tr')).to_have_count(3)
                 assert dialog.locator('tbody input:checked').count()==0
                 checks.append({'case':'same content under renamed file','expected':'all existing records excluded','actual':'passed'})
                 dialog.get_by_role('button',name='Закрыть',exact=True).click()

@@ -137,8 +137,10 @@ jobs:
       - name: Verify exact finance, local statement import, lost responses and deduplication
         run: |
           node tool/check_money.js
+          node tool/check_statement_formats.cjs
           python tool/check_statement_build.py
           python -m tool.check_finance_browser
+          python -m tool.check_statement_browser
       - name: Verify opt-in Clarity against the same accounts and API
         run: ULADIM_DESIGN=clarity python -m tool.check_pwa_browser
       - name: Render the three design concepts on phone, tablet and desktop
