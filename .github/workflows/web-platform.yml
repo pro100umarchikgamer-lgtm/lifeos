@@ -64,6 +64,11 @@ jobs:
         run: python -m tool.check_web_platform
       - name: Clarity hierarchy and selected-device revocation
         run: python -m tool.check_clarity_review
+      - name: Align Firefox home ownership inside the test container
+        run: |
+          if [ "$HOME" = /github/home ] && [ "$(stat -c %u "$HOME")" != "$(id -u)" ]; then
+            chown "$(id -u):$(id -g)" "$HOME"
+          fi
       - name: Workspace recovery in Chromium, WebKit and Firefox
         run: |
           for engine in chromium webkit firefox; do
