@@ -137,7 +137,7 @@ def main():
                                     low,high=sorted((luminance(colors[fg]),luminance(colors[bg])))
                                     ratio=(high+.05)/(low+.05)
                                     contrast_evidence.append({'scheme':scheme,'theme':theme,'palette':palette,'foreground':fg,'background':bg,'ratio':round(ratio,3),'minimum':4.5,'passed':ratio>=4.5})
-                                    assert ratio>=4.5,(scheme,theme,palette,fg,bg,ratio)
+                                    assert ratio>=4.5,(scheme,theme,palette,fg,bg,colors[fg],colors[bg],ratio)
                 checks.append('financial_text_contrast_all_themes_and_palettes')
                 page.emulate_media(color_scheme='light')
                 page.locator('[name=settings-section]').select_option('appearance')
