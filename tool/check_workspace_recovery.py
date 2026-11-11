@@ -120,22 +120,24 @@ def main():
     args = parser.parse_args()
     if args.output:
         args.output.mkdir(parents=True, exist_ok=True)
-    with fixture(https=args.engine=='webkit') as (origin, backend, actor, workspace), sync_playwright() as playwright:
-        for title, start in [('Планирование дня', '2026-11-10T09:00:00'),
-                             ('Созвон по проекту', '2026-11-10T14:00:00'),
-                             ('Встреча с командой', '2026-11-11T11:00:00')]:
-            response = backend.batch(actor, workspace, [{
-                'id': str(uuid4()), 'action': 'record.put', 'record_id': str(uuid4()), 'revision': 0,
-                'kind': 'event', 'visibility': 'private', 'audience': [],
-                'data': {'title': title, 'schedule': {'localStart': start, 'timezone': 'Europe/Moscow',
-                         'allDay': False, 'repeat': 'none', 'interval': 1, 'until': None}},
-            }])
-            assert response['results'][0]['status'] == 'accepted', response
+    with sync_playwright() as playwright:
         binary = os.environ.get('ULADIM_CHROMIUM') if args.engine == 'chromium' else None
         options = {'executable_path': binary} if binary else {}
         browser = getattr(playwright, args.engine).launch(**options)
         for viewport in VIEWPORTS[:1] if args.compact_only else VIEWPORTS:
-            run(browser, origin, args.output, *viewport)
+            # Each viewport represents a separate visit with an independent rate-limit budget.
+            with fixture(https=args.engine=='webkit') as (origin, backend, actor, workspace):
+                for title, start in [('Планирование дня', '2026-11-10T09:00:00'),
+                                     ('Созвон по проекту', '2026-11-10T14:00:00'),
+                                     ('Встреча с командой', '2026-11-11T11:00:00')]:
+                    response = backend.batch(actor, workspace, [{
+                        'id': str(uuid4()), 'action': 'record.put', 'record_id': str(uuid4()), 'revision': 0,
+                        'kind': 'event', 'visibility': 'private', 'audience': [],
+                        'data': {'title': title, 'schedule': {'localStart': start, 'timezone': 'Europe/Moscow',
+                                 'allDay': False, 'repeat': 'none', 'interval': 1, 'until': None}},
+                    }])
+                    assert response['results'][0]['status'] == 'accepted', response
+                run(browser, origin, args.output, *viewport)
         browser.close()
     print(f'Workspace recovery passed on {args.engine}')
 
