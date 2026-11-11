@@ -14,6 +14,7 @@ from backend.production import Application
 from backend.service import Backend
 from tool.check_pwa_browser import Quiet
 from tool.check_statement_documents import statement_pdf, statement_xlsx
+from tool.web_test_tls import enable_test_tls
 
 PASSWORD = 'synthetic-statement-acceptance-pass'
 OUT = Path('web_evidence/statement-import-' + os.environ.get('ULADIM_BROWSER', 'chromium'))
@@ -41,12 +42,14 @@ def main():
             'SMTP_TLS': 'none', 'EMAIL_FROM': 'fixture@example.test',
         })
         server = make_server('127.0.0.1', 0, lambda e, s: [], handler_class=Quiet)
-        origin = 'http://localhost:' + str(server.server_port)
+        engine = os.environ.get('ULADIM_BROWSER', 'chromium')
+        if engine == 'webkit':
+            enable_test_tls(server, directory)
+        origin = ('https' if engine == 'webkit' else 'http') + '://localhost:' + str(server.server_port)
         server.set_app(Application(backend, replace(settings, site_origin=origin, require_https=False)))
         Thread(target=server.serve_forever, daemon=True).start()
         try:
             with sync_playwright() as playwright:
-                engine = os.environ.get('ULADIM_BROWSER', 'chromium')
                 browser = getattr(playwright, engine).launch()
                 run(browser, backend, actor, workspace, origin)
                 browser.close()
@@ -56,7 +59,7 @@ def main():
 
 
 def run(browser, backend, actor, workspace, origin):
-    context = browser.new_context(viewport={'width': 1180, 'height': 820}, locale='ru-RU')
+    context = browser.new_context(viewport={'width': 1180, 'height': 820}, locale='ru-RU', ignore_https_errors=origin.startswith('https:'))
     page = context.new_page()
     page.goto(origin + '/app/')
     page.locator('input[name=email]').fill(actor['email'])

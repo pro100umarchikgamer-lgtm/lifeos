@@ -13,11 +13,12 @@ from backend.config import Settings
 from backend.production import Application
 from backend.service import Backend
 from tool.check_pwa_browser import Quiet
+from tool.web_test_tls import enable_test_tls
 
 OUT=Path('web_evidence/platform')
 PASSWORD='synthetic-web-platform-password'
 @contextmanager
-def fixture():
+def fixture(https=False):
     with tempfile.TemporaryDirectory() as folder:
         mail={}
         dsn=os.environ.get('ULADIM_WEB_TEST_DATABASE_URL','')
@@ -53,7 +54,9 @@ def fixture():
         put('budget',{'name':'Повседневные расходы','currency':'RUB','limit_minor':3000000,'period':'month','start_on':'2026-11-01','end_on':None,'rollover':'none','participants':[]})
         put('event',{'title':'Встреча с семьёй','schedule':{'localStart':'2026-11-10T18:30:00','timezone':'Europe/Moscow','allDay':False,'repeat':'weekly','interval':1,'until':None}})
         settings=Settings.load({'DATABASE_URL':'postgresql://example/db','EMAIL_QUEUE_KEY':Fernet.generate_key().decode(),'RATE_LIMIT_KEY':'fixture-'+'x'*48,'SMTP_HOST':'127.0.0.1','SMTP_TLS':'none','EMAIL_FROM':'fixture@example.test'})
-        server=make_server('127.0.0.1',0,lambda e,s:[],handler_class=Quiet);origin='http://localhost:'+str(server.server_port)
+        server=make_server('127.0.0.1',0,lambda e,s:[],handler_class=Quiet)
+        if https: enable_test_tls(server,folder)
+        origin=('https' if https else 'http')+'://localhost:'+str(server.server_port)
         server.set_app(Application(backend,replace(settings,site_origin=origin,control_origin='http://control.localhost:'+str(server.server_port),require_https=False)))
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:yield origin,backend,actor,wid

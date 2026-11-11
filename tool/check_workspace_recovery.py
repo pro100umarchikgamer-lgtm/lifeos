@@ -17,7 +17,7 @@ VIEWPORTS = (
 
 def run(browser, origin, output, name, width, height):
     with browser.new_context(viewport={'width': width, 'height': height},
-                             locale='ru-RU', timezone_id='Europe/Moscow') as context:
+                             locale='ru-RU', timezone_id='Europe/Moscow', ignore_https_errors=origin.startswith('https:')) as context:
         page = context.new_page()
         page_errors = []
         page.on('pageerror', lambda error: page_errors.append(str(error)))
@@ -91,7 +91,7 @@ def main():
     args = parser.parse_args()
     if args.output:
         args.output.mkdir(parents=True, exist_ok=True)
-    with fixture() as (origin, _, _, _), sync_playwright() as playwright:
+    with fixture(https=args.engine=='webkit') as (origin, _, _, _), sync_playwright() as playwright:
         binary = os.environ.get('ULADIM_CHROMIUM') if args.engine == 'chromium' else None
         options = {'executable_path': binary} if binary else {}
         browser = getattr(playwright, args.engine).launch(**options)
