@@ -665,52 +665,126 @@ body[data-design=clarity] .today-page .intro h1{
   font-size:clamp(2rem,4vw,3.5rem);
   line-height:1.04;
 }
-body[data-design=clarity] .today-page .today-grid .card{
-  background:transparent;
+body[data-design=clarity] .today-page .today-grid{
+  grid-template-areas:"main side";
+  grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);
+  gap:clamp(12px,2vw,22px);
+}
+body[data-design=clarity] .today-page .today-grid .card,
+body[data-design=clarity] .today-page .today-grid .today-side .card{
+  background:var(--ux-surface);
   box-shadow:none;
-  border:0;
-  border-radius:0;
-  border-top:1px solid var(--ux-border);
+  border:1px solid var(--ux-border);
+  border-radius:var(--ux-radius);
+  padding:clamp(14px,2vw,20px)!important;
 }
 body[data-design=clarity] .today-page .today-grid h2{
-  font-family:Georgia,serif;
-  font-size:clamp(1.125rem,2vw,1.55rem);
+  font-family:inherit;
+  font-size:clamp(1.075rem,1.7vw,1.3rem);
 }
-body[data-design=clarity] .today-page .today-grid .today-notes,
-body[data-design=clarity] .today-page .today-grid .today-schedule{
+body[data-design=clarity] .today-page .today-main .card{
+  grid-area:auto;
   grid-column:auto;
   grid-row:auto;
 }
+body[data-design=clarity] .today-page .today-side .today-schedule{grid-area:auto}
 body[data-design=clarity] .today-page .today-finance .today-money-row strong{
   font-size:clamp(.95rem,1.5vw,1.18rem);
 }
-.today-page .today-notes .note-link{overflow-wrap:anywhere}
-@media(min-width:760px){
-  body[data-design=clarity] .today-page .today-side{
-    border-inline-start:1px solid var(--ux-border);
-    padding-inline-start:clamp(14px,2vw,28px);
+.today-page .today-notes .note-link{overflow-wrap:anywhere;text-align:start;line-height:1.35}
+.today-page .today-grid p.empty{min-height:0;padding-block:0}
+.finance-navigation{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px 16px;
+  margin:0 0 14px;
+  border-bottom:1px solid var(--ux-border);
+}
+.finance-navigation a{
+  display:inline-flex;
+  align-items:center;
+  min-height:44px;
+  color:var(--ux-green);
+  font-weight:650;
+  text-underline-offset:4px;
+}
+.finance-page [id^="finance-"],main h1[tabindex="-1"]{
+  scroll-margin-top:calc(var(--app-header-height,72px) + 12px);
+}
+body[data-design=clarity] .finance-page .finance-details .card{
+  padding:14px 16px;
+  border:1px solid var(--ux-border);
+  border-radius:var(--ux-radius);
+  background:var(--ux-surface);
+}
+body[data-design=clarity] .finance-page .finance-details .finance-overview{
+  background:var(--ux-soft);
+  border-color:transparent;
+}
+.ledger .finance-filters{
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));
+}
+.ledger .finance-filters input,.ledger .finance-filters select,.event-editor input[type="datetime-local"]{
+  box-sizing:border-box;
+  min-inline-size:0;
+  max-inline-size:100%;
+  inline-size:100%;
+}
+.ledger .finance-filters input::-webkit-datetime-edit,
+.event-editor input::-webkit-datetime-edit{
+  min-inline-size:0;
+}
+.event-all-day{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:44px;
+  margin-top:8px;
+}
+.event-all-day label{margin:0}
+.event-all-day input[type="checkbox"]{width:24px;min-height:24px;margin:0}
+.event-options{
+  padding:0 12px;
+  border:1px solid var(--ux-border);
+  border-radius:9px;
+}
+.event-options[open]{padding-bottom:12px}
+.event-options summary{
+  display:list-item;
+  align-content:center;
+  min-height:44px;
+  color:var(--ux-green);
+  font-weight:650;
+}
+body[data-design=clarity][data-theme="light"]{
+  --ux-bg:#f7f6ef;
+  --ux-surface:#fffefa;
+  --ux-ink:#24322a;
+  --ux-muted:#54645a;
+  --ux-border:#d9dfd5;
+  --ux-green:#225746;
+  --ux-soft:#e5eee3;
+}
+@media(prefers-color-scheme:light){
+  body[data-design=clarity][data-theme="system"]{
+    --ux-bg:#f7f6ef;
+    --ux-surface:#fffefa;
+    --ux-ink:#24322a;
+    --ux-muted:#54645a;
+    --ux-border:#d9dfd5;
+    --ux-green:#225746;
+    --ux-soft:#e5eee3;
   }
-  body[data-design=clarity] .today-page .today-grid .today-notes{grid-area:notes}
-  body[data-design=clarity] .today-page .today-grid .today-schedule{grid-area:schedule}
-  body[data-design=clarity] .today-page .today-grid .today-tasks,
-  body[data-design=clarity] .today-page .today-grid .today-agenda{border-top:0}
 }
 @media(max-width:759px){
   body[data-design=clarity] .today-page .intro{margin-bottom:16px}
-  body[data-design=clarity] .today-page .today-grid{display:flex;flex-direction:column;gap:0}
-  body[data-design=clarity] .today-page .today-side{display:contents}
-  body[data-design=clarity] .today-page .today-main{width:100%;order:0}
-  body[data-design=clarity] .today-page .today-finance{order:1}
-  body[data-design=clarity] .today-page .today-schedule{order:2}
-  body[data-design=clarity] .today-page .today-agenda{order:3}
-  body[data-design=clarity] .today-page .today-notes{order:4}
-  body[data-design=clarity] .today-page .today-grid .card{padding:13px 0!important}
-  body[data-design=clarity] .today-page .today-grid .today-tasks{border-top:0;padding-top:0!important}
+  body[data-design=clarity] .today-page .today-grid{display:grid;grid-template-areas:none;grid-template-columns:minmax(0,1fr)}
+  body[data-design=clarity] .today-page .today-main,
+  body[data-design=clarity] .today-page .today-side{grid-area:auto;gap:12px;margin:0}
   body[data-design=clarity] .today-page .today-grid h2{margin-bottom:8px}
   .today-page .today-progress{min-width:6rem}
   .today-page .today-money-row>.total{display:flex;justify-content:space-between;align-items:center;gap:8px}
   .today-page .today-finance .finance-summary-period{margin:0 0 2px}
-  .today-page .today-agenda p.empty{min-height:0;padding-block:0}
 }
 
 .import-guide,.import-faq{max-width:52rem;margin:32px auto;scroll-margin-top:84px}

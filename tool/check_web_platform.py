@@ -140,7 +140,9 @@ def main():
             page.locator('.nav').get_by_role('button',name='Календарь',exact=True).click()
             page.get_by_role('button',name='Добавить',exact=True).click()
             d=page.get_by_role('dialog');d.get_by_label('Название',exact=True).fill('Проверяемое событие')
-            d.locator('[name=localStart]').fill('2026-11-12T14:30');d.locator('[name=timezone]').fill('Asia/Tashkent')
+            d.locator('[name=localStart]').fill('2026-11-12T14:30')
+            d.locator('.event-options > summary').click()
+            d.locator('[name=timezone]').fill('Asia/Tashkent')
             d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
             events=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='event']
             assert any(r['data']['title']=='Проверяемое событие' and r['data']['schedule']['timezone']=='Asia/Tashkent' for r in events)

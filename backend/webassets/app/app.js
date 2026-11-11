@@ -9,10 +9,10 @@ function preferences(){try{localStorage.setItem('uladim-interface',JSON.stringif
 function applyTheme(){document.body.dataset.design=new URLSearchParams(location.search).get('design')==='legacy'?'':'clarity';document.body.dataset.theme=state.theme;document.body.dataset.palette=state.palette;document.documentElement.lang=state.lang;}
 
 const WEB_COPY={
- ru:{web_calendar:'Календарь',family_kind_event:'Событие',web_upcoming:'Ближайшие 7 дней',web_no_events:'Событий пока нет. Добавьте время для важного.',web_all_tasks:'Все задачи',web_task_search:'Поиск задач',web_task_status:'Статус задачи',web_all:'Все',web_no_results:'Ничего не найдено',web_event_start:'Начало события',web_timezone:'Часовой пояс IANA или device',web_all_day:'Весь день',web_repeat:'Повторение',web_interval:'Интервал повторения',web_until:'Повторять до',web_repeat_none:'Не повторять',web_repeat_daily:'Ежедневно',web_repeat_weekly:'Еженедельно',web_repeat_monthly:'Ежемесячно',web_repeat_yearly:'Ежегодно',web_deleted_pending:'Запись будет удалена',web_delete_failed:'Удаление не подтверждено. Обновите данные перед повтором.',web_previous:'Предыдущий месяц',web_next:'Следующий месяц',web_month:'Месяц',web_agenda:'Повестка',web_partial_short:'частичный перевод',web_locale_coverage:'Новые экраны переведены на русский, английский и два варианта узбекского. Для остальных языков новые подписи показаны на английском.',web_conflict:'Запись изменена на другом устройстве. Скопируйте свои правки и загрузите серверную версию.',web_uncertain:'Сервер мог сохранить запись. Повторите запрос этой кнопкой — повтор не создаст копию.',web_server_error:'Сервис временно недоступен. Попробуйте позже.',web_view_changed:'Пространство или сессия изменились. Откройте запись заново.',web_currency_mismatch:'Валюта должна совпадать со счётом. При переводе в одной валюте суммы должны быть одинаковыми.',web_transfer_accounts:'Для перевода нужны два разных счёта.',web_install_button:'Установить ULADIM',web_loading:'Загрузка пространства…',web_quick_task:'Что нужно сделать?',web_add_task:'Добавить задачу',web_online_status:'Синхронизация через ваш аккаунт',web_day:'Выбранный день',web_cancel:'Отменить'},
- en:{web_calendar:'Calendar',family_kind_event:'Event',web_upcoming:'Next 7 days',web_no_events:'No events yet. Make time for what matters.',web_all_tasks:'All tasks',web_task_search:'Search tasks',web_task_status:'Task status',web_all:'All',web_no_results:'No results',web_event_start:'Event start',web_timezone:'IANA timezone or device',web_all_day:'All day',web_repeat:'Repeat',web_interval:'Repeat interval',web_until:'Repeat until',web_repeat_none:'Never',web_repeat_daily:'Daily',web_repeat_weekly:'Weekly',web_repeat_monthly:'Monthly',web_repeat_yearly:'Yearly',web_deleted_pending:'Record will be deleted',web_delete_failed:'Deletion not confirmed. Refresh before retrying.',web_previous:'Previous month',web_next:'Next month',web_month:'Month',web_agenda:'Agenda',web_partial_short:'partial translation',web_locale_coverage:'New screens are translated into Russian, English and both Uzbek scripts. Other languages use English for new labels.',web_conflict:'This record changed on another device. Copy your edits, then load the server version.',web_uncertain:'The server may have saved this record. Retry with this button; it reuses the operation to avoid duplicates.',web_server_error:'Service temporarily unavailable. Try again later.',web_view_changed:'Workspace or session changed. Reopen the record.',web_currency_mismatch:'Currency must match the account. Same-currency transfers must have equal amounts.',web_transfer_accounts:'Transfers require two different accounts.',web_install_button:'Install ULADIM',web_loading:'Loading workspace…',web_quick_task:'What needs to be done?',web_add_task:'Add task',web_online_status:'Synced through your account',web_day:'Selected day',web_cancel:'Undo'},
- 'uz-Latn':{web_calendar:'Taqvim',family_kind_event:'Tadbir',web_upcoming:'Keyingi 7 kun',web_no_events:'Hozircha tadbirlar yo‘q. Muhim ishlar uchun vaqt ajrating.',web_all_tasks:'Barcha vazifalar',web_task_search:'Vazifalarni qidirish',web_task_status:'Vazifa holati',web_all:'Barchasi',web_no_results:'Hech narsa topilmadi',web_event_start:'Tadbir boshlanishi',web_timezone:'IANA vaqt mintaqasi yoki device',web_all_day:'Kun bo‘yi',web_repeat:'Takrorlash',web_interval:'Takrorlash oralig‘i',web_until:'Shu sanagacha takrorlash',web_repeat_none:'Takrorlanmasin',web_repeat_daily:'Har kuni',web_repeat_weekly:'Har hafta',web_repeat_monthly:'Har oy',web_repeat_yearly:'Har yil',web_deleted_pending:'Yozuv o‘chiriladi',web_delete_failed:'O‘chirish tasdiqlanmadi. Qayta urinishdan oldin yangilang.',web_previous:'Oldingi oy',web_next:'Keyingi oy',web_month:'Oy',web_agenda:'Kun tartibi',web_partial_short:'qisman tarjima',web_locale_coverage:'Yangi ekranlar rus, ingliz va o‘zbek tilining ikkala yozuvida tarjima qilingan. Qolgan tillarda yangi yozuvlar inglizcha.',web_conflict:'Yozuv boshqa qurilmada o‘zgargan. Tahrirlaringizni nusxalang va server nusxasini yuklang.',web_uncertain:'Server yozuvni saqlagan bo‘lishi mumkin. Shu tugma bilan takrorlang — nusxa yaratilmaydi.',web_server_error:'Xizmat vaqtincha mavjud emas. Keyinroq urinib ko‘ring.',web_view_changed:'Makon yoki seans o‘zgargan. Yozuvni qayta oching.',web_currency_mismatch:'Valyuta hisob bilan mos bo‘lsin. Bir xil valyutadagi o‘tkazma summalari teng bo‘lishi kerak.',web_transfer_accounts:'O‘tkazma uchun ikki xil hisob kerak.',web_install_button:'ULADIM o‘rnatish',web_loading:'Makon yuklanmoqda…',web_quick_task:'Nima qilish kerak?',web_add_task:'Vazifa qo‘shish',web_online_status:'Hisobingiz orqali sinxronlanadi',web_day:'Tanlangan kun',web_cancel:'Bekor qilish'},
- 'uz-Cyrl':{web_calendar:'Тақвим',family_kind_event:'Тадбир',web_upcoming:'Кейинги 7 кун',web_no_events:'Ҳозирча тадбирлар йўқ. Муҳим ишлар учун вақт ажратинг.',web_all_tasks:'Барча вазифалар',web_task_search:'Вазифаларни қидириш',web_task_status:'Вазифа ҳолати',web_all:'Барчаси',web_no_results:'Ҳеч нарса топилмади',web_event_start:'Тадбир бошланиши',web_timezone:'IANA вақт минтақаси ёки device',web_all_day:'Кун бўйи',web_repeat:'Такрорлаш',web_interval:'Такрорлаш оралиғи',web_until:'Шу санагача такрорлаш',web_repeat_none:'Такрорланмасин',web_repeat_daily:'Ҳар куни',web_repeat_weekly:'Ҳар ҳафта',web_repeat_monthly:'Ҳар ой',web_repeat_yearly:'Ҳар йил',web_deleted_pending:'Ёзув ўчирилади',web_delete_failed:'Ўчириш тасдиқланмади. Қайта уринишдан олдин янгиланг.',web_previous:'Олдинги ой',web_next:'Кейинги ой',web_month:'Ой',web_agenda:'Кун тартиби',web_partial_short:'қисман таржима',web_locale_coverage:'Янги экранлар рус, инглиз ва ўзбек тилининг иккала ёзувида таржима қилинган. Қолган тилларда янги ёзувлар инглизча.',web_conflict:'Ёзув бошқа қурилмада ўзгарган. Таҳрирларингизни нусхаланг ва сервер нусхасини юкланг.',web_uncertain:'Сервер ёзувни сақлаган бўлиши мумкин. Шу тугма билан такрорланг — нусха яратилмайди.',web_server_error:'Хизмат вақтинча мавжуд эмас. Кейинроқ уриниб кўринг.',web_view_changed:'Макон ёки сеанс ўзгарган. Ёзувни қайта очинг.',web_currency_mismatch:'Валюта ҳисоб билан мос бўлсин. Бир хил валютадаги ўтказма суммалари тенг бўлиши керак.',web_transfer_accounts:'Ўтказма учун икки хил ҳисоб керак.',web_install_button:'ULADIM ўрнатиш',web_loading:'Макон юкланмоқда…',web_quick_task:'Нима қилиш керак?',web_add_task:'Вазифа қўшиш',web_online_status:'Ҳисобингиз орқали синхронланади',web_day:'Танланган кун',web_cancel:'Бекор қилиш'}
+ ru:{web_calendar:'Календарь',family_kind_event:'Событие',web_upcoming:'Ближайшие 7 дней',web_no_events:'Событий пока нет. Добавьте время для важного.',web_all_tasks:'Все задачи',web_task_search:'Поиск задач',web_task_status:'Статус задачи',web_all:'Все',web_no_results:'Ничего не найдено',web_event_start:'Начало события',web_timezone:'Часовой пояс',web_all_day:'Весь день',web_repeat:'Повторение',web_interval:'Интервал повторения',web_until:'Повторять до',web_repeat_none:'Не повторять',web_repeat_daily:'Ежедневно',web_repeat_weekly:'Еженедельно',web_repeat_monthly:'Ежемесячно',web_repeat_yearly:'Ежегодно',web_deleted_pending:'Запись будет удалена',web_delete_failed:'Удаление не подтверждено. Обновите данные перед повтором.',web_previous:'Предыдущий месяц',web_next:'Следующий месяц',web_month:'Месяц',web_agenda:'Повестка',web_partial_short:'частичный перевод',web_locale_coverage:'Новые экраны переведены на русский, английский и два варианта узбекского. Для остальных языков новые подписи показаны на английском.',web_conflict:'Запись изменена на другом устройстве. Скопируйте свои правки и загрузите серверную версию.',web_uncertain:'Сервер мог сохранить запись. Повторите запрос этой кнопкой — повтор не создаст копию.',web_server_error:'Сервис временно недоступен. Попробуйте позже.',web_view_changed:'Пространство или сессия изменились. Откройте запись заново.',web_currency_mismatch:'Валюта должна совпадать со счётом. При переводе в одной валюте суммы должны быть одинаковыми.',web_transfer_accounts:'Для перевода нужны два разных счёта.',web_install_button:'Установить ULADIM',web_loading:'Загрузка пространства…',web_quick_task:'Что нужно сделать?',web_add_task:'Добавить задачу',web_online_status:'Синхронизация через ваш аккаунт',web_day:'Выбранный день',web_cancel:'Отменить'},
+ en:{web_calendar:'Calendar',family_kind_event:'Event',web_upcoming:'Next 7 days',web_no_events:'No events yet. Make time for what matters.',web_all_tasks:'All tasks',web_task_search:'Search tasks',web_task_status:'Task status',web_all:'All',web_no_results:'No results',web_event_start:'Event start',web_timezone:'Time zone',web_all_day:'All day',web_repeat:'Repeat',web_interval:'Repeat interval',web_until:'Repeat until',web_repeat_none:'Never',web_repeat_daily:'Daily',web_repeat_weekly:'Weekly',web_repeat_monthly:'Monthly',web_repeat_yearly:'Yearly',web_deleted_pending:'Record will be deleted',web_delete_failed:'Deletion not confirmed. Refresh before retrying.',web_previous:'Previous month',web_next:'Next month',web_month:'Month',web_agenda:'Agenda',web_partial_short:'partial translation',web_locale_coverage:'New screens are translated into Russian, English and both Uzbek scripts. Other languages use English for new labels.',web_conflict:'This record changed on another device. Copy your edits, then load the server version.',web_uncertain:'The server may have saved this record. Retry with this button; it reuses the operation to avoid duplicates.',web_server_error:'Service temporarily unavailable. Try again later.',web_view_changed:'Workspace or session changed. Reopen the record.',web_currency_mismatch:'Currency must match the account. Same-currency transfers must have equal amounts.',web_transfer_accounts:'Transfers require two different accounts.',web_install_button:'Install ULADIM',web_loading:'Loading workspace…',web_quick_task:'What needs to be done?',web_add_task:'Add task',web_online_status:'Synced through your account',web_day:'Selected day',web_cancel:'Undo'},
+ 'uz-Latn':{web_calendar:'Taqvim',family_kind_event:'Tadbir',web_upcoming:'Keyingi 7 kun',web_no_events:'Hozircha tadbirlar yo‘q. Muhim ishlar uchun vaqt ajrating.',web_all_tasks:'Barcha vazifalar',web_task_search:'Vazifalarni qidirish',web_task_status:'Vazifa holati',web_all:'Barchasi',web_no_results:'Hech narsa topilmadi',web_event_start:'Tadbir boshlanishi',web_timezone:'Vaqt mintaqasi',web_all_day:'Kun bo‘yi',web_repeat:'Takrorlash',web_interval:'Takrorlash oralig‘i',web_until:'Shu sanagacha takrorlash',web_repeat_none:'Takrorlanmasin',web_repeat_daily:'Har kuni',web_repeat_weekly:'Har hafta',web_repeat_monthly:'Har oy',web_repeat_yearly:'Har yil',web_deleted_pending:'Yozuv o‘chiriladi',web_delete_failed:'O‘chirish tasdiqlanmadi. Qayta urinishdan oldin yangilang.',web_previous:'Oldingi oy',web_next:'Keyingi oy',web_month:'Oy',web_agenda:'Kun tartibi',web_partial_short:'qisman tarjima',web_locale_coverage:'Yangi ekranlar rus, ingliz va o‘zbek tilining ikkala yozuvida tarjima qilingan. Qolgan tillarda yangi yozuvlar inglizcha.',web_conflict:'Yozuv boshqa qurilmada o‘zgargan. Tahrirlaringizni nusxalang va server nusxasini yuklang.',web_uncertain:'Server yozuvni saqlagan bo‘lishi mumkin. Shu tugma bilan takrorlang — nusxa yaratilmaydi.',web_server_error:'Xizmat vaqtincha mavjud emas. Keyinroq urinib ko‘ring.',web_view_changed:'Makon yoki seans o‘zgargan. Yozuvni qayta oching.',web_currency_mismatch:'Valyuta hisob bilan mos bo‘lsin. Bir xil valyutadagi o‘tkazma summalari teng bo‘lishi kerak.',web_transfer_accounts:'O‘tkazma uchun ikki xil hisob kerak.',web_install_button:'ULADIM o‘rnatish',web_loading:'Makon yuklanmoqda…',web_quick_task:'Nima qilish kerak?',web_add_task:'Vazifa qo‘shish',web_online_status:'Hisobingiz orqali sinxronlanadi',web_day:'Tanlangan kun',web_cancel:'Bekor qilish'},
+ 'uz-Cyrl':{web_calendar:'Тақвим',family_kind_event:'Тадбир',web_upcoming:'Кейинги 7 кун',web_no_events:'Ҳозирча тадбирлар йўқ. Муҳим ишлар учун вақт ажратинг.',web_all_tasks:'Барча вазифалар',web_task_search:'Вазифаларни қидириш',web_task_status:'Вазифа ҳолати',web_all:'Барчаси',web_no_results:'Ҳеч нарса топилмади',web_event_start:'Тадбир бошланиши',web_timezone:'Вақт минтақаси',web_all_day:'Кун бўйи',web_repeat:'Такрорлаш',web_interval:'Такрорлаш оралиғи',web_until:'Шу санагача такрорлаш',web_repeat_none:'Такрорланмасин',web_repeat_daily:'Ҳар куни',web_repeat_weekly:'Ҳар ҳафта',web_repeat_monthly:'Ҳар ой',web_repeat_yearly:'Ҳар йил',web_deleted_pending:'Ёзув ўчирилади',web_delete_failed:'Ўчириш тасдиқланмади. Қайта уринишдан олдин янгиланг.',web_previous:'Олдинги ой',web_next:'Кейинги ой',web_month:'Ой',web_agenda:'Кун тартиби',web_partial_short:'қисман таржима',web_locale_coverage:'Янги экранлар рус, инглиз ва ўзбек тилининг иккала ёзувида таржима қилинган. Қолган тилларда янги ёзувлар инглизча.',web_conflict:'Ёзув бошқа қурилмада ўзгарган. Таҳрирларингизни нусхаланг ва сервер нусхасини юкланг.',web_uncertain:'Сервер ёзувни сақлаган бўлиши мумкин. Шу тугма билан такрорланг — нусха яратилмайди.',web_server_error:'Хизмат вақтинча мавжуд эмас. Кейинроқ уриниб кўринг.',web_view_changed:'Макон ёки сеанс ўзгарган. Ёзувни қайта очинг.',web_currency_mismatch:'Валюта ҳисоб билан мос бўлсин. Бир хил валютадаги ўтказма суммалари тенг бўлиши керак.',web_transfer_accounts:'Ўтказма учун икки хил ҳисоб керак.',web_install_button:'ULADIM ўрнатиш',web_loading:'Макон юкланмоқда…',web_quick_task:'Нима қилиш керак?',web_add_task:'Вазифа қўшиш',web_online_status:'Ҳисобингиз орқали синхронланади',web_day:'Танланган кун',web_cancel:'Бекор қилиш'}
 };
 let deferredInstall=null;
 for(const [locale,message] of Object.entries({
@@ -23,6 +23,15 @@ for(const [locale,message] of Object.entries({
 })) WEB_COPY[locale].web_saved_refresh=message;
 for(const [locale,message] of Object.entries({ru:'Итого',en:'Net','uz-Latn':'Jami','uz-Cyrl':'Жами'}))WEB_COPY[locale].web_today_net=message;
 for(const [locale,message] of Object.entries({ru:'Импорт и синхронизация',en:'Import and sync','uz-Latn':'Import va sinxronlash','uz-Cyrl':'Импорт ва синхронлаш'}))WEB_COPY[locale].web_personal_import=message;
+for(const [locale,labels] of Object.entries({
+ ru:['Дополнительные параметры','Операции','Бюджеты'],
+ en:['Additional options','Transactions','Budgets'],
+ 'uz-Latn':['Qo‘shimcha sozlamalar','Operatsiyalar','Budjetlar'],
+ 'uz-Cyrl':['Қўшимча созламалар','Операциялар','Бюджетлар']
+})){
+ const [web_event_options,web_finance_transactions,web_finance_budgets]=labels;
+ Object.assign(WEB_COPY[locale],{web_event_options,web_finance_transactions,web_finance_budgets});
+}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function dateString(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 function eventRow(o){const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');append(caption,E('h3',o.record.data.title),E('p',new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'))+' · '+(o.allDay?t('web_all_day'):o.time),'small'));append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));return row;}
@@ -284,6 +293,15 @@ function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('di
 function render(){redrawFinance=null;if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='calendar')calendar(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);
 }
+function openTabSection(tab,selector){
+ state.tab=tab;
+ render();
+ const section=root.querySelector(selector);
+ if(!section)return;
+ section.tabIndex=-1;
+ section.focus({preventScroll:true});
+ section.scrollIntoView({block:'start'});
+}
 function onboarding(m){
  m.classList.add('onboarding');const c=card();c.classList.add('setup-panel');c.append(icon('today'),E('h1',t('welcome_title')),E('p',t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')));const alternative=E('div',undefined,'setup-alternative');alternative.append(button(t('family_accept'),acceptInvite,'text-button'));append(m,c,alternative);
 }
@@ -305,7 +323,7 @@ function today(m){
  a.firstElementChild.append(progressBox);
  const quick=E('form',undefined,'quick-capture'),field=E('input');field.name='quick-task';field.placeholder=t('web_quick_task');field.setAttribute('aria-label',t('web_quick_task'));field.maxLength=2000;field.required=true;const submit=E('button',undefined,'primary icon');submit.type='submit';submit.setAttribute('aria-label',t('web_add_task'));submit.append(icon('add'));append(quick,field,submit);let operation=null,accepted=false;
  quick.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;submit.disabled=true;field.readOnly=true;const workspace=state.space;try{operation=operation||{id:crypto.randomUUID(),action:'record.put',record_id:crypto.randomUUID(),revision:0,kind:'task',visibility:currentSpace()?.role==='child'?'shared':'private',audience:currentSpace()?.role==='child'?[currentSpace().profile_id]:[],data:{title:field.value.trim(),completed:0,assignment:'any',assignees:[],review:0}};if(!operation.data.title)throw {code:'invalid_input'};if(!accepted){await saveOperation(operation,workspace);accepted=true;}await refresh();render();}catch(error){if(!accepted&&!error.uncertain)operation=null;if(error.code==='unauthorized')report(error);else toast(errorText(error));if(error.uncertain)submit.setAttribute('aria-label',t('retry'));}finally{submit.disabled=false;field.readOnly=!!operation;}});a.append(quick);
- for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>{state.tab='tasks';render();},'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
+ for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>openTabSection('tasks','main h1'),'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
  if(dayEvents.length){
   const schedule=card(t('web_calendar')+' · '+t('today'));
   schedule.classList.add('today-schedule');
@@ -317,7 +335,7 @@ function today(m){
    append(item,time,button(o.record.data.title,()=>editRecord('event',o.record),'text-button'));
    timeline.append(item);
   }
-  schedule.append(timeline);grid.append(schedule);
+  schedule.append(timeline);side.append(schedule);
  }
  const agenda=card(t('web_upcoming'));
  agenda.classList.add('today-agenda');
@@ -333,7 +351,7 @@ function today(m){
  finance.classList.add('today-finance');
  summaries(finance);
  const financeActions=E('div',undefined,'task-actions');
- append(financeActions,button(t('web_history'),()=>{state.tab='money';render();},'text-button'),
+ append(financeActions,button(t('web_history'),()=>openTabSection('money','#finance-ledger'),'text-button'),
   button(t('web_add_operation'),()=>editRecord('transaction'),'text-button'));
  finance.append(financeActions);
  side.append(finance);
@@ -344,7 +362,7 @@ function today(m){
  for(const r of recent)notes.append(button(r.data.body.split('\n')[0].slice(0,110)||t('family_kind_note'),()=>editRecord('note',r),'note-link'));
  if(!recent.length)notes.append(E('p',t('empty_notes'),'empty'));
  notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));
- grid.append(notes);
+ main.append(notes);
 
 }
 function taskRow(r){
@@ -436,11 +454,25 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   if(kind==='event'){
    const schedule=data.schedule||{};
    fields.localStart=input(f,'localStart',t('web_event_start'),'datetime-local',schedule.localStart?.slice(0,16)||eventDay+'T09:00');
-   fields.timezone=input(f,'timezone',t('web_timezone'),'text',schedule.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone);
-   fields.allDay=input(f,'allDay',t('web_all_day'),'checkbox');fields.allDay.checked=!!schedule.allDay;
-   fields.repeat=select(f,'repeat',t('web_repeat'),['none','daily','weekly','monthly','yearly'].map(k=>[k,t('web_repeat_'+k)]),schedule.repeat||'none');
-   fields.interval=input(f,'interval',t('web_interval'),'number',schedule.interval||1);fields.interval.min=1;fields.interval.max=365;fields.interval.step=1;
-   fields.until=input(f,'until',t('web_until'),'date',schedule.until||'',false);
+   const allDay=E('div',undefined,'event-all-day');
+   fields.allDay=input(allDay,'allDay',t('web_all_day'),'checkbox');fields.allDay.checked=!!schedule.allDay;
+   allDay.prepend(fields.allDay);
+   const options=E('details',undefined,'event-options');
+   options.append(E('summary',t('web_event_options')));
+   fields.timezone=input(options,'timezone',t('web_timezone'),'text',schedule.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'device');
+   fields.repeat=select(options,'repeat',t('web_repeat'),['none','daily','weekly','monthly','yearly'].map(k=>[k,t('web_repeat_'+k)]),schedule.repeat||'none');
+   const recurrence=E('div',undefined,'event-repeat-options');
+   fields.interval=input(recurrence,'interval',t('web_interval'),'number',schedule.interval||1);fields.interval.min=1;fields.interval.max=365;fields.interval.step=1;
+   fields.until=input(recurrence,'until',t('web_until'),'date',schedule.until||'',false);
+   const updateRecurrence=()=>{
+    recurrence.hidden=fields.repeat.value==='none';
+    fields.interval.disabled=fields.until.disabled=recurrence.hidden;
+   };
+   updateRecurrence();
+   fields.repeat.addEventListener('change',updateRecurrence);
+   options.addEventListener('invalid',()=>{options.open=true;},true);
+   options.append(recurrence);
+   append(f,allDay,options);
   }
   if(kind==='note')fields.body=input(f,'body',t('note_text'),'textarea',data.body||'');
   if(kind==='task'){
@@ -456,13 +488,24 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   }
   if(kind==='budget'){fields.period=select(f,'period',t('family_period'),['week','month','year','custom'].map(k=>[k,t('family_'+k)]),data.period||'month');fields.start=input(f,'start',t('family_start'),'date',data.start_on||localDate());fields.end=input(f,'end',t('family_end'),'date',data.end_on||'',false);fields.rollover=select(f,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');}
   if(kind==='transfer'){if(records('account').length<2)f.append(E('p',t('web_transfer_accounts'),'error'));const accounts=records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency]);fields.from=select(f,'from',t('family_from'),accounts,data.from_id||accounts[0]?.[0]);fields.to=select(f,'to',t('family_to'),accounts,data.to_id||accounts[1]?.[0]);fields.received=input(f,'received',t('received_amount'),'text',decimalInput(data.received_minor||0,records('account').find(a=>a.id===data.to_id)?.data.currency||'RUB'));fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());}
-  fields.visibility=select(f,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
+  fields.visibility=select(kind==='event'?f.querySelector('.event-options'):f,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
   if(disabled)f.disabled=true;return fields;
  },async v=>{
   if(workspace!==state.space)throw {code:'view_changed'};
   if(!operation){let data={...r?.data};
    if(kind==='note')data={body:v.body.value};
-   if(kind==='event'){const schedule={localStart:v.localStart.value.length===16?v.localStart.value+':00':v.localStart.value,timezone:v.timezone.value.trim(),allDay:v.allDay.checked,repeat:v.repeat.value,interval:Number(v.interval.value),until:v.until.value||null};if(schedule.until&&schedule.until<schedule.localStart.slice(0,10))throw {code:'invalid_date'};const year=Number(schedule.localStart.slice(0,4));if(!Number.isInteger(schedule.interval)||schedule.interval<1||schedule.interval>365||year<1900||year>2200)throw {code:'invalid_schedule'};try{ULADIMDomain.occurrences([{id:'validate',data:{schedule}}],schedule.localStart.slice(0,10),dateString(new Date(Date.parse(schedule.localStart+'Z')+172800000)));}catch{throw {code:'invalid_schedule'};}data={title:v.name.value,schedule};}
+   if(kind==='event'){
+    const repeat=v.repeat.value;
+    const schedule={localStart:v.localStart.value.length===16?v.localStart.value+':00':v.localStart.value,timezone:v.timezone.value.trim(),allDay:v.allDay.checked,repeat,interval:repeat==='none'?1:Number(v.interval.value),until:repeat==='none'?null:v.until.value||null};
+    const revealOptions=()=>{container.querySelector('.event-options').open=true;};
+    if(schedule.until&&schedule.until<schedule.localStart.slice(0,10)){revealOptions();throw {code:'invalid_date'};}
+    const year=Number(schedule.localStart.slice(0,4));
+    if(!Number.isInteger(schedule.interval)||schedule.interval<1||schedule.interval>365){revealOptions();throw {code:'invalid_schedule'};}
+    if(year<1900||year>2200)throw {code:'invalid_schedule'};
+    try{ULADIMDomain.occurrences([{id:'validate',data:{schedule}}],schedule.localStart.slice(0,10),dateString(new Date(Date.parse(schedule.localStart+'Z')+172800000)));}
+    catch{revealOptions();throw {code:'invalid_schedule'};}
+    data={title:v.name.value,schedule};
+   }
    if(kind==='task')data={title:v.name.value,completed:v.completed.checked?1:0,assignment:r?.data.assignment||'any',assignees:r?.data.assignees||[],review:r?.data.review||0};
    if(kind==='account')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),opening_minor:minor(v.amount.value,true,v.currency.value)};
    if(kind==='transaction')data={kind:v.direction.value,amount_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),currency:v.currency.value.trim().toUpperCase(),date:v.date.value,label:v.label.value,account_id:v.account.value||null};
@@ -504,12 +547,21 @@ function finance(m){
  const toolbar=E('div',undefined,'finance-toolbar');
  append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'text-button'),button(statementCopy('title'),importStatement,'secondary'));
  m.querySelector('.intro').append(toolbar);
+ const sections=E('nav',undefined,'finance-navigation');
+ sections.setAttribute('aria-label',t('finances'));
+ for(const [id,label] of [['ledger','web_finance_transactions'],['accounts','web_accounts'],['budgets','web_finance_budgets'],['analysis','web_analysis']]){
+  const link=E('a',t(label));
+  link.href='#finance-'+id;
+  sections.append(link);
+ }
+ m.append(sections);
  const grid=E('div',undefined,'finance-grid');
  const activity=E('div',undefined,'finance-activity'),details=E('aside',undefined,'finance-details');
  append(grid,activity,details);m.append(grid);
  const summary=card(t('web_finance_summary'));
- summary.classList.add('finance-overview');activity.append(summary);
+ summary.classList.add('finance-overview');details.append(summary);
  const ledger=card(t('web_history'));ledger.classList.add('ledger');activity.append(ledger);
+ ledger.id='finance-ledger';ledger.tabIndex=-1;
  const filterPanel=E('details',undefined,'finance-filter-panel');
  const filterLabel=E('summary',t('web_filters'));
  const filters=E('div',undefined,'finance-filters');
@@ -520,11 +572,14 @@ function finance(m){
  const wrap=E('div');filters.append(wrap);const accountFilter=select(wrap,'finance-account',t('web_accounts'),[['',t('web_all_accounts')],...records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency])],state.financeFilters.account||'');
  const rows=()=>records('transaction').filter(r=>(!accountFilter.value||r.data.account_id===accountFilter.value)&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(r.data.label+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
  const accounts=card(t('web_accounts'));accounts.classList.add('finance-accounts');details.append(accounts);
+ accounts.id='finance-accounts';accounts.tabIndex=-1;
  for(const a of records('account')){const row=E('div',undefined,'account-balance');append(row,E('span',a.data.name,'text'),E('strong',money(balance(a),a.data.currency)),iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));accounts.append(row);}if(!records('account').length)accounts.append(E('p',t('empty_money')));accounts.append(addButton(t('family_kind_account'),()=>editRecord('account')));
  const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');details.append(chart);const chartControls=E('div',undefined,'chart-controls');chart.append(chartControls);
+ chart.id='finance-analysis';chart.tabIndex=-1;
  const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];const currency=select(chartControls,'chart-currency',t('currency'),currencies.map(c=>[c,c]),currencies[0]);const mode=select(chartControls,'chart-mode',t('web_chart_type'),[['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.chart);
  const legend=E('div',undefined,'chart-legend');chart.append(legend);const canvas=E('canvas');canvas.width=720;canvas.height=320;canvas.setAttribute('role','img');chart.append(canvas);
- const budgets=card(t('family_kind_budget'));budgets.classList.add('wide','finance-budgets');details.append(budgets);
+ const budgets=card(t('family_kind_budget'));budgets.classList.add('finance-budgets');details.insertBefore(budgets,chart);
+ budgets.id='finance-budgets';budgets.tabIndex=-1;
  const budgetLabels=new Map();for(const r of records('budget')){const row=E('div',undefined,'budget-line'),text=E('div'),amount=E('p',money(r.data.limit_minor,r.data.currency),'small');append(text,E('h3',r.data.name),amount);budgetLabels.set(r.id,amount);append(row,text,iconButton('more',t('edit')+' · '+r.data.name,()=>editRecord('budget',r)));budgets.append(row);}
  if(budgetLabels.size){const epoch=privateEpoch;statementWorker({action:'budgets',at:localDate(),records:records('transaction'),budgets:records('budget')}).then(result=>{if(epoch!==privateEpoch||!m.isConnected)return;for(const r of records('budget'))budgetLabels.get(r.id).textContent=t('remaining')+': '+money(result.remaining[r.id],r.data.currency)+' · '+t('budget_limit')+': '+money(r.data.limit_minor,r.data.currency);}).catch(error=>{if(m.isConnected)budgets.append(E('p',errorText(error),'error'));});}
  budgets.append(addButton(t('family_kind_budget'),()=>editRecord('budget')));
