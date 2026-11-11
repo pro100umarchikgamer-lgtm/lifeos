@@ -53,7 +53,7 @@ class Web:
             self.backend._account_available(db, row['user_id'])
             db.execute('UPDATE web_sessions SET last_seen_at=? WHERE hash=?', (now, token_hash(token)))
             db.execute('UPDATE devices SET last_seen_at=? WHERE id=?', (now, row['device_id']))
-            return {'id': row['user_id'], 'email': row['email'], 'verified': row['verified']}
+            return {'id': row['user_id'], 'email': row['email'], 'verified': row['verified'], 'device_id': row['device_id']}
 
     def request(self, env, body):
         path, method = env.get('PATH_INFO', ''), env.get('REQUEST_METHOD', '')
@@ -266,7 +266,11 @@ class Web:
             if action == 'deletion': return lifecycle.deletion_status(actor)
             if action == 'entitlements':
                 with self.backend.connect() as db: return entitlements.resolve(db, actor['id'], int(self.backend.clock()))
-            if action == 'devices': return self.backend.list_devices(actor, '')
+            if action == 'devices':
+                result = self.backend.list_devices(actor, '')
+                for device in result['devices']:
+                    device['current'] = device['id'] == actor['device_id']
+                return result
             if action == 'support': return self.support.list(actor)
             if action == 'thread': return self.support.read(actor, q.get('id', [''])[0])
         elif method == 'POST':
