@@ -22,6 +22,7 @@ for(const [locale,message] of Object.entries({
  'uz-Cyrl':'Ўзгаришлар сақланди. Рўйхатни қайта юкланг.'
 })) WEB_COPY[locale].web_saved_refresh=message;
 for(const [locale,message] of Object.entries({ru:'Итого',en:'Net','uz-Latn':'Jami','uz-Cyrl':'Жами'}))WEB_COPY[locale].web_today_net=message;
+for(const [locale,message] of Object.entries({ru:'Импорт и синхронизация',en:'Import and sync','uz-Latn':'Import va sinxronlash','uz-Cyrl':'Импорт ва синхронлаш'}))WEB_COPY[locale].web_personal_import=message;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function dateString(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 function eventRow(o){const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');append(caption,E('h3',o.record.data.title),E('p',new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'))+' · '+(o.allDay?t('web_all_day'):o.time),'small'));append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));return row;}
@@ -596,14 +597,14 @@ function openSettings(section){
  if(target){if(target.tagName==='H2')target.tabIndex=-1;target.focus();}
 }
 async function account(m){
- title(m,'account_manage');m.classList.add('settings-page');
  const section=state.settingsTab||'profile';
+ title(m,section==='personal-import'?'web_personal_import':'account_manage');m.classList.add('settings-page');
  m.dataset.settingsDetail=String(Boolean(state.settingsTab));
  const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
  navigation.setAttribute('aria-label',t('account_manage'));
  const back=button(t('web_back_settings'),()=>openSettings(''),'settings-back text-button');
  back.prepend(icon('back'));append(layout,navigation,content);append(m,back,layout);
- const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['family','family_account'],['plan','account_access'],['support','account_support']];
+ const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['family','family_account'],['personal-import','web_personal_import'],['plan','account_access'],['support','account_support']];
  for(const [key,label] of sections){
   const item=settingsRow(t(label),()=>openSettings(key),'settings-item');
   item.dataset.section=key;
@@ -612,6 +613,7 @@ async function account(m){
  }
  if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),settingsRow(t('account_privacy'),()=>openSettings('security')),button(t('family_logout'),async()=>{await call('logout',{});clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
+ if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);
  if(section==='family'){familyPanel(content);familyPermissions(content);}
  try{if(section==='family')await incomingOwnership(content);if(section==='plan'){const ent=await call('entitlements');if(state.tab!=='account'||state.settingsTab!==section)return;const plans=card(t('account_access'));append(plans,E('div',ent.tier,'stat'),E('p',t('account_no_payment')));content.append(plans);}if(section==='support')await support(content);}catch(e){report(e);}
@@ -826,3 +828,140 @@ if(window.visualViewport){const fit=()=>{document.body.style.setProperty('--visi
 
 // Repaint canvas pixels when system colors change; keep open dialog drafts intact.
 window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener('change',()=>redrawFinance?.());
+
+async function personalImportCenter(host){
+ const parser=await import('/app/assets/personal-import.js');
+ if(!host.isConnected)return;
+ const copy=key=>parser.importCopy(key,state.lang);
+ const files=card(copy('oneTime'),copy('local'));
+ files.classList.add('personal-import-center');
+ const list=E('ul',undefined,'personal-import-sources');
+ const choices=[['calendars','calendarFiles','importCalendars'],['notes','noteFiles','importNotes'],['tasks','taskFiles','importTasks']];
+ for(const [label,formats,action] of choices){
+  const row=E('li');
+  append(row,append(E('div'),E('strong',copy(label)),E('p',copy(formats),'small')),
+    button(copy(action),()=>openPersonalImport(parser,copy(action)),'secondary'));
+  list.append(row);
+ }
+ const backup=E('li');
+ append(backup,append(E('div'),E('strong',copy('backups')),E('p',copy('backupStatus'),'small')));
+ files.append(list,E('p',copy('structuredStatus'),'small'));
+ list.append(backup);
+ const sync=card(copy('sync'),copy('googleStatus'));
+ append(host,files,sync,anchor(state.lang==='ru'?'Руководство по импорту':'Import guide','/docs#import'));
+}
+
+function openPersonalImport(parser,titleText){
+ const workspace=state.space,user=state.session.user_id,epoch=privateEpoch;
+ const copy=key=>parser.importCopy(key,state.lang);
+ if(!workspace||currentSpace()?.role==='child'){toast(copy(workspace?'child':'noSpace'));return;}
+ let busy=false,saving=false,pending=null,saved=0,failed=0,rows=[];
+ const sameContext=()=>privateEpoch===epoch&&state.space===workspace&&state.session?.user_id===user;
+ const d=dialog(titleText,host=>{
+  host.classList.add('personal-import-dialog');
+  host.append(E('p',copy('local'),'small'));
+  const file=E('input');
+  file.type='file';
+  file.multiple=true;
+  host.append(append(E('label',undefined,'personal-import-picker'),E('span',copy('pick')),file));
+  const status=E('p',undefined,'personal-import-status');
+  status.setAttribute('role','status');
+  const review=E('div');
+  const list=E('ul',undefined,'personal-import-preview');
+  const save=E('button',copy('save'));
+  save.type='button';
+  save.hidden=true;
+  append(host,status,review,list,append(E('div',undefined,'actions'),save));
+  const selected=()=>rows.filter(row=>row.status==='ready'&&row.selected);
+  const active=()=>sameContext()&&host.isConnected&&host.open;
+  const close=host.querySelector('.dialog-close');
+  const update=()=>{
+   file.disabled=busy||Boolean(pending);
+   save.disabled=busy||!(pending?.length||selected().length);
+   if(close)close.disabled=saving;
+  };
+  host.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
+
+  function showRows(){
+   list.replaceChildren();
+   const found=[['event','calendars'],['note','notes'],['task','tasks']]
+    .map(([kind,label])=>copy(label)+': '+rows.filter(row=>row.kind===kind).length);
+   const existing=rows.filter(row=>row.status==='duplicate'||row.status==='conflict').length;
+   const skipped=rows.filter(row=>row.issue).length;
+   review.replaceChildren(E('h3',copy('review')),E('p',found.join(' · '),'small'),
+     E('p',copy('duplicate')+': '+existing+' · '+copy('skipped')+': '+skipped,'small'));
+   for(const row of rows){
+    const item=E('li');
+    if(row.issue){item.append(E('p',copy(row.issue),'small'));list.append(item);continue;}
+    const label=row.kind==='note'?row.data.body.split('\n')[0].slice(0,110):row.data.title;
+    if(row.status==='ready'){
+     const choice=E('input');choice.type='checkbox';choice.checked=row.selected;
+     choice.addEventListener('change',()=>{row.selected=choice.checked;update();});
+     item.append(append(E('label'),choice,E('span',label)));
+    }else item.append(E('strong',label));
+    if(row.kind==='event'){
+     const schedule=row.data.schedule;
+     item.append(E('p',schedule.localStart.slice(0,schedule.allDay?10:16).replace('T',' ')+
+       ' · '+(schedule.allDay?t('web_all_day'):schedule.timezone),'small'));
+    }
+    if(row.status!=='ready')item.append(E('p',copy(row.status),'small'));
+    for(const issue of row.issues)item.append(E('p',copy(issue),'small'));
+    list.append(item);
+   }
+   save.hidden=!rows.some(row=>row.status==='ready');
+  }
+
+  file.addEventListener('change',async()=>{
+   if(!active()||busy||pending)return;
+   const files=[...file.files];
+   busy=true;rows=[];saved=0;failed=0;save.textContent=copy('save');
+   review.replaceChildren();list.replaceChildren();status.textContent=copy('checking');update();
+   try{
+    const parsed=await parser.previewPersonalFiles(files);
+    await refresh();
+    if(!active())return;
+    rows=await parser.identifyPersonalRows(parsed,[user,workspace],state.records,statementID);
+    if(!active())return;
+    for(const row of rows)row.selected=row.status==='ready';
+    status.textContent='';showRows();
+   }catch(error){
+    if(active())status.textContent=errorText(error);
+   }finally{
+    file.value='';busy=false;update();
+   }
+  });
+
+  save.addEventListener('click',async()=>{
+   if(!active()||busy||!(pending?.length||selected().length))return;
+   pending??=selected().map(row=>({id:crypto.randomUUID(),action:'record.put',record_id:row.id,
+     revision:0,kind:row.kind,visibility:'private',audience:[],data:row.data}));
+   busy=true;saving=true;list.inert=true;update();
+   try{
+    while(pending.length&&active()){
+     const batch=pending.slice(0,25);
+     const reply=await call('sync',{workspace_id:workspace,operations:batch});
+     if(!active())return;
+     if(!Array.isArray(reply.results)||reply.results.length!==batch.length||
+        reply.results.some((result,index)=>result.id!==batch[index].id))throw {code:'server_error',uncertain:true};
+     const accepted=reply.results.filter(result=>result.status==='accepted').length;
+     saved+=accepted;failed+=batch.length-accepted;
+     pending.splice(0,batch.length);
+    }
+    if(!active())return;
+    pending=null;rows=[];save.hidden=true;review.replaceChildren();list.replaceChildren();
+    status.textContent=copy('saved')+': '+saved+(failed?' · '+copy('failed')+': '+failed:'');
+    try{await refresh();if(active())render();}
+    catch(error){if(active())report(error);}
+   }catch(error){
+    if(active()){
+     status.textContent=error.uncertain?copy('retryHelp'):errorText(error);
+     save.textContent=copy('retry');
+    }
+   }finally{
+    busy=false;saving=false;list.inert=Boolean(pending);update();
+   }
+  });
+  update();
+ });
+ return d;
+}

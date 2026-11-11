@@ -67,7 +67,7 @@ function centralDirectory(bytes) {
     entries.set(name, {method, length, crc, content: bytes.subarray(start, start + compressed)});
     offset = next;
   }
-  checked(offset === end && entries.has('[Content_Types].xml'));
+  checked(offset === end);
   return entries;
 }
 
@@ -111,6 +111,15 @@ async function decompress(entry) {
   }
   checked(crc32(bytes) === entry.crc);
   return bytes;
+}
+
+// Read a bounded archive in memory. Callers choose which entries to decode.
+export function readImportArchive(source) {
+  const bytes = new Uint8Array(source);
+  if (bytes.byteLength > MAX_FILE) throw failure('import_limit');
+  return [...centralDirectory(bytes)].map(([name, entry]) => ({
+    name, read: () => decompress(entry),
+  }));
 }
 
 async function readXml(entries, path, name) {
@@ -219,6 +228,7 @@ export async function extractStatementXlsx(source) {
   if (bytes.byteLength > MAX_FILE) throw failure('import_limit');
   try {
     const entries = centralDirectory(bytes);
+    checked(entries.has('[Content_Types].xml'));
     const book = await readXml(entries, WORKBOOK_PATH, 'workbook');
     const relations = children(await readXml(entries, RELATIONSHIPS_PATH, 'Relationships'), 'Relationship');
     const part = (type, name) => {

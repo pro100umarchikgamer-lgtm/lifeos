@@ -712,3 +712,9 @@ body[data-design=clarity] .today-page .today-finance .today-money-row strong{
   .today-page .today-finance .finance-summary-period{margin:0 0 2px}
   .today-page .today-agenda p.empty{min-height:0;padding-block:0}
 }
+
+.import-guide,.import-faq{max-width:52rem;margin:32px auto;scroll-margin-top:84px}
+.import-guide ol{padding-inline-start:24px}
+.import-guide li,.import-faq details{padding:14px 0;border-bottom:1px solid var(--ux-border)}
+.import-guide li p,.import-faq details p{margin:.45rem 0 0}
+.import-faq summary{cursor:pointer;font-weight:650;min-height:36px}
