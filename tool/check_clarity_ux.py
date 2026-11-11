@@ -55,6 +55,16 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
                     page.locator('[name=settings-section]').select_option('appearance') if width<760 else page.locator('.settings-navigation').get_by_role('button',name='Оформление',exact=True).click()
                     expect(page.get_by_label('Язык',exact=True)).to_be_visible()
         checks.append(theme+'_responsive_8_widths')
+    page.locator('.nav').get_by_role('button',name='Сегодня',exact=True).click()
+    def reject_session(route):
+        route.fulfill(status=401,content_type='application/json',body=json.dumps({'error':'unauthorized'}))
+    page.route('**/account/api/sync',reject_session)
+    page.locator('.quick-capture input').fill('Expired session task')
+    page.locator('.quick-capture button').click()
+    expect(page.locator('input[type=password]')).to_be_visible()
+    expect(page.locator('.quick-capture')).to_have_count(0)
+    checks.append('quick_capture_expired_session_returns_to_sign_in')
+    page.unroute('**/account/api/sync',reject_session)
     page.goto(origin+'/');expect(page.locator('.product-hero')).to_be_visible()
     for theme in ('light','dark'):
         page.evaluate('v=>document.body.dataset.theme=v',theme)
