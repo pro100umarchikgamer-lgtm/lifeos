@@ -21,6 +21,7 @@ for(const [locale,message] of Object.entries({
  'uz-Latn':'O‘zgarishlar saqlandi. Ro‘yxatni qayta yuklang.',
  'uz-Cyrl':'Ўзгаришлар сақланди. Рўйхатни қайта юкланг.'
 })) WEB_COPY[locale].web_saved_refresh=message;
+for(const [locale,message] of Object.entries({ru:'Итого',en:'Net','uz-Latn':'Jami','uz-Cyrl':'Жами'}))WEB_COPY[locale].web_today_net=message;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function dateString(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 function eventRow(o){const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');append(caption,E('h3',o.record.data.title),E('p',new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'))+' · '+(o.allDay?t('web_all_day'):o.time),'small'));append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));return row;}
@@ -288,27 +289,39 @@ function onboarding(m){
 function today(m){
  title(m,'today');m.classList.add('today-page');
  const tasks=records('task'),open=tasks.filter(r=>!r.data.completed),done=tasks.length-open.length;
- const end=new Date(localDate()+'T12:00:00');end.setDate(end.getDate()+7);
- const occurrences=ULADIMDomain.occurrences(records('event'),localDate(),dateString(end));
+ const day=localDate(),end=new Date(day+'T12:00:00');end.setDate(end.getDate()+8);
+ const occurrences=ULADIMDomain.occurrences(records('event'),day,dateString(end));
+ const dayEvents=occurrences.filter(o=>o.day===day),upcoming=occurrences.filter(o=>o.day!==day);
  const grid=E('div',undefined,'today-grid');
  const main=E('div',undefined,'today-main'),side=E('div',undefined,'today-side');
  append(grid,main,side);m.append(grid);
- const overview=E('div',undefined,'day-overview');
- const ring=E('div',done+'/'+tasks.length,'progress-ring');
- ring.style.setProperty('--progress',(tasks.length?done/tasks.length*100:0)+'%');
- ring.setAttribute('role','img');ring.setAttribute('aria-label',t('completed')+' '+done+' / '+tasks.length);
- const caption=E('div');append(caption,E('strong',t('completed')),E('p',t('open_tasks')+' · '+open.length,'small'));
- append(overview,ring,caption);
  const a=card(t('open_tasks'));
  a.classList.add('today-tasks');
- a.append(overview);
+ const progress=E('progress');progress.max=tasks.length||1;progress.value=done;
+ progress.setAttribute('aria-label',t('completed')+' '+done+' / '+tasks.length);
+ const progressBox=E('div',undefined,'today-progress');
+ append(progressBox,E('span',t('completed')+' · '+done+' / '+tasks.length,'small'),progress);
+ a.firstElementChild.append(progressBox);
  const quick=E('form',undefined,'quick-capture'),field=E('input');field.name='quick-task';field.placeholder=t('web_quick_task');field.setAttribute('aria-label',t('web_quick_task'));field.maxLength=2000;field.required=true;const submit=E('button',undefined,'primary icon');submit.type='submit';submit.setAttribute('aria-label',t('web_add_task'));submit.append(icon('add'));append(quick,field,submit);let operation=null,accepted=false;
  quick.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;submit.disabled=true;field.readOnly=true;const workspace=state.space;try{operation=operation||{id:crypto.randomUUID(),action:'record.put',record_id:crypto.randomUUID(),revision:0,kind:'task',visibility:currentSpace()?.role==='child'?'shared':'private',audience:currentSpace()?.role==='child'?[currentSpace().profile_id]:[],data:{title:field.value.trim(),completed:0,assignment:'any',assignees:[],review:0}};if(!operation.data.title)throw {code:'invalid_input'};if(!accepted){await saveOperation(operation,workspace);accepted=true;}await refresh();render();}catch(error){if(!accepted&&!error.uncertain)operation=null;if(error.code==='unauthorized')report(error);else toast(errorText(error));if(error.uncertain)submit.setAttribute('aria-label',t('retry'));}finally{submit.disabled=false;field.readOnly=!!operation;}});a.append(quick);
  for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>{state.tab='tasks';render();},'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
+ if(dayEvents.length){
+  const schedule=card(t('web_calendar')+' · '+t('today'));
+  schedule.classList.add('today-schedule');
+  const timeline=E('ol',undefined,'today-timeline');
+  for(const o of dayEvents){
+   const item=E('li');
+   const time=o.allDay?E('span',t('web_all_day')):E('time',o.time);
+   if(!o.allDay)time.dateTime=new Date(o.at).toISOString();
+   append(item,time,button(o.record.data.title,()=>editRecord('event',o.record),'text-button'));
+   timeline.append(item);
+  }
+  schedule.append(timeline);grid.append(schedule);
+ }
  const agenda=card(t('web_upcoming'));
  agenda.classList.add('today-agenda');
- for(const o of occurrences.slice(0,3))agenda.append(eventRow(o));
- if(!occurrences.length)agenda.append(E('p',t('web_no_events'),'empty'));
+ for(const o of upcoming.slice(0,3))agenda.append(eventRow(o));
+ if(!upcoming.length)agenda.append(E('p',t('web_no_events'),'empty'));
  const agendaActions=E('div',undefined,'task-actions');
  append(agendaActions,button(t('web_calendar'),()=>{state.tab='calendar';render();},'text-button'),
   addButton(t('family_kind_event'),()=>editRecord('event')));
@@ -330,7 +343,7 @@ function today(m){
  for(const r of recent)notes.append(button(r.data.body.split('\n')[0].slice(0,110)||t('family_kind_note'),()=>editRecord('note',r),'note-link'));
  if(!recent.length)notes.append(E('p',t('empty_notes'),'empty'));
  notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));
- side.append(notes);
+ grid.append(notes);
 
 }
 function taskRow(r){
@@ -475,9 +488,9 @@ function summaries(container){
  for(const currency of currencies){
   const {income,expense}=financeTotals(transactions,currency);
   const row=E('div',undefined,'today-money-row');
-  for(const [kind,amount] of [['income',income],['expense',expense]]){
+  for(const [kind,amount] of [['income',income],['expense',expense],['total',income-expense]]){
    const cell=E('div',undefined,kind);
-   append(cell,E('span',t(kind),'small'),E('strong',money(amount,currency)));
+   append(cell,E('span',t(kind==='total'?'web_today_net':kind),'small'),E('strong',money(amount,currency)));
    row.append(cell);
   }
   container.append(row);

@@ -1,7 +1,9 @@
 """Exercise the Clarity workspace on a disposable backend with responsive browsers."""
 import argparse
 import os
+from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -19,6 +21,7 @@ def run(browser, origin, output, name, width, height):
     with browser.new_context(viewport={'width': width, 'height': height},
                              locale='ru-RU', timezone_id='Europe/Moscow', ignore_https_errors=origin.startswith('https:')) as context:
         page = context.new_page()
+        page.clock.set_fixed_time(datetime(2026, 11, 10, 12, tzinfo=timezone.utc))
         page_errors = []
         page.on('pageerror', lambda error: page_errors.append(str(error)))
 
@@ -36,7 +39,18 @@ def run(browser, origin, output, name, width, height):
             return text.getClientRects().length === 1;
         }'''), (name, 'split calendar navigation label')
         expect(page.locator('.today-agenda h2')).to_be_visible()
+        timeline = page.locator('.today-timeline')
+        expect(timeline.locator('time')).to_have_text(['09:00', '14:00', '18:30'])
+        expect(page.locator('.today-tasks time')).to_have_count(0)
+        expect(page.locator('.today-progress progress')).to_have_attribute('value', '1')
+        expect(page.locator('.today-finance .total')).to_contain_text('146 480,00')
+        if width < 760:
+            assert page.locator('.today-finance').bounding_box()['y'] < timeline.bounding_box()['y']
         capture('today')
+        timeline.get_by_role('button', name='Встреча с семьёй', exact=True).click()
+        event_dialog = page.get_by_role('dialog')
+        expect(event_dialog.locator('[name=localStart]')).to_have_value('2026-11-10T18:30')
+        event_dialog.get_by_role('button', name='Закрыть', exact=True).click()
         open_tab(page, 'Задачи')
         page.get_by_role('button', name='Добавить', exact=True).click()
         dialog = page.get_by_role('dialog')
@@ -91,7 +105,17 @@ def main():
     args = parser.parse_args()
     if args.output:
         args.output.mkdir(parents=True, exist_ok=True)
-    with fixture(https=args.engine=='webkit') as (origin, _, _, _), sync_playwright() as playwright:
+    with fixture(https=args.engine=='webkit') as (origin, backend, actor, workspace), sync_playwright() as playwright:
+        for title, start in [('Планирование дня', '2026-11-10T09:00:00'),
+                             ('Созвон по проекту', '2026-11-10T14:00:00'),
+                             ('Встреча с командой', '2026-11-11T11:00:00')]:
+            response = backend.batch(actor, workspace, [{
+                'id': str(uuid4()), 'action': 'record.put', 'record_id': str(uuid4()), 'revision': 0,
+                'kind': 'event', 'visibility': 'private', 'audience': [],
+                'data': {'title': title, 'schedule': {'localStart': start, 'timezone': 'Europe/Moscow',
+                         'allDay': False, 'repeat': 'none', 'interval': 1, 'until': None}},
+            }])
+            assert response['results'][0]['status'] == 'accepted', response
         binary = os.environ.get('ULADIM_CHROMIUM') if args.engine == 'chromium' else None
         options = {'executable_path': binary} if binary else {}
         browser = getattr(playwright, args.engine).launch(**options)

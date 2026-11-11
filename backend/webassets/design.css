@@ -660,3 +660,42 @@ body[data-design=clarity] .settings-content .settings-group {
   .ledger .finance-filters { grid-template-columns: minmax(0, 1fr); }
   .chart-controls { grid-template-columns: minmax(0, 1fr); }
 }
+
+body[data-design=clarity] .today-page .intro h1{
+  font-size:clamp(2rem,4vw,3.5rem);
+  line-height:1.04;
+}
+body[data-design=clarity] .today-page .today-grid .card{
+  background:transparent;
+  box-shadow:none;
+  border:0;
+  border-radius:0;
+  border-top:1px solid var(--ux-border);
+}
+body[data-design=clarity] .today-page .today-grid h2{
+  font-family:Georgia,serif;
+  font-size:clamp(1.125rem,2vw,1.55rem);
+}
+body[data-design=clarity] .today-page .today-grid .today-notes,
+body[data-design=clarity] .today-page .today-grid .today-schedule{
+  grid-column:auto;
+  grid-row:auto;
+}
+body[data-design=clarity] .today-page .today-finance .today-money-row strong{
+  font-size:clamp(.95rem,1.5vw,1.18rem);
+}
+.today-page .today-notes .note-link{overflow-wrap:anywhere}
+@media(min-width:760px){
+  body[data-design=clarity] .today-page .today-side{
+    border-inline-start:1px solid var(--ux-border);
+    padding-inline-start:clamp(14px,2vw,28px);
+  }
+  body[data-design=clarity] .today-page .today-grid .today-notes{grid-area:notes}
+  body[data-design=clarity] .today-page .today-grid .today-schedule{grid-area:schedule}
+  body[data-design=clarity] .today-page .today-grid .today-tasks,
+  body[data-design=clarity] .today-page .today-grid .today-agenda{border-top:0}
+}
+@media(max-width:759px){
+  body[data-design=clarity] .today-page .today-side{display:flex;flex-direction:column;margin-top:0}
+  body[data-design=clarity] .today-page .today-side .today-finance{order:-1}
+}
