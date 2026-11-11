@@ -151,12 +151,15 @@ function importStatement() {
   function existingTransactions(){return new Map(records('transaction').map(record=>[record.id,storedStatementKey(record)]));}
   async function identify(){
    const known=existingTransactions(),existing=new Set(known.values()),bankIDs=new Map();
+   // Alternate UUIDs share a hashed bank/account prefix. This makes collisions
+   // recognizable from synced records without storing the bank identifier.
+   const knownGroups=new Set([...known.keys()].map(id=>id.slice(0,24)));
    for(const row of preview){
     if(!row.value)continue;
     const value=row.value;
     const target=accounts.find(a=>a.id===row.targetID&&a.data.currency===value.currency)||destination(value.currency);
     row.targetID=target?.id||'';
-    row.imported=false;row.repeated=false;row.duplicate=false;row.selected=false;row.id=null;
+    row.imported=false;row.repeated=false;row.duplicate=false;row.selected=false;row.id=null;row.bankGroup=null;
     if(!target)continue;
     const key=statementKey(value,target.id);
     const bankKey=value.bankID?JSON.stringify([target.id,value.bankID]):null;
@@ -172,9 +175,13 @@ function importStatement() {
     await Promise.all(preview.slice(i,i+200).filter(row=>row.targetID&&row.value).map(async row=>{
      const identity=row.bankKey?['uladim-statement-bank-v1',row.bankKey]:['uladim-statement-file-v2',parsed.fingerprint,row.targetID,row.line];
      row.id=await statementID(JSON.stringify([user,workspace,...identity]));
-     const bankCollision=row.bankKey&&(bankIDs.get(row.bankKey).size>1||known.has(row.id)&&known.get(row.id)!==row.key);
+     let bankCollision=false;
      if(row.bankKey&&known.get(row.id)!==row.key){
-      const alternate=await statementID(JSON.stringify([user,workspace,'uladim-statement-bank-collision-v1',row.bankKey,row.key]));
+      const group=(await statementID(JSON.stringify([user,workspace,'uladim-statement-bank-group-v1',row.bankKey]))).slice(0,24);
+      row.bankGroup=group;
+      const suffix=(await statementID(JSON.stringify([user,workspace,'uladim-statement-bank-row-v1',row.bankKey,row.key]))).slice(24);
+      const alternate=group+suffix;
+      bankCollision=bankIDs.get(row.bankKey).size>1||known.has(row.id)||knownGroups.has(group);
       if(bankCollision||known.get(alternate)===row.key)row.id=alternate;
      }
      row.imported=known.get(row.id)===row.key;
@@ -294,6 +301,7 @@ function importStatement() {
      await refresh();ensureContext();
      const current=existingTransactions();
      const keys=new Set(current.values());
+     const groups=new Set([...current.keys()].map(id=>id.slice(0,24)));
      const child=currentSpace()?.role==='child';
      pending=[];
      for(const row of preview.filter(item=>item.selected)){
@@ -303,7 +311,9 @@ function importStatement() {
        if(!row.imported)row.error='import_save_conflict';
        continue;
       }
-      if(!row.duplicate&&keys.has(row.key)){row.duplicate=true;row.selected=false;row.selectionPreference=null;continue;}
+      if(!row.duplicate&&(keys.has(row.key)||groups.has(row.bankGroup))){
+       row.duplicate=true;row.selected=false;row.selectionPreference=null;continue;
+      }
       const value=row.value;
       pending.push({row,operation:{id:crypto.randomUUID(),action:'record.put',record_id:row.id,revision:0,kind:'transaction',
        visibility:child?'shared':'private',audience:child?[currentSpace().profile_id]:[],

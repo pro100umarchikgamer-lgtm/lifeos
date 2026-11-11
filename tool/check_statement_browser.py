@@ -232,6 +232,12 @@ def run(browser, backend, actor, workspace, origin):
     expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
     expect(dialog.locator('tbody input[type=checkbox]')).to_be_disabled()
     close()
+    launch.click()
+    upload('third-payment-only.csv', mixed.splitlines()[0] + '\n2026-11-18;-8.19;RUB;Third payment;shared-bank-id')
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    save([('RUB',819)], select=True)
+    close()
 
     other_account = str(uuid4())
     backend.batch(actor, workspace, [{
