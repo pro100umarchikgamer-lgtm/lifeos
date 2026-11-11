@@ -256,33 +256,36 @@
   function preview(source, mapping) {
     if (mapping.date < 0 || Math.max(mapping.amount,mapping.debit ?? -1,mapping.credit ?? -1) < 0) fail('import_mapping_required');
     const get = (row,key) => (row[mapping[key]] || '').trim();
+    const nonzero = value => Boolean(value && !/^[+−-]?0+(?:[.,]0+)?$/.test(value));
     const rows = source.rows.slice(mapping.header+1).flatMap((row,index) => {
       const date = get(row,'date');
       const label = get(row,'description');
       const raw = get(row,'amount'), debit = get(row,'debit'), credit = get(row,'credit');
+      const hasDebit = nonzero(debit), hasCredit = nonzero(credit);
+      const amountText = raw || (hasDebit ? debit : credit);
       if (/^(?:итого|total|balance|остаток)(?:\s|$|:)/i.test(date) || (!date && /^(?:итого|total|balance|остаток)(?:\s|$|:)/i.test(label)) ||
           row.every((cell,i)=>headerText(cell)===headerText(source.rows[mapping.header][i] || ''))) return [];
       const currency = currencyCode(get(row,'currency') || mapping.defaultCurrency || '');
       const direction = get(row,'directionColumn').toLowerCase();
-      const amounts = /^[A-Z]{3}$/.test(currency) ? amountCandidates(raw || debit || credit,currency,mapping.decimal) : {};
-      return [{line:mapping.header+index+2,row,date,label,currency,direction,raw,debit,credit,amounts,dates:dateCandidates(date,mapping.dateFormat),bankID:get(row,'bankID')}];
+      const amounts = /^[A-Z]{3}$/.test(currency) ? amountCandidates(amountText,currency,mapping.decimal) : {};
+      return [{line:mapping.header+index+2,row,date,label,currency,direction,raw,hasDebit,hasCredit,amountText,amounts,dates:dateCandidates(date,mapping.dateFormat),bankID:get(row,'bankID')}];
     });
     if (rows.length > LIMIT) fail('import_limit');
     const dateOrder = preference(rows.map(item=>item.dates));
     const decimal = preference(rows.map(item=>item.amounts));
     return rows.map(item => {
-      const {line,row,date,label,currency,direction,raw,debit,credit,bankID} = item;
-      const original = {date,amount:raw||debit||credit,label,currency,direction,bankID};
+      const {line,row,date,label,currency,direction,raw,hasDebit,hasCredit,amountText,bankID} = item;
+      const original = {date,amount:amountText,label,currency,direction,bankID};
       try {
         if (!/^[A-Z]{3}$/.test(currency)) fail('import_currency_invalid');
         if (/\bxfer\b|transfer|перевод|internal movement/.test(direction)) fail('import_transfer_review');
         const date = choose(item.dates,dateOrder,'import_date_ambiguous','import_date_invalid');
         const amount = choose(item.amounts,decimal,'import_number_ambiguous','import_amount_invalid');
-        if (!amount || (!raw && debit && credit && !/^0(?:[.,]0+)?$/.test(debit) && !/^0(?:[.,]0+)?$/.test(credit))) fail('import_amount_invalid');
+        if (!amount || (!raw && hasDebit && hasCredit)) fail('import_amount_invalid');
         const directionHint = mapping.direction === 'signed' ? direction : mapping.direction;
         const kind = /^(income|credit|crdt|deposit|dep|зачисление|доход|приход)$/.test(directionHint) ? 'income' :
           /^(expense|debit|dbit|payment|pos|расход|списание)$/.test(directionHint) ? 'expense' :
-          ((!raw && debit) || amount < 0 ? 'expense' : 'income');
+          ((!raw && (hasDebit || hasCredit)) ? (hasDebit ? 'expense' : 'income') : amount < 0 ? 'expense' : 'income');
         if (label.length > 500 || bankID.length > 256) fail('import_row_length');
         return {line,row,original,value:{date,kind,amount:Math.abs(amount),currency,label,bankID}};
       } catch (error) { return {line,row,original,error:error.code || 'import_format'}; }

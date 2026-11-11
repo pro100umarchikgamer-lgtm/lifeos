@@ -141,12 +141,17 @@ def run(browser, backend, actor, workspace, origin):
         ('statement.json', '{"transactions":[{"bookingDate":"2026-11-11","amount":-1.23,"currency":"RUB","transactionId":"bank-42","description":"Coffee"}]}', 123),
         ('statement.ofx', 'OFXHEADER:100\nDATA:OFXSGML\n\n<OFX><CURDEF>RUB<BANKTRANLIST><STMTTRN><DTPOSTED>20261111090000[-5:EST]<TRNAMT>-5.43<FITID>43<NAME>Shop</STMTTRN></BANKTRANLIST></OFX>', 543),
         ('statement.qif', "!Type:Bank\nD11/21'26\nT-12.05\nPStore\n^\n", 1205),
+        ('bank-credit.tsv', 'Date\tDebit\tCredit\tDescription\n2026-11-22\t0,00\t13,21\tBank credit', 1321),
+        ('bank-debit.tsv', 'Date\tDebit\tCredit\tDescription\n2026-11-23\t16,54\t0,00\tBank debit', 1654),
     ]
     for name, text, amount in samples:
         launch.click()
         upload(name, text)
         save([('RUB', amount)])
         close()
+
+    directions = {r['data']['label']: r['data']['kind'] for r in records()}
+    assert directions['Bank credit'] == 'income' and directions['Bank debit'] == 'expense'
 
     header = (710, [(30,'Date'),(125,'Description'),(320,'Amount'),(440,'Currency')])
     page_one = [header, (686, [(30,'2026-11-09'),(125,'PDF merchant'),(320,'-42.19'),(440,'RUB')])]

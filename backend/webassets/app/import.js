@@ -176,7 +176,7 @@ function importStatement() {
      row.id=await statementID(JSON.stringify([user,workspace,...identity]));
      row.imported=known.has(row.id);
      row.duplicate=existing.has(row.key)&&!row.imported;
-     row.selected=!row.imported&&!row.repeated&&!row.duplicate&&!parsed.needsReview;
+     row.selected=!row.imported&&!row.repeated&&(row.selectionPreference??(!row.duplicate&&!parsed.needsReview));
     }));
     ensureContext();
    }
@@ -241,7 +241,7 @@ function importStatement() {
     const cell=E('td'),check=E('input');check.type='checkbox';check.checked=!!item.selected;
     check.disabled=!!(item.error||item.imported||item.repeated||!item.targetID||pending);
     check.setAttribute('aria-label',copy('include')+' · '+item.line);
-    check.addEventListener('change',()=>{item.selected=check.checked;summary();updateControls();statusCell.firstChild.textContent=rowStatus(item);});
+    check.addEventListener('change',()=>{item.selectionPreference=check.checked;item.selected=check.checked;summary();updateControls();statusCell.firstChild.textContent=rowStatus(item);});
     cell.append(check);
     const statusCell=E('td');statusCell.append(E('span',rowStatus(item)));
     const accountCell=E('td');

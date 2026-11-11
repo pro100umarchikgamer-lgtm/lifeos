@@ -25,3 +25,7 @@ assert.equal(parse('Date;Amount\n2026-02-30;10')[0].error,'import_date_invalid')
 assert.equal(parse('Date;Amount;Currency\n2026-11-10;0.001;KWD')[0].value.amount,1);
 assert.throws(()=>parse('{"balance":234}'),{code:'import_json_structure'});
 assert.throws(()=>parse('plain unstructured text'),{code:'import_format'});
+const splitAmounts = parse('Date;Debit;Credit;Currency\n2026-11-11;0,00;13,21;RUB\n2026-11-12;16,54;0,00;RUB\n2026-11-13;12,12;4,21;RUB');
+assert.deepEqual(splitAmounts.map(row => row.error || [row.value.kind,row.value.amount]),[
+  ['income',1321],['expense',1654],'import_amount_invalid'
+]);
