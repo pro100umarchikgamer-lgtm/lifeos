@@ -13,19 +13,22 @@ jobs:
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # This version matches tool/web-requirements.txt and includes all browser dependencies.
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
+      options: --ipc=host
     services:
       postgres:
         image: postgres:17-alpine
         env:
           POSTGRES_DB: lifeos_test
           POSTGRES_PASSWORD: synthetic-web-ci-admin
-        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres -d lifeos_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      LIFEOS_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@localhost:5432/lifeos_test
-      ULADIM_WEB_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@localhost:5432/lifeos_test
+      LIFEOS_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@postgres:5432/lifeos_test
+      ULADIM_WEB_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@postgres:5432/lifeos_test
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,12 +44,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r backend/requirements.txt -r tool/web-requirements.txt
-      - run: python -m playwright install --with-deps chromium firefox webkit
       - name: Create isolated non-admin PostgreSQL role
         run: |
           python - <<'PY'
           import psycopg
-          with psycopg.connect('postgresql://postgres:synthetic-web-ci-admin@localhost:5432/lifeos_test',autocommit=True) as db:
+          with psycopg.connect('postgresql://postgres:synthetic-web-ci-admin@postgres:5432/lifeos_test',autocommit=True) as db:
               db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-web-ci-only'")
               db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
           PY
@@ -91,7 +93,12 @@ jobs:
             sleep 1
           done
           if [ "$ready" -ne 1 ]; then cat /tmp/uladim-fixture.log; exit 1; fi
-          npx lhci autorun
+          CHROME_PATH=$(python - <<'PY'
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as playwright:
+              print(playwright.chromium.executable_path)
+          PY
+          ) npx lhci autorun
       - uses: actions/upload-artifact@v4
         if: always()
         with:

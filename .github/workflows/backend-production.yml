@@ -125,7 +125,7 @@ jobs:
       - name: Install isolated browser acceptance tools
         run: |
           python -m pip install -r tool/web-requirements.txt
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium
       - name: Render public, customer and MFA staff workflows
         run: python -m tool.check_web_browser
       - name: Verify PWA synchronization, retry, locales and safe caching
