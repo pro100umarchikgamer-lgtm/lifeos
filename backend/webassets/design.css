@@ -696,6 +696,19 @@ body[data-design=clarity] .today-page .today-finance .today-money-row strong{
   body[data-design=clarity] .today-page .today-grid .today-agenda{border-top:0}
 }
 @media(max-width:759px){
-  body[data-design=clarity] .today-page .today-side{display:flex;flex-direction:column;margin-top:0}
-  body[data-design=clarity] .today-page .today-side .today-finance{order:-1}
+  body[data-design=clarity] .today-page .intro{margin-bottom:16px}
+  body[data-design=clarity] .today-page .today-grid{display:flex;flex-direction:column;gap:0}
+  body[data-design=clarity] .today-page .today-side{display:contents}
+  body[data-design=clarity] .today-page .today-main{width:100%;order:0}
+  body[data-design=clarity] .today-page .today-finance{order:1}
+  body[data-design=clarity] .today-page .today-schedule{order:2}
+  body[data-design=clarity] .today-page .today-agenda{order:3}
+  body[data-design=clarity] .today-page .today-notes{order:4}
+  body[data-design=clarity] .today-page .today-grid .card{padding:13px 0!important}
+  body[data-design=clarity] .today-page .today-grid .today-tasks{border-top:0;padding-top:0!important}
+  body[data-design=clarity] .today-page .today-grid h2{margin-bottom:8px}
+  .today-page .today-progress{min-width:6rem}
+  .today-page .today-money-row>.total{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .today-page .today-finance .finance-summary-period{margin:0 0 2px}
+  .today-page .today-agenda p.empty{min-height:0;padding-block:0}
 }

@@ -160,9 +160,15 @@ def main():
             page.on('pageerror', lambda error: errors.append(str(error)))
             login(page, origin)
             if not args.baseline:
-                side_width = page.locator('.today-side').bounding_box()['width']
+                side = page.locator('.today-side')
+                if side.evaluate("element => getComputedStyle(element).display") == 'contents':
+                    side = page.locator('.today-grid')
+                content_width = side.evaluate("""element => {
+                    const style = getComputedStyle(element);
+                    return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                }""")
                 for panel in page.locator('.today-side .card').all():
-                    assert panel.bounding_box()['width'] >= side_width - 1, name
+                    assert abs(panel.bounding_box()['width'] - content_width) <= 1, name
             capture(page, args.output, name, 'today')
             open_tab(page, 'Финансы')
             expect(page.locator('.ledger')).to_contain_text('Продукты на неделю')
