@@ -1053,7 +1053,7 @@ function openPersonalImport(parser,titleText){
   const close=host.querySelector('.dialog-close');
   const update=()=>{
    file.disabled=busy||Boolean(pending);
-   save.disabled=busy||!(pending?.length||selected().length);
+   save.disabled=busy||!(pending||selected().length);
    if(close)close.disabled=saving;
   };
   host.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
@@ -1108,7 +1108,7 @@ function openPersonalImport(parser,titleText){
   });
 
   save.addEventListener('click',async()=>{
-   if(!active()||busy||!(pending?.length||selected().length))return;
+   if(!active()||busy||!(pending||selected().length))return;
    pending??=selected().map(row=>({id:crypto.randomUUID(),action:'record.put',record_id:row.id,
      revision:0,kind:row.kind,visibility:'private',audience:[],data:row.data}));
    busy=true;saving=true;list.inert=true;update();
@@ -1124,14 +1124,17 @@ function openPersonalImport(parser,titleText){
      pending.splice(0,batch.length);
     }
     if(!active())return;
+    await refresh();
+    if(!active())return;
     pending=null;rows=[];save.hidden=true;review.replaceChildren();list.replaceChildren();
     status.textContent=copy('saved')+': '+saved+(failed?' · '+copy('failed')+': '+failed:'');
-    try{await refresh();if(active())render();}
-    catch(error){if(active())report(error);}
+    render();
    }catch(error){
     if(active()){
-     status.textContent=error.uncertain?copy('retryHelp'):errorText(error);
-     save.textContent=copy('retry');
+     if(['unauthorized','workspace_forbidden','service_restricted'].includes(error.code)){host.close();report(error);return;}
+     const refreshOnly=pending?.length===0;
+     status.textContent=refreshOnly&&saved&&!failed?t('web_saved_refresh'):error.uncertain?copy('retryHelp'):errorText(error);
+     save.textContent=refreshOnly?t('retry'):copy('retry');
     }
    }finally{
     busy=false;saving=false;list.inert=Boolean(pending);update();

@@ -1,5 +1,7 @@
 """Exercise personal file import through the existing authenticated workspace API."""
 
+import os
+
 import argparse
 import io
 import json
@@ -56,7 +58,8 @@ def keep_archive():
 
 def run(output, engine):
     with fixture(https=True) as (origin, backend, actor, workspace), sync_playwright() as playwright:
-        browser = getattr(playwright, engine).launch()
+        executable = os.environ.get('ULADIM_CHROMIUM') if engine == 'chromium' else None
+        browser = getattr(playwright, engine).launch(**({'executable_path': executable} if executable else {}))
         page = browser.new_page(viewport={'width': 390, 'height': 844}, locale='ru-RU', ignore_https_errors=True)
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
@@ -96,8 +99,24 @@ def run(output, engine):
         assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
         if output:
             page.screenshot(path=output / 'personal-import-review.png')
+        writes = []
+        failed_refresh = []
+
+        def lose_refresh(route):
+            if route.request.method == 'POST':
+                writes.append(route.request.post_data_json)
+            elif writes and not failed_refresh:
+                failed_refresh.append(True)
+                return route.fulfill(status=503, json={'error': 'service_unavailable'})
+            return route.continue_()
+
+        page.route('**/account/api/sync*', lose_refresh)
         dialog.get_by_role('button', name='Импортировать', exact=True).click()
+        expect(dialog.get_by_text('Сохранено: 6')).to_have_count(0)
+        dialog.get_by_role('button', name='Повторить', exact=True).click(timeout=3500)
         expect(dialog.get_by_text('Сохранено: 6')).to_be_visible()
+        assert len(writes) == 1, 'Refresh retry resent the accepted import'
+        page.unroute('**/account/api/sync*', lose_refresh)
         if output:
             page.screenshot(path=output / 'personal-import-saved.png')
 
