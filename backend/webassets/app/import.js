@@ -22,22 +22,34 @@ async function statementID(value){
  return hex.slice(0,8)+'-'+hex.slice(8,12)+'-5'+hex.slice(13,16)+'-a'+hex.slice(17,20)+'-'+hex.slice(20,32);
 }
 function statementCopy(key){return STATEMENT_COPY[state.lang]?.[key]||STATEMENT_COPY.en[key]||t(key);}
+const STATEMENT_FLOW_COPY={
+ ru:['Выбор файла','Проверка','Результат','Сохранено операций','Не сохранено из выбранных','Открыть историю операций','Вернуться к проверке','Сервер подтвердил запись. Повторите загрузку истории.'],
+ en:['Choose file','Review','Result','Transactions saved','Selected but not saved','Open transaction history','Back to review','The server accepted the write. Retry loading history.'],
+ 'uz-Latn':['Fayl tanlash','Tekshirish','Natija','Saqlangan amallar','Tanlangan, ammo saqlanmagan','Amallar tarixini ochish','Tekshirishga qaytish','Server yozuvni qabul qildi. Tarixni qayta yuklang.'],
+ 'uz-Cyrl':['Файл танлаш','Текшириш','Натижа','Сақланган амаллар','Танланган, аммо сақланмаган','Амаллар тарихини очиш','Текширишга қайтиш','Сервер ёзувни қабул қилди. Тарихни қайта юкланг.']
+};
 function importStatement() {
  const workspace=state.space,user=state.session.user_id,epoch=privateEpoch;
  let accounts=records('account'), source=null, parsed=null, preview=[], pending=null, page=0;
- let running=false, closed=false, modified=false, generation=0;
+ let running=false, closed=false, modified=false, generation=0, attempted=[], stage=0;
+ const [chooseStep,reviewStep,resultStep,savedLabel,failedLabel,historyLabel,reviewLabel,refreshLabel]=STATEMENT_FLOW_COPY[state.lang]||STATEMENT_FLOW_COPY.en;
  const copy=statementCopy;
  const ensureContext=()=>{if(closed||privateEpoch!==epoch||state.space!==workspace||state.session?.user_id!==user)throw {code:'view_changed'};};
  const d=dialog(copy('title'),container=>{
   container.classList.add('statement-dialog');
+  const steps=E('ol',undefined,'statement-steps');
+  for(const label of [chooseStep,reviewStep,resultStep])steps.append(E('li',label));
+  const receipt=E('section',undefined,'statement-receipt');receipt.tabIndex=-1;
   const need=E('section',undefined,'statement-account-needed');
   need.append(E('p',copy('need_account')),button(copy('create_account'),openAccount));
   const controls=E('fieldset',undefined,'statement-controls');
   const account=select(controls,'import-account',t('family_account_select'),[],'');
-  const file=input(controls,'statement-file',t('choose_file'),'file','',false);
+  const fileOptions=E('details',undefined,'statement-file-options');
+  const fileTitle=E('summary',chooseStep);fileOptions.append(fileTitle);controls.append(fileOptions);
+  const file=input(fileOptions,'statement-file',t('choose_file'),'file','',false);
   // A native, unfiltered picker lets iPadOS file providers supply local documents.
   // The parser checks file contents independently.
-  const help=E('p',copy('help'),'small');help.id=file.id+'-help';file.setAttribute('aria-describedby',help.id);controls.append(help);
+  const help=E('p',copy('help'),'small');help.id=file.id+'-help';file.setAttribute('aria-describedby',help.id);fileOptions.append(help);
   const sheetControls=E('div');controls.append(sheetControls);
   const advanced=E('details',undefined,'statement-advanced');
   advanced.append(E('summary',copy('advanced')));controls.append(advanced);
@@ -50,7 +62,20 @@ function importStatement() {
   const actions=E('div',undefined,'actions statement-actions');
   const commit=E('button',t('import_confirm'));commit.type='button';commit.disabled=true;
   commit.addEventListener('click',()=>commitRows().catch(report));
-  actions.append(commit);append(container,need,controls,status,totals,results,actions);
+  actions.append(commit);append(container,steps,need,controls,status,receipt,totals,results,actions);
+  function setStage(next){
+   stage=next;
+   for(const [i,item] of [...steps.children].entries()){
+    if(i===stage)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');
+   }
+   receipt.hidden=stage!==2;
+   controls.hidden=stage===2||accounts.length===0;
+   fileOptions.open=stage===0;
+   fileTitle.textContent=source?.name||chooseStep;
+   totals.hidden=results.hidden=stage===2;
+   actions.hidden=stage===2||accounts.length===0;
+  }
+  setStage(0);
   const mappingKeys=[['date',t('date')],['amount',t('amount')],['description',t('description')],['currency',t('currency')],
    ['bankID',copy('bank_id')],['directionColumn',copy('direction_field')],['credit',t('income')],['debit',t('expense')]];
   const fields={};
@@ -58,7 +83,7 @@ function importStatement() {
    account.replaceChildren();
    for(const a of accounts){const option=E('option',a.data.name+' · '+a.data.currency);option.value=a.id;account.append(option);}
    if(accounts.some(a=>a.id===selected))account.value=selected;
-   need.hidden=accounts.length>0;controls.hidden=!accounts.length;actions.hidden=!accounts.length;
+   need.hidden=accounts.length>0;controls.hidden=!accounts.length||stage===2;actions.hidden=!accounts.length||stage===2;
   }
   syncAccounts(accounts[0]?.id);
   function openAccount() {
@@ -84,6 +109,7 @@ function importStatement() {
   async function readFile(){
    if(pending||!source)return;
    const turn=++generation;
+   setStage(0);attempted=[];
    preview=[];parsed=null;mapping.replaceChildren();sheetControls.replaceChildren();results.replaceChildren();totals.replaceChildren();
    running=true;updateControls();status.textContent=copy('reading');
    try{
@@ -203,7 +229,7 @@ function importStatement() {
    const settings=Object.fromEntries(Object.entries(fields).map(([key,field])=>[key,numbers.includes(key)?Number(field.value):field.value]));
    settings.defaultCurrency=defaultAccount()?.data.currency;
    preview=ULADIMStatement.preview(parsed,settings);
-   await identify();page=0;draw();
+   await identify();page=0;setStage(1);draw();
   }
   function rowStatus(row){
    if(row.saved)return copy('saved');
@@ -242,14 +268,14 @@ function importStatement() {
    results.replaceChildren();status.textContent=preview.length?parsed.format+' · '+preview.length+' '+copy('rows'):copy('no_rows');
    if(!preview.length){summary();updateControls();return;}
    if(preview.some(row=>row.value&&!row.targetID))results.append(button(copy('create_account'),openAccount,'secondary'));
-   const table=E('table');table.setAttribute('role','table');const head=E('thead'),header=E('tr');
+   const table=E('table');table.setAttribute('role','table');const head=E('thead'),header=E('tr');header.setAttribute('role','row');
    const columnLabels=[copy('include'),t('date'),t('description'),t('amount'),t('family_kind_transaction'),t('family_account_select'),copy('status')];
    for(const label of columnLabels){
-    const th=E('th',label);th.scope='col';header.append(th);
+    const th=E('th',label);th.scope='col';th.setAttribute('role','columnheader');header.append(th);
    }
    head.append(header);const body=E('tbody');table.append(head,body);
    for(const item of preview.slice(page*50,(page+1)*50)){
-    const row=E('tr'),v=item.value,original=item.original;
+    const row=E('tr'),v=item.value,original=item.original;row.setAttribute('role','row');
     const cell=E('td'),check=E('input');check.type='checkbox';check.checked=!!item.selected;
     check.disabled=!!(item.error||item.imported||item.repeated||!item.targetID||pending);
     check.setAttribute('aria-label',copy('include')+' · '+item.line);
@@ -266,6 +292,9 @@ function importStatement() {
     if(item.error&&!['import_transfer_review','import_save_conflict','import_save_rejected'].includes(item.error))statusCell.append(button(copy('edit_row'),()=>editRow(item),'secondary'));
     row.append(cell,E('td',v?.date||original.date||'—'),E('td',v?.label||original.label||'—'),
      E('td',v?money(v.amount,v.currency):original.amount||'—'),E('td',v?t(v.kind):'—'),accountCell,statusCell);
+    for(const [i,td] of [...row.cells].entries()){
+     td.setAttribute('role','cell');td.dataset.label=columnLabels[i];
+    }
     body.append(row);
    }
    const scroll=E('div',undefined,'import-table');scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label',t('import_preview'));scroll.append(table);results.append(scroll);
@@ -303,8 +332,8 @@ function importStatement() {
      const keys=new Set(current.values());
      const groups=new Set([...current.keys()].map(id=>id.slice(0,24)));
      const child=currentSpace()?.role==='child';
-     pending=[];
-     for(const row of preview.filter(item=>item.selected)){
+     pending=[];attempted=preview.filter(item=>item.selected);
+     for(const row of attempted){
       if(current.has(row.id)){
        row.imported=current.get(row.id)===row.key;
        row.selected=false;
@@ -324,7 +353,8 @@ function importStatement() {
     while(pending.length){
      ensureContext();const batch=pending.slice(0,100);
      const result=await call('sync',{workspace_id:workspace,operations:batch.map(item=>item.operation)});ensureContext();
-     if(!Array.isArray(result.results)||result.results.length!==batch.length)throw {code:'offline',uncertain:true};
+     if(!Array.isArray(result.results)||result.results.length!==batch.length||
+        result.results.some((item,index)=>item.id!==batch[index].operation.id))throw {code:'offline',uncertain:true};
      let reconcile=false;
      result.results.forEach((item,i)=>{
       const row=batch[i].row;
@@ -340,12 +370,26 @@ function importStatement() {
       for(const {row} of batch)if(row.error==='import_save_conflict'&&visible.get(row.id)===row.key){row.error=null;row.imported=true;}
      }
     }
+    await refresh();ensureContext();
+    const visible=existingTransactions();
+    if(attempted.some(row=>row.saved&&visible.get(row.id)!==row.key))throw {code:'server_error',refreshOnly:true};
+    const saved=attempted.filter(row=>row.saved).length;
+    const failed=attempted.filter(row=>!row.saved&&!row.imported).length;
     pending=null;commit.textContent=t('import_confirm');
-    await refresh();ensureContext();draw();status.textContent=copy('finished');
+    receipt.replaceChildren(E('h3',resultStep),E('p',savedLabel+' · '+saved));
+    if(failed)receipt.append(E('p',failedLabel+' · '+failed,'error'));
+    const skipped=preview.length-saved-failed;
+    if(skipped)receipt.append(E('p',skipped+' '+copy('skipped'),'small'));
+    receipt.append(button(historyLabel,()=>{
+     modified=false;d.close();openTabSection('money','#finance-ledger');
+    }),button(reviewLabel,()=>{setStage(1);draw();},'text-button'));
+    setStage(2);status.textContent=saved?copy('finished'):'';receipt.focus();
    }catch(error){
     if(closed)return;
     if(error.code==='unauthorized'||error.code==='workspace_forbidden'){report(error);return;}
-    if(pending?.length&&error.uncertain){commit.textContent=t('retry');status.textContent=errorText(error);summary();}
+    if(pending&&(error.uncertain||error.refreshOnly||pending.length===0)){
+     commit.textContent=t('retry');status.textContent=pending.length?errorText(error):refreshLabel;summary();
+    }
     else{pending=null;commit.textContent=t('import_confirm');draw();status.textContent=errorText(error);}
    }finally{running=false;updateControls();}
   }

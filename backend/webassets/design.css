@@ -794,8 +794,37 @@ body[data-design=clarity][data-theme="light"]{
 .import-faq summary{cursor:pointer;font-weight:650;min-height:36px}
 
 .calendar-modes{display:flex;flex-wrap:wrap;gap:6px;margin-block:0 14px}
-.calendar-modes button[aria-pressed=true],.today-week button[aria-current=date]{background:var(--ux-soft);color:var(--ux-green);border-color:var(--ux-green)}
+body[data-design=clarity] .calendar-modes button[aria-pressed=true],body[data-design=clarity] .today-week button[aria-current=date]{background:var(--ux-soft);color:var(--ux-green);border-color:var(--ux-green)}
 .calendar-day-layout{grid-template-columns:minmax(0,1fr);max-width:58rem}
 .calendar-day-layout .calendar-toolbar{margin:0}
 .today-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-block:0 10px}
 .today-week button{padding-inline:0;min-width:0;min-height:44px;font-variant-numeric:tabular-nums}
+
+.statement-steps{list-style:none;counter-reset:statement-step;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 14px;padding:0}
+.statement-steps li{counter-increment:statement-step;min-width:0;padding:8px;border:1px solid var(--ux-border);border-radius:8px;color:var(--ux-muted);overflow-wrap:anywhere}
+.statement-steps li::before{content:counter(statement-step) ". "}
+.statement-steps [aria-current=step]{background:var(--ux-soft);color:var(--ux-green);border-color:var(--ux-green);font-weight:700}
+.statement-receipt{padding:16px;border:1px solid var(--ux-border);border-radius:12px;background:var(--ux-surface)}
+.statement-receipt button{margin-inline-end:8px}
+@media(max-width:760px){
+ .import-table table{min-width:0;display:block}
+ .import-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .import-table tbody{display:block}
+ .import-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:6px 10px;border-bottom:1px solid var(--ux-border)}
+ .import-table tbody td{display:block;max-width:none;min-width:0;padding:5px 0;border:0}
+ .import-table tbody td::before{content:attr(data-label);display:block;font-size:.75rem;color:var(--ux-muted)}
+ .import-table tbody td:nth-child(3),.import-table tbody td:nth-child(7){grid-column:1/-1}
+ .import-table input[type=checkbox]{margin:4px 0}
+}
+
+.statement-dialog .statement-file-options,.statement-dialog .statement-advanced{margin:6px 0}
+.statement-file-options summary{overflow-wrap:anywhere}
+
+@media(max-width:759px){
+ body[data-design=clarity] .today-page .today-main,
+ body[data-design=clarity] .today-page .today-side{display:contents}
+ body[data-design=clarity] .today-page .today-grid .today-finance{order:1}
+ body[data-design=clarity] .today-page .today-grid .today-schedule{order:2}
+ body[data-design=clarity] .today-page .today-grid .today-agenda{order:3}
+ body[data-design=clarity] .today-page .today-grid .today-notes{order:4}
+}

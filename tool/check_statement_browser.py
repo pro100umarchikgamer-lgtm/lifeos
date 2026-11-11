@@ -1,4 +1,5 @@
 """User-facing statement acceptance against the WSGI app and a disposable database."""
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -20,14 +21,42 @@ PASSWORD = 'synthetic-statement-acceptance-pass'
 OUT = Path('web_evidence/statement-import-' + os.environ.get('ULADIM_BROWSER', 'chromium'))
 
 
+@contextmanager
+def statement_backend(directory, codes):
+    dsn = os.environ.get('ULADIM_WEB_TEST_DATABASE_URL')
+    cipher = Fernet(Fernet.generate_key())
+    if not dsn:
+        backend = Backend(Path(directory) / 'bank.db', deliver=lambda e, c: codes.update({e: c}))
+        backend.cipher = cipher
+        yield backend
+        return
+    from urllib.parse import urlsplit
+    import psycopg
+    from psycopg import sql
+    from backend.postgres import PostgresBackend
+    if urlsplit(dsn).path != '/lifeos_test':
+        raise RuntimeError('Fixture refuses non-test database')
+    schema = 'statement_' + uuid4().hex
+    with psycopg.connect(dsn, autocommit=True) as db:
+        db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+    backend = None
+    try:
+        backend = PostgresBackend(dsn, cipher, schema=schema, migrate=True)
+        backend._deliver = lambda db, email, code, purpose: codes.update({email: code})
+        yield backend
+    finally:
+        if backend is not None:
+            backend.close()
+        with psycopg.connect(dsn, autocommit=True) as db:
+            db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    with TemporaryDirectory() as directory:
-        codes = {}
-        backend = Backend(Path(directory) / 'bank.db', deliver=lambda e, c: codes.update({e: c}))
-        backend.cipher = Fernet(Fernet.generate_key())
+    codes = {}
+    with TemporaryDirectory() as directory, statement_backend(directory, codes) as backend:
         with backend.connect() as db:
-            db.execute('CREATE TABLE http_limits(key TEXT PRIMARY KEY,count BIGINT NOT NULL,until_at BIGINT NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS http_limits(key TEXT PRIMARY KEY,count BIGINT NOT NULL,until_at BIGINT NOT NULL)')
         email = 'statement@example.test'
         session = backend.register(email, PASSWORD)
         actor = backend.authenticate(session['token'])
@@ -50,7 +79,8 @@ def main():
         Thread(target=server.serve_forever, daemon=True).start()
         try:
             with sync_playwright() as playwright:
-                browser = getattr(playwright, engine).launch()
+                executable = os.environ.get('ULADIM_CHROMIUM') if engine == 'chromium' else None
+                browser = getattr(playwright, engine).launch(**({'executable_path': executable} if executable else {}))
                 run(browser, backend, actor, workspace, origin)
                 browser.close()
         finally:
@@ -77,6 +107,7 @@ def run(browser, backend, actor, workspace, origin):
     editor.locator('input[name=name]').fill('Основной счёт')
     editor.get_by_role('button', name='Сохранить', exact=True).click()
     expect(dialog.locator('input[type=file]')).to_be_visible()
+    expect(dialog.locator('.statement-steps [aria-current=step]')).to_have_text('Выбор файла', timeout=3500)
     with page.expect_file_chooser():
         dialog.locator('input[type=file]').click()
     assert dialog.locator('input[type=file]').get_attribute('accept') is None
@@ -118,10 +149,11 @@ def run(browser, backend, actor, workspace, origin):
     statement = 'Дата операции;Дата платежа;Сумма операции;Валюта операции;Описание\n' + '\n'.join(
         f'11.11.2026 09:41:00;12.11.2026;-1 234,56;RUB;Покупка {i}' for i in range(145))
     upload('statement.csv', statement.encode('cp1251'))
+    expect(dialog.locator('.statement-steps [aria-current=step]')).to_have_text('Проверка')
     expect(dialog.get_by_text('145 выбрано', exact=False)).to_be_visible()
     expect(dialog.locator('details[open]')).to_have_count(0)
     page.screenshot(path=str(OUT / 'import-tablet.png'))
-    for width,height,name in [(390,844,'phone'),(768,900,'foldable-open'),(1440,1000,'desktop')]:
+    for width,height,name in [(320,740,'compact'),(390,844,'phone'),(768,900,'foldable-open'),(1440,1000,'desktop')]:
         page.set_viewport_size({'width':width,'height':height})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         confirm_box = dialog.get_by_role('button', name='Импортировать выбранное', exact=True).bounding_box()
@@ -129,7 +161,10 @@ def run(browser, backend, actor, workspace, origin):
         page.screenshot(path=str(OUT / f'import-{name}.png'))
     page.set_viewport_size({'width':1180,'height':820})
     save([('RUB', 123456)] * 145)
-    close()
+    expect(dialog.locator('.statement-steps [aria-current=step]')).to_have_text('Результат')
+    expect(dialog.locator('.statement-receipt')).to_contain_text('145')
+    dialog.get_by_role('button', name='Открыть историю операций').click()
+    expect(dialog).to_have_count(0)
     expect(page.locator('.ledger')).to_contain_text('Покупка')
     launch.click()
     upload('renamed.txt', statement.encode('cp1251'))
@@ -274,7 +309,44 @@ def run(browser, backend, actor, workspace, origin):
     save([('RUB', 103)])
     assert next(row['data']['kind'] for row in records() if row['data']['label'] == 'Ambiguous day') == 'expense'
     close()
+    launch.click()
+    upload('lost-reply.csv', 'Date;Amount;Currency;Description\n2026-11-21;-2.74;RUB;Lost reply')
+    operation_ids = []
+
+    def lose_reply(route):
+        if route.request.method != 'POST':
+            return route.continue_()
+        operation_ids.append(route.request.post_data_json['operations'][0]['id'])
+        if len(operation_ids) == 1:
+            response = route.fetch()
+            assert response.ok
+            return route.fulfill(status=503, json={'error': 'service_unavailable'})
+        return route.continue_()
+
+    page.route('**/account/api/sync*', lose_reply)
+    dialog.get_by_role('button', name='Импортировать выбранное', exact=True).click()
+    retry = dialog.get_by_role('button', name='Повторить', exact=True)
+    expect(retry).to_be_enabled()
+    expect(dialog.locator('.statement-receipt')).to_be_hidden()
+    retry.click()
+    expect(dialog.locator('.statement-receipt')).to_contain_text('Сохранено операций · 1')
+    assert len(operation_ids) == 2 and operation_ids[0] == operation_ids[1], operation_ids
+    assert sum(row['data']['label'] == 'Lost reply' for row in records()) == 1
+    page.unroute('**/account/api/sync*', lose_reply)
+    close()
     context.close()
+    with browser.new_context(locale='ru-RU', ignore_https_errors=origin.startswith('https:')) as second_context:
+        second = second_context.new_page()
+        second.goto(origin + '/app/')
+        second.locator('input[name=email]').fill(actor['email'])
+        second.locator('input[name=password]').fill(PASSWORD)
+        second.get_by_role('button', name='Войти', exact=True).click()
+        expect(second.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
+        second.get_by_role('navigation').get_by_role('button', name='Финансы', exact=True).click()
+        second.locator('.finance-filter-panel summary').click()
+        second.locator('input[name=finance-search]').fill('Lost reply')
+        expect(second.locator('.ledger-row')).to_have_count(1)
+        expect(second.locator('.ledger-row')).to_contain_text('Lost reply')
     print('STATEMENT_BROWSER_OK', len(records()), 'transactions persisted')
 
 
