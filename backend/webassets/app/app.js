@@ -459,12 +459,51 @@ function emptyPanel(symbol,message){
  const panel=E('div',undefined,'workspace-empty');
  return append(panel,icon(symbol),E('p',message));
 }
+const NOTE_DRAFT_COPY={
+ ru:['Продолжить черновик','Черновик хранится в этой вкладке.','Браузер не смог сохранить черновик в этой вкладке.'],
+ en:['Continue draft','The draft is stored in this tab.','The browser could not store the draft in this tab.'],
+ 'uz-Latn':['Qoralamani davom ettirish','Qoralama shu varaqda saqlanadi.','Brauzer qoralamani shu varaqda saqlay olmadi.'],
+ 'uz-Cyrl':['Қораламани давом эттириш','Қоралама шу варақда сақланади.','Браузер қораламани шу варақда сақлай олмади.']
+};
+const noteDraftPrefix=()=>state.session?.user_id?'uladim-note-draft:'+state.session.user_id+':':'';
+function noteDraftKey(record){
+ const prefix=noteDraftPrefix();
+ return prefix&&state.space?prefix+state.space+':'+(record?.id||'new'):'';
+}
+function readNoteDraft(key){
+ if(!key)return null;
+ try{
+  const draft=JSON.parse(sessionStorage.getItem(key)||'null');
+  if(typeof draft?.body==='string'&&['private','shared'].includes(draft.visibility)&&Number.isInteger(draft.revision))return draft;
+ }catch{}
+ return null;
+}
+function writeNoteDraft(key,draft){
+ if(!key)return false;
+ try{
+  if(draft)sessionStorage.setItem(key,JSON.stringify(draft));
+  else sessionStorage.removeItem(key);
+  return true;
+ }catch{return false;}
+}
+function clearNoteDrafts(){
+ const prefix=noteDraftPrefix();
+ if(!prefix)return;
+ try{
+  for(let i=sessionStorage.length-1;i>=0;i--){
+   const key=sessionStorage.key(i);
+   if(key?.startsWith(prefix))sessionStorage.removeItem(key);
+  }
+ }catch{}
+}
 function listNotes(m){
  title(m,'widget_notes',()=>editRecord('note'));
  m.classList.add('notes-page');
  const toolbar=E('div',undefined,'notes-toolbar');
  const search=input(toolbar,'search',t('search'),'search','',false);
  const library=E('div',undefined,'notes-library');
+ const [resumeDraft]=NOTE_DRAFT_COPY[state.lang]||NOTE_DRAFT_COPY.en;
+ if(readNoteDraft(noteDraftKey(null)))toolbar.append(button(resumeDraft,()=>editRecord('note'),'secondary'));
  append(m,toolbar,library);
  const draw=()=>{
   library.replaceChildren();
@@ -476,7 +515,7 @@ function listNotes(m){
    const preview=(firstLine.length>100?r.data.body.slice(100):r.data.body.slice(firstLine.length)).trimStart();
    c.append(E('h2',firstLine.slice(0,100)||t('family_kind_note')));
    if(preview)c.append(E('p',preview.slice(0,280),'note note-preview'));
-   c.append(button(t('edit'),()=>editRecord('note',r),'text-button'));
+   c.append(button(readNoteDraft(noteDraftKey(r))?resumeDraft:t('edit'),()=>editRecord('note',r),'text-button'));
    library.append(c);
   }
   if(!rows.length)library.append(emptyPanel('notes',t(available.length?'web_no_results':'empty_notes')));
@@ -484,12 +523,33 @@ function listNotes(m){
  search.addEventListener('input',draw);
  draw();
 }
-async function saveOperation(operation,workspace=state.space){const result=await call('sync',{workspace_id:workspace,operations:[operation]});const item=result.results[0];if(item.status!=='accepted')throw {code:item.status==='conflict'?'conflict':item.error};return item;}
+async function saveOperation(operation,workspace=state.space){
+ const result=await call('sync',{workspace_id:workspace,operations:[operation]});
+ const item=result.results?.[0];
+ if(item?.id!==operation.id)throw {code:'server_error',uncertain:true};
+ if(item.status!=='accepted')throw {code:item.status==='conflict'?'conflict':item.error};
+ return item;
+}
 function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  const workspace=state.space;const d=dialog(t('family_kind_'+kind),container=>{
  container.classList.add('record-editor',kind+'-editor');
- let operation=null,accepted=false;const fields={};
- form(container,'',f=>{
+ const draftKey=kind==='note'&&(!r||r.editable)?noteDraftKey(r):'';
+ const draft=readNoteDraft(draftKey);
+ const [ ,localDraft,failedDraft]=NOTE_DRAFT_COPY[state.lang]||NOTE_DRAFT_COPY.en;
+ let operation=draft?.operation||null,accepted=Boolean(draft?.accepted);const fields={};
+ const draftRevision=draft?.revision??r?.revision??0;
+ const draftNotice=draftKey?E('p',undefined,'small note-draft-status'):null;
+ if(draftNotice)draftNotice.setAttribute('role','status');
+ const keepDraft=()=>{
+  if(!draftKey)return;
+  if(!r&&!operation&&!fields.body.value){
+   draftNotice.textContent=writeNoteDraft(draftKey,null)?'':failedDraft;
+   return;
+  }
+  const value={body:fields.body.value,visibility:fields.visibility.value,revision:draftRevision,operation,accepted};
+  draftNotice.textContent=writeNoteDraft(draftKey,value)?localDraft:failedDraft;
+ };
+ const editor=form(container,'',f=>{
   const data=r?.data||{};const disabled=r&&!r.editable;
   if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',data.title||data.name||'');
   if(kind==='event'){
@@ -515,7 +575,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    options.append(recurrence);
    append(f,allDay,options);
   }
-  if(kind==='note')fields.body=input(f,'body',t('note_text'),'textarea',data.body||'');
+  if(kind==='note')fields.body=input(f,'body',t('note_text'),'textarea',draft?.body??data.body??'');
   if(kind==='task'){
    fields.completed=input(f,'completed',t('completed'),'checkbox');fields.completed.checked=!!data.completed;fields.completed.disabled=!!data.assignees?.length;
    if(data.assignees?.length){f.append(E('p',t('family_review_pending')));for(const pid of data.assignees){const profile=state.roster.profiles.find(p=>p.id===pid);f.append(button(t('complete')+' · '+(profile?.name||pid),async()=>{await saveOperation({id:crypto.randomUUID(),action:'task.complete',record_id:r.id,revision:r.revision,profile_id:pid,completed:true});d.close();await refresh();render();}));}}
@@ -530,6 +590,12 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   if(kind==='budget'){fields.period=select(f,'period',t('family_period'),['week','month','year','custom'].map(k=>[k,t('family_'+k)]),data.period||'month');fields.start=input(f,'start',t('family_start'),'date',data.start_on||localDate());fields.end=input(f,'end',t('family_end'),'date',data.end_on||'',false);fields.rollover=select(f,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');}
   if(kind==='transfer'){if(records('account').length<2)f.append(E('p',t('web_transfer_accounts'),'error'));const accounts=records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency]);fields.from=select(f,'from',t('family_from'),accounts,data.from_id||accounts[0]?.[0]);fields.to=select(f,'to',t('family_to'),accounts,data.to_id||accounts[1]?.[0]);fields.received=input(f,'received',t('received_amount'),'text',decimalInput(data.received_minor||0,records('account').find(a=>a.id===data.to_id)?.data.currency||'RUB'));fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());}
   fields.visibility=select(kind==='event'?f.querySelector('.event-options'):f,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
+  if(draftNotice){
+   if(draft){fields.visibility.value=draft.visibility;draftNotice.textContent=localDraft;}
+   fields.body.addEventListener('input',keepDraft);
+   fields.visibility.addEventListener('change',keepDraft);
+   f.append(draftNotice);
+  }
   if(disabled)f.disabled=true;return fields;
  },async v=>{
   if(workspace!==state.space)throw {code:'view_changed'};
@@ -553,13 +619,27 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    if(kind==='budget')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),limit_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),period:v.period.value,start_on:v.start.value,end_on:v.end.value||null,rollover:v.rollover.value,participants:r?.data.participants||[]};
    if(kind==='transfer')data={from_id:v.from.value,to_id:v.to.value,sent_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),received_minor:minor(v.received.value,false,records('account').find(a=>a.id===v.to.value)?.data.currency||'RUB'),date:v.date.value};
    ULADIMDomain.validateFinance(kind,data,records('account'));
-   operation={id:crypto.randomUUID(),action:'record.put',record_id:r?.id||crypto.randomUUID(),revision:r?.revision||0,kind,visibility:v.visibility.value,audience:r?.audience||(currentSpace()?.role==='child'?[currentSpace().profile_id]:[]),data};
+   operation={id:crypto.randomUUID(),action:'record.put',record_id:r?.id||crypto.randomUUID(),revision:draftRevision,kind,visibility:v.visibility.value,audience:r?.audience||(currentSpace()?.role==='child'?[currentSpace().profile_id]:[]),data};
   }
-  if(!accepted){try{await saveOperation(operation,workspace);accepted=true;}catch(error){if(!error.uncertain)operation=null;throw error;}}
+  if(!accepted){
+   keepDraft();
+   try{await saveOperation(operation,workspace);accepted=true;keepDraft();}
+   catch(error){if(!error.uncertain){operation=null;keepDraft();}throw error;}
+  }
   try{await refresh();}catch(error){throw {...error,refreshOnly:true};}
+  if(draftKey)writeNoteDraft(draftKey,null);
   d.close();render();onSaved?.();
  });
- if(r)container.append(button(t('family_use_server'),async()=>{d.close();await refresh();render();}));
+ if(operation){
+  editor.querySelector('fieldset').disabled=true;
+  editor.querySelector('button[type=submit]').textContent=t('retry');
+  editor.querySelector('.error').textContent=t(accepted?'web_saved_refresh':'web_uncertain');
+ }
+ if(r)container.append(button(t('family_use_server'),async()=>{
+  await refresh();
+  if(draftKey)writeNoteDraft(draftKey,null);
+  d.close();render();
+ }));
  if(r?.editable)container.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));
  });
 }
@@ -707,7 +787,7 @@ async function account(m){
   if(section===key)item.setAttribute('aria-current','page');
   navigation.append(item);
  }
- if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),settingsRow(t('account_privacy'),()=>openSettings('security')),button(t('family_logout'),async()=>{await call('logout',{});clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
+ if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),settingsRow(t('account_privacy'),()=>openSettings('security')),button(t('family_logout'),async()=>{await call('logout',{});clearNoteDrafts();clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);

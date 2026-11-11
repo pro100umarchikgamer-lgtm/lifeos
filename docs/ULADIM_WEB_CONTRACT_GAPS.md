@@ -51,7 +51,13 @@ about fields the browser should silently submit. No proposed field below is acti
 
 Deletion currently offers a 4-second cancel window BEFORE sending record.delete.
 It does not advertise server restoration. Pending deletes are cancelled when identity
-is cleared. Network failure does not enter an offline mutation queue.
+is cleared. Delete operations do not enter an offline mutation queue.
+
+Notes keep an unsent draft in the current browser tab, scoped to the signed-in
+account, workspace and note. A lost response preserves the exact operation
+for a user-initiated retry. A definite rejection restores editing. Explicit
+logout removes this account's local note drafts. A confirmed write with a failed
+refresh retries the refresh. Other record types do not have persistent drafts.
 
 ## Localization
 Existing 16 catalogs are reused unchanged. New copy: Russian, English,

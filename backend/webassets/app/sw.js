@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='uladim-interface-v20-focus';
+const CACHE='uladim-interface-v21-focus-recovery';
 const FILES=['/app/assets/domain.js','/assets/design.css','/app/assets/money.js','/app/assets/statement-formats.js','/app/assets/import.js','/app/assets/personal-import.js','/app/assets/statement-xlsx.js','/app/assets/statement-worker.js','/app/assets/app.js','/app/assets/app.css','/app/assets/locales.json','/app/assets/offline.html','/app/assets/offline.js','/app/assets/icon-192.png','/app/assets/icon-512.png','/app/assets/apple-touch-icon.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all([...keys.filter(key=>key.startsWith('uladim-interface-')&&key!==CACHE).map(key=>caches.delete(key)),self.clients.claim()]))));
