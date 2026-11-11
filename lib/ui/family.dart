@@ -1220,7 +1220,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         });
         return;
       }
-      await c.enqueue({
+      final queued = await c.enqueue({
         'id': FamilyController.uuid.v4(),
         'action': 'record.put',
         'record_id': widget.record?['id'] ?? FamilyController.uuid.v4(),
@@ -1230,7 +1230,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         'audience': audience.toList(),
         'data': data(),
       });
-      if (mounted && (c.error == null || c.error == 'offline')) {
+      if (mounted && queued) {
         Navigator.pop(context);
       }
     } catch (_) {
@@ -1242,14 +1242,14 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
 
   Future<void> action(String name, Json extra) async {
     final r = widget.record!;
-    await c.enqueue({
+    final queued = await c.enqueue({
       'id': FamilyController.uuid.v4(),
       'action': name,
       'record_id': r['id'],
       'revision': r['revision'],
       ...extra,
     });
-    if (mounted && (c.error == null || c.error == 'offline')) {
+    if (mounted && queued) {
       Navigator.pop(context);
     }
   }

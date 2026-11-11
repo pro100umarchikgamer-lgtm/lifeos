@@ -456,21 +456,29 @@ class FamilyController extends ChangeNotifier {
         );
         await _refresh();
       });
-  Future<void> enqueue(Json operation) => run(() async {
-        if (workspace == null || !verified || roster == null) {
-          throw const SyncFailure('verify_email');
-        }
-        // A second local edit of the same record requires the first acknowledgement.
-        if ([
-          ...pending,
-          ...issues.map((i) => object(i['operation'])),
-        ].any((p) => p['record_id'] == operation['record_id'])) {
-          throw const SyncFailure('record_pending');
-        }
-        await store.enqueue(scope, workspace!, operation);
-        await reloadLocal();
-        await _refresh();
-      });
+
+  /// Reports whether the operation was saved locally, even if sync failed.
+  Future<bool> enqueue(Json operation) async {
+    var queued = false;
+    await run(() async {
+      if (workspace == null || !verified || roster == null) {
+        throw const SyncFailure('verify_email');
+      }
+      // A second local edit of the same record requires the first acknowledgement.
+      if ([
+        ...pending,
+        ...issues.map((i) => object(i['operation'])),
+      ].any((p) => p['record_id'] == operation['record_id'])) {
+        throw const SyncFailure('record_pending');
+      }
+      await store.enqueue(scope, workspace!, operation);
+      queued = true;
+      await reloadLocal();
+      await _refresh();
+    });
+    return queued;
+  }
+
   Future<void> resolve(Json issue, bool keepLocal) => run(() async {
         final op = object(issue['operation']), result = object(issue['result']);
         Json? replacement;
