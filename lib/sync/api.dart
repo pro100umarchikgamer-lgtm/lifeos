@@ -89,17 +89,18 @@ class FamilyApi implements SyncTransport {
         req.add(bytes);
       }
       final response = await req.close().timeout(const Duration(seconds: 20));
+      if (response.statusCode >= 500) {
+        await response.listen(null).cancel();
+        throw SyncFailure(
+            response.statusCode == 503 ? 'service_unavailable' : 'server_error',
+            response.statusCode);
+      }
       final content = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 20))) {
         content.addAll(chunk);
         if (content.length > 8 * 1024 * 1024) {
           throw const SyncFailure('response_limit');
         }
-      }
-      if (response.statusCode >= 500) {
-        throw SyncFailure(
-            response.statusCode == 503 ? 'service_unavailable' : 'server_error',
-            response.statusCode);
       }
       final value = object(jsonDecode(utf8.decode(content)));
       if (response.statusCode != 200) {
