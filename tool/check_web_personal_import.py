@@ -54,10 +54,10 @@ def keep_archive():
     return buffer.getvalue()
 
 
-def run(output):
-    with fixture() as (origin, backend, actor, workspace), sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
-        page = browser.new_page(viewport={'width': 390, 'height': 844}, locale='ru-RU')
+def run(output, engine):
+    with fixture(https=True) as (origin, backend, actor, workspace), sync_playwright() as playwright:
+        browser = getattr(playwright, engine).launch()
+        page = browser.new_page(viewport={'width': 390, 'height': 844}, locale='ru-RU', ignore_https_errors=True)
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
         login(page, origin)
@@ -117,7 +117,7 @@ def run(output):
         expect(dialog.get_by_role('button', name='Импортировать', exact=True)).to_be_hidden()
         assert len(backend.pull(actor, workspace, 0)['records']) == len(snapshot)
 
-        another = browser.new_page(locale='ru-RU')
+        another = browser.new_page(locale='ru-RU', ignore_https_errors=True)
         login(another, origin)
         open_tab(another, 'Заметки')
         expect(another.get_by_role('heading', name='Тестовая заметка')).to_be_visible()
@@ -144,7 +144,7 @@ def run(output):
         expect(reopened.get_by_text('Запись уже есть и отличается.', exact=False)).to_be_visible()
         expect(reopened.get_by_role('button', name='Импортировать', exact=True)).to_be_hidden()
 
-        guide = browser.new_page(viewport={'width': 980, 'height': 960})
+        guide = browser.new_page(viewport={'width': 980, 'height': 960}, ignore_https_errors=True)
         guide.goto(origin + '/docs#import')
         expect(guide.get_by_role('heading', name='Перенос данных в ULADIM')).to_be_visible()
         if output:
@@ -154,13 +154,14 @@ def run(output):
         expect(guide.get_by_text('На телефоне профиль находится', exact=False)).to_be_visible()
         assert not errors, errors
         browser.close()
-    print('PERSONAL_IMPORT_OK: 6 saved; duplicate prevention, second session, notes editing, FAQ')
+    print(f'PERSONAL_IMPORT_OK ({engine}): 6 saved; duplicate prevention, second session, notes editing, FAQ')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--engine', choices=('chromium', 'webkit', 'firefox'), default='chromium')
     args = parser.parse_args()
     if args.output:
         args.output.mkdir(parents=True, exist_ok=True)
-    run(args.output)
+    run(args.output, args.engine)

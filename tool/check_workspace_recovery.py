@@ -3,6 +3,7 @@ import argparse
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from playwright.sync_api import expect, sync_playwright
@@ -31,7 +32,21 @@ def run(browser, origin, output, name, width, height):
                 page.evaluate('window.scrollTo(0, 0)')
                 page.screenshot(path=output / f'{name}-{screen}.png', animations='disabled')
 
-        login(page, origin)
+        account_responses = []
+
+        def record_account_response(response):
+            path = urlsplit(response.url).path
+            if path.startswith('/account/api/'):
+                account_responses.append((response.request.method, path, response.status))
+
+        page.on('response', record_account_response)
+        try:
+            login(page, origin)
+        except AssertionError as error:
+            error.add_note(f'{name}: account responses {account_responses}; browser errors {page_errors}')
+            raise
+        finally:
+            page.remove_listener('response', record_account_response)
         calendar_label = page.locator('.nav > button').filter(has_text='Календарь').locator('span:last-child')
         assert calendar_label.evaluate('''label => {
             const text = document.createRange();

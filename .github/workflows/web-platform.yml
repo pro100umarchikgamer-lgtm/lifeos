@@ -89,8 +89,11 @@ jobs:
           python -m tool.check_registration_browser
           python -m tool.check_pwa_update
           python -m tool.check_chart_theme
-      - name: Personal import, shared workspace persistence and help
-        run: python -m tool.check_web_personal_import --output web_evidence/personal-import
+      - name: Personal import, workspace persistence and help across browsers
+        run: |
+          for engine in chromium webkit firefox; do
+            python -m tool.check_web_personal_import --engine "$engine" --output "web_evidence/personal-import-$engine"
+          done
       - name: Lighthouse on disposable local service
         run: |
           python -m tool.serve_web_fixture > /tmp/uladim-fixture.log 2>&1 &
