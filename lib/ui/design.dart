@@ -5,26 +5,26 @@ import 'package:flutter/material.dart';
 import '../domain/appearance.dart';
 
 class LifePalette {
-  static const green = Color(0xff08745a);
-  static const darkGreen = Color(0xff075b49);
-  static const mint = Color(0xffe1f3ee);
-  static const red = Color(0xffb93648);
+  static const green = Color(0xff135c4b);
+  static const darkGreen = Color(0xff104d40);
+  static const mint = Color(0xffe9f2ed);
+  static const red = Color(0xffa63f36);
   static const rose = Color(0xfffeeff0);
   static const blue = Color(0xff356da8);
   static const ice = Color(0xffeaf3ff);
   static const orange = Color(0xff9a5d10);
   static const cream = Color(0xfffff4e5);
-  static const ink = Color(0xff18232b);
-  static const muted = Color(0xff5f6b76);
-  static const background = Color(0xfff3f4f6);
-  static const darkBackground = Color(0xff111419);
-  static const darkSurface = Color(0xff1d2229);
+  static const ink = Color(0xff182a26);
+  static const muted = Color(0xff53645c);
+  static const background = Color(0xfff7f8f7);
+  static const darkBackground = Color(0xff101a18);
+  static const darkSurface = Color(0xff182622);
 }
 
 Color lifeAccent(BuildContext context, Color color) {
   if (Theme.of(context).brightness != Brightness.dark) return color;
-  if (color == LifePalette.green) return const Color(0xff79d9b7);
-  if (color == LifePalette.red) return const Color(0xffff96a0);
+  if (color == LifePalette.green) return const Color(0xff8fdfb6);
+  if (color == LifePalette.red) return const Color(0xffffb1a3);
   if (color == LifePalette.blue) return const Color(0xff9cc4ff);
   if (color == LifePalette.orange) return const Color(0xffffcb87);
   return color;
@@ -60,23 +60,22 @@ ThemeData lifeTheme(
           'sand' => const Color(0xff846746),
           _ => LifePalette.green,
         };
-  final classic =
-      appearance.palette == 'emerald' &&
+  final classic = appearance.palette == 'emerald' &&
       !(appearance.dynamic && wallpaperSeed != null);
   final scheme = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: brightness,
     primary: classic
         ? dark
-              ? const Color(0xff69d0ae)
-              : LifePalette.green
+            ? const Color(0xffa2dec6)
+            : LifePalette.green
         : null,
     surface: dark ? LifePalette.darkSurface : Colors.white,
   );
   final radius = switch (appearance.shape) {
     'subtle' => 12.0,
     'rounded' => 28.0,
-    _ => 20.0,
+    _ => 16.0,
   };
   final shape = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(radius),
@@ -88,14 +87,25 @@ ThemeData lifeTheme(
     extensions: [LifeSurfaces(radius, appearance.surface)],
     scaffoldBackgroundColor: classic
         ? dark
-              ? LifePalette.darkBackground
-              : LifePalette.background
+            ? LifePalette.darkBackground
+            : LifePalette.background
         : scheme.surfaceContainerLowest,
     textTheme: ThemeData(brightness: brightness).textTheme.apply(
       bodyColor: scheme.onSurface,
       displayColor: scheme.onSurface,
       fontFamilyFallback: const ['NotoSansGeorgian', 'NotoSansArmenian'],
     ),
+    appBarTheme: AppBarTheme(
+        backgroundColor:
+            dark ? LifePalette.darkBackground : LifePalette.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false),
+    navigationBarTheme: NavigationBarThemeData(
+        height: 68,
+        backgroundColor: scheme.surface,
+        indicatorColor: scheme.primaryContainer,
+        surfaceTintColor: Colors.transparent),
     dividerColor: scheme.outlineVariant,
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -112,11 +122,11 @@ ThemeData lifeTheme(
         borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: scheme.primary, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size(48, 52),
+        minimumSize: const Size(48, 48),
         shape: shape,
       ),
     ),
@@ -152,7 +162,7 @@ class LifeCard extends StatelessWidget {
   const LifeCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(14),
   });
   final Widget child;
   final EdgeInsets padding;
@@ -170,17 +180,6 @@ class LifeCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(surface.radius),
         border: surface.treatment == 'outlined'
             ? Border.all(color: colors.outlineVariant)
-            : null,
-        boxShadow: surface.treatment == 'soft'
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: theme.brightness == Brightness.dark ? .14 : .045,
-                  ),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
-              ]
             : null,
       ),
       child: Material(type: MaterialType.transparency, child: child),
@@ -229,14 +228,16 @@ class LifeHero extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: colors.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: colors.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             body,
-            style: Theme.of(context).textTheme.bodyMedium
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
                 ?.copyWith(color: colors.onPrimaryContainer, height: 1.5),
           ),
         ],
@@ -249,21 +250,21 @@ class WelcomeLandscape extends StatelessWidget {
   const WelcomeLandscape({super.key});
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.vertical(
-      top: Radius.circular(
-        Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20,
-      ),
-    ),
-    child: SizedBox(
-      height: 104,
-      width: double.infinity,
-      child: CustomPaint(
-        painter: _LandscapePainter(
-          Theme.of(context).brightness == Brightness.dark,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(
+            Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20,
+          ),
         ),
-      ),
-    ),
-  );
+        child: SizedBox(
+          height: 104,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _LandscapePainter(
+              Theme.of(context).brightness == Brightness.dark,
+            ),
+          ),
+        ),
+      );
 }
 
 class _LandscapePainter extends CustomPainter {
@@ -414,12 +415,13 @@ class DailyBarChart extends StatelessWidget {
 
   Widget _bar(BigInt value, BigInt maxValue, Color color) =>
       value == BigInt.zero
-      ? const SizedBox.shrink()
-      : Container(
-          height: math.max(2, value.toDouble() / maxValue.toDouble() * 80),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-          ),
-        );
+          ? const SizedBox.shrink()
+          : Container(
+              height: math.max(2, value.toDouble() / maxValue.toDouble() * 80),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(3)),
+              ),
+            );
 }

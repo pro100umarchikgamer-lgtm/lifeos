@@ -112,7 +112,7 @@ void main() {
           }
           expect(
             tester.getRect(find.byKey(const Key('insight_balance'))).top,
-            lessThan(tester.getRect(find.text(pack.t('example_task'))).top),
+            greaterThan(tester.getRect(find.text(pack.t('example_task'))).top),
           );
           await snapshot('today');
           showEntryEditor(

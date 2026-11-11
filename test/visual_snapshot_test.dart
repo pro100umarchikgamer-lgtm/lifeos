@@ -187,14 +187,14 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           if (populated) {
-            // The revised brief requires visible finances first, then tasks.
+            // Clarity prioritizes daily tasks before the compact finance summary.
             expect(find.text('71 800 ₽'), findsOneWidget);
             expect(find.text('122 500 ₽'), findsOneWidget);
             expect(find.text('50 700 ₽'), findsOneWidget);
             expect(find.byKey(const Key('financial_period')), findsOneWidget);
             expect(
               tester.getRect(find.byKey(const Key('insight_balance'))).top,
-              lessThan(tester.getRect(find.text('Разобрать почту')).top),
+              greaterThan(tester.getRect(find.text('Разобрать почту')).top),
             );
             expect(
               tester.getRect(find.text('Разобрать почту')).bottom,

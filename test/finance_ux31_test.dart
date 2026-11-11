@@ -22,11 +22,20 @@ void main() {
     catalog = await PackCatalog.load();
   });
   for (final mode in ['light', 'dark']) {
-    testWidgets('financial history amounts retain readable contrast in $mode', (tester) async {
-      final store = UIStore()..items = [
-        for (final kind in [EntryKind.income, EntryKind.expense])
-          Record(id: kind.name, kind: kind, text: kind.name, createdAt: DateTime.now(), amountMinor: 10000, currency: const Currency('RUB', 2), date: dateOnly(DateTime.now())),
-      ];
+    testWidgets('financial history amounts retain readable contrast in $mode',
+        (tester) async {
+      final store = UIStore()
+        ..items = [
+          for (final kind in [EntryKind.income, EntryKind.expense])
+            Record(
+                id: kind.name,
+                kind: kind,
+                text: kind.name,
+                createdAt: DateTime.now(),
+                amountMinor: 10000,
+                currency: const Currency('RUB', 2),
+                date: dateOnly(DateTime.now())),
+        ];
       final c = AppController(store, catalog, 'ru');
       await c.load();
       c.preferences['theme'] = mode;
@@ -37,11 +46,13 @@ void main() {
       await tester.pumpAndSettle();
       for (final kind in [EntryKind.income, EntryKind.expense]) {
         final finder = find.byKey(Key('finance_amount_${kind.name}'));
-        await tester.scrollUntilVisible(finder, 180, scrollable: find.byType(Scrollable).first);
+        await tester.scrollUntilVisible(finder, 180,
+            scrollable: find.byType(Scrollable).first);
         final text = tester.widget<Text>(finder);
         final foreground = text.style!.color!;
         final background = Theme.of(tester.element(finder)).colorScheme.surface;
-        final a = foreground.computeLuminance(), b = background.computeLuminance();
+        final a = foreground.computeLuminance(),
+            b = background.computeLuminance();
         final ratio = ((a > b ? a : b) + .05) / ((a < b ? a : b) + .05);
         expect(ratio, greaterThanOrEqualTo(4.5));
       }
@@ -49,9 +60,12 @@ void main() {
     });
   }
   test('category shares follow selected decimal formatting', () {
-    expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'ru'), contains('80,0'));
-    expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'en'), contains('80.0'));
-    expect(formatShare(BigInt.zero, BigInt.zero, locale: 'de'), contains('0,0'));
+    expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'ru'),
+        contains('80,0'));
+    expect(formatShare(BigInt.from(4), BigInt.from(5), locale: 'en'),
+        contains('80.0'));
+    expect(
+        formatShare(BigInt.zero, BigInt.zero, locale: 'de'), contains('0,0'));
     final huge = BigInt.parse('9999999999999999999999999999999999');
     expect(formatShare(huge, huge, locale: 'ru'), contains('100,0'));
   });
@@ -273,4 +287,47 @@ void main() {
       c.dispose();
     },
   );
+
+  testWidgets(
+      'cashflow switches between line and bars without changing exact totals',
+      (tester) async {
+    final now = DateTime.now();
+    final store = UIStore()
+      ..items = [
+        Record(
+            id: 'income',
+            kind: EntryKind.income,
+            text: 'Income',
+            createdAt: now,
+            amountMinor: 10000,
+            currency: const Currency('RUB', 2),
+            date: dateOnly(now))
+      ];
+    final c = AppController(store, catalog, 'ru');
+    await c.load();
+    await tester.pumpWidget(MaterialApp(
+        theme: lifeTheme(Brightness.light),
+        home: Scaffold(
+            body: SingleChildScrollView(
+                child: FinancialOverview(
+                    controller: c,
+                    period: FinancialPeriod(now, now),
+                    currency: 'RUB',
+                    onCurrency: (_) {},
+                    onPeriod: () {},
+                    onRecord: (_) {},
+                    onAdd: (_) {})))));
+    await tester.pumpAndSettle();
+    final before =
+        tester.widget<Text>(find.byKey(const Key('insight_balance'))).data;
+    await tester.tap(find.byKey(const Key('chart_mode_bar')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.byKey(const Key('insight_balance'))).data,
+        before);
+    await tester.tap(find.byKey(const Key('chart_mode_line')));
+    await tester.pumpAndSettle();
+    expect(store.actions, isEmpty);
+    expect(tester.takeException(), isNull);
+    c.dispose();
+  });
 }

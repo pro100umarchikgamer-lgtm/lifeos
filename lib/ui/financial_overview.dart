@@ -36,6 +36,7 @@ class FinancialOverview extends StatefulWidget {
 
 class _FinancialOverviewState extends State<FinancialOverview> {
   ChartGrain grain = ChartGrain.day;
+  bool bars = false;
   int? selected;
   String? category;
   AppController get c => widget.controller;
@@ -66,10 +67,12 @@ class _FinancialOverviewState extends State<FinancialOverview> {
       ...(c.offline[OfflineTable.accounts] ?? []).map(
         (a) => a['currency'] as String,
       ),
-    }.toList()..sort();
-    final parts =
-        data.categories.entries.where((e) => e.value > BigInt.zero).toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
+    }.toList()
+      ..sort();
+    final parts = data.categories.entries
+        .where((e) => e.value > BigInt.zero)
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     final names = {
       for (final a
           in c.offline[OfflineTable.categories] ?? <Map<String, Object?>>[])
@@ -78,19 +81,19 @@ class _FinancialOverviewState extends State<FinancialOverview> {
     String name(String id) =>
         names[id] ?? t(id.isEmpty ? 'insight_uncategorized' : 'category');
     Widget metric(String title, BigInt value, Color color) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(t(title), style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 3),
-        Text(
-          money(value),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: lifeAccent(context, color),
-          ),
-        ),
-      ],
-    );
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t(title), style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 3),
+            Text(
+              money(value),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: lifeAccent(context, color),
+                  ),
+            ),
+          ],
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -127,7 +130,9 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                   data.hasAccounts ? data.balance : data.income - data.expense,
                 ),
                 key: const Key('insight_balance'),
-                style: Theme.of(context).textTheme.headlineMedium
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
                     ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
               ),
               if (!data.hasAccounts && !widget.compact)
@@ -170,10 +175,23 @@ class _FinancialOverviewState extends State<FinancialOverview> {
               ),
               const SizedBox(height: 12),
               if (!widget.compact) ...[
-                Text(
-                  t('insight_dynamics'),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Row(children: [
+                  Expanded(
+                      child: Text(t('insight_dynamics'),
+                          style: Theme.of(context).textTheme.titleMedium)),
+                  IconButton(
+                      key: const Key('chart_mode_line'),
+                      tooltip: t('chart_mode_line'),
+                      isSelected: !bars,
+                      onPressed: () => setState(() => bars = false),
+                      icon: const Icon(Icons.show_chart)),
+                  IconButton(
+                      key: const Key('chart_mode_bar'),
+                      tooltip: t('chart_mode_bar'),
+                      isSelected: bars,
+                      onPressed: () => setState(() => bars = true),
+                      icon: const Icon(Icons.bar_chart)),
+                ]),
                 Wrap(
                   spacing: 6,
                   children: [
@@ -207,12 +225,11 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                       key: const Key('cashflow_chart'),
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (d) => setState(
-                        () => selected =
-                            (d.localPosition.dx /
-                                    bounds.maxWidth *
-                                    (buckets.length - 1))
-                                .round()
-                                .clamp(0, buckets.length - 1),
+                        () => selected = (d.localPosition.dx /
+                                bounds.maxWidth *
+                                (buckets.length - 1))
+                            .round()
+                            .clamp(0, buckets.length - 1),
                       ),
                       child: SizedBox(
                         height: widget.compact ? 56 : 144,
@@ -224,6 +241,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                             lifeAccent(context, LifePalette.red),
                             scheme.outlineVariant,
                             index,
+                            bars: bars,
                           ),
                         ),
                       ),
@@ -277,7 +295,9 @@ class _FinancialOverviewState extends State<FinancialOverview> {
               children: [
                 Text(
                   t('insight_categories'),
-                  style: Theme.of(context).textTheme.titleMedium
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
@@ -298,8 +318,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                             scheme.surfaceContainerHighest,
                           ),
                           child: Center(
-                            child:
-                                MediaQuery.textScalerOf(context).scale(1) <=
+                            child: MediaQuery.textScalerOf(context).scale(1) <=
                                         1.4 &&
                                     money(data.expense).length < 14
                                 ? Text(
@@ -345,9 +364,8 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                       trailing: const Icon(Icons.chevron_right),
                       selected: category == parts[i].key,
                       onTap: () => setState(
-                        () => category = category == parts[i].key
-                            ? null
-                            : parts[i].key,
+                        () => category =
+                            category == parts[i].key ? null : parts[i].key,
                       ),
                     ),
                   if (category != null) ...[
@@ -376,26 +394,23 @@ class _FinancialOverviewState extends State<FinancialOverview> {
 }
 
 Color chartColor(int i) => const [
-  Color(0xff4d9b87),
-  Color(0xffdd9766),
-  Color(0xff7f8ad0),
-  Color(0xffbd7c9a),
-  Color(0xff75a0c5),
-  Color(0xffacaa67),
-][i % 6];
+      Color(0xff4d9b87),
+      Color(0xffdd9766),
+      Color(0xff7f8ad0),
+      Color(0xffbd7c9a),
+      Color(0xff75a0c5),
+      Color(0xffacaa67),
+    ][i % 6];
 double chartRatio(BigInt amount, BigInt max) => max == BigInt.zero
     ? 0
     : (amount * BigInt.from(1000000) ~/ max).toDouble() / 1000000;
 
 class CashflowPainter extends CustomPainter {
   CashflowPainter(
-    this.buckets,
-    this.income,
-    this.expense,
-    this.grid,
-    this.selected,
-  );
+      this.buckets, this.income, this.expense, this.grid, this.selected,
+      {this.bars = false});
   final List<CashBucket> buckets;
+  final bool bars;
   final Color income, expense, grid;
   final int? selected;
   @override
@@ -416,6 +431,28 @@ class CashflowPainter extends CustomPainter {
           ..strokeWidth = 1,
       );
     }
+    if (bars) {
+      final group = size.width / buckets.length;
+      final width = math.min(18.0, group * .28);
+      for (var i = 0; i < buckets.length; i++) {
+        for (final isIncome in [true, false]) {
+          final value = isIncome ? buckets[i].income : buckets[i].expense;
+          final height = chartRatio(value, max) * (size.height - 16);
+          if (height <= 0) continue;
+          final center =
+              group * (i + .5) + (isIncome ? -width * .6 : width * .6);
+          canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                  Rect.fromLTWH(center - width / 2, size.height - 6 - height,
+                      width, height),
+                  const Radius.circular(2)),
+              Paint()
+                ..color = (isIncome ? income : expense).withValues(
+                    alpha: selected == null || selected == i ? 1 : .5));
+        }
+      }
+      return;
+    }
     for (final isIncome in [true, false]) {
       final color = isIncome ? income : expense;
       final line = Path();
@@ -423,8 +460,7 @@ class CashflowPainter extends CustomPainter {
         final x = buckets.length == 1
             ? size.width / 2
             : i * size.width / (buckets.length - 1);
-        final y =
-            size.height -
+        final y = size.height -
             6 -
             chartRatio(isIncome ? buckets[i].income : buckets[i].expense, max) *
                 (size.height - 16);
