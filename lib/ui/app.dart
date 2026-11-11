@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
 import '../domain/models.dart';
+import '../domain/task_day_progress.dart';
 import '../domain/financial_period.dart';
 import '../localization/language_pack.dart';
 import 'design.dart';
@@ -41,58 +42,54 @@ class _LifeOSAppState extends State<LifeOSApp> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller.presentation,
-    builder: (context, _) {
-      return MaterialApp(
-        title: 'ULADIM',
-        debugShowCheckedModeBanner: false,
-        scaffoldMessengerKey: notices.messengerKey,
-        navigatorObservers: [navigationObserver],
-        builder: (context, child) => LifeNoticeScope(
-          notices: notices,
-          child: widget.builder?.call(context, child) ?? child!,
-        ),
-        themeAnimationDuration:
-            WidgetsBinding
-                .instance
-                .platformDispatcher
-                .accessibilityFeatures
-                .disableAnimations
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
-        locale: controller.pack.locale,
-        supportedLocales: {
-          for (final p in controller.catalog.packs.values) p.locale,
-          Locale(controller.region),
-        }.toList(),
-        localizationsDelegates: [
-          MaterialFallbackDelegate(formatLocale: controller.region),
-          const WidgetsFallbackDelegate(),
-          const CupertinoFallbackDelegate(),
-        ],
-        theme: lifeTheme(
-          Brightness.light,
-          appearance: controller.appearance,
-          wallpaperSeed: controller.wallpaperSeed == null
-              ? null
-              : Color(controller.wallpaperSeed!),
-        ),
-        darkTheme: lifeTheme(
-          Brightness.dark,
-          appearance: controller.appearance,
-          wallpaperSeed: controller.wallpaperSeed == null
-              ? null
-              : Color(controller.wallpaperSeed!),
-        ),
-        themeMode: switch (controller.theme) {
-          'light' => ThemeMode.light,
-          'dark' => ThemeMode.dark,
-          _ => ThemeMode.system,
+        listenable: controller.presentation,
+        builder: (context, _) {
+          return MaterialApp(
+            title: 'ULADIM',
+            debugShowCheckedModeBanner: false,
+            scaffoldMessengerKey: notices.messengerKey,
+            navigatorObservers: [navigationObserver],
+            builder: (context, child) => LifeNoticeScope(
+              notices: notices,
+              child: widget.builder?.call(context, child) ?? child!,
+            ),
+            themeAnimationDuration: WidgetsBinding.instance.platformDispatcher
+                    .accessibilityFeatures.disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 180),
+            locale: controller.pack.locale,
+            supportedLocales: {
+              for (final p in controller.catalog.packs.values) p.locale,
+              Locale(controller.region),
+            }.toList(),
+            localizationsDelegates: [
+              MaterialFallbackDelegate(formatLocale: controller.region),
+              const WidgetsFallbackDelegate(),
+              const CupertinoFallbackDelegate(),
+            ],
+            theme: lifeTheme(
+              Brightness.light,
+              appearance: controller.appearance,
+              wallpaperSeed: controller.wallpaperSeed == null
+                  ? null
+                  : Color(controller.wallpaperSeed!),
+            ),
+            darkTheme: lifeTheme(
+              Brightness.dark,
+              appearance: controller.appearance,
+              wallpaperSeed: controller.wallpaperSeed == null
+                  ? null
+                  : Color(controller.wallpaperSeed!),
+            ),
+            themeMode: switch (controller.theme) {
+              'light' => ThemeMode.light,
+              'dark' => ThemeMode.dark,
+              _ => ThemeMode.system,
+            },
+            home: HomeShell(controller: controller),
+          );
         },
-        home: HomeShell(controller: controller),
       );
-    },
-  );
 }
 
 class HomeShell extends StatefulWidget {
@@ -114,18 +111,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   FinancialPeriod get financialPeriod =>
       FinancialPeriod(_period.start, _period.end);
   String get summaryCurrency {
-    final codes =
-        financialPeriod
-            .records(c.records)
-            .map((r) => r.currency!.code)
-            .followedBy(
-              (c.offline[OfflineTable.accounts] ?? []).map(
-                (a) => a['currency'] as String,
-              ),
-            )
-            .toSet()
-            .toList()
-          ..sort();
+    final codes = financialPeriod
+        .records(c.records)
+        .map((r) => r.currency!.code)
+        .followedBy(
+          (c.offline[OfflineTable.accounts] ?? []).map(
+            (a) => a['currency'] as String,
+          ),
+        )
+        .toSet()
+        .toList()
+      ..sort();
     return _summaryCurrency ??
         (codes.contains(c.currency)
             ? c.currency
@@ -321,7 +317,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 children: [
                   Text(
                     c.pack.t('quick_add'),
-                    style: Theme.of(context).textTheme.titleLarge
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
@@ -444,120 +442,119 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _header() => Row(
-    children: [
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            GestureDetector(
-              onTap: () => _navigate(0),
-              child: Text.rich(
-                TextSpan(
-                  children: [
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => _navigate(0),
+                  child: Text.rich(
                     TextSpan(
-                      text: 'ULA',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                      children: [
+                        TextSpan(
+                          text: 'ULA',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'DIM',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
-                    TextSpan(
-                      text: 'DIM',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -.8,
                     ),
-                  ],
+                  ),
                 ),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -.8,
-                ),
+                if (c.family == null)
+                  Text(
+                    c.pack.t('personal_space'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
+                else
+                  TextButton.icon(
+                    key: const Key('workspace_switcher'),
+                    onPressed: _workspace,
+                    icon: Icon(
+                      familyMode ? Icons.people_outline : Icons.person_outline,
+                      size: 16,
+                    ),
+                    label: Text(
+                      familyMode
+                          ? (c.family!.spaces
+                                  .where(
+                                    (s) => s['id'] == c.family!.workspace,
+                                  )
+                                  .firstOrNull?['name'] as String? ??
+                              c.pack.t('family_account'))
+                          : c.pack.t('personal_space'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: c.pack.t('search'),
+            onPressed: _showSearch,
+            icon: const Icon(Icons.search_rounded),
+          ),
+          const SizedBox(width: 3),
+          IconButton(
+            key: const Key('profile_button'),
+            tooltip: c.pack.t('profile'),
+            onPressed: () {
+              LifeNoticeScope.of(context).clear();
+              setState(() => _profileOpen = true);
+            },
+            icon: CircleAvatar(
+              radius: 19,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              child: Icon(
+                Icons.person_rounded,
+                size: 23,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
-            if (c.family == null)
-              Text(
-                c.pack.t('personal_space'),
-                style: Theme.of(context).textTheme.bodySmall,
-              )
-            else
-              TextButton.icon(
-                key: const Key('workspace_switcher'),
-                onPressed: _workspace,
-                icon: Icon(
-                  familyMode ? Icons.people_outline : Icons.person_outline,
-                  size: 16,
-                ),
-                label: Text(
-                  familyMode
-                      ? (c.family!.spaces
-                                    .where(
-                                      (s) => s['id'] == c.family!.workspace,
-                                    )
-                                    .firstOrNull?['name']
-                                as String? ??
-                            c.pack.t('family_account'))
-                      : c.pack.t('personal_space'),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ],
-        ),
-      ),
-      IconButton(
-        tooltip: c.pack.t('search'),
-        onPressed: _showSearch,
-        icon: const Icon(Icons.search_rounded),
-      ),
-      const SizedBox(width: 3),
-      IconButton(
-        key: const Key('profile_button'),
-        tooltip: c.pack.t('profile'),
-        onPressed: () {
-          LifeNoticeScope.of(context).clear();
-          setState(() => _profileOpen = true);
-        },
-        icon: CircleAvatar(
-          radius: 19,
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(
-            Icons.person_rounded,
-            size: 23,
-            color: Theme.of(context).colorScheme.primary,
           ),
-        ),
-      ),
-    ],
-  );
+        ],
+      );
 
   Widget _addButton() => Container(
-    width: 58,
-    height: 58,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      boxShadow: [
-        BoxShadow(
-          color: LifePalette.darkGreen.withValues(alpha: .16),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
+        width: 58,
+        height: 58,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: LifePalette.darkGreen.withValues(alpha: .16),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-      ],
-    ),
-    child: FloatingActionButton(
-      key: const Key('add_button'),
-      tooltip: c.pack.t('add'),
-      onPressed: _chooseAdd,
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      shape: const CircleBorder(side: BorderSide.none),
-      elevation: 0,
-      focusElevation: 0,
-      hoverElevation: 0,
-      highlightElevation: 0,
-      child: const Icon(Icons.add, size: 32),
-    ),
-  );
+        child: FloatingActionButton(
+          key: const Key('add_button'),
+          tooltip: c.pack.t('add'),
+          onPressed: _chooseAdd,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          shape: const CircleBorder(side: BorderSide.none),
+          elevation: 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          highlightElevation: 0,
+          child: const Icon(Icons.add, size: 32),
+        ),
+      );
 
   Widget _bottomBar() {
     final surface = Theme.of(context).colorScheme.surface;
@@ -570,7 +567,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final painter = TextPainter(
         text: TextSpan(
           text: c.pack.t(tab),
-          style: Theme.of(context).textTheme.labelMedium
+          style: Theme.of(context)
+              .textTheme
+              .labelMedium
               ?.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
         ),
         textDirection: Directionality.of(context),
@@ -654,10 +653,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       c.pack.t(_tabs[i]),
       textAlign: TextAlign.center,
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-        color: color,
-        fontSize: 12,
-        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-      ),
+            color: color,
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          ),
     );
     return Semantics(
       selected: active,
@@ -705,8 +704,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         now,
         c.deviceZone,
       );
-      final done =
-          due != null &&
+      final done = due != null &&
           c.occurrences.any(
             (s) =>
                 s.entryId == entry.id &&
@@ -818,29 +816,30 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _financeSummary() => FinancialOverview(
-    key: const Key('home_financial_summary'),
-    controller: c,
-    period: financialPeriod,
-    currency: summaryCurrency,
-    compact: _tab == 0,
-    onCurrency: (v) => setState(() => _summaryCurrency = v),
-    onPeriod: () async {
-      final result = await selectFinancialPeriod(context, c, _period);
-      if (result != null && mounted) setState(() => _period = result);
-    },
-    onRecord: (r) => _showRecord(r.id),
-    onAdd: _add,
-  );
+        key: const Key('home_financial_summary'),
+        controller: c,
+        period: financialPeriod,
+        currency: summaryCurrency,
+        compact: _tab == 0,
+        onCurrency: (v) => setState(() => _summaryCurrency = v),
+        onPeriod: () async {
+          final result = await selectFinancialPeriod(context, c, _period);
+          if (result != null && mounted) setState(() => _period = result);
+        },
+        onRecord: (r) => _showRecord(r.id),
+        onAdd: _add,
+      );
 
   Widget _actionGrid({required bool detailed, BuildContext? sheetContext}) =>
       LayoutBuilder(
         builder: (context, constraints) {
-          final columns =
-              !detailed &&
+          final columns = !detailed &&
                   constraints.maxWidth >= 500 &&
                   MediaQuery.textScalerOf(context).scale(1) <= 1.2
               ? 4
-              : MediaQuery.textScalerOf(context).scale(1) > 1.3 ? 1 : 2;
+              : MediaQuery.textScalerOf(context).scale(1) > 1.3
+                  ? 1
+                  : 2;
           final kinds = EntryKind.values
               .where(
                 (kind) =>
@@ -859,11 +858,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (
-                      var i = start;
-                      i < start + columns && i < kinds.length;
-                      i++
-                    ) ...[
+                    for (var i = start;
+                        i < start + columns && i < kinds.length;
+                        i++) ...[
                       if (i > start) const SizedBox(width: 10),
                       Expanded(
                         child: _actionTile(
@@ -956,134 +953,164 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
   }
 
-  Widget _tasksCard(List<Record> tasks) => LifeCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle(
-          'my_tasks',
-          action: 'all_tasks',
-          onTap: () => _navigate(1),
-        ),
+  Widget _dayProgress() {
+    final progress = taskDayProgress(
+        c.records, c.calendar, c.occurrences, c.now, c.timezone, c.deviceZone);
+    if (progress.total == 0) return const SizedBox.shrink();
+    final label = c.pack.t('scheduled_today');
+    final value = '${progress.done} / ${progress.total}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+          Text(value, style: Theme.of(context).textTheme.labelMedium),
+        ]),
         const SizedBox(height: 6),
-        if (tasks.isEmpty) _cardEmpty('empty_tasks', EntryKind.task),
-        for (final task in tasks) _taskRow(task),
-      ],
-    ),
-  );
+        LinearProgressIndicator(
+          key: const Key('today-task-progress'),
+          value: progress.done / progress.total,
+          minHeight: 4,
+          borderRadius: BorderRadius.circular(4),
+          semanticsLabel: label,
+          semanticsValue: value,
+        ),
+      ]),
+    );
+  }
+
+  Widget _tasksCard(List<Record> tasks) => LifeCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(
+              'my_tasks',
+              action: 'all_tasks',
+              onTap: () => _navigate(1),
+            ),
+            _dayProgress(),
+            const SizedBox(height: 6),
+            if (tasks.isEmpty) _cardEmpty('empty_tasks', EntryKind.task),
+            for (final task in tasks) _taskRow(task),
+          ],
+        ),
+      );
 
   Widget _notesCard(List<Record> notes) => LifeCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle(
-          'recent_notes',
-          action: 'all_notes',
-          onTap: () => _entriesPage(EntryKind.note),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(
+              'recent_notes',
+              action: 'all_notes',
+              onTap: () => _entriesPage(EntryKind.note),
+            ),
+            const SizedBox(height: 6),
+            if (notes.isEmpty) _cardEmpty('empty_notes', EntryKind.note),
+            for (final note in notes) _noteRow(note),
+          ],
         ),
-        const SizedBox(height: 6),
-        if (notes.isEmpty) _cardEmpty('empty_notes', EntryKind.note),
-        for (final note in notes) _noteRow(note),
-      ],
-    ),
-  );
+      );
 
   Widget _sectionTitle(
     String key, {
     String? action,
     VoidCallback? onTap,
-  }) => LayoutBuilder(
-    builder: (context, bounds) {
-      const titleStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w800);
-      final actionStyle = TextStyle(
-        fontSize: 13,
-        color: Theme.of(context).colorScheme.primary,
-      );
-      final title = Text(c.pack.t(key), style: titleStyle);
-      if (action == null) return title;
-      double textWidth(String text, TextStyle style) {
-        final painter = TextPainter(
-          text: TextSpan(
-            text: text,
-            style: DefaultTextStyle.of(context).style.merge(style),
-          ),
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
-        )..layout();
-        final width = painter.width;
-        painter.dispose();
-        return width;
-      }
+  }) =>
+      LayoutBuilder(
+        builder: (context, bounds) {
+          const titleStyle =
+              TextStyle(fontSize: 15, fontWeight: FontWeight.w800);
+          final actionStyle = TextStyle(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.primary,
+          );
+          final title = Text(c.pack.t(key), style: titleStyle);
+          if (action == null) return title;
+          double textWidth(String text, TextStyle style) {
+            final painter = TextPainter(
+              text: TextSpan(
+                text: text,
+                style: DefaultTextStyle.of(context).style.merge(style),
+              ),
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context),
+            )..layout();
+            final width = painter.width;
+            painter.dispose();
+            return width;
+          }
 
-      final actionLabel = c.pack.t(action);
-      final stacked =
-          textWidth(c.pack.t(key), titleStyle) +
-              textWidth(actionLabel, actionStyle) +
-              23 >
-          bounds.maxWidth;
-      final actionButton = Semantics(
-        button: true,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: 48,
-              maxWidth: bounds.maxWidth,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(child: Text(actionLabel, style: actionStyle)),
-                Icon(
-                  Icons.chevron_right,
-                  size: 15,
-                  color: Theme.of(context).colorScheme.primary,
+          final actionLabel = c.pack.t(action);
+          final stacked = textWidth(c.pack.t(key), titleStyle) +
+                  textWidth(actionLabel, actionStyle) +
+                  23 >
+              bounds.maxWidth;
+          final actionButton = Semantics(
+            button: true,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: 48,
+                  maxWidth: bounds.maxWidth,
                 ),
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(child: Text(actionLabel, style: actionStyle)),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+          return stacked
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    title,
+                    Align(
+                        alignment: Alignment.centerRight, child: actionButton),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: title),
+                    const SizedBox(width: 8),
+                    actionButton,
+                  ],
+                );
+        },
       );
-      return stacked
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                title,
-                Align(alignment: Alignment.centerRight, child: actionButton),
-              ],
-            )
-          : Row(
-              children: [
-                Expanded(child: title),
-                const SizedBox(width: 8),
-                actionButton,
-              ],
-            );
-    },
-  );
 
   Widget _cardEmpty(String key, EntryKind kind) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 7),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(
-            c.pack.t(key),
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                c.pack.t(key),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
-          ),
+            IconButton(
+              tooltip: c.pack.t('create_${kind.name}'),
+              onPressed: () => _add(kind),
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+          ],
         ),
-        IconButton(
-          tooltip: c.pack.t('create_${kind.name}'),
-          onPressed: () => _add(kind),
-          icon: const Icon(Icons.add_circle_outline),
-        ),
-      ],
-    ),
-  );
+      );
 
   bool _taskDone(Record task) {
     if (task.completed) return true;
@@ -1132,77 +1159,81 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _taskRow(Record task) => Container(
-    constraints: const BoxConstraints(minHeight: 48),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(
-          color: Theme.of(context).dividerColor.withValues(alpha: .35),
-        ),
-      ),
-    ),
-    child: Row(
-      children: [
-        SizedBox(
-          width: 48,
-          child: Checkbox(
-            key: Key('task_${task.id}'),
-            value: _taskDone(task),
-            visualDensity: VisualDensity.standard,
-            onChanged: c.pendingTasks.contains(task.id)
-                ? null
-                : (value) => _complete(task, value!),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Expanded(
-          child: InkWell(
-            onTap: () => _showRecord(task.id),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.text,
-                    style: TextStyle(
-                      fontSize: 15,
-                      decoration: _taskDone(task)
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
-                  ),
-                  if (_taskStatus(task) case final String status)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        c.pack.t(status),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: status == 'task_overdue'
-                              ? lifeAccent(context, LifePalette.red)
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  if (c.scheduleFor(task) case final CalendarEntry entry)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Text(
-                        _scheduleLabel(entry),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+        constraints: const BoxConstraints(minHeight: 48),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor.withValues(alpha: .35),
             ),
           ),
         ),
-      ],
-    ),
-  );
+        child: Row(
+          children: [
+            SizedBox(
+              width: 48,
+              child: Checkbox(
+                key: Key('task_${task.id}'),
+                value: _taskDone(task),
+                visualDensity: VisualDensity.standard,
+                onChanged: c.pendingTasks.contains(task.id)
+                    ? null
+                    : (value) => _complete(task, value!),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: InkWell(
+                onTap: () => _showRecord(task.id),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.text,
+                        style: TextStyle(
+                          fontSize: 15,
+                          decoration: _taskDone(task)
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      if (_taskStatus(task) case final String status)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            c.pack.t(status),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: status == 'task_overdue'
+                                  ? lifeAccent(context, LifePalette.red)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      if (c.scheduleFor(task) case final CalendarEntry entry)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: Text(
+                            _scheduleLabel(entry),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
   String _scheduleLabel(CalendarEntry entry) {
     final date = DateTime.parse(entry.schedule.localStart);
@@ -1211,65 +1242,65 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _noteRow(Record note) => InkWell(
-    onTap: () => _showNote(note),
-    borderRadius: BorderRadius.circular(12),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 19,
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            child: Icon(
-              Icons.description_outlined,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _firstLine(note.text),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+        onTap: () => _showNote(note),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.description_outlined,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  size: 21,
                 ),
-                if (note.text.contains('\n')) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    note.text.substring(note.text.indexOf('\n') + 1).trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _firstLine(note.text),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                Text(
-                  MaterialLocalizations.of(context)
-                      .formatMediumDate(note.createdAt.toLocal()),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                    if (note.text.contains('\n')) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        note.text.substring(note.text.indexOf('\n') + 1).trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      MaterialLocalizations.of(context)
+                          .formatMediumDate(note.createdAt.toLocal()),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   String _firstLine(String value) => value.split('\n').first;
 
@@ -1388,13 +1419,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                           record.date == null
                               ? ''
                               : MaterialLocalizations.of(context)
-                                    .formatMediumDate(
-                                      DateTime.parse(record.date!),
-                                    ),
+                                  .formatMediumDate(
+                                  DateTime.parse(record.date!),
+                                ),
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 13,
                           ),
                         ),
@@ -1411,7 +1441,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                       key: Key('finance_amount_${record.id}'),
                       textAlign: TextAlign.right,
                       style: TextStyle(
-                        color: lifeAccent(context, _kindColors(record.kind).foreground),
+                        color: lifeAccent(
+                            context, _kindColors(record.kind).foreground),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1428,47 +1459,47 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final grid = c.preferences['modules_view'] != 'list';
     final modules =
         <({IconData icon, String title, String body, VoidCallback open})>[
-              (
-                icon: Icons.account_balance_wallet_outlined,
-                title: c.pack.t('financial_foundation'),
-                body: c.pack.t('ux_modules_finance'),
-                open: () => Navigator.push<void>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FinanceFoundation(controller: c),
-                  ),
+      (
+        icon: Icons.account_balance_wallet_outlined,
+        title: c.pack.t('financial_foundation'),
+        body: c.pack.t('ux_modules_finance'),
+        open: () => Navigator.push<void>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FinanceFoundation(controller: c),
+              ),
+            ),
+      ),
+      for (final table in personalModules)
+        (
+          icon: switch (table) {
+            OfflineTable.projects => Icons.flag_outlined,
+            OfflineTable.habits => Icons.check_circle_outline,
+            OfflineTable.subjects => Icons.school_outlined,
+            OfflineTable.checklists => Icons.shopping_basket_outlined,
+            _ => Icons.favorite_outline,
+          },
+          title: c.pack.t('module_${table.name}'),
+          body: c.pack.t('ux_modules_${table.name}'),
+          open: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      PersonalModulesPage(controller: c, table: table),
                 ),
               ),
-              for (final table in personalModules)
-                (
-                  icon: switch (table) {
-                    OfflineTable.projects => Icons.flag_outlined,
-                    OfflineTable.habits => Icons.check_circle_outline,
-                    OfflineTable.subjects => Icons.school_outlined,
-                    OfflineTable.checklists => Icons.shopping_basket_outlined,
-                    _ => Icons.favorite_outline,
-                  },
-                  title: c.pack.t('module_${table.name}'),
-                  body: c.pack.t('ux_modules_${table.name}'),
-                  open: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          PersonalModulesPage(controller: c, table: table),
-                    ),
-                  ),
-                ),
-              (
-                icon: Icons.notes_outlined,
-                title: c.pack.t('recent_notes'),
-                body: c.pack.t('notes_module_hint'),
-                open: () => _entriesPage(EntryKind.note),
-              ),
-            ]
+        ),
+      (
+        icon: Icons.notes_outlined,
+        title: c.pack.t('recent_notes'),
+        body: c.pack.t('notes_module_hint'),
+        open: () => _entriesPage(EntryKind.note),
+      ),
+    ]
             .where(
               (m) => '${m.title} ${m.body}'.toLowerCase().contains(
-                _moduleQuery.toLowerCase(),
-              ),
+                    _moduleQuery.toLowerCase(),
+                  ),
             )
             .toList();
     final theme = Theme.of(context);
@@ -1561,8 +1592,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (grid)
         LayoutBuilder(
           builder: (context, box) {
-            final columns =
-                box.maxWidth >= 280 &&
+            final columns = box.maxWidth >= 280 &&
                     MediaQuery.textScalerOf(context).scale(1) <= 1.3
                 ? 2
                 : 1;
@@ -1570,12 +1600,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             double height = 48;
             for (final m in modules) {
               double textHeight(String text, TextStyle? style) => (TextPainter(
-                text: TextSpan(text: text, style: style),
-                textDirection: Directionality.of(context),
-                textScaler: MediaQuery.textScalerOf(context),
-              )..layout(maxWidth: width - 28)).height;
-              final measured =
-                  28 +
+                    text: TextSpan(text: text, style: style),
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
+                  )..layout(maxWidth: width - 28))
+                      .height;
+              final measured = 28 +
                   26 +
                   10 +
                   6 +
@@ -1624,38 +1654,43 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   List<Widget> _profile() => [
-    _pageTitle('profile'),
-    const SizedBox(height: 6),
-    Text(
-      c.pack.t('ux3_profile_body'),
-      style: Theme.of(context).textTheme.bodyMedium
-          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-    ),
-    const SizedBox(height: 14),
-    if (c.family != null) ...[
-      LifeCard(
-        child: ListTile(
-          leading: const Icon(Icons.people_outline),
-          title: Text(c.pack.t('family_account')),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push<void>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FamilyPage(controller: c.family!, pack: c.pack),
+        _pageTitle('profile'),
+        const SizedBox(height: 6),
+        Text(
+          c.pack.t('ux3_profile_body'),
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 14),
+        if (c.family != null) ...[
+          LifeCard(
+            child: ListTile(
+              leading: const Icon(Icons.people_outline),
+              title: Text(c.pack.t('family_account')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      FamilyPage(controller: c.family!, pack: c.pack),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-      const SizedBox(height: 12),
-    ],
-    PersonalSettings(controller: c),
-  ];
+          const SizedBox(height: 12),
+        ],
+        PersonalSettings(controller: c),
+      ];
 
   Widget _pageTitle(String key) => Text(
-    c.pack.t(key),
-    style: Theme.of(context).textTheme.headlineSmall
-        ?.copyWith(fontWeight: FontWeight.w800),
-  );
+        c.pack.t(key),
+        style: Theme.of(context)
+            .textTheme
+            .headlineSmall
+            ?.copyWith(fontWeight: FontWeight.w800),
+      );
 
   void _showSearch() {
     Navigator.push<void>(
@@ -1667,16 +1702,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   KindColors _kindColors(EntryKind kind) => switch (kind) {
-    EntryKind.expense => const KindColors(LifePalette.red, LifePalette.rose),
-    EntryKind.income => const KindColors(LifePalette.green, LifePalette.mint),
-    EntryKind.task => const KindColors(LifePalette.blue, LifePalette.ice),
-    EntryKind.note => const KindColors(LifePalette.orange, LifePalette.cream),
-  };
+        EntryKind.expense =>
+          const KindColors(LifePalette.red, LifePalette.rose),
+        EntryKind.income =>
+          const KindColors(LifePalette.green, LifePalette.mint),
+        EntryKind.task => const KindColors(LifePalette.blue, LifePalette.ice),
+        EntryKind.note =>
+          const KindColors(LifePalette.orange, LifePalette.cream),
+      };
 
   IconData _kindIcon(EntryKind kind) => switch (kind) {
-    EntryKind.expense => Icons.remove_circle_rounded,
-    EntryKind.income => Icons.add_circle_rounded,
-    EntryKind.task => Icons.check_box_rounded,
-    EntryKind.note => Icons.notes_rounded,
-  };
+        EntryKind.expense => Icons.remove_circle_rounded,
+        EntryKind.income => Icons.add_circle_rounded,
+        EntryKind.task => Icons.check_box_rounded,
+        EntryKind.note => Icons.notes_rounded,
+      };
 }
