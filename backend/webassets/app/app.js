@@ -126,15 +126,20 @@ function mfaStep(challenge){
 
 function language(container){const s=select(container,'language',t('language'),Object.entries(packs).map(([k,v])=>[k,v.name+(WEB_COPY[k]?'':' · '+t('web_partial_short'))]),state.lang);s.addEventListener('change',()=>{state.lang=s.value;preferences();if(state.session)render();else login();});}
 function shell(){
+ const previousMenu=root.querySelector('.nav-more');
+ const keepMenu=previousMenu?.open&&previousMenu.dataset.tab===state.tab;
  navObserver?.disconnect();root.replaceChildren();const header=E('header');const brand=E('a','ULADIM','brand');brand.href='/app';brand.append(E('small',t('ux3_settings_body')));header.append(brand);
  const spaces=select(E('div'),'workspace','',state.spaces.map(s=>[s.id,s.name]),state.space);spaces.setAttribute('aria-label',t('family_account'));spaces.className='workspace';spaces.addEventListener('change',async()=>{document.querySelectorAll('dialog').forEach(d=>d.close());state.space=spaces.value;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;render();try{await readSpace();render();}catch(e){report(e);}});if(state.spaces.length)header.append(spaces);root.append(header);
  if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
  const m=E('main');m.id='content';root.append(m);const nav=E('nav',undefined,'nav');nav.setAttribute('aria-label','ULADIM');
  const secondary=E('details',undefined,'nav-more');
+ secondary.dataset.tab=state.tab;secondary.open=Boolean(keepMenu);
  const summary=E('summary');append(summary,icon('more'),E('span',t('web_more')));secondary.append(summary);
  const menu=E('div',undefined,'nav-menu');secondary.append(menu);
+ secondary.addEventListener('keydown',event=>{if(event.key==='Escape'&&secondary.open){event.preventDefault();secondary.open=false;summary.focus();}});
  for(const [key,label] of [['today','today'],['tasks','widget_tasks'],['calendar','web_calendar'],['notes','widget_notes'],['money','finances'],['account','profile']]){
   const navigate=()=>{
+   secondary.open=false;
    if(key==='account')state.settingsTab='';
    state.tab=key;render();
   };
@@ -181,7 +186,7 @@ function today(m){
  quick.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;submit.disabled=true;field.readOnly=true;const workspace=state.space;try{operation=operation||{id:crypto.randomUUID(),action:'record.put',record_id:crypto.randomUUID(),revision:0,kind:'task',visibility:currentSpace()?.role==='child'?'shared':'private',audience:currentSpace()?.role==='child'?[currentSpace().profile_id]:[],data:{title:field.value.trim(),completed:0,assignment:'any',assignees:[],review:0}};if(!operation.data.title)throw {code:'invalid_input'};await saveOperation(operation,workspace);accepted=true;await refresh();render();}catch(error){if(!accepted&&!error.uncertain)operation=null;if(error.code==='unauthorized')report(error);else toast(errorText(error));if(error.uncertain)submit.setAttribute('aria-label',t('retry'));}finally{submit.disabled=false;field.readOnly=!!operation;}});a.append(quick);
  for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(E('p',t('empty_tasks'),'empty'));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>{state.tab='tasks';render();},'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
  const agenda=card(t('web_upcoming'));agenda.classList.add('today-agenda');for(const o of occurrences.slice(0,3))agenda.append(eventRow(o));if(!occurrences.length)agenda.append(E('p',t('web_no_events'),'empty'));agenda.append(button(t('family_kind_event'),()=>editRecord('event'),'text-button'));side.append(agenda);
- const finance=card(t('finances'));finance.classList.add('today-finance');summaries(finance);append(finance,button(t('finances'),()=>{state.tab='money';render();},'text-button'),button(t('web_add_operation'),()=>editRecord('transaction'),'text-button'));side.append(finance);
+ const finance=card(t('finances'));finance.classList.add('today-finance');summaries(finance);const financeActions=E('div',undefined,'task-actions');append(financeActions,button(t('finances'),()=>{state.tab='money';render();},'text-button'),button(t('web_add_operation'),()=>editRecord('transaction'),'text-button'));finance.append(financeActions);side.append(finance);
  const notes=card(t('recent_notes'));notes.classList.add('today-notes');for(const r of records('note').slice(-2).reverse())notes.append(button(r.data.body.slice(0,110),()=>editRecord('note',r),'note-link'));if(!records('note').length)notes.append(E('p',t('empty_notes'),'empty'));notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));side.append(notes);
 
 }
@@ -199,7 +204,7 @@ function listNotes(m){title(m,'widget_notes',()=>editRecord('note'));const searc
 async function saveOperation(operation,workspace=state.space){const result=await call('sync',{workspace_id:workspace,operations:[operation]});const item=result.results[0];if(item.status!=='accepted')throw {code:item.status==='conflict'?'conflict':item.error};return item;}
 function editRecord(kind,r=null){
  const workspace=state.space;const d=dialog(t('family_kind_'+kind),container=>{
- let operation=null;const fields={};
+ let operation=null,accepted=false;const fields={};
  form(container,'',f=>{
   const data=r?.data||{};const disabled=r&&!r.editable;
   if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',data.title||data.name||'');
@@ -241,7 +246,8 @@ function editRecord(kind,r=null){
    ULADIMDomain.validateFinance(kind,data,records('account'));
    operation={id:crypto.randomUUID(),action:'record.put',record_id:r?.id||crypto.randomUUID(),revision:r?.revision||0,kind,visibility:v.visibility.value,audience:r?.audience||(currentSpace()?.role==='child'?[currentSpace().profile_id]:[]),data};
   }
-  try{await saveOperation(operation,workspace);}catch(error){if(!error.uncertain)operation=null;throw error;}d.close();await refresh();render();
+  if(!accepted){try{await saveOperation(operation,workspace);accepted=true;}catch(error){if(!error.uncertain)operation=null;throw error;}}
+  await refresh();d.close();render();
  });
  if(r)container.append(button(t('family_use_server'),async()=>{d.close();await refresh();render();}));
  if(r?.editable)container.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));

@@ -149,6 +149,7 @@ def main():
                     page.get_by_role('dialog').get_by_label('Название',exact=True).fill('First account')
                     page.get_by_label('Начальный остаток',exact=True).fill('10000')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
+                    expect(page.locator('.finance-accounts')).to_contain_text('First account')
                     page.get_by_role('button',name='Добавить операцию',exact=True).click()
                     page.get_by_label('Сумма',exact=True).fill('1250,50')
                     page.locator('select[name=account]').select_option(label='First account · RUB')

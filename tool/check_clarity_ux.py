@@ -51,7 +51,7 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
                 page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'))
                 assert not overflow,(theme,width,tab,'page overflow')
                 if tab=='account':
-                    expect(page.locator('.settings-navigation')).to_be_visible()
+                    expect(page.locator('.settings-back' if width<760 else '.settings-navigation')).to_be_visible()
                     expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_have_count(0)
                     open_settings(page,'appearance')
                     expect(page.get_by_label('Язык',exact=True)).to_be_visible()

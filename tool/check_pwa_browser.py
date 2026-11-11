@@ -155,8 +155,9 @@ def main():
                 stored=page.evaluate('Object.keys(localStorage)')
                 assert stored==['uladim-interface'],stored
                 checks.append('cache_contains_only_interface_and_preferences')
+                open_tab(page,'Профиль')
+                open_settings(page,'appearance')
                 for locale in json.loads(Path('backend/webassets/app/locales.json').read_text()):
-                    page.locator('.nav button').last.click()
                     page.locator('select[name=language]').select_option(locale)
                     expect(page.locator('h1')).to_be_visible()
                     assert page.locator('html').get_attribute('lang')==locale
