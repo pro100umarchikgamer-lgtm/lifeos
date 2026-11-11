@@ -126,7 +126,7 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart test/session_rotation_test.dart test/account_center_test.dart test/google_login_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart test/session_rotation_test.dart test/account_center_test.dart test/google_login_test.dart test/clarity_ui_test.dart test/server_availability_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/account_center_visual_test.dart test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart test/ux31_visual_test.dart
         if: steps.validation.outputs.full == 'true'
@@ -198,8 +198,8 @@ jobs:
         if: steps.validation.outputs.build == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tool/check_release_upgrade.py --download --baseline 134001
-      - name: Install over signed 134001 and retain encrypted user data
+        run: PYTHONPATH=. python3 tool/check_release_upgrade.py --download --baseline 174001
+      - name: Install over signed 174001 and retain encrypted user data
         if: steps.validation.outputs.build == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 12
@@ -210,7 +210,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim
-          script: python3 tool/check_release_upgrade.py --baseline 134001 --candidate build/app/outputs/flutter-apk/app-release.apk
+          script: PYTHONPATH=. python3 tool/check_release_upgrade.py --baseline 174001 --candidate build/app/outputs/flutter-apk/app-release.apk
       - name: Save Android upgrade evidence
         if: always() && steps.validation.outputs.build == 'true'
         uses: actions/upload-artifact@v4
@@ -261,9 +261,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [[ '${{ inputs.accept_built_candidate }}' == 'true' ]]; then
-            python3 tool/check_release_upgrade.py --download --baseline 134001
+            PYTHONPATH=. python3 tool/check_release_upgrade.py --download --baseline 174001
           else
-            python3 tool/check_release_upgrade.py --download
+            PYTHONPATH=. python3 tool/check_release_upgrade.py --download
           fi
       - name: Reuse verified signed APK174001 without compiling
         if: inputs.accept_built_candidate == true
@@ -293,7 +293,7 @@ jobs:
           disable-animations: true
           disable-linux-hw-accel: false
           script: |
-            if [ '${{ inputs.accept_built_candidate }}' = 'true' ]; then python3 tool/check_release_upgrade.py --baseline 134001 --candidate "$RUNNER_TEMP/uladim-candidate.apk"; else bash tool/check_release_probe.sh "${{ inputs.reuse_signed_apk }}"; fi
+            if [ '${{ inputs.accept_built_candidate }}' = 'true' ]; then PYTHONPATH=. python3 tool/check_release_upgrade.py --baseline 174001 --candidate "$RUNNER_TEMP/uladim-candidate.apk"; else bash tool/check_release_probe.sh "${{ inputs.reuse_signed_apk }}"; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
