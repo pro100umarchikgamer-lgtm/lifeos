@@ -218,7 +218,8 @@ function importStatement() {
     else counts.skipped++;
    }
    if(!preview.length)return;
-   const overview=E('p',counts.selected+' '+copy('selected')+' · '+counts.saved+' '+copy('saved')+' · '+counts.skipped+' '+copy('skipped')+' · '+counts.review+' '+copy('needs_review'));
+   const overview=E('p',Object.entries(counts).filter(([key,value])=>value>0||key==='selected').map(([key,value])=>
+    value+' '+copy(key==='review'?'needs_review':key)).join(' · '));
    totals.append(overview);
    for(const [currency,group] of byCurrency){
     const line=E('p',undefined,'statement-currency');
@@ -347,7 +348,7 @@ function importStatement() {
 const STATEMENT_COPY={
  ru:{
   title:'Импортировать выписку',need_account:'Для импорта нужен счёт. Создайте его, чтобы связать операции с вашими финансами.',
-  create_account:'Создать счёт',help:'Выберите выписку до 5 МБ из «Файлов» или другого доступного хранилища. Файл обрабатывается в браузере.',
+  create_account:'Создать счёт',help:'CSV, TSV, TXT, JSON, OFX, QIF, PDF или XLSX · до 5 МБ. Выписка обрабатывается в браузере.',
   advanced:'Исправить распознавание',auto:'Автоматически',bank_id:'Идентификатор операции',direction_field:'Тип операции',reading:'Распознаём выписку…',
   saved:'сохранено',skipped:'пропущено',selected:'выбрано',needs_review:'требуют проверки',ready:'Готово',rows:'строк',
   include:'Включить',status:'Статус',edit_row:'Исправить строку',no_rows:'В выписке нет операций для проверки.',
@@ -378,7 +379,7 @@ const STATEMENT_COPY={
  },
  en:{
   title:'Import a statement',need_account:'Create an account to link statement entries to your finances.',
-  create_account:'Create account',help:'Choose a statement up to 5 MB from Files or another available provider. The file is processed in your browser.',
+  create_account:'Create account',help:'CSV, TSV, TXT, JSON, OFX, QIF, PDF or XLSX · up to 5 MB. Your browser processes the statement.',
   advanced:'Correct recognition',auto:'Automatic',bank_id:'Transaction ID',direction_field:'Transaction type',reading:'Reading statement…',
   saved:'saved',skipped:'skipped',selected:'selected',needs_review:'need review',ready:'Ready',rows:'rows',
   include:'Include',status:'Status',edit_row:'Correct row',no_rows:'There are no transactions to review in this statement.',

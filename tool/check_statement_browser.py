@@ -121,6 +121,8 @@ def run(browser, backend, actor, workspace, origin):
     for width,height,name in [(390,844,'phone'),(768,900,'foldable-open'),(1440,1000,'desktop')]:
         page.set_viewport_size({'width':width,'height':height})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        confirm_box = dialog.get_by_role('button', name='Импортировать выбранное', exact=True).bounding_box()
+        assert confirm_box and confirm_box['y'] + confirm_box['height'] <= height, (name, confirm_box)
         page.screenshot(path=str(OUT / f'import-{name}.png'))
     page.set_viewport_size({'width':1180,'height':820})
     save([('RUB', 123456)] * 145)

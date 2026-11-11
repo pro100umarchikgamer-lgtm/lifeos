@@ -42,7 +42,8 @@ body[data-design=clarity] .today-grid .card{padding-top:18px;padding-bottom:18px
 .statement-dialog .import-table td:nth-child(4){white-space:nowrap}
 .statement-dialog .import-table td:last-child button{display:block;margin-block:.3rem}
 .statement-dialog .import-table td input[type=checkbox]{width:1.35rem;height:1.35rem;margin:.45rem}
-.statement-dialog .statement-actions{margin-block:.8rem .1rem}
+.statement-dialog .statement-actions{position:sticky;z-index:1;bottom:0;background:var(--card);border-top:1px solid var(--line);margin:0;padding-block:.65rem .15rem}
+.statement-dialog .statement-actions button{min-height:44px}
 @media(max-width:640px){
  .statement-dialog .import-table{overflow:visible}
  .statement-dialog .import-table table,.statement-dialog .import-table tbody{display:block;width:100%;min-width:0}
@@ -56,4 +57,5 @@ body[data-design=clarity] .today-grid .card{padding-top:18px;padding-bottom:18px
  .statement-dialog .import-table td:nth-child(5){grid-column:3;grid-row:2}
  .statement-dialog .import-table td:nth-child(6),.statement-dialog .import-table td:nth-child(7){grid-column:2 / -1}
  .statement-dialog .import-table td:nth-child(6) label{display:block}
+ .statement-dialog .statement-actions button{width:100%}
 }
