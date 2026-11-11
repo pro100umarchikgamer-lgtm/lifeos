@@ -41,7 +41,7 @@ try{
  assert.equal(w.document.querySelectorAll('.note-preview').length,0,'single-line note must not repeat its heading as body');
  button('Редактировать').click();button('Удалить').click();button('Отменить').click();assert(w.document.querySelector('main').textContent.includes('DOM changed note'));
  button('Финансы').click();await wait(()=>w.document.querySelector('.finance-total'));assert(w.document.querySelector('main').textContent.includes('RUB'));
- button('Добавить').click();button('Расход или доход',w.document.querySelector('dialog')).click();
+ button('Добавить операцию').click();
  w.document.querySelector('[name=amount]').value='125,50';w.document.querySelector('[name=label]').value='DOM coffee';submit();
  await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM coffee'));
  button('Профиль',w.document.querySelector('.nav')).click();button('Оформление',w.document.querySelector('.settings-navigation')).click();await wait(()=>w.document.querySelector('[name=theme]'));change(w.document.querySelector('[name=theme]'),'dark');assert.equal(w.document.body.dataset.theme,'dark');

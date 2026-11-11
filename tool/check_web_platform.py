@@ -7,6 +7,7 @@ from pathlib import Path
 import json, os, sys, tempfile, threading, uuid
 from wsgiref.simple_server import make_server
 from cryptography.fernet import Fernet
+from tool.web_browser_navigation import open_tab, open_settings
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.production import Application
@@ -90,7 +91,7 @@ def main():
             events=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='event']
             assert any(r['data']['title']=='Проверяемое событие' and r['data']['schedule']['timezone']=='Asia/Tashkent' for r in events)
             checks.append('event_create_shared_protocol')
-            page.locator('.nav').get_by_role('button',name='Заметки',exact=True).click()
+            open_tab(page,'Заметки')
             page.get_by_role('button',name='Редактировать',exact=True).first.click();d=page.get_by_role('dialog')
             d.get_by_label('Текст заметки',exact=True).fill('Длинная заметка\n'+'Текст '*1000)
             d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
@@ -102,8 +103,7 @@ def main():
             page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
             expect(page.locator('.finance-total')).to_be_visible()
             account_id=next(r['id'] for r in backend.pull(actor,wid,0)['records'] if r['kind']=='account')
-            page.get_by_role('button',name='Добавить',exact=True).click()
-            page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
+            page.get_by_role('button',name='Добавить операцию',exact=True).click()
             d=page.get_by_role('dialog');d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Покупка из браузера')
             d.locator('[name=account]').select_option(account_id);d.locator('[name=date]').fill('2026-11-12')
             d.get_by_role('button',name='Сохранить',exact=True).click();expect(page.locator('.ledger')).to_contain_text('Покупка из браузера')
@@ -116,9 +116,11 @@ def main():
                 for width in (375,768,1024,1440):
                     page.set_viewport_size({'width':width,'height':900})
                     for tab,label in [('today','Сегодня'),('calendar','Календарь'),('tasks','Задачи'),('notes','Заметки'),('money','Финансы'),('account','Профиль')]:
-                        page.locator('.nav').get_by_role('button',name=label,exact=True).click();expect(page.locator('.nav button[aria-current=page]')).to_have_text(label)
+                        open_tab(page,label)
+                        selected=page.locator('.nav [aria-current=page]:visible')
+                        expect(selected).to_have_text('Ещё' if width<760 and tab in ('notes','account') else label)
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width,tab)
-                        for control in page.locator('.nav button').all():
+                        for control in page.locator('.nav button:visible').all():
                             box=control.bounding_box();assert box and box['width']>=44 and box['height']>=44,(width,tab,'touch-target')
                             assert control.locator('span:last-child').evaluate('(s)=>{const a=s.getBoundingClientRect(),b=s.closest("button").getBoundingClientRect();return a.left>=b.left&&a.right<=b.right&&a.top>=b.top&&a.bottom<=b.bottom}'),(width,tab,'nav-label-clipped')
                         if tab=='tasks':
@@ -134,15 +136,14 @@ def main():
                             })''')
                             assert contrasts and min(contrasts)>=4.5,(theme,width,'calendar date contrast',min(contrasts))
                         if tab=='account':
-                            expect(page.locator('[name=settings-section]' if width<760 else '.settings-navigation')).to_be_visible()
-                            page.locator('[name=settings-section]').select_option('profile') if width<760 else page.locator('.settings-navigation').get_by_role('button',name='Профиль',exact=True).click()
+                            expect(page.locator('.settings-navigation')).to_be_visible()
+                            open_settings(page,'profile')
                             expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_have_count(0)
-                            page.locator('[name=settings-section]').select_option('support') if width<760 else page.locator('.settings-navigation').get_by_role('button',name='Поддержка',exact=True).click()
+                            open_settings(page,'support')
                             expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
                         page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=False)
                     page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
-                    page.get_by_role('button',name='Добавить',exact=True).click()
-                    page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
+                    page.get_by_role('button',name='Добавить операцию',exact=True).click()
                     d=page.get_by_role('dialog');expect(d).to_be_visible()
                     d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Проверка экранной формы')
                     assert d.evaluate('(d)=>d.scrollWidth<=d.clientWidth'),(theme,width,'form-overflow')
@@ -162,7 +163,7 @@ def main():
                 checks.append('responsive_'+theme)
             page.set_viewport_size({'width':375,'height':812});page.evaluate("document.documentElement.style.fontSize='24px'")
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-            assert page.locator('.nav').evaluate('n=>[...n.querySelectorAll("button span:last-child")].every(s=>s.scrollWidth<=s.clientWidth||getComputedStyle(s).overflow==="hidden")'),'scaled nav text spills outside buttons'
+            assert page.locator('.nav').evaluate('n=>[...n.querySelectorAll("button span:last-child")].filter(s=>s.getClientRects().length).every(s=>s.scrollWidth<=s.clientWidth||getComputedStyle(s).overflow==="hidden")'),'scaled nav text spills outside buttons'
             page.screenshot(path=str(OUT/'text-scale-150-percent.png'))
             checks.append('text_scale_150_percent')
             assert not errors,errors

@@ -10,6 +10,7 @@ import threading
 from pathlib import Path
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 from cryptography.fernet import Fernet
+from tool.web_browser_navigation import open_tab, open_settings
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.control import Control, totp
@@ -70,8 +71,8 @@ def main():
                     page.locator('input[name=password]').fill(PASSWORD)
                     page.get_by_role('button',name='Войти',exact=True).click()
                     expect(page.locator('.nav')).to_be_visible()
-                    page.locator('.nav').get_by_role('button',name='Профиль',exact=True).click()
-                    page.locator('[name=settings-section]').select_option('plan')
+                    open_tab(page,'Профиль')
+                    open_settings(page,'plan')
                     expect(page.get_by_role('heading',name='Доступ и тарифы',exact=True)).to_be_visible()
                     expect(page.get_by_text('Free',exact=True)).to_be_visible()
                     page.screenshot(path=str(OUT/('customer_'+theme+'.png')),full_page=True)
@@ -79,8 +80,8 @@ def main():
                     assert 'tester@example.test' not in page.locator('body').inner_text()
                     page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
                     expect(page.locator('.nav')).to_be_visible()
-                    page.locator('.nav').get_by_role('button',name='Профиль',exact=True).click()
-                    page.locator('[name=settings-section]').select_option('support')
+                    open_tab(page,'Профиль')
+                    open_settings(page,'support')
                     expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
                     page.get_by_label('Тема',exact=True).fill('Synthetic browser support '+theme)
                     page.get_by_label('Сообщение',exact=True).fill('A synthetic fixture, no personal records.')

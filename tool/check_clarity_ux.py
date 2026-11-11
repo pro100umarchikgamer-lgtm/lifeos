@@ -1,6 +1,7 @@
 """Clarity iteration: real disposable backend, actual browser writes and visual evidence."""
 from pathlib import Path
 import json
+from tool.web_browser_navigation import open_tab, open_settings
 from playwright.sync_api import sync_playwright, expect
 from tool.check_web_platform import fixture, login
 OUT=Path('web_evidence/clarity');OUT.mkdir(parents=True,exist_ok=True)
@@ -42,17 +43,17 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
         for width in (320,375,390,430,768,1024,1280,1440):
             page.set_viewport_size({'width':width,'height':900})
             for tab,label in [('today','Сегодня'),('money','Финансы'),('account','Профиль')]:
-                page.locator('.nav').get_by_role('button',name=label,exact=True).click()
+                open_tab(page,label)
                 expect(page.locator('h1')).to_be_visible()
-                if tab=='account':page.locator('[name=settings-section]').select_option('profile') if width<760 else page.locator('.settings-navigation').get_by_role('button',name='Профиль',exact=True).click()
+                if tab=='account':open_settings(page,'profile')
                 overflow=page.evaluate('document.documentElement.scrollWidth>innerWidth')
                 geometry.append({'theme':theme,'width':width,'tab':tab,'overflow':overflow})
                 page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'))
                 assert not overflow,(theme,width,tab,'page overflow')
                 if tab=='account':
-                    expect(page.locator('[name=settings-section]' if width<760 else '.settings-navigation')).to_be_visible()
+                    expect(page.locator('.settings-navigation')).to_be_visible()
                     expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_have_count(0)
-                    page.locator('[name=settings-section]').select_option('appearance') if width<760 else page.locator('.settings-navigation').get_by_role('button',name='Оформление',exact=True).click()
+                    open_settings(page,'appearance')
                     expect(page.get_by_label('Язык',exact=True)).to_be_visible()
         checks.append(theme+'_responsive_8_widths')
     page.locator('.nav').get_by_role('button',name='Сегодня',exact=True).click()

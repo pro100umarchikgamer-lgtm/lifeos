@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 from cryptography.fernet import Fernet
+from tool.web_browser_navigation import open_tab, open_settings
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.production import Application
@@ -68,8 +69,8 @@ def main():
                     (OUT/'login-failure.json').write_text(json.dumps({'engine':ENGINE,'fixture':'HTTP loopback only; no production credentials','responses':responses,'cookies':[{'name':c['name'],'secure':c['secure'],'httpOnly':c['httpOnly']} for c in context.cookies()],'body':page.locator('body').inner_text(),'page_errors':errors},ensure_ascii=False,indent=2))
                     raise
                 page.screenshot(path=str(OUT/'iphone-today-light.png'),full_page=False)
-                assert page.locator('.nav svg[aria-hidden=true]').count()==6
-                for nav_button in page.locator('.nav button').all():
+                assert page.locator('.nav svg[aria-hidden=true]:visible').count()==5
+                for nav_button in page.locator('.nav button:visible,.nav-more > summary:visible').all():
                     box=nav_button.bounding_box();assert box['width']>=44 and box['height']>=44
                 for w,h,n in [(820,1180,'ipad'),(1440,960,'desktop')]:
                     page.set_viewport_size({'width':w,'height':h})
@@ -93,7 +94,7 @@ def main():
                 page.get_by_role('checkbox',name='Новая задача из веба',exact=True).check()
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
                 checks.append('create_and_complete_task_shared_with_android_protocol')
-                page.get_by_role('button',name='Заметки',exact=True).click()
+                open_tab(page,'Заметки')
                 page.get_by_role('button',name='Добавить',exact=True).click()
                 page.get_by_label('Текст заметки',exact=True).fill('Одна запись при повторе после потери ответа')
                 def lose_response(route):
@@ -115,7 +116,7 @@ def main():
                     page.screenshot(path=str(OUT/(name+'-finance.png')),full_page=True)
                 checks.append('responsive_320_390_820_1100_1440')
                 page.set_viewport_size({'width':390,'height':844})
-                page.get_by_role('button',name='Профиль',exact=True).click()
+                open_tab(page,'Профиль')
                 expect(page.get_by_role('heading',name='Управление аккаунтом',exact=True)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-account-light.png'),full_page=False)
                 def luminance(hex_color):
@@ -123,7 +124,7 @@ def main():
                     assert len(hex_color)==7 and hex_color.startswith('#'),hex_color
                     channels=[int(hex_color[i:i+2],16)/255 for i in (1,3,5)]
                     return sum((c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4)*w for c,w in zip(channels,(.2126,.7152,.0722)))
-                page.locator('[name=settings-section]').select_option('appearance')
+                open_settings(page,'appearance')
                 for scheme in ('light','dark'):
                     page.emulate_media(color_scheme=scheme)
                     for theme in ('system','light','dark'):
@@ -140,7 +141,7 @@ def main():
                                     assert ratio>=4.5,(scheme,theme,palette,fg,bg,colors[fg],colors[bg],ratio)
                 checks.append('financial_text_contrast_all_themes_and_palettes')
                 page.emulate_media(color_scheme='light')
-                page.locator('[name=settings-section]').select_option('appearance')
+                open_settings(page,'appearance')
                 page.get_by_label('Оформление',exact=True).select_option('dark')
                 page.get_by_label('Цветовая палитра',exact=True).select_option('ocean')
                 page.get_by_role('button',name='Финансы',exact=True).click()
@@ -172,7 +173,8 @@ def main():
                 page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
                 expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
                 checks.append('history_snapshot_scrubbed_before_session_revalidation')
-                page.get_by_role('button',name='Профиль',exact=True).click()
+                open_tab(page,'Профиль')
+                open_settings(page,'profile')
                 page.get_by_role('button',name='Выйти',exact=True).click()
                 expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible()
                 assert 'Подготовить план' not in page.locator('body').inner_text()

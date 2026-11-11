@@ -9,6 +9,7 @@ import threading
 from pathlib import Path
 from wsgiref.simple_server import make_server
 from cryptography.fernet import Fernet
+from tool.web_browser_navigation import open_tab
 from playwright.sync_api import sync_playwright, expect
 from backend.service import Backend
 from backend.config import Settings
@@ -127,14 +128,14 @@ def main():
                     page.get_by_role('button',name='Создать личное пространство',exact=True).click()
                     page.get_by_role('dialog').get_by_label('Название',exact=True).fill('First personal space')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
-                    expect(page.locator('.quick-actions')).to_be_visible()
+                    expect(page.locator('.quick-capture')).to_be_visible()
                     expect(page.locator('select[name=workspace]')).to_have_count(1)
                     page.locator('.nav').get_by_role('button',name='Задачи',exact=True).click()
                     page.get_by_role('button',name='Добавить',exact=True).click()
                     page.get_by_label('Название задачи',exact=True).fill('First verified task')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
                     expect(page.get_by_text('First verified task',exact=True)).to_be_visible()
-                    page.get_by_role('button',name='Заметки',exact=True).click()
+                    open_tab(page,'Заметки')
                     page.get_by_role('button',name='Добавить',exact=True).click()
                     page.get_by_label('Текст заметки',exact=True).fill('First verified note')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
@@ -144,13 +145,11 @@ def main():
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
                     expect(page.get_by_text('Edited verified note',exact=True)).to_be_visible()
                     page.get_by_role('button',name='Финансы',exact=True).click()
-                    page.get_by_role('button',name='Добавить',exact=True).click()
-                    page.get_by_role('dialog').get_by_role('button',name='Счёт',exact=True).click()
+                    page.locator('.finance-accounts').get_by_role('button',name='Счёт',exact=True).click()
                     page.get_by_role('dialog').get_by_label('Название',exact=True).fill('First account')
                     page.get_by_label('Начальный остаток',exact=True).fill('10000')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
-                    page.get_by_role('button',name='Добавить',exact=True).click()
-                    page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
+                    page.get_by_role('button',name='Добавить операцию',exact=True).click()
                     page.get_by_label('Сумма',exact=True).fill('1250,50')
                     page.locator('select[name=account]').select_option(label='First account · RUB')
                     page.get_by_label('Название или описание',exact=True).fill('First expense')

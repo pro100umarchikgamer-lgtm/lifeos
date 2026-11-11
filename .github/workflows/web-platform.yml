@@ -60,6 +60,8 @@ jobs:
         run: python -m tool.check_web_dom
       - name: Product CRUD, both themes and four viewport widths
         run: python -m tool.check_web_platform
+      - name: Clarity hierarchy and selected-device revocation
+        run: python -m tool.check_clarity_review
       - name: Existing PWA and financial acceptance
         run: |
           python -m tool.check_pwa_browser

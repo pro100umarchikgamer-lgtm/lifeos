@@ -116,7 +116,7 @@ def main():
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(width,theme,'page overflow')
                         if width>=760:
                             assert page.evaluate("document.querySelector('.nav').getBoundingClientRect().top>=document.querySelector('header').getBoundingClientRect().bottom-1"),(width,theme,'navigation overlaps header')
-                        violations=page.locator('.finance-filters input,.finance-filters select,.intro button,.nav button').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width<24||r.height<24||r.left<0||r.right>innerWidth+1;}).map(e=>e.name||e.textContent)''')
+                        violations=page.locator('.finance-filters input:visible,.finance-filters select:visible,.intro button:visible,.nav button:visible').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width<24||r.height<24||r.left<0||r.right>innerWidth+1;}).map(e=>e.name||e.textContent)''')
                         assert not violations,(width,theme,violations)
                         if width in [390,768,1440]:
                             page.locator('select[name=chart-mode]').select_option('bar')
