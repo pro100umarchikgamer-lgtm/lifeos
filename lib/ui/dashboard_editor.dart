@@ -4,7 +4,7 @@ import '../app_controller.dart';
 import '../domain/models.dart';
 import 'design.dart';
 
-const dashboardWidgets=['financial','tasks','notes','projects','habits','shopping'];
+const dashboardWidgets=['tasks','financial','notes','projects','habits','shopping'];
 Map<String,Object?> dashboardChoice(AppController c,String key) => c.offline[OfflineTable.dashboard]?.where((r)=>r['widget']==key).firstOrNull ?? {'widget':key,'visible':dashboardWidgets.indexOf(key)<3?1:0,'expanded':1,'position':dashboardWidgets.indexOf(key)*10+10};
 class DashboardEditor extends StatefulWidget {
   const DashboardEditor({super.key,required this.controller});final AppController controller;

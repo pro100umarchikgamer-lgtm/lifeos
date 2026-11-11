@@ -1,0 +1,87 @@
+name: Verify retained ULADIM APK 221001
+on:
+  push:
+    branches: [work/uladim-android-core-release]
+    paths: [.github/workflows/uladim-retained-upgrade-221.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f398d92479e0c495c934ae7f53281fcf31f5741e
+          persist-credentials: false
+      - name: Verify retained signed binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 42943480078 --name lifeos-release-test-apk-f398d92479e0c495c934ae7f53281fcf31f5741e --dir "$RUNNER_TEMP/retained-221"
+          (
+            cd "$RUNNER_TEMP/retained-221"
+            sha256sum --check <<'CHECKSUMS'
+          f9489fcfdd18098b2608ffdde575257e6a7da2faa6b33341143d3f96a5f15a1e  build/app/outputs/flutter-apk/app-release.apk
+          baa97d07495852ee1d4d235ae5ab10ad29f7cbd8b28c61d04f5c0d4a2c2925c6  build/app/outputs/bundle/release/app-release.aab
+          CHECKSUMS
+            grep -Fx 'commit=f398d92479e0c495c934ae7f53281fcf31f5741e' apk-identity.txt
+            grep -Fx 'versionCode=221001' apk-identity.txt
+            grep -Fx 'applicationId=app.lifeos.lifeos' apk-identity.txt
+            cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/uladim-221001.apk"
+          )
+          PYTHONPATH=. python3 tool/check_release_upgrade.py --download --baseline 174001
+      - name: Prepare emulator and diagnostic handling
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          cat > "$RUNNER_TEMP/check-retained-upgrade.py" <<'PY'
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          from tool import check_release_upgrade as upgrade
+
+          adb = upgrade.adb
+
+          def adb_with_optional_logcat(*args, **kwargs):
+              if args != ('logcat', '-d'):
+                  return adb(*args, **kwargs)
+              try:
+                  return adb(*args, timeout=10)
+              except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                  adb('wait-for-device', timeout=30)
+                  return b'Logcat unavailable. Installation and UI assertions remain required.'
+
+          upgrade.adb = adb_with_optional_logcat
+          candidate = Path(os.environ['RUNNER_TEMP']) / 'uladim-221001.apk'
+          sys.argv = [sys.argv[0], '--baseline', '174001', '--candidate', str(candidate)]
+          try:
+              upgrade.main()
+          except Exception:
+              try:
+                  upgrade.screenshot('failure')
+              except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                  pass
+              raise
+          PY
+      - name: Verify 174001 to 221001 update and retained data
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 12
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim
+          script: PYTHONPATH=. python3 "$RUNNER_TEMP/check-retained-upgrade.py"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uladim-221001-upgrade-evidence
+          path: upgrade_evidence/
+          if-no-files-found: warn

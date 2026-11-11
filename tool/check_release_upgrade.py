@@ -14,6 +14,19 @@ def run(*args,timeout=30):
     return subprocess.check_output(args,timeout=timeout)
 def adb(*args,timeout=30):return run('adb','-s','emulator-5554',*args,timeout=timeout)
 def previous(baseline=112001):
+    if baseline == 174001:
+        from tool.reuse_candidate_174 import SOURCE, RUN, verify_candidate
+        import shutil
+        target=Path(os.environ['RUNNER_TEMP'])/'uladim-baseline-174001'
+        target.mkdir(exist_ok=True)
+        subprocess.run(['gh','run','download',RUN,'--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+SOURCE,'--dir',str(target)],check=True,timeout=90)
+        original=target/'build/app/outputs/flutter-apk/app-release.apk'
+        identity=dict(line.split('=',1) for line in (target/'apk-identity.txt').read_text().splitlines())
+        verify_candidate(original,identity)
+        path=Path(os.environ['RUNNER_TEMP'])/'uladim-174001.apk'
+        shutil.copyfile(original,path)
+        return path
+
     if baseline == 134001:
         source='6acbde34f499d7c740322687416abc3aa542f9ac'
         target=Path(os.environ['RUNNER_TEMP'])/'uladim-baseline-134001'
@@ -52,14 +65,30 @@ def bounds(node):
     nums=list(map(int,re.findall(r'\d+',node.get('bounds',''))))
     return nums if len(nums)==4 and nums[2]>nums[0] and nums[3]>nums[1] else None
 
+def launcher_anr_close(root):
+    """Recognize only the CI system Pixel Launcher ANR, never an ULADIM ANR."""
+    nodes=list(root.iter('node'))
+    if not any(n.get('package')=='android' and n.get('text')=="Pixel Launcher isn't responding" for n in nodes):return None
+    return next((n for n in nodes if n.get('package')=='android' and n.get('resource-id')=='android:id/aerr_close' and n.get('enabled')=='true' and bounds(n)),None)
+
 def find(label=None,editable=False,reveal=False):
     root=ET.Element('hierarchy')
     deadline=time.monotonic()+60
     swipes=0
+    launcher_dismissed=False
     while time.monotonic()<deadline:
         try:root=xml()
         except (ET.ParseError,subprocess.SubprocessError):
             time.sleep(.5)
+            continue
+        launcher_close=launcher_anr_close(root)
+        if launcher_close is not None and not launcher_dismissed:
+            OUT.mkdir(exist_ok=True)
+            (OUT/'emulator-launcher-anr.xml').write_bytes(ET.tostring(root))
+            screenshot('emulator-launcher-anr')
+            tap_node(launcher_close)
+            launcher_dismissed=True
+            print('Closed CI Pixel Launcher ANR; ULADIM assertions remain unchanged',flush=True)
             continue
         nodes=[]
         for node in root.iter('node'):
@@ -136,7 +165,7 @@ def device_timezone(zone):
         actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
     assert actual==zone, f'Emulator timezone mismatch: {actual} != {zone}'
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--baseline',type=int,choices=[112001,134001],default=112001);parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--baseline',type=int,choices=[112001,134001,174001],default=112001);parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
     if args.download:print('Retained signed baseline verified:',args.baseline,previous(args.baseline));return
     assert args.candidate and args.candidate.is_file()
     old=Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.baseline}.apk';assert old.is_file()

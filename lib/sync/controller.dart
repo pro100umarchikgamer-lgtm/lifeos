@@ -36,6 +36,8 @@ class FamilyController extends ChangeNotifier {
   String? workspace, error, pendingRegistrationEmail;
   bool busy = false;
   bool loginMfaRequired = false, googleAvailable = false;
+  String? googleConfigFailure;
+  bool get googleConfigUnavailable => googleConfigFailure != null;
   String? _loginChallenge, _loginEndpoint, _loginEmail;
   bool _disposed = false;
   Timer? _retry;
@@ -237,8 +239,11 @@ class FamilyController extends ChangeNotifier {
     try {
       final result = await candidate.request('/v1/auth/google/config');
       googleAvailable = result['google_enabled'] == true;
-    } catch (_) {
+      googleConfigFailure = null;
+    } catch (failure) {
       googleAvailable = false;
+      googleConfigFailure =
+          failure is SyncFailure ? failure.code : 'service_unavailable';
     } finally {
       candidate.close();
       publish();
@@ -451,21 +456,29 @@ class FamilyController extends ChangeNotifier {
         );
         await _refresh();
       });
-  Future<void> enqueue(Json operation) => run(() async {
-        if (workspace == null || !verified || roster == null) {
-          throw const SyncFailure('verify_email');
-        }
-        // A second local edit of the same record requires the first acknowledgement.
-        if ([
-          ...pending,
-          ...issues.map((i) => object(i['operation'])),
-        ].any((p) => p['record_id'] == operation['record_id'])) {
-          throw const SyncFailure('record_pending');
-        }
-        await store.enqueue(scope, workspace!, operation);
-        await reloadLocal();
-        await _refresh();
-      });
+
+  /// Reports whether the operation was saved locally, even if sync failed.
+  Future<bool> enqueue(Json operation) async {
+    var queued = false;
+    await run(() async {
+      if (workspace == null || !verified || roster == null) {
+        throw const SyncFailure('verify_email');
+      }
+      // A second local edit of the same record requires the first acknowledgement.
+      if ([
+        ...pending,
+        ...issues.map((i) => object(i['operation'])),
+      ].any((p) => p['record_id'] == operation['record_id'])) {
+        throw const SyncFailure('record_pending');
+      }
+      await store.enqueue(scope, workspace!, operation);
+      queued = true;
+      await reloadLocal();
+      await _refresh();
+    });
+    return queued;
+  }
+
   Future<void> resolve(Json issue, bool keepLocal) => run(() async {
         final op = object(issue['operation']), result = object(issue['result']);
         Json? replacement;

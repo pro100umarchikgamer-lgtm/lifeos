@@ -545,6 +545,9 @@
     "family_error_invalid_input": "Перевірте введені поля.",
     "family_error_client_error": "Не вдалося виконати операцію. Збережені зміни залишаться.",
     "family_error_server_error": "Помилка сервера. Спробуйте пізніше.",
+    "family_error_service_unavailable": "Сервіс тимчасово недоступний. Спробуйте пізніше. Дані на пристрої збережено.",
+    "chart_mode_line": "Лінійна діаграма",
+    "chart_mode_bar": "Стовпчаста діаграма",
     "family_error_tls_error": "Не вдалося встановити захищене з’єднання.",
     "family_error_rate_limited": "Забагато спроб. Спробуйте пізніше.",
     "family_error_account_exists": "Обліковий запис із цією поштою вже існує.",
@@ -717,7 +720,8 @@
     "family_error_google_cancelled": "Перевірте введені поля.",
     "family_error_google_already_linked": "Перевірте введені поля.",
     "family_error_google_last_method": "Перевірте введені поля.",
-    "family_error_google_no_account": "Google недоступний. Перевірте з’єднання або увійдіть за паролем."
+    "family_error_google_no_account": "Google недоступний. Перевірте з’єднання або увійдіть за паролем.",
+    "scheduled_today": "Заплановано на сьогодні"
   },
   "plurals": {
     "record_count": {

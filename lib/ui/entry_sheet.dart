@@ -12,6 +12,7 @@ class EntrySheet extends StatelessWidget {
     required this.onSave,
     this.header,
     this.canSave = true,
+    this.fullPage = false,
   });
   final List<Widget> children;
   final bool saving;
@@ -19,75 +20,83 @@ class EntrySheet extends StatelessWidget {
   final VoidCallback onSave;
   final Widget? header;
   final bool canSave;
+  final bool fullPage;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, bounds) {
-      final keyboard = MediaQuery.viewInsetsOf(context).bottom;
-      final available = math.max(
-        0.0,
-        math.min(MediaQuery.sizeOf(context).height * .9, bounds.maxHeight) -
-            keyboard -
-            28,
-      );
-      return PopScope(
-        canPop: !saving,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + keyboard),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: available),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (header != null) ...[header!, const SizedBox(height: 12)],
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    child: AbsorbPointer(
-                      absorbing: saving,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: children,
+        builder: (context, bounds) {
+          final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+          final available = math.max(
+            0.0,
+            (fullPage
+                    ? bounds.maxHeight
+                    : math.min(MediaQuery.sizeOf(context).height * .9,
+                        bounds.maxHeight)) -
+                keyboard -
+                28,
+          );
+          return PopScope(
+            canPop: !saving,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + keyboard),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: available),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (header != null) ...[
+                      header!,
+                      const SizedBox(height: 12)
+                    ],
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: AbsorbPointer(
+                          absorbing: saving,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: children,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      key: const Key('save'),
+                      onPressed: saving || !canSave ? null : onSave,
+                      child: saving
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color:
+                                        Theme.of(context).colorScheme.onPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                  child: Text(
+                                    saveLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(saveLabel),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  key: const Key('save'),
-                  onPressed: saving || !canSave ? null : onSave,
-                  child: saving
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Flexible(
-                              child: Text(
-                                saveLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Text(saveLabel),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
-    },
-  );
 }

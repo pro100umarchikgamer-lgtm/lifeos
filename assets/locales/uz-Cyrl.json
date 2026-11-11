@@ -545,6 +545,9 @@
     "family_error_invalid_input": "Киритган майдонларингизни текширинг.",
     "family_error_client_error": "Амални бажариб бўлмади. Сақланган ўзгаришлар қолади.",
     "family_error_server_error": "Сервер хатоси. Кейинроқ уриниб кўринг.",
+    "family_error_service_unavailable": "Хизмат вақтинча мавжуд эмас. Кейинроқ уриниб кўринг. Қурилмадаги маълумотлар сақланган.",
+    "chart_mode_line": "Чизиқли диаграмма",
+    "chart_mode_bar": "Устунли диаграмма",
     "family_error_tls_error": "Хавфсиз уланиш ўрнатилмади.",
     "family_error_rate_limited": "Жуда кўп уриниш. Кейинроқ уриниб кўринг.",
     "family_error_account_exists": "Бу электрон почта билан ҳисоб мавжуд.",
@@ -717,7 +720,8 @@
     "family_error_google_cancelled": "Киритган майдонларингизни текширинг.",
     "family_error_google_already_linked": "Киритган майдонларингизни текширинг.",
     "family_error_google_last_method": "Киритган майдонларингизни текширинг.",
-    "family_error_google_no_account": "Google ҳозир мавжуд эмас. Уланишни текширинг ёки парол билан киринг."
+    "family_error_google_no_account": "Google ҳозир мавжуд эмас. Уланишни текширинг ёки парол билан киринг.",
+    "scheduled_today": "Бугунга режалаштирилган"
   },
   "plurals": {
     "record_count": {

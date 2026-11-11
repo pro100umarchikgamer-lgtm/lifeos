@@ -60,7 +60,7 @@ void main() {
       },
     );
     testWidgets(
-      'visible finance precedes tasks and module grid aligns at $width',
+      'daily tasks precede compact finances and module grid aligns at $width',
       (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = Size(width, 844);
@@ -95,7 +95,7 @@ void main() {
         expect(find.byKey(const Key('financial_period')), findsOneWidget);
         expect(
           tester.getRect(find.byKey(const Key('insight_balance'))).top,
-          lessThan(tester.getRect(find.text('Prepare for class')).top),
+          greaterThan(tester.getRect(find.text('Prepare for class')).top),
         );
         await tester.tap(find.byKey(const Key('nav_modules')));
         await tester.pumpAndSettle();

@@ -19,7 +19,7 @@ if android.exists():
         for domain in ['root', 'file', 'database', 'sharedpref', 'external']:
             ET.SubElement(node, 'exclude', {'domain': domain, 'path': '.'})
     ET.ElementTree(root).write(rules, encoding='utf-8', xml_declaration=True)
-    # SQLCipher and encrypted preferences require Android API 23 or newer.
+    # Match retained signed APK134001: Flutter and this release require API24.
     for extension in ['kts', '']:
         gradle = ROOT / ('android/app/build.gradle' + ('.' + extension if extension else ''))
         if gradle.exists():
@@ -57,7 +57,7 @@ if android.exists():
             <service android:name=".AlarmService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
             </application>""")
         android.write_text(source)
-        # java.time on API 23, without raising the minimum Android version.
+        # Desugar java.time consistently on supported Android versions.
         for extension in ['kts', '']:
             gradle = ROOT / ('android/app/build.gradle' + ('.' + extension if extension else ''))
             if not gradle.exists():

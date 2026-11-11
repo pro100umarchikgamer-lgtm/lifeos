@@ -545,6 +545,9 @@
     "family_error_invalid_input": "Енгізген өрістерді тексеріңіз.",
     "family_error_client_error": "Әрекетті орындау мүмкін болмады. Сақталған өзгерістер қалады.",
     "family_error_server_error": "Сервер қатесі. Кейінірек қайталаңыз.",
+    "family_error_service_unavailable": "Қызмет уақытша қолжетімсіз. Кейінірек қайталаңыз. Құрылғыдағы деректер сақталған.",
+    "chart_mode_line": "Сызықтық диаграмма",
+    "chart_mode_bar": "Бағандық диаграмма",
     "family_error_tls_error": "Қауіпсіз қосылым орнатылмады.",
     "family_error_rate_limited": "Тым көп әрекет. Кейінірек қайталаңыз.",
     "family_error_account_exists": "Осы поштамен тіркелгі бар.",
@@ -717,7 +720,8 @@
     "family_error_google_cancelled": "Енгізген өрістерді тексеріңіз.",
     "family_error_google_already_linked": "Енгізген өрістерді тексеріңіз.",
     "family_error_google_last_method": "Енгізген өрістерді тексеріңіз.",
-    "family_error_google_no_account": "Google қолжетімсіз. Байланысты тексеріңіз немесе құпиясөзбен кіріңіз."
+    "family_error_google_no_account": "Google қолжетімсіз. Байланысты тексеріңіз немесе құпиясөзбен кіріңіз.",
+    "scheduled_today": "Бүгінге жоспарланған"
   },
   "plurals": {
     "record_count": {
