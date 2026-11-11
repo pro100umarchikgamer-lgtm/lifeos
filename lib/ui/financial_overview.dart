@@ -225,10 +225,15 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                       key: const Key('cashflow_chart'),
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (d) => setState(
-                        () => selected = (d.localPosition.dx /
-                                bounds.maxWidth *
-                                (buckets.length - 1))
-                            .round()
+                        () => selected = (bars
+                                ? (d.localPosition.dx /
+                                        bounds.maxWidth *
+                                        buckets.length)
+                                    .floor()
+                                : (d.localPosition.dx /
+                                        bounds.maxWidth *
+                                        (buckets.length - 1))
+                                    .round())
                             .clamp(0, buckets.length - 1),
                       ),
                       child: SizedBox(

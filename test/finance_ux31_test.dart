@@ -330,4 +330,69 @@ void main() {
     expect(tester.takeException(), isNull);
     c.dispose();
   });
+
+  for (final incomeBar in [true, false]) {
+    testWidgets('cashflow bar center selects its own date income=$incomeBar',
+        (tester) async {
+      final start = DateTime(2026, 11, 1);
+      final store = UIStore()
+        ..items = [
+          Record(
+              id: 'income',
+              kind: EntryKind.income,
+              text: 'Income',
+              createdAt: start,
+              amountMinor: 10000,
+              currency: const Currency('RUB', 2),
+              date: dateOnly(start)),
+          Record(
+              id: 'expense',
+              kind: EntryKind.expense,
+              text: 'Expense',
+              createdAt: start,
+              amountMinor: 1250,
+              currency: const Currency('RUB', 2),
+              date: dateOnly(start))
+        ];
+      final c = AppController(store, catalog, 'ru');
+      await c.load();
+      await tester.pumpWidget(MaterialApp(
+          theme: lifeTheme(Brightness.light),
+          home: Scaffold(
+              body: SingleChildScrollView(
+                  child: Align(
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(
+                          width: 328,
+                          child: FinancialOverview(
+                              controller: c,
+                              period: FinancialPeriod(
+                                  start, start.add(const Duration(days: 6))),
+                              currency: 'RUB',
+                              onCurrency: (_) {},
+                              onPeriod: () {},
+                              onRecord: (_) {},
+                              onAdd: (_) {})))))));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('chart_mode_bar')));
+      await tester.pumpAndSettle();
+      final painted = tester.widget<CustomPaint>(find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.painter is CashflowPainter));
+      expect((painted.painter as CashflowPainter).bars, isTrue);
+      final chart = find.byKey(const Key('cashflow_chart'));
+      final rect = tester.getRect(chart);
+      final group = rect.width / 7;
+      final width = group * .28 < 18 ? group * .28 : 18.0;
+      final center =
+          rect.left + group * .5 + (incomeBar ? -width * .6 : width * .6);
+      await tester.tapAt(Offset(center, rect.bottom - 10));
+      await tester.pumpAndSettle();
+      final date = MaterialLocalizations.of(tester.element(chart))
+          .formatShortDate(start);
+      expect(find.textContaining('$date ·'), findsOneWidget);
+      expect(store.actions, isEmpty);
+      expect(tester.takeException(), isNull);
+      c.dispose();
+    });
+  }
 }
