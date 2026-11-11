@@ -9,7 +9,7 @@ Browser calls `/account/api/*` with same-origin HttpOnly session cookies and
 `/sync?workspace=…&cursor=…&epoch=…`, and POST `/sync` are reused as implemented.
 Writes preserve operation UUID on uncertain responses and use record revisions.
 No second authentication system, database or API implementation was added.
-The only Python production edit extends the static asset allowlist with domain.js.
+Python changes extend the static asset allowlist, expose the current device in the account response, and update account lifecycle behavior.
 
 Event `record.put` data is exactly:
 ```json

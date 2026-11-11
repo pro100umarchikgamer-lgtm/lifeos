@@ -179,7 +179,7 @@ function columnNumber(reference) {
 }
 
 function cellValue(cell, strings, dates, date1904) {
-  if (child(cell, 'f')) return '';
+  if (child(cell, 'f')) return '\ufffd';
   const value = text(child(cell, 'v'));
   const type = cell.getAttribute('t') || 'n';
   if (type === 's') {
@@ -188,7 +188,7 @@ function cellValue(cell, strings, dates, date1904) {
   }
   if (type === 'inlineStr') return stringContent(child(cell, 'is'));
   if (type === 'n' && dates[Number(cell.getAttribute('s'))] && value) return excelDate(value, date1904);
-  return ['n', 'str', 'd'].includes(type) ? value : '';
+  return ['n', 'str', 'd'].includes(type) ? value : '\ufffd';
 }
 
 function sheetRows(root, strings, dates, date1904) {

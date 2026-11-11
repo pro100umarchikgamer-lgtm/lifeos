@@ -117,6 +117,15 @@ def run(engine):
                 ['2026-11-12', '12.34', 'Salary', 'USD', 'AB-2', ''],
             ], result
             assert result['needsReview']
+            fx = [(765, ((40, 'Account currency: RUB'),)),
+                  (740, ((40, 'Date'), (115, 'Description'), (205, 'Amount'),
+                         (265, 'Currency'), (330, 'Amount in account currency'))),
+                  (720, ((40, '2026-11-10'), (115, 'Total market'), (205, '-10.00'),
+                         (265, 'USD'), (330, '-900.00')))]
+            assert extract('Pdf', statement_pdf(fx))['rows'][1][:4] == [
+                '2026-11-10', '-900.00', 'Total market', 'RUB']
+            assert extract('Pdf', statement_pdf(fx[1:]))['rows'][1][1] == ''
+
             debit_credit = extract('Pdf', statement_pdf(two_columns))['rows'][1:]
             assert [row[1] for row in debit_credit] == ['-1,15', '+1,15', ''], debit_credit
             assert extract('Pdf', statement_pdf([])) == {'error': 'import_pdf_scanned'}
@@ -128,7 +137,7 @@ def run(engine):
             assert xlsx['rows'] == [
                 ['Date', 'Amount', 'Description', 'Currency'],
                 ['1904-01-03', '-1234.56', 'Corner shop', 'RUB'],
-                ['2026-11-11', '', '', 'USD'],
+                ['2026-11-11', '\ufffd', '', 'USD'],
             ], xlsx
             assert extract('Xlsx', statement_xlsx('<!DOCTYPE sheetData><row/>')) == {'error': 'import_xlsx_layout'}
             assert extract('Xlsx', b'Not a spreadsheet') == {'error': 'import_xlsx_layout'}

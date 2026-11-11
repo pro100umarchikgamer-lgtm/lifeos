@@ -7,7 +7,10 @@ def main():
         browser=p.chromium.launch();context=browser.new_context(color_scheme='light');page=context.new_page()
         try:
             login(page,origin);page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
-            page.locator('canvas').wait_for();page.wait_for_timeout(100)
+            page.wait_for_function('''()=>{const c=document.querySelector('canvas');if(!c)return false;
+                const pixel=c.getContext('2d').getImageData(30,70,1,1).data;
+                const color=getComputedStyle(document.body).getPropertyValue('--income').trim();
+                return [1,3,5].every((at,i)=>parseInt(color.slice(at,at+2),16)===pixel[i])}''',timeout=2500)
             page.evaluate("state.theme='system';preferences()")
             page.get_by_role('button',name='Добавить операцию',exact=True).click()
             page.get_by_role('dialog').locator('[name=amount]').fill('125,50')

@@ -7,12 +7,14 @@ const FIELD = {
   amount: /^(?:amount|transaction amount|operation amount|сумма|сумма операции|сумма транзакции)$/u,
   debit: /^(?:debit|withdrawal|withdrawals|money out|outflow|расход|списание|дебет)$/u,
   credit: /^(?:credit|deposit|deposits|money in|inflow|приход|поступление|пополнение|кредит)$/u,
-  currency: /^(?:currency|account currency|валюта|валюта сч[её]та)$/u,
+  currency: /^(?:currency|(?:transaction|original) currency|валюта(?: операции)?)$/u,
+  accountCurrency: /^(?:account currency|billing currency|валюта сч[её]та|валюта платежа)$/u,
   bankId: /^(?:transaction id|operation id|bank reference|fitid|идентификатор операции|номер операции)$/u,
   direction: /^(?:direction|transaction type|debit credit|тип операции|вид операции|направление)$/u,
 };
 const DATE = /^(?:\d{4}-\d\d-\d\d|\d{1,2}[./-]\d{1,2}[./-]\d{4})(?=$|[T ])/;
 const SUMMARY = /^(?:opening balance|closing balance|balance (?:brought|carried) forward|totals?|начальный остаток|конечный остаток|входящий остаток|исходящий остаток|итого|всего)(?:$|[ :])/iu;
+const BALANCE = /^(?:opening balance|closing balance|balance (?:brought|carried) forward|начальный остаток|конечный остаток|входящий остаток|исходящий остаток)[: ]*$/iu;
 const CURRENCY = '[A-Z]{3}|[€₽₸]';
 const AMOUNT = new RegExp(`^(?:(${CURRENCY})\\s*)?([+−-]?\\s*\\d(?:[\\d .,’']*\\d)?[−-]?|\\(\\s*\\d(?:[\\d .,’']*\\d)?\\s*\\))(?:\\s*(${CURRENCY}))?$`, 'u');
 const MAX_FILE = 5 * 1024 * 1024;
@@ -68,13 +70,14 @@ function tableLayout(cells) {
   const signed = amount.length === 1;
   const split = matches.debit.length === 1 && matches.credit.length === 1;
   if (transactionDate.length !== 1 || matches.description.length !== 1 || signed === split) return null;
-  if (amount.length > 1 || matches.currency.length > 1 || matches.bankId.length > 1 || matches.direction.length > 1) return null;
+  if (amount.length > 1 || matches.currency.length > 1 || matches.accountCurrency.length > 1 || matches.bankId.length > 1 || matches.direction.length > 1) return null;
   return {
     columns: cells,
+    converted: matches.accountAmount.length > 0,
     fields: {
       date: transactionDate[0], description: matches.description[0], amount: signed ? amount[0] : -1,
       debit: split ? matches.debit[0] : -1, credit: split ? matches.credit[0] : -1,
-      currency: matches.currency[0] ?? -1, bankId: matches.bankId[0] ?? -1,
+      currency: (matches.accountAmount.length ? matches.accountCurrency[0] : matches.currency[0] ?? matches.accountCurrency[0]) ?? -1, bankId: matches.bankId[0] ?? -1,
       direction: matches.direction[0] ?? -1,
     },
   };
@@ -109,7 +112,7 @@ function amountValue(value) {
   return {value: match[2], currency: before || after};
 }
 
-function fromColumns(fields, accountCurrency) {
+function fromColumns(fields, accountCurrency, converted) {
   let amount = amountValue(fields.amount);
   let direction = fields.direction;
   if (fields.debit || fields.credit) {
@@ -131,8 +134,10 @@ function fromColumns(fields, accountCurrency) {
   const declared = currencyCode(fields.currency.toUpperCase());
   // An invalid or conflicting currency needs a manual correction, even if
   // the amount itself is well formed.
-  if ((fields.currency && !declared) || (declared && amount.currency && declared !== amount.currency)) amount.value = '';
-  return [fields.date, amount.value, fields.description, declared || amount.currency || accountCurrency, fields.bankId, direction];
+  const currency = declared || amount.currency || accountCurrency;
+  if ((fields.currency && !declared) || (declared && amount.currency && declared !== amount.currency) ||
+      (converted && (!currency || (accountCurrency && currency!==accountCurrency)))) amount.value = '';
+  return [fields.date, amount.value, fields.description, currency, fields.bankId, direction];
 }
 
 async function readPdf(document) {
@@ -169,12 +174,16 @@ async function readPdf(document) {
       }
       if (!layout) continue;
       const fields = columnValues(layout, line.cells);
-      if (DATE.test(fields.date) && !SUMMARY.test(fields.description)) {
+      if (DATE.test(fields.date)) {
+        if (!fields.bankId && !fields.direction && BALANCE.test(fields.description)) {
+          preceding = null;
+          continue;
+        }
         if (!fields.amount && !fields.debit && !fields.credit && !fields.description) {
           preceding = null;
           continue;
         }
-        const row = fromColumns(fields, accountCurrency);
+        const row = fromColumns(fields, accountCurrency, layout.converted);
         rows.push(row);
         if (rows.length > MAX_ROWS + 1) throw failure('import_limit');
         preceding = {row, y: line.y};

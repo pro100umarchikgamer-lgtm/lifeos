@@ -196,12 +196,13 @@ def run(browser, backend, actor, workspace, origin):
     close()
 
     launch.click()
-    upload('invalid.csv', 'Date;Amount;Description\n04/05/2026;-1.03;Ambiguous day')
+    upload('invalid.csv', 'Date;Debit;Credit;Description\n04/05/2026;1.03;;Ambiguous day')
     dialog.get_by_role('button', name='Исправить строку', exact=True).click()
     editor = page.locator('dialog[open]').last
     editor.locator('input[name=date]').fill('2026-05-04')
     editor.get_by_role('button', name='Сохранить', exact=True).click()
     save([('RUB', 103)])
+    assert next(row['data']['kind'] for row in records() if row['data']['label'] == 'Ambiguous day') == 'expense'
     close()
     context.close()
     print('STATEMENT_BROWSER_OK', len(records()), 'transactions persisted')

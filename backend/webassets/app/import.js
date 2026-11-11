@@ -124,7 +124,7 @@ function importStatement() {
   function buildMapping(){
    const detected=parsed.detection;
    fields.header=select(mapping,'header',t('header_row'),parsed.rows.slice(0,20).map((r,i)=>[i,(i+1)+' · '+r.join(' / ').slice(0,100)]),detected.header);
-   const columns=()=>[[-1,t('family_none')],...parsed.rows[Number(fields.header.value)].map((label,i)=>[i,(i+1)+' · '+label.slice(0,60)])];
+   const columns=()=>[[-1,copy('no_column')],...parsed.rows[Number(fields.header.value)].map((label,i)=>[i,(i+1)+' · '+label.slice(0,60)])];
    for(const [key,label] of mappingKeys)fields[key]=select(mapping,key,label,columns(),detected[key]??-1);
    fields.header.addEventListener('change',()=>{
     for(const [key] of mappingKeys){
@@ -271,7 +271,7 @@ function importStatement() {
     const original=item.original;
     return {date:input(f,'date',t('date'),'text',original.date),amount:input(f,'amount',t('amount'),'text',original.amount),
      currency:input(f,'currency',t('currency'),'text',original.currency),label:input(f,'label',t('description'),'text',original.label,false),
-     direction:select(f,'direction',t('family_kind_transaction'),[['',copy('auto')],['income',t('income')],['expense',t('expense')]],'')};
+     direction:select(f,'direction',t('family_kind_transaction'),[['',copy('auto')],['income',t('income')],['expense',t('expense')]],item.value?.kind||original.kind||'')};
    },async v=>{
     const row=[v.date.value,v.amount.value,v.label.value,v.currency.value,item.original.bankID,v.direction.value];
     const single=ULADIMStatement.table([['Date','Amount','Description','Currency','Transaction ID','Direction'],row],'CSV');
@@ -308,7 +308,7 @@ function importStatement() {
       const row=batch[i].row;
       row.selected=false;
       if(item.status==='accepted'){row.saved=true;row.imported=true;modified=true;}
-      else if(item.error==='revision_conflict'){row.error='import_save_conflict';reconcile=true;}
+      else if(item.status==='conflict'||item.error==='revision_conflict'){row.error='import_save_conflict';reconcile=true;}
       else row.error='import_save_rejected';
      });
      pending.splice(0,batch.length);
@@ -323,8 +323,8 @@ function importStatement() {
    }catch(error){
     if(closed)return;
     if(error.code==='unauthorized'||error.code==='workspace_forbidden'){report(error);return;}
-    if(pending?.length){commit.textContent=t('retry');status.textContent=errorText(error);summary();}
-    else{pending=null;draw();status.textContent=errorText(error);}
+    if(pending?.length&&error.uncertain){commit.textContent=t('retry');status.textContent=errorText(error);summary();}
+    else{pending=null;commit.textContent=t('import_confirm');draw();status.textContent=errorText(error);}
    }finally{running=false;updateControls();}
   }
   file.addEventListener('change',()=>{if(file.files?.[0]){source=file.files[0];readFile();}});
@@ -362,6 +362,7 @@ const STATEMENT_COPY={
   import_json_structure:'JSON должен содержать массив операций. Проверьте структуру выписки.',
   import_date_ambiguous:'Уточните порядок дня и месяца.',import_date_invalid:'Укажите существующую дату, например 2026-11-21.',
   import_number_ambiguous:'Уточните, какой знак отделяет дробную часть суммы.',
+  no_column:'Не выбрано',import_unreadable_cell:'Ячейка выписки содержит формулу или неподдерживаемый тип. Проверьте строку и введите исходные значения вручную.',
   import_currency_invalid:'Проверьте код валюты, например RUB.',
   import_amount_invalid:'Проверьте сумму, знак и число знаков после разделителя.',
   import_transfer_review:'Похожая на перевод операция. Сверьте счета и добавьте её в разделе «Перевод».',
@@ -392,6 +393,7 @@ const STATEMENT_COPY={
   import_format:'The statement structure is unclear. Check the file or export a table from your bank.',
   import_json_structure:'The JSON file must contain an array of transactions. Check the export structure.',
   import_date_ambiguous:'Confirm the order of the day and month.',import_date_invalid:'Enter a valid date such as 2026-11-21.',
+  no_column:'Not selected',import_unreadable_cell:'The statement cell contains a formula or unsupported value. Check the source and correct the row manually.',
   import_number_ambiguous:'Confirm the decimal separator.',import_currency_invalid:'Check the currency code, for example USD.',
   import_amount_invalid:'Check the amount, sign, and number of decimal places.',
   import_transfer_review:'This looks like a transfer. Check both accounts and record it as a transfer.',

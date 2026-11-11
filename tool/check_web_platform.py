@@ -75,12 +75,42 @@ def main():
     OUT.mkdir(parents=True,exist_ok=True);checks=[]
     with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
         browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
-        context=browser.new_context(viewport={'width':375,'height':812},timezone_id='Europe/Moscow',locale='ru-RU',reduced_motion='reduce')
+        context=browser.new_context(viewport={'width':375,'height':812},timezone_id='Europe/Moscow',locale='ru-RU',reduced_motion='reduce',service_workers='block')
         context.tracing.start(screenshots=True,snapshots=True,sources=True)
         page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
         try:
             login(page,origin)
             page.locator('.nav').get_by_role('button',name='Задачи',exact=True).click()
+            task = page.locator('.task-row').filter(has_text='Подготовить план на неделю')
+            writes = []
+
+            def fail_refresh(route):
+                if route.request.method == 'POST':
+                    writes.append(route.request.post_data_json['operations'][0]['id'])
+                    route.continue_()
+                elif len(writes) == 1:
+                    route.abort()
+                else:
+                    route.continue_()
+
+            page.route('**/account/api/sync*', fail_refresh)
+            task.get_by_role('checkbox').check()
+            retry = task.get_by_role('button', name='Повторить', exact=True)
+            expect(retry).to_be_visible()
+            expect(task.get_by_role('checkbox')).to_be_checked()
+            page.unroute('**/account/api/sync*', fail_refresh)
+
+            def track_writes(route):
+                if route.request.method == 'POST':
+                    writes.append(route.request.post_data_json['operations'][0]['id'])
+                route.continue_()
+
+            page.route('**/account/api/sync*', track_writes)
+            retry.click()
+            expect(retry).to_have_count(0)
+            page.unroute('**/account/api/sync*', track_writes)
+            assert len(writes) == 1, writes
+            checks.append('accepted_task_recovers_without_resubmitting')
             page.get_by_label('Поиск задач',exact=True).fill('заказ')
             expect(page.get_by_text('Забрать заказ',exact=True)).to_be_visible()
             expect(page.get_by_text('Подготовить план на неделю',exact=True)).to_have_count(0)

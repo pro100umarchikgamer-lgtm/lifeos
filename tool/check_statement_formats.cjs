@@ -29,3 +29,14 @@ const splitAmounts = parse('Date;Debit;Credit;Currency\n2026-11-11;0,00;13,21;RU
 assert.deepEqual(splitAmounts.map(row => row.error || [row.value.kind,row.value.amount]),[
   ['income',1321],['expense',1654],'import_amount_invalid'
 ]);
+
+// An empty leading TSV column is part of the source layout.
+assert.equal(parse('\tDate\tAmount\n\t2026-11-10\t-12.05')[0].value.amount,1205);
+const combined = parse('Date;Amount;Debit;Credit\n2026-11-10;12.05;12.05;0\n2026-11-10;13.00;12.05;0\n2026-11-10;-12.05;0;12.05');
+assert.deepEqual(combined.map(row=>row.error||row.value.kind),['expense','import_amount_invalid','import_amount_invalid']);
+assert.equal(parse('Date;Debit\ninvalid;12.05')[0].original.kind,'expense');
+assert.equal(parse('Date;Сумма платежа;Валюта операции\n2026-11-10;900;USD')[0].error,'import_currency_invalid');
+assert.equal(parse('Date;Сумма платежа;Валюта операции;Валюта платежа\n2026-11-10;900;USD;RUB')[0].value.currency,'RUB');
+
+const formulaCurrency = ULADIMStatement.table([['Date','Amount','Currency'], ['2026-11-10','900','\ufffd']], 'XLSX');
+assert.equal(preview(formulaCurrency,{...formulaCurrency.detection,defaultCurrency:'RUB'})[0].error,'import_unreadable_cell');
