@@ -134,8 +134,10 @@ def main():
                             })''')
                             assert contrasts and min(contrasts)>=4.5,(theme,width,'calendar date contrast',min(contrasts))
                         if tab=='account':
-                            expect(page.locator('.settings-navigation')).to_be_visible()
-                            page.locator('.settings-navigation').get_by_role('button',name='Поддержка',exact=True).click()
+                            expect(page.locator('[name=settings-section]' if width<760 else '.settings-navigation')).to_be_visible()
+                            page.locator('[name=settings-section]').select_option('profile') if width<760 else page.locator('.settings-navigation').get_by_role('button',name='Профиль',exact=True).click()
+                            expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_have_count(0)
+                            page.locator('[name=settings-section]').select_option('support') if width<760 else page.locator('.settings-navigation').get_by_role('button',name='Поддержка',exact=True).click()
                             expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
                         page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=False)
                     page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()

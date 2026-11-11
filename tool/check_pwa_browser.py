@@ -123,6 +123,7 @@ def main():
                     assert len(hex_color)==7 and hex_color.startswith('#'),hex_color
                     channels=[int(hex_color[i:i+2],16)/255 for i in (1,3,5)]
                     return sum((c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4)*w for c,w in zip(channels,(.2126,.7152,.0722)))
+                page.locator('[name=settings-section]').select_option('appearance')
                 for scheme in ('light','dark'):
                     page.emulate_media(color_scheme=scheme)
                     for theme in ('system','light','dark'):
@@ -139,6 +140,7 @@ def main():
                                     assert ratio>=4.5,(scheme,theme,palette,fg,bg,ratio)
                 checks.append('financial_text_contrast_all_themes_and_palettes')
                 page.emulate_media(color_scheme='light')
+                page.locator('[name=settings-section]').select_option('appearance')
                 page.get_by_label('Оформление',exact=True).select_option('dark')
                 page.get_by_label('Цветовая палитра',exact=True).select_option('ocean')
                 page.get_by_role('button',name='Финансы',exact=True).click()

@@ -81,7 +81,7 @@ def main():
                         assert not page.url.endswith(PASSWORD)
                         page.locator('input[name=code]').fill(totp(factor['totp_secret'],clock[0]//30))
                         page.get_by_role('button',name='Войти',exact=True).click()
-                        expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                        expect(page.locator('.nav')).to_be_visible()
                         assert not errors, errors
                         cases.append({'case':route+' password-first MFA '+str(width),'expected':'no password or session before factor; then authenticated','actual':'passed'})
                         context.close()
@@ -120,7 +120,7 @@ def main():
                     with page.expect_response('**/account/api/login') as login_response:
                         page.get_by_role('button',name='Войти',exact=True).click()
                     assert login_response.value.status == 200, (route, login_response.value.status, login_response.value.json())
-                    expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                    expect(page.locator('.nav')).to_be_visible()
                     expect(page.locator('input[name=code]')).to_have_count(0)
                     expect(page.locator('select[name=workspace]')).to_have_count(0)
                     # Both entry points now lead to the same PWA/account and setup.
