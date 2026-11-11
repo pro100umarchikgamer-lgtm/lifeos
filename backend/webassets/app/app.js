@@ -1,6 +1,7 @@
 'use strict';
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
 const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'forest',chart:'bar',generation:0,busy:false,googleEnabled:false};
+let calendarMode='month';
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null;
 const pendingDeletes=new Map();
 try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
@@ -35,15 +36,40 @@ for(const [locale,labels] of Object.entries({
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function dateString(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 function eventRow(o){const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');append(caption,E('h3',o.record.data.title),E('p',new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'))+' · '+(o.allDay?t('web_all_day'):o.time),'small'));append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));return row;}
+const CALENDAR_COPY={
+ ru:['Неделя','День','Предыдущая неделя','Следующая неделя','Предыдущий день','Следующий день'],
+ en:['Week','Day','Previous week','Next week','Previous day','Next day'],
+ 'uz-Latn':['Hafta','Kun','Oldingi hafta','Keyingi hafta','Oldingi kun','Keyingi kun'],
+ 'uz-Cyrl':['Ҳафта','Кун','Олдинги ҳафта','Кейинги ҳафта','Олдинги кун','Кейинги кун']
+};
+function offsetDate(date,days){
+ const shifted=new Date(date.getTime());
+ shifted.setDate(shifted.getDate()+days);
+ return shifted;
+}
 function calendar(m){
  const addEvent=()=>editRecord('event',null,{eventDay:state.calendarDay});
  title(m,'web_calendar',addEvent);
  m.classList.add('calendar-page');
  const date=new Date(state.calendarDay+'T12:00:00'),year=date.getFullYear(),month=date.getMonth();
- const from=new Date(year,month,1),to=new Date(year,month+1,1);
+ const [weekLabel,dayLabel,previousWeek,nextWeek,previousDay,nextDay]=CALENDAR_COPY[state.lang]||CALENDAR_COPY.en;
+ const weekStart=offsetDate(date,-((date.getDay()+6)%7));
+ const from=calendarMode==='month'?new Date(year,month,1):calendarMode==='week'?weekStart:date;
+ const to=calendarMode==='month'?new Date(year,month+1,1):offsetDate(from,calendarMode==='week'?7:1);
+ const modes=E('div',undefined,'calendar-modes');
+ modes.setAttribute('role','group');modes.setAttribute('aria-label',t('web_calendar'));
+ for(const [key,label] of [['month',t('web_month')],['week',weekLabel],['day',dayLabel]]){
+  const control=button(label,()=>{
+   calendarMode=key;render();
+   root.querySelector('.calendar-modes [aria-pressed=true]')?.focus({preventScroll:true});
+  },'secondary');
+  control.setAttribute('aria-pressed',String(calendarMode===key));modes.append(control);
+ }
+ m.append(modes);
  const layout=E('div',undefined,'calendar-layout'),monthPanel=card(),agenda=card();
  monthPanel.classList.add('calendar-month');
  agenda.classList.add('calendar-agenda');
+ if(calendarMode==='day')layout.classList.add('calendar-day-layout');
  append(layout,monthPanel,agenda);
  m.append(layout);
 
@@ -53,15 +79,18 @@ function calendar(m){
   root.querySelector(focus)?.focus({preventScroll:true});
  };
  const toolbar=E('div',undefined,'calendar-toolbar');
- const move=(delta,selector)=>showDate(dateString(new Date(year,month+delta,1)),selector);
- const previous=iconButton('back',t('web_previous'),()=>move(-1,'.calendar-previous'));
+ const move=(delta,selector)=>showDate(dateString(calendarMode==='month'?new Date(year,month+delta,1):offsetDate(date,delta*(calendarMode==='week'?7:1))),selector);
+ const previous=iconButton('back',calendarMode==='month'?t('web_previous'):calendarMode==='week'?previousWeek:previousDay,()=>move(-1,'.calendar-previous'));
  previous.classList.add('calendar-previous');
- const next=iconButton('forward',t('web_next'),()=>move(1,'.calendar-next'));
+ const next=iconButton('forward',calendarMode==='month'?t('web_next'):calendarMode==='week'?nextWeek:nextDay,()=>move(1,'.calendar-next'));
  next.classList.add('calendar-next');
- append(toolbar,previous,E('h2',date.toLocaleDateString(state.lang,{month:'long',year:'numeric'})),next);
+ const period=calendarMode==='month'?date.toLocaleDateString(state.lang,{month:'long',year:'numeric'}):
+  calendarMode==='week'?new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).formatRange(from,offsetDate(to,-1)):
+  date.toLocaleDateString(state.lang,{day:'numeric',month:'long'});
+ append(toolbar,previous,E('h2',period),next);
  const grid=E('div',undefined,'calendar-grid');
  append(monthPanel,toolbar,grid);
- for(let i=0;i<7;i++){
+ if(calendarMode!=='day')for(let i=0;i<7;i++){
   const weekday=new Date(2026,10,2+i);
   const day=E('span',weekday.toLocaleDateString(state.lang,{weekday:'short'}),'weekday');
   day.title=weekday.toLocaleDateString(state.lang,{weekday:'long'});
@@ -72,11 +101,11 @@ function calendar(m){
   if(!byDay.has(o.day))byDay.set(o.day,[]);
   byDay.get(o.day).push(o);
  }
- for(let i=0;i<(from.getDay()+6)%7;i++)grid.append(E('span',undefined,'calendar-offset'));
- const days=new Date(year,month+1,0).getDate(),today=localDate();
- for(let day=1;day<=days;day++){
-  const d=new Date(year,month,day),key=dateString(d),items=byDay.get(key)||[];
-  const b=button(String(day),()=>showDate(key,'.calendar-date[aria-pressed=true]'),'calendar-date');
+ if(calendarMode==='month')for(let i=0;i<(from.getDay()+6)%7;i++)grid.append(E('span',undefined,'calendar-offset'));
+ const today=localDate();
+ if(calendarMode!=='day')for(let d=from;d<to;d=offsetDate(d,1)){
+  const key=dateString(d),items=byDay.get(key)||[];
+  const b=button(String(d.getDate()),()=>showDate(key,'.calendar-date[aria-pressed=true]'),'calendar-date');
   b.setAttribute('aria-label',d.toLocaleDateString(state.lang,{day:'numeric',month:'long'})+(items.length?' · '+items.map(o=>o.record.data.title).join(', '):''));
   b.setAttribute('aria-pressed',String(key===state.calendarDay));
   if(key===today){b.classList.add('is-today');b.setAttribute('aria-current','date');}
@@ -339,6 +368,18 @@ function today(m){
  }
  const agenda=card(t('web_upcoming'));
  agenda.classList.add('today-agenda');
+ const week=E('div',undefined,'today-week');
+ const monday=offsetDate(new Date(day+'T12:00:00'),-((new Date(day+'T12:00:00').getDay()+6)%7));
+ for(let i=0;i<7;i++){
+  const date=offsetDate(monday,i),key=dateString(date);
+  const control=button(String(date.getDate()),()=>{
+   state.calendarDay=key;calendarMode='day';openTabSection('calendar','.calendar-agenda');
+  },'secondary');
+  control.setAttribute('aria-label',date.toLocaleDateString(state.lang,{weekday:'long',day:'numeric',month:'long'}));
+  if(key===day)control.setAttribute('aria-current','date');
+  week.append(control);
+ }
+ agenda.append(week);
  for(const o of upcoming.slice(0,3))agenda.append(eventRow(o));
  if(!upcoming.length)agenda.append(E('p',t('web_no_events'),'empty'));
  const agendaActions=E('div',undefined,'task-actions');
