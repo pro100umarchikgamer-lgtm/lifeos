@@ -238,7 +238,20 @@ function shell(){
  }
  if(['notes','account'].includes(state.tab)){summary.classList.add('active');summary.setAttribute('aria-current','page');}
  nav.append(secondary);root.append(nav);
- navObserver=new ResizeObserver(()=>{document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');});navObserver.observe(nav);navObserver.observe(header);return m;
+ let measureFrame=0;
+ const measureChrome=()=>{
+  measureFrame=0;
+  if(!nav.isConnected||!header.isConnected)return;
+  const heights=[['--nav-height',nav.getBoundingClientRect().height],['--app-header-height',header.getBoundingClientRect().height]];
+  for(const [name,height] of heights){
+   const value=height+'px';
+   if(document.body.style.getPropertyValue(name)!==value)document.body.style.setProperty(name,value);
+  }
+ };
+ measureChrome();
+ // Changing a CSS variable can resize the observed chrome. Do the write outside observer delivery.
+ navObserver=new ResizeObserver(()=>{if(!measureFrame)measureFrame=requestAnimationFrame(measureChrome);});
+ navObserver.observe(nav);navObserver.observe(header);return m;
 }
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
 function render(){redrawFinance=null;if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
