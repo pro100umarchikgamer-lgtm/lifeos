@@ -160,7 +160,9 @@ def run(browser, backend, actor, workspace, origin):
     launch.click()
     upload('statement.pdf', statement_pdf(page_one,page_two))
     expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    page.screenshot(path=str(OUT / 'pdf-preview.png'))
     save([('RUB',4219),('RUB',5721)], select=True)
+    page.screenshot(path=str(OUT / 'pdf-saved.png'))
     close()
 
     launch.click()

@@ -2,7 +2,7 @@ const HEADER = ['Date', 'Amount', 'Description', 'Currency', 'Transaction ID', '
 const FIELD = {
   operationDate: /^(?:transaction|operation|purchase) date(?: (?:and |& )?time)?$|^дата (?:и время )?(?:операции|транзакции|покупки)(?: и время)?$/u,
   date: /^(?:date|value date|booking date|posting date|payment date|дата|дата и время|дата платежа|дата обработки|дата проводки)$/u,
-  description: /^(?:description|details|transaction details|memo|narrative|merchant|reference details|описание|назначение(?: платежа)?|(?:информация|детали) (?:об )?операции|получатель|контрагент)$/u,
+  description: /^(?:description|details|transaction details|memo|narrative|merchant|reference details|описание(?: операции)?|назначение(?: платежа)?|(?:информация|детали) (?:об )?операции|получатель|контрагент)$/u,
   accountAmount: /^(?:amount in (?:account|billing) currency|account amount|billing amount|сумма (?:платежа|в валюте сч[её]та|в валюте карты))$/u,
   amount: /^(?:amount|transaction amount|operation amount|сумма|сумма операции|сумма транзакции)$/u,
   debit: /^(?:debit|withdrawal|withdrawals|money out|outflow|расход|списание|дебет)$/u,

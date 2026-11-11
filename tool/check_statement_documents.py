@@ -117,6 +117,21 @@ def run(engine):
                 ['2026-11-12', '12.34', 'Salary', 'USD', 'AB-2', ''],
             ], result
             assert result['needsReview']
+            if engine == 'chromium':
+                printable = browser.new_page()
+                printable.set_content("""
+                  <meta charset="utf-8">
+                  <table style="font: 14px sans-serif; width: 660px; text-align: left">
+                    <tr><th>Дата операции</th><th>Описание операции</th><th>Сумма операции</th><th>Валюта</th></tr>
+                    <tr><td>11.11.2026</td><td>Тестовая покупка</td><td>-1 234,56</td><td>RUB</td></tr>
+                  </table>
+                """)
+                localized = extract('Pdf', printable.pdf())
+                printable.close()
+                assert localized.get('rows', [None])[1:] == [
+                    ['11.11.2026', '-1 234,56', 'Тестовая покупка', 'RUB', '', ''],
+                ], localized
+                assert localized['needsReview']
             fx = [(765, ((40, 'Account currency: RUB'),)),
                   (740, ((40, 'Date'), (115, 'Description'), (205, 'Amount'),
                          (265, 'Currency'), (330, 'Amount in account currency'))),
