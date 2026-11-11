@@ -38,8 +38,12 @@ assert.equal(parse('Date;Debit\ninvalid;12.05')[0].original.kind,'expense');
 assert.equal(parse('Date;Amount;Direction\n2026-11-10;-12.05;income')[0].error,'import_direction_conflict');
 assert.equal(parse('Date;Amount;Direction\n2026-11-10;+12.05;expense')[0].error,'import_direction_conflict');
 assert.equal(parse('Date;Amount;Direction\n2026-11-10;12.05;expense')[0].value.kind,'expense');
+assert.equal(parse('{"transactions":[{"bookingDate":"2026-11-11","transactionAmount":{"amount":"-1.23","currency":"USD"},"currency":"EUR"}]}')[0].error,'import_currency_conflict');
+assert.equal(parse('{"transactions":[{"bookingDate":"2026-11-11","transactionAmount":{"amount":"-1.23","currency":"EUR"},"transactionCurrency":"EUR"}]}')[0].value.currency,'EUR');
+assert.equal(parse('Date;Amount;Currency;Transaction Currency\n2026-11-10;12.05;USD;EUR')[0].error,'import_currency_conflict');
 assert.equal(parse('Date;Сумма платежа;Валюта операции\n2026-11-10;900;USD')[0].error,'import_currency_invalid');
 assert.equal(parse('Date;Сумма платежа;Валюта операции;Валюта платежа\n2026-11-10;900;USD;RUB')[0].value.currency,'RUB');
+assert.equal(parse('Date;Billing Amount;Currency;Billing Currency\n2026-11-10;900;USD;RUB')[0].value.currency,'RUB');
 
 const formulaCurrency = ULADIMStatement.table([['Date','Amount','Currency'], ['2026-11-10','900','\ufffd']], 'XLSX');
 assert.equal(preview(formulaCurrency,{...formulaCurrency.detection,defaultCurrency:'RUB'})[0].error,'import_unreadable_cell');

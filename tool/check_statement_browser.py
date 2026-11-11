@@ -181,6 +181,19 @@ def run(browser, backend, actor, workspace, origin):
     close()
 
     launch.click()
+    upload('currency-conflict.json', '{"transactions":[{"bookingDate":"2026-11-14","transactionAmount":{"amount":"-4.20","currency":"USD"},"currency":"RUB","description":"Conflicting currency"}]}')
+    expect(dialog.get_by_text('В выписке указаны разные валюты.', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    dialog.get_by_role('button', name='Исправить строку', exact=True).click()
+    editor = page.locator('dialog[open]').last
+    currency = editor.locator('input[name=currency]')
+    expect(currency).to_have_value('')
+    currency.fill('USD')
+    editor.get_by_role('button', name='Сохранить', exact=True).click()
+    save([('USD', 420)])
+    close()
+
+    launch.click()
     upload('repeated.csv', 'Date;Amount;Currency;Description\n2026-11-15;-1.02;RUB;Two real purchases\n2026-11-15;-1.02;RUB;Two real purchases')
     save([('RUB', 102), ('RUB', 102)])
     close()

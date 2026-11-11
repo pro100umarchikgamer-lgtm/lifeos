@@ -5,8 +5,8 @@
   const fail = code => { throw {code}; };
   const aliases = {
     date: [['operation date','дата операции','booking date','bookingdate','date','дата','дата и время'], ['дата платежа','value date','posted date','dtposted']],
-    amount: [['сумма операции','transaction amount','amount','сумма','trnamt'], ['сумма платежа','payment amount']],
-    currency: [['валюта операции','transaction currency','currency','валюта','код валюты','curdef'], ['валюта платежа']],
+    amount: [['сумма операции','transaction amount','amount','сумма','trnamt'], ['сумма платежа','payment amount','billing amount','amount in account currency']],
+    currency: [['валюта операции','transaction currency','currency','валюта','код валюты','curdef'], ['валюта платежа','payment currency','billing currency','account currency']],
     description: [['description','описание','назначение','назначение платежа','memo','payee','name','remittance information']],
     bankID: [['transaction id','transactionid','operation id','operationid','идентификатор операции','fitid','reference','id']],
     directionColumn: [['direction','transaction type','тип операции','тип','credit debit indicator','creditdebitindicator','trntype']],
@@ -79,7 +79,11 @@
         mapping[field] = -1;
         for (const names of priorities) {
           const matches = cells.flatMap((cell,i) => names.includes(cell) ? [i] : []);
-          if (matches.length) { mapping[field] = matches.length === 1 ? matches[0] : -1; break; }
+          if (matches.length) {
+            mapping[field] = matches.length === 1 ? matches[0] : -1;
+            if (field==='currency'&&matches.length>1) mapping.ambiguousCurrency=true;
+            break;
+          }
         }
       }
       const amountLabel = cells[mapping.amount];
@@ -115,21 +119,29 @@
     ].find(Array.isArray);
     if (!entries?.length || !entries.every(row => row && typeof row === 'object' && !Array.isArray(row))) fail('import_json_structure');
     if (entries.length > LIMIT) fail('import_limit');
-    const expanded = entries.map(entry => {
+    const currencyConflicts = new Set();
+    const expanded = entries.map((entry,index) => {
       const fields = Object.assign(Object.create(null),entry);
+      const declared = [];
+      for(const key of ['currency','transactionCurrency','currencyCode']){
+        if(key in fields){declared.push(fields[key]);delete fields[key];}
+      }
       for (const key of ['transactionAmount','amount']) {
         const money = fields[key];
         if (money && typeof money === 'object' && !Array.isArray(money) && 'amount' in money) {
           fields[key] = money.amount;
-          if (!fields.currency && money.currency) fields.currency = money.currency;
+          if ('currency' in money) declared.push(money.currency);
         }
       }
+      const currencies=declared.filter(value=>value!=null&&value!=='').map(value=>currencyCode(textValue(value)));
+      if(currencies.some(code=>!/^[A-Z]{3}$/.test(code))||new Set(currencies).size>1)currencyConflicts.add(index+2);
+      else if(currencies.length)fields.currency=currencies[0];
       return fields;
     });
     const keys = [...new Set(expanded.flatMap(Object.keys))];
     if (keys.length < 2) fail('import_json_structure');
     const labels = keys.map(key => key.replace(/([a-z])([A-Z])/g,'$1 $2'));
-    return table([labels,...expanded.map(row => keys.map(key => textValue(row[key])))],'JSON');
+    return {...table([labels,...expanded.map(row => keys.map(key => textValue(row[key])))],'JSON'),currencyConflicts:[...currencyConflicts]};
   }
 
   const canonical = ['Date','Amount','Description','Currency','Transaction ID','Direction'];
@@ -263,7 +275,9 @@
     if (mapping.date < 0 || Math.max(mapping.amount,mapping.debit ?? -1,mapping.credit ?? -1) < 0) fail('import_mapping_required');
     const get = (row,key) => (row[mapping[key]] || '').trim();
     const nonzero = value => Boolean(value && !/^[+−-]?0+(?:[.,]0+)?$/.test(value));
+    const currencyConflicts=new Set(source.currencyConflicts);
     const rows = source.rows.slice(mapping.header+1).flatMap((row,index) => {
+      const line=mapping.header+index+2;
       const date = get(row,'date');
       const label = get(row,'description');
       const raw = get(row,'amount'), debit = get(row,'debit'), credit = get(row,'credit');
@@ -276,12 +290,13 @@
       const billingCurrency = aliases.currency[1].includes(headerText(header[mapping.currency] || ''));
       const currencyText = get(row,'currency');
       const currency = currencyCode(currencyText || (billingAmount ? '' : mapping.defaultCurrency || ''));
-      const invalidPair = billingAmount !== billingCurrency && (billingAmount || billingCurrency);
+      const currencyConflict = currencyConflicts.has(line)||(mapping.currency<0&&source.detection?.ambiguousCurrency);
+      const invalidPair = billingAmount!==billingCurrency;
       const direction = get(row,'directionColumn').toLowerCase();
       const unreadable = source.format === 'XLSX' &&
         ['date','amount','debit','credit','currency','bankID','directionColumn'].some(key=>get(row,key)==='�');
       const amounts = /^[A-Z]{3}$/.test(currency) ? amountCandidates(amountText,currency,mapping.decimal) : {};
-      return [{line:mapping.header+index+2,row,date,label,currency,direction,raw,debit,credit,hasDebit,hasCredit,amountText,amounts,unreadable,invalidPair,dates:dateCandidates(date,mapping.dateFormat),bankID:get(row,'bankID')}];
+      return [{line,row,date,label,currency,direction,raw,debit,credit,hasDebit,hasCredit,amountText,amounts,unreadable,invalidPair,currencyConflict,dates:dateCandidates(date,mapping.dateFormat),bankID:get(row,'bankID')}];
     });
     if (rows.length > LIMIT) fail('import_limit');
     const dateOrder = preference(rows.map(item=>item.dates));
@@ -290,9 +305,10 @@
       const {line,row,date,label,currency,direction,raw,debit,credit,hasDebit,hasCredit,amountText,bankID} = item;
       const editable = value => value==='�'?'':value;
       const original = {date:editable(date),amount:editable(amountText),label,
-        currency:item.invalidPair?'':editable(currency),direction,bankID:editable(bankID),kind:''};
+        currency:item.invalidPair||item.currencyConflict?'':editable(currency),direction,bankID:editable(bankID),kind:''};
       try {
         if(item.unreadable) fail('import_unreadable_cell');
+        if(item.currencyConflict) fail('import_currency_conflict');
         if(item.invalidPair || !/^[A-Z]{3}$/.test(currency)) fail('import_currency_invalid');
         if (/\bxfer\b|transfer|перевод|internal movement/.test(direction)) fail('import_transfer_review');
         const amount = choose(item.amounts,decimal,'import_number_ambiguous','import_amount_invalid');
