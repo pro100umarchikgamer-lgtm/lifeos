@@ -154,4 +154,26 @@ void main() {
     expect(code.obscureText, isFalse);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+      'Google action remains visible when configuration is temporarily unavailable',
+      (tester) async {
+    final c = FamilyController(MemorySyncStore(),
+        apiFactory: (origin) => LoginApi(
+            origin,
+            (path, body) async =>
+                throw const SyncFailure('service_unavailable', 503)));
+    c.api = LoginApi(
+        'https://api.example.test',
+        (path, body) async =>
+            throw const SyncFailure('service_unavailable', 503));
+    addTearDown(c.dispose);
+    await tester.pumpWidget(MaterialApp(
+        home: FamilyPage(controller: c, pack: catalog.packs['ru']!)));
+    await tester.pumpAndSettle();
+    expect(find.text(catalog.packs['ru']!.t('account_google_sign_in')),
+        findsOneWidget);
+    expect(c.account, isNull);
+    expect(tester.takeException(), isNull);
+  });
 }

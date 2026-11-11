@@ -36,6 +36,7 @@ class FamilyController extends ChangeNotifier {
   String? workspace, error, pendingRegistrationEmail;
   bool busy = false;
   bool loginMfaRequired = false, googleAvailable = false;
+  bool googleConfigUnavailable = false;
   String? _loginChallenge, _loginEndpoint, _loginEmail;
   bool _disposed = false;
   Timer? _retry;
@@ -237,8 +238,10 @@ class FamilyController extends ChangeNotifier {
     try {
       final result = await candidate.request('/v1/auth/google/config');
       googleAvailable = result['google_enabled'] == true;
+      googleConfigUnavailable = false;
     } catch (_) {
       googleAvailable = false;
+      googleConfigUnavailable = true;
     } finally {
       candidate.close();
       publish();

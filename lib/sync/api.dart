@@ -35,7 +35,9 @@ class FamilyApi implements SyncTransport {
     try {
       return await _send(path, body: body);
     } on SyncFailure catch (error) {
-      if (error.code != 'unauthorized' || refreshToken == null || token == null ||
+      if (error.code != 'unauthorized' ||
+          refreshToken == null ||
+          token == null ||
           path == '/v1/auth/refresh') {
         rethrow;
       }
@@ -55,7 +57,8 @@ class FamilyApi implements SyncTransport {
     final result = await _send('/v1/auth/refresh', body: {
       'refresh_token': refreshToken,
     });
-    if (result['user_id'] != userId || result['token'] is! String ||
+    if (result['user_id'] != userId ||
+        result['token'] is! String ||
         result['refresh_token'] is! String ||
         (result['token'] as String).length != 43 ||
         (result['refresh_token'] as String).length != 43) {
@@ -92,6 +95,11 @@ class FamilyApi implements SyncTransport {
         if (content.length > 8 * 1024 * 1024) {
           throw const SyncFailure('response_limit');
         }
+      }
+      if (response.statusCode >= 500) {
+        throw SyncFailure(
+            response.statusCode == 503 ? 'service_unavailable' : 'server_error',
+            response.statusCode);
       }
       final value = object(jsonDecode(utf8.decode(content)));
       if (response.statusCode != 200) {

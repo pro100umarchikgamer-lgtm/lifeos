@@ -332,7 +332,15 @@ class _FamilyPageState extends State<FamilyPage> {
           appBar: AppBar(
             toolbarHeight:
                 MediaQuery.textScalerOf(context).scale(20) > 28 ? 96 : null,
-            title: Text(t('family_account'), maxLines: 2),
+            title: Text(
+                t(c.account == null
+                    ? (c.loginMfaRequired
+                        ? 'family_login'
+                        : register
+                            ? 'family_register'
+                            : 'family_login')
+                    : 'family_account'),
+                maxLines: 2),
           ),
           body: SafeArea(
             child: ListView(
@@ -405,8 +413,12 @@ class _FamilyPageState extends State<FamilyPage> {
                     label: Text(t('ux3_continue_local')),
                   ),
                   if (!c.loginMfaRequired) ...[
-                    if (c.googleAvailable)
-                      OutlinedButton(
+                    if (c.googleConfigUnavailable)
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(t('family_error_service_unavailable'))),
+                    if (c.googleAvailable || c.googleConfigUnavailable)
+                      FilledButton.tonal(
                         onPressed: c.busy
                             ? null
                             : () async {
