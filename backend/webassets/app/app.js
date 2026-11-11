@@ -1,6 +1,6 @@
 'use strict';
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
-const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'profile',lang:'ru',theme:'system',palette:'forest',chart:'bar',generation:0,busy:false,googleEnabled:false};
+const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'forest',chart:'bar',generation:0,busy:false,googleEnabled:false};
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null;
 const pendingDeletes=new Map();
 try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
@@ -42,7 +42,13 @@ function queueDelete(r,workspace){
  job.timer=setTimeout(async()=>{notification.remove();if(epoch!==privateEpoch){pendingDeletes.delete(r.id);return;}try{await saveOperation({id:crypto.randomUUID(),action:'record.delete',record_id:r.id,revision:r.revision},workspace);pendingDeletes.delete(r.id);await refresh();render();}catch(error){pendingDeletes.delete(r.id);if(state.session){render();report(error);toast(t('web_delete_failed'));}}},4000);
 }
 
-const t=k=>WEB_COPY[state.lang]?.[k]||WEB_COPY.en[k]||packs[state.lang]?.strings[k]||packs.ru?.strings[k]||k;
+const CLARITY_COPY={
+ ru:{web_more:'Ещё',web_back_settings:'К настройкам',web_account_data:'Данные аккаунта',web_confirm_delete:'Введите DELETE',web_current_session:'Текущий сеанс',web_last_active:'Последняя активность',web_revoked_on:'Доступ отозван',web_no_sessions:'Нет активных сеансов',web_active_sessions:'Активные сеансы',web_revoked_sessions:'Завершённые сеансы',web_revoke_current_hint:'Вы выйдете из аккаунта в этом браузере.',web_revoke_device_hint:'На выбранном устройстве потребуется войти снова.',web_add_operation:'Добавить операцию',web_history:'История операций',web_filters:'Фильтры',web_analysis:'Аналитика',web_finance_summary:'Сводка',web_all_operations:'Все операции',web_open_task_form:'Задача с деталями'},
+ en:{web_more:'More',web_back_settings:'Back to settings',web_account_data:'Account data',web_confirm_delete:'Type DELETE',web_current_session:'Current session',web_last_active:'Last active',web_revoked_on:'Access revoked',web_no_sessions:'No active sessions',web_active_sessions:'Active sessions',web_revoked_sessions:'Ended sessions',web_revoke_current_hint:'You will be signed out in this browser.',web_revoke_device_hint:'This device will need to sign in again.',web_add_operation:'Add transaction',web_history:'Transaction history',web_filters:'Filters',web_analysis:'Analysis',web_finance_summary:'Summary',web_all_operations:'All transactions',web_open_task_form:'Task with details'},
+ 'uz-Latn':{web_more:'Yana',web_back_settings:'Sozlamalarga qaytish',web_account_data:'Hisob ma’lumotlari',web_confirm_delete:'DELETE yozing',web_current_session:'Joriy seans',web_last_active:'So‘nggi faollik',web_revoked_on:'Ruxsat bekor qilindi',web_no_sessions:'Faol seanslar yo‘q',web_active_sessions:'Faol seanslar',web_revoked_sessions:'Yakunlangan seanslar',web_revoke_current_hint:'Bu brauzerda hisobdan chiqasiz.',web_revoke_device_hint:'Bu qurilmada qayta kirish kerak bo‘ladi.',web_add_operation:'Operatsiya qo‘shish',web_history:'Operatsiyalar tarixi',web_filters:'Filtrlar',web_analysis:'Tahlil',web_finance_summary:'Umumiy holat',web_all_operations:'Barcha operatsiyalar',web_open_task_form:'Tafsilotli vazifa'},
+ 'uz-Cyrl':{web_more:'Яна',web_back_settings:'Созламаларга қайтиш',web_account_data:'Ҳисоб маълумотлари',web_confirm_delete:'DELETE ёзинг',web_current_session:'Жорий сеанс',web_last_active:'Сўнгги фаоллик',web_revoked_on:'Рухсат бекор қилинди',web_no_sessions:'Фаол сеанслар йўқ',web_active_sessions:'Фаол сеанслар',web_revoked_sessions:'Якунланган сеанслар',web_revoke_current_hint:'Бу браузерда ҳисобдан чиқасиз.',web_revoke_device_hint:'Бу қурилмада қайта кириш керак бўлади.',web_add_operation:'Операция қўшиш',web_history:'Операциялар тарихи',web_filters:'Фильтрлар',web_analysis:'Таҳлил',web_finance_summary:'Умумий ҳолат',web_all_operations:'Барча операциялар',web_open_task_form:'Тафсилотли вазифа'}
+};
+const t=k=>CLARITY_COPY[state.lang]?.[k]||WEB_COPY[state.lang]?.[k]||WEB_COPY.en[k]||packs[state.lang]?.strings[k]||CLARITY_COPY.en[k]||packs.ru?.strings[k]||k;
 const E=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 function append(e,...children){e.append(...children);return e;}
 function toast(message){const n=E('div',message,'toast');alerts.append(n);setTimeout(()=>n.remove(),4000);}
@@ -56,7 +62,7 @@ async function call(path,body){
  if(!response.ok)throw Object.assign(new Error(value.error),{code:value.error,uncertain:body!==undefined&&response.status>=500});return value;
 }
 function button(text,run,cls='ghost'){const b=E('button',text,cls);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await run();}catch(error){report(error);}finally{b.disabled=false;}});return b;}
-const ICON_PATHS={calendar:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','M8 14h2M14 14h2M8 18h2'],today:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','m8 15 2 2 5-5'],tasks:['m3 6 1 1 2-2M10 6h11m-18 6 1 1 2-2M10 12h11m-18 6 1 1 2-2M10 18h11'],notes:['M5 3h14v18H5zM8 8h8M8 12h8M8 16h5'],money:['M4 20V10m6 10V4m6 16v-8m5 8H2'],account:['M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-2a8 8 0 0 1 16 0v2'],close:['m6 6 12 12M6 18 18 6'],more:['M5 12h.01M12 12h.01M19 12h.01'],add:['M12 5v14M5 12h14']};
+const ICON_PATHS={calendar:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','M8 14h2M14 14h2M8 18h2'],today:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','m8 15 2 2 5-5'],tasks:['m3 6 1 1 2-2M10 6h11m-18 6 1 1 2-2M10 12h11m-18 6 1 1 2-2M10 18h11'],notes:['M5 3h14v18H5zM8 8h8M8 12h8M8 16h5'],money:['M4 20V10m6 10V4m6 16v-8m5 8H2'],account:['M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-2a8 8 0 0 1 16 0v2'],close:['m6 6 12 12M6 18 18 6'],forward:['m9 6 6 6-6 6'],back:['m15 6-6 6 6 6'],more:['M5 12h.01M12 12h.01M19 12h.01'],add:['M12 5v14M5 12h14']};
 function icon(name){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');for(const [key,value]of Object.entries({viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':'1.7','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true',focusable:'false',class:'ui-icon'}))svg.setAttribute(key,value);for(const path of ICON_PATHS[name]||[]){const node=document.createElementNS(svg.namespaceURI,'path');node.setAttribute('d',path);svg.append(node);}return svg;}
 function iconButton(name,label,run){const b=button('',run,'icon');b.setAttribute('aria-label',label);b.title=label;b.append(icon(name));return b;}
 function addButton(label,run){const b=button(label,run,'');b.prepend(icon('add'));return b;}
@@ -75,8 +81,9 @@ function replaceDialog(d,...nodes){
  d.replaceChildren(head,...nodes.filter(n=>n!==heading&&n!==existing));
 }
 
-function clearIdentity(){redrawFinance=null;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'profile',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){redrawFinance=null;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
+function displayDate(date){return new Date(date+'T12:00:00').toLocaleDateString(state.lang,{year:'numeric',month:'short',day:'numeric'});}
 function minor(value,signed=false,currency='RUB'){return ULADIMMoney.parse(value,currency,signed);}
 function decimalInput(value,currency){return ULADIMMoney.decimal(value,currency);}
 function localDate(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
@@ -123,9 +130,32 @@ function shell(){
  const spaces=select(E('div'),'workspace','',state.spaces.map(s=>[s.id,s.name]),state.space);spaces.setAttribute('aria-label',t('family_account'));spaces.className='workspace';spaces.addEventListener('change',async()=>{document.querySelectorAll('dialog').forEach(d=>d.close());state.space=spaces.value;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;render();try{await readSpace();render();}catch(e){report(e);}});if(state.spaces.length)header.append(spaces);root.append(header);
  if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
  const m=E('main');m.id='content';root.append(m);const nav=E('nav',undefined,'nav');nav.setAttribute('aria-label','ULADIM');
- for(const [key,label]of [['today','today'],['tasks','widget_tasks'],['calendar','web_calendar'],['notes','widget_notes'],['money','finances'],['account','profile']]){const b=button('',()=>{state.tab=key;render();});const symbol=E('span',undefined,'symbol');symbol.append(icon(key));append(b,symbol,E('span',t(label)));if(state.tab===key)b.setAttribute('aria-current','page');nav.append(b);}root.append(nav);navObserver=new ResizeObserver(()=>{document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');});navObserver.observe(nav);navObserver.observe(header);return m;
+ const secondary=E('details',undefined,'nav-more');
+ const summary=E('summary');append(summary,icon('more'),E('span',t('web_more')));secondary.append(summary);
+ const menu=E('div',undefined,'nav-menu');secondary.append(menu);
+ for(const [key,label] of [['today','today'],['tasks','widget_tasks'],['calendar','web_calendar'],['notes','widget_notes'],['money','finances'],['account','profile']]){
+  const navigate=()=>{
+   if(key==='account')state.settingsTab='';
+   state.tab=key;render();
+  };
+  const navItem=()=>{
+   const b=button('',navigate);
+   append(b,icon(key),E('span',t(label)));
+   if(state.tab===key)b.setAttribute('aria-current','page');
+   return b;
+  };
+  const item=navItem();
+  if(['notes','account'].includes(key)){
+   item.classList.add('nav-secondary');
+   menu.append(navItem());
+  }
+  nav.append(item);
+ }
+ if(['notes','account'].includes(state.tab)){summary.classList.add('active');summary.setAttribute('aria-current','page');}
+ nav.append(secondary);root.append(nav);
+ navObserver=new ResizeObserver(()=>{document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');});navObserver.observe(nav);navObserver.observe(header);return m;
 }
-function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');append(a,E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'),E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
+function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
 function render(){redrawFinance=null;if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='calendar')calendar(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);
 }
@@ -133,25 +163,28 @@ function onboarding(m){
  m.classList.add('onboarding');const c=card();c.classList.add('setup-panel');c.append(icon('today'),E('h1',t('welcome_title')),E('p',t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')));const alternative=E('div',undefined,'setup-alternative');alternative.append(button(t('family_accept'),acceptInvite,'text-button'));append(m,c,alternative);
 }
 function today(m){
- title(m,'today',()=>editRecord('task'));
+ title(m,'today');m.classList.add('today-page');
  const tasks=records('task'),open=tasks.filter(r=>!r.data.completed),done=tasks.length-open.length;
  const end=new Date(localDate()+'T12:00:00');end.setDate(end.getDate()+7);
  const occurrences=ULADIMDomain.occurrences(records('event'),localDate(),dateString(end));
- const overview=E('section',undefined,'day-overview');overview.setAttribute('aria-label',t('today'));
- const progress=E('div',undefined,'day-progress'),ring=E('div',done+'/'+tasks.length,'progress-ring');ring.style.setProperty('--progress',(tasks.length?done/tasks.length*100:0)+'%');ring.setAttribute('role','img');ring.setAttribute('aria-label',t('completed')+': '+done+' / '+tasks.length);
- const caption=E('div');append(caption,E('strong',t('completed')),E('p',done+' / '+tasks.length,'small'));append(progress,ring,caption);overview.append(progress);
- for(const [label,value,symbol]of [['open_tasks',open.length,'tasks'],['completed',done,'today'],['web_upcoming',occurrences.length,'calendar']]){const stat=E('div',undefined,'stat-widget');append(stat,icon(symbol),E('strong',String(value)),E('span',t(label)));overview.append(stat);}m.append(overview);
- const grid=E('div',undefined,'grid today-grid');m.append(grid);
- const a=card(t('open_tasks'));a.classList.add('today-tasks');a.querySelector('h2').append(E('span',String(open.length),'task-count'));
+ const grid=E('div',undefined,'today-grid');
+ const main=E('div',undefined,'today-main'),side=E('div',undefined,'today-side');
+ append(grid,main,side);m.append(grid);
+ const overview=E('div',undefined,'day-overview');
+ const ring=E('div',done+'/'+tasks.length,'progress-ring');
+ ring.style.setProperty('--progress',(tasks.length?done/tasks.length*100:0)+'%');
+ ring.setAttribute('role','img');ring.setAttribute('aria-label',t('completed')+' '+done+' / '+tasks.length);
+ const caption=E('div');append(caption,E('strong',t('completed')),E('p',t('open_tasks')+' · '+open.length,'small'));
+ append(overview,ring,caption);main.append(overview);
+ const a=card(t('open_tasks'));a.classList.add('today-tasks');
  const quick=E('form',undefined,'quick-capture'),field=E('input');field.name='quick-task';field.placeholder=t('web_quick_task');field.setAttribute('aria-label',t('web_quick_task'));field.maxLength=2000;field.required=true;const submit=E('button',undefined,'primary icon');submit.type='submit';submit.setAttribute('aria-label',t('web_add_task'));submit.append(icon('add'));append(quick,field,submit);let operation=null,accepted=false;
  quick.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;submit.disabled=true;field.readOnly=true;const workspace=state.space;try{operation=operation||{id:crypto.randomUUID(),action:'record.put',record_id:crypto.randomUUID(),revision:0,kind:'task',visibility:currentSpace()?.role==='child'?'shared':'private',audience:currentSpace()?.role==='child'?[currentSpace().profile_id]:[],data:{title:field.value.trim(),completed:0,assignment:'any',assignees:[],review:0}};if(!operation.data.title)throw {code:'invalid_input'};await saveOperation(operation,workspace);accepted=true;await refresh();render();}catch(error){if(!accepted&&!error.uncertain)operation=null;if(error.code==='unauthorized')report(error);else toast(errorText(error));if(error.uncertain)submit.setAttribute('aria-label',t('retry'));}finally{submit.disabled=false;field.readOnly=!!operation;}});a.append(quick);
- for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(E('p',t('empty_tasks'),'empty'));a.append(button(t('web_all_tasks'),()=>{state.tab='tasks';render();},'text-button'));grid.append(a);
- const agenda=card(t('web_upcoming'));agenda.classList.add('today-agenda');for(const o of occurrences.slice(0,3))agenda.append(eventRow(o));if(!occurrences.length)agenda.append(E('p',t('web_no_events'),'empty'));agenda.append(button(t('family_kind_event'),()=>editRecord('event'),'text-button'));grid.append(agenda);
- const finance=card(t('finances'));finance.classList.add('today-finance');summaries(finance);finance.append(button(t('finances'),()=>{state.tab='money';render();},'text-button'));grid.append(finance);
- const notes=card(t('recent_notes'));notes.classList.add('today-notes');for(const r of records('note').slice(-2).reverse())notes.append(button(r.data.body.slice(0,110),()=>editRecord('note',r),'note-link'));if(!records('note').length)notes.append(E('p',t('empty_notes'),'empty'));notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));grid.append(notes);
- const actions=E('div',undefined,'actions quick-actions');for(const kind of ['transaction','note','event'])actions.append(button(t('family_kind_'+kind),()=>editRecord(kind),'secondary'));m.append(actions);
+ for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(E('p',t('empty_tasks'),'empty'));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>{state.tab='tasks';render();},'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
+ const agenda=card(t('web_upcoming'));agenda.classList.add('today-agenda');for(const o of occurrences.slice(0,3))agenda.append(eventRow(o));if(!occurrences.length)agenda.append(E('p',t('web_no_events'),'empty'));agenda.append(button(t('family_kind_event'),()=>editRecord('event'),'text-button'));side.append(agenda);
+ const finance=card(t('finances'));finance.classList.add('today-finance');summaries(finance);append(finance,button(t('finances'),()=>{state.tab='money';render();},'text-button'),button(t('web_add_operation'),()=>editRecord('transaction'),'text-button'));side.append(finance);
+ const notes=card(t('recent_notes'));notes.classList.add('today-notes');for(const r of records('note').slice(-2).reverse())notes.append(button(r.data.body.slice(0,110),()=>editRecord('note',r),'note-link'));if(!records('note').length)notes.append(E('p',t('empty_notes'),'empty'));notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));side.append(notes);
+
 }
-function chooseAdd(){dialog(t('add'),d=>{for(const kind of ['task','event','note','transaction','account','budget','transfer'])d.append(button(t('family_kind_'+kind),()=>{d.close();editRecord(kind);}));});}
 function taskRow(r){const row=E('div',undefined,'row');const check=E('input');check.type='checkbox';check.checked=!!r.data.completed;check.disabled=!r.editable;check.setAttribute('aria-label',r.data.title);check.addEventListener('change',async()=>{check.disabled=true;try{if(r.data.assignees.length){editRecord('task',r);return;}await saveOperation({id:crypto.randomUUID(),action:'record.put',record_id:r.id,revision:r.revision,kind:r.kind,visibility:r.visibility,audience:r.audience,data:{...r.data,completed:check.checked?1:0}});await refresh();render();}catch(e){check.checked=!!r.data.completed;report(e);}finally{check.disabled=!r.editable;}});append(row,check,E('span',r.data.title,'text'+(r.data.completed?' done':'')),iconButton('more',t('edit')+' · '+r.data.title,()=>editRecord('task',r)));return row;}
 function listTasks(m){
  title(m,'widget_tasks',()=>editRecord('task'));
@@ -218,31 +251,63 @@ function totals(currency){let income=0n,expense=0n;for(const r of records('trans
 function summaries(container){const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];if(!currencies.length){container.append(E('p',t('empty_money')));return;}for(const currency of currencies){const {income,expense}=totals(currency);const row=E('div',undefined,'row');append(row,E('strong',currency),E('span','+ '+money(income,currency),'income'),E('span','− '+money(expense,currency),'expense'));container.append(row);}container.append(E('p',t('web_totals'),'small'));}
 function balance(a){let result=BigInt(a.data.opening_minor);for(const r of records('transaction').filter(r=>r.data.account_id===a.id))result+=(r.data.kind==='income'?1n:-1n)*BigInt(r.data.amount_minor);for(const r of records('transfer')){if(r.data.from_id===a.id)result-=BigInt(r.data.sent_minor);if(r.data.to_id===a.id)result+=BigInt(r.data.received_minor);}return result;}
 function finance(m){
- title(m,'finances',chooseAdd);const toolbar=E('div',undefined,'finance-toolbar');toolbar.append(button(t('import_file'),importStatement,'secondary'));m.querySelector('.intro').append(toolbar);
- const filterPanel=E('details',undefined,'finance-filter-panel');filterPanel.open=matchMedia('(min-width:760px)').matches;filterPanel.append(E('summary',t('search')));const filters=E('section',undefined,'finance-filters');filterPanel.append(filters);m.append(filterPanel);
+ title(m,'finances');m.classList.add('finance-page');
+ const toolbar=E('div',undefined,'finance-toolbar');
+ append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'text-button'),button(t('import_file'),importStatement,'secondary'));
+ m.querySelector('.intro').append(toolbar);
+ const grid=E('div',undefined,'finance-grid');
+ const activity=E('div',undefined,'finance-activity'),details=E('aside',undefined,'finance-details');
+ append(grid,activity,details);m.append(grid);
+ const summary=card(t('web_finance_summary'));
+ summary.classList.add('finance-overview');activity.append(summary);
+ const ledger=card(t('web_history'));ledger.classList.add('ledger');activity.append(ledger);
+ const filterPanel=E('details',undefined,'finance-filter-panel');
+ const filterLabel=E('summary',t('web_filters'));
+ const filters=E('div',undefined,'finance-filters');
+ append(filterPanel,filterLabel,filters);ledger.append(filterPanel);
+ const ledgerRows=E('div',undefined,'ledger-rows');ledger.append(ledgerRows);
  const group=(name,label,type='search')=>{const wrap=E('div');filters.append(wrap);return input(wrap,name,label,type,state.financeFilters[name]||'',false);};
  const search=group('finance-search',t('search')),from=group('finance-from',t('web_period_start'),'date'),to=group('finance-to',t('web_period_end'),'date');
  const wrap=E('div');filters.append(wrap);const accountFilter=select(wrap,'finance-account',t('web_accounts'),[['',t('web_all_accounts')],...records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency])],state.financeFilters.account||'');
- const grid=E('div',undefined,'grid finance-grid');m.append(grid);
  const rows=()=>records('transaction').filter(r=>(!accountFilter.value||r.data.account_id===accountFilter.value)&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(r.data.label+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
- const summary=card(t('feature_finance'));summary.classList.add('wide','finance-overview');grid.append(summary);
- const accounts=card(t('web_accounts'));accounts.classList.add('finance-accounts');grid.append(accounts);
+ const accounts=card(t('web_accounts'));accounts.classList.add('finance-accounts');details.append(accounts);
  for(const a of records('account')){const row=E('div',undefined,'account-balance');append(row,E('span',a.data.name,'text'),E('strong',money(balance(a),a.data.currency)),iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));accounts.append(row);}if(!records('account').length)accounts.append(E('p',t('empty_money')));accounts.append(addButton(t('family_kind_account'),()=>editRecord('account')));
- const chart=card(t('finances'));chart.classList.add('finance-analysis');grid.append(chart);const chartControls=E('div',undefined,'chart-controls');chart.append(chartControls);
+ const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');details.append(chart);const chartControls=E('div',undefined,'chart-controls');chart.append(chartControls);
  const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];const currency=select(chartControls,'chart-currency',t('currency'),currencies.map(c=>[c,c]),currencies[0]);const mode=select(chartControls,'chart-mode',t('web_chart_type'),[['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.chart);
  const legend=E('div',undefined,'chart-legend');chart.append(legend);const canvas=E('canvas');canvas.width=720;canvas.height=320;canvas.setAttribute('role','img');chart.append(canvas);
- const budgets=card(t('family_kind_budget'));budgets.classList.add('wide','finance-budgets');grid.append(budgets);
+ const budgets=card(t('family_kind_budget'));budgets.classList.add('wide','finance-budgets');details.append(budgets);
  const budgetLabels=new Map();for(const r of records('budget')){const row=E('div',undefined,'budget-line'),text=E('div'),amount=E('p',money(r.data.limit_minor,r.data.currency),'small');append(text,E('h3',r.data.name),amount);budgetLabels.set(r.id,amount);append(row,text,iconButton('more',t('edit')+' · '+r.data.name,()=>editRecord('budget',r)));budgets.append(row);}
  if(budgetLabels.size){const epoch=privateEpoch;statementWorker({action:'budgets',at:localDate(),records:records('transaction'),budgets:records('budget')}).then(result=>{if(epoch!==privateEpoch||!m.isConnected)return;for(const r of records('budget'))budgetLabels.get(r.id).textContent=t('remaining')+': '+money(result.remaining[r.id],r.data.currency)+' · '+t('budget_limit')+': '+money(r.data.limit_minor,r.data.currency);}).catch(error=>{if(m.isConnected)budgets.append(E('p',errorText(error),'error'));});}
  budgets.append(addButton(t('family_kind_budget'),()=>editRecord('budget')));
- const ledger=card(t('family_kind_transaction'));ledger.classList.add('wide','ledger');grid.append(ledger);
  function draw(){
-  state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};const active=Object.values(state.financeFilters).filter(Boolean).length;filterPanel.querySelector('summary').textContent=t('search')+(active?' · '+active:'');const filtered=rows();summary.replaceChildren(E('h2',t('feature_finance')));
+  state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};const active=Object.values(state.financeFilters).filter(Boolean).length;
+  filterLabel.textContent=t('web_filters')+(active?' · '+active:'');
+  filterLabel.title=[from.value,to.value,accountFilter.value?accountFilter.selectedOptions[0]?.textContent:''].filter(Boolean).join(' · ');
+  const filtered=rows();summary.replaceChildren(E('h2',t('web_finance_summary')));
+  const activeScope=[from.value? t('web_period_start')+' '+displayDate(from.value):'',to.value? t('web_period_end')+' '+displayDate(to.value):'',accountFilter.value?accountFilter.selectedOptions[0]?.textContent:''].filter(Boolean);
+  if(activeScope.length)summary.append(E('p',activeScope.join(' · '),'small finance-scope'));
   for(const code of currencies){const values=financeTotals(filtered,code),row=E('div',undefined,'finance-total');append(row,E('span',code,'currency-code'),E('div',undefined,'income'),E('div',undefined,'expense'));row.children[1].append(E('span',t('income'),'small'),E('strong',money(values.income,code)));row.children[2].append(E('span',t('expense'),'small'),E('strong',money(values.expense,code)));summary.append(row);}if(!currencies.length)summary.append(E('p',t('empty_money')));summary.append(E('p',t('web_totals'),'small'));
   const values=financeTotals(filtered,currency.value);legend.replaceChildren();if(currency.value){legend.append(E('span',t('income')+' · '+money(values.income,currency.value),'income'),E('span',t('expense')+' · '+money(values.expense,currency.value),'expense'));}
   state.chart=mode.value;preferences();canvas.hidden=mode.value==='compact'||!currency.value;drawChart(canvas,currency.value,filtered);
-  ledger.replaceChildren(E('h2',t('family_kind_transaction')));for(const r of filtered.sort((a,b)=>b.data.date.localeCompare(a.data.date))){const row=E('div',undefined,'row');const text=E('div',undefined,'text');append(text,E('h3',r.data.label||t(r.data.kind)),E('p',r.data.date+(r.data.account_id?' · '+(records('account').find(a=>a.id===r.data.account_id)?.data.name||''):''),'small'));append(row,text,E('strong',(r.data.kind==='expense'?'− ':'+ ')+money(r.data.amount_minor,r.data.currency),r.data.kind),iconButton('more',t('edit')+' · '+(r.data.label||t(r.data.kind)),()=>editRecord('transaction',r)));ledger.append(row);}if(!filtered.length)ledger.append(E('p',t('empty_money'),'empty'));
-  for(const r of records('transfer').filter(r=>(!accountFilter.value||[r.data.from_id,r.data.to_id].includes(accountFilter.value))&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)))ledger.append(button(t('family_kind_transfer')+' · '+r.data.date,()=>editRecord('transfer',r)));
+  const transfers=records('transfer').filter(r=>(!accountFilter.value||[r.data.from_id,r.data.to_id].includes(accountFilter.value))&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(t('family_kind_transfer')+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
+  const entries=[...filtered,...transfers].sort((a,b)=>b.data.date.localeCompare(a.data.date));
+  const accountsById=new Map(records('account').map(account=>[account.id,account.data]));
+  ledgerRows.replaceChildren();
+  const older=E('details',undefined,'ledger-older');
+  older.append(E('summary',t('web_all_operations')+' · '+entries.length));
+  for(const [index,entry] of entries.entries()){
+   const data=entry.data,isTransfer=entry.kind==='transfer',kind=isTransfer?'transfer':data.kind;
+   const row=E('div',undefined,'row ledger-row'),text=E('div',undefined,'text');
+   const label=isTransfer?t('family_kind_transfer'):data.label||t(kind);
+   const account=isTransfer?[accountsById.get(data.from_id)?.name,accountsById.get(data.to_id)?.name].filter(Boolean).join(' → '):accountsById.get(data.account_id)?.name;
+   append(text,E('h3',label),E('p',[displayDate(data.date),account].filter(Boolean).join(' · '),'small'));
+   const transferCurrency=accountsById.get(data.from_id)?.currency;
+   const amount=isTransfer?(transferCurrency?money(data.sent_minor,transferCurrency):''):(kind==='expense'?'− ':'+ ')+money(data.amount_minor,data.currency);
+   append(row,text,E('strong',amount,kind),iconButton('more',t('edit')+' · '+label,()=>editRecord(entry.kind,entry)));
+   (index<6?ledgerRows:older).append(row);
+  }
+  if(entries.length>6)ledgerRows.append(older);
+  if(!entries.length)ledgerRows.append(E('p',t(active?'web_no_results':'empty_money'),'empty'));
  }
  redrawFinance=draw;
  for(const field of [search,from,to,accountFilter,currency,mode])field.addEventListener(field===search?'input':'change',draw);requestAnimationFrame(draw);
@@ -266,16 +331,31 @@ function drawChart(canvas,currency,rows=records('transaction')){
 function createSpace(kind){let operation;const d=dialog(t(kind==='family'?'family_create':'web_personal_create'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:crypto.randomUUID(),action:'workspace.create',kind,name:v.name.value};try{await call('family',operation);}catch(e){if(!e.uncertain)operation=null;throw e;}state.space=operation.workspace_id;d.close();await refresh();render();}));}
 function acceptInvite(){const d=dialog(t('family_accept'),container=>form(container,'',f=>({invitation:input(f,'invitation',t('family_invitation'))}),async v=>{await call('invitations/accept',{id:crypto.randomUUID(),invitation:v.invitation.value});d.close();await refresh();render();}));}
 function familyPanel(m){const c=card(t('family_account'));m.append(c);c.append(button(t('family_create'),()=>createSpace('family')),button(t('family_owner'),()=>createSpace('personal')),button(t('family_accept'),acceptInvite));if(!state.roster)return;const {space,members,profiles}=state.roster;for(const member of members){const row=E('div',undefined,'row');append(row,E('span',member.user_id===state.session.user_id?t('family_you'):member.user_id,'text'),E('span',t('family_'+member.role),'pill'));c.append(row);}if(space.kind==='family'&&['parent','owner'].includes(space.role))c.append(button(t('family_invite'),()=>dialog(t('family_invite'),container=>{let operation;form(container,'',f=>({email:input(f,'email',t('family_invite_email'),'email'),role:select(f,'role',t('family_role'),['adult','parent','child'].map(k=>[k,t('family_'+k)]),'adult'),profile:select(f,'profile',t('family_child'),[['',t('family_none')],...profiles.map(p=>[p.id,p.name])],'')}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:space.id,action:'invite.create',email:v.email.value,role:v.role.value,profile_id:v.role.value==='child'?v.profile.value:null};const invite=await call('family',operation);replaceDialog(container,E('h2',t('family_invite')),E('p',t('family_invite_hint')),E('pre',invite.invitation),button(t('close'),()=>container.close()));});})),button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));}));}
+function openSettings(section){
+ state.settingsTab=section;
+ render();
+ const back=root.querySelector('.settings-back');
+ const target=section?(back?.getClientRects().length?back:root.querySelector('.settings-content h2')):root.querySelector('.settings-navigation button');
+ if(target){if(target.tagName==='H2')target.tabIndex=-1;target.focus();}
+}
 async function account(m){
  title(m,'account_manage');m.classList.add('settings-page');
- const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');navigation.setAttribute('aria-label',t('account_manage'));append(layout,navigation,content);m.append(layout);
+ const section=state.settingsTab||'profile';
+ m.dataset.settingsDetail=String(Boolean(state.settingsTab));
+ const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
+ navigation.setAttribute('aria-label',t('account_manage'));
+ const back=button(t('web_back_settings'),()=>openSettings(''),'settings-back text-button');
+ back.prepend(icon('back'));append(layout,navigation,content);append(m,back,layout);
  const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['family','family_account'],['plan','account_access'],['support','account_support']];
- for(const [key,label]of sections){const item=button(t(label),()=>{state.settingsTab=key;render();},'settings-item');if(state.settingsTab===key)item.setAttribute('aria-current','page');navigation.append(item);}
- const sectionSelect=select(m,'settings-section',t('account_manage'),sections.map(([key,label])=>[key,t(label)]),state.settingsTab);sectionSelect.parentElement===m&&m.insertBefore(sectionSelect.previousElementSibling,layout);m.insertBefore(sectionSelect,layout);sectionSelect.classList.add('settings-section-select');sectionSelect.previousElementSibling.classList.add('settings-section-label');sectionSelect.addEventListener('change',()=>{state.settingsTab=sectionSelect.value;render();});
- const section=state.settingsTab;
- if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),button(t('account_privacy'),privacy,'secondary'),button(t('family_logout'),async()=>{await call('logout',{});clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
- if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
- if(section==='security'){const c=card(t('account_privacy'));append(c,button(t('account_mfa'),customerMfa,'secondary'),button(t('account_devices'),devices,'secondary'),button(t('account_google_methods'),googleMethods,'secondary'),button(t('account_privacy'),privacy,'text-button'));content.append(c);}
+ for(const [key,label] of sections){
+  const item=settingsRow(t(label),()=>openSettings(key),'settings-item');
+  item.dataset.section=key;
+  if(section===key)item.setAttribute('aria-current','page');
+  navigation.append(item);
+ }
+ if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),settingsRow(t('account_privacy'),()=>openSettings('security')),button(t('family_logout'),async()=>{await call('logout',{});clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
+ if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
+ if(section==='security')privacy(content);
  if(section==='family'){familyPanel(content);familyPermissions(content);}
  try{if(section==='plan'){const ent=await call('entitlements');if(state.tab!=='account'||state.settingsTab!==section)return;const plans=card(t('account_access'));append(plans,E('div',ent.tier,'stat'),E('p',t('account_no_payment')));content.append(plans);}if(section==='support')await support(content);}catch(e){report(e);}
 }
@@ -302,16 +382,67 @@ async function signup(){
 }
 
 function recover(){const d=dialog(t('family_recovery'),container=>form(container,'',f=>({email:input(f,'email',t('family_email'),'email')}),async v=>{const email=v.email.value;await call('recovery',{email});replaceDialog(container,E('h2',t('family_recovery')),E('p',t('family_recovery_hint')));form(container,'',f=>({code:input(f,'code',t('family_code')),password:input(f,'new-password',t('family_new_password'),'password')}),async fields=>{await call('reset',{email,code:fields.code.value,password:fields.password.value});d.close();login();toast(t('account_done'));});}));}
-async function privacy(){const status=await call('deletion');dialog(t('account_privacy'),d=>{
- d.append(button(t('account_mfa'),customerMfa),button(t('account_devices'),devices),button(t('account_google_methods'),googleMethods));
- form(d,t('family_password_change'),f=>({old:input(f,'old',t('family_old_password'),'password'),next:input(f,'new',t('family_new_password'),'password')}),async v=>{await call('password',{old_password:v.old.value,new_password:v.next.value});d.close();clearIdentity();login();});
- form(d,t('account_email_change'),f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('email',{email:v.email.value,password:v.password.value});dialog(t('family_verify'),c=>form(c,'',f=>({code:input(f,'code',t('family_code')),password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('confirm-email',{code:v.code.value,password:v.password.value});clearIdentity();login();}));});
- d.append(E('h2',t('account_delete')),E('p',t('account_delete_notice')));
- for(const transfer of status.incoming_transfers||[])form(d,t('account_accept_transfer')+' · '+transfer.name,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('accept-transfer',{transfer_id:transfer.id,password:v.password.value});d.close();await privacy();});
- if(status.ownership_transfer_required.length){for(const family of status.ownership_transfer_required)if(family.eligible_parent_id)form(d,t('account_transfer')+' · '+family.name,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:v.password.value});toast(t('account_done'));});}
- else if(status.request?.state==='pending')form(d,t('account_cancel_delete'),f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('cancel-deletion',{password:v.password.value});d.close();await privacy();});
- else form(d,t('account_delete'),f=>({password:input(f,'password',t('family_old_password'),'password'),confirmation:input(f,'confirmation','DELETE')}),async v=>{await call('deletion',{password:v.password.value,confirmation:v.confirmation.value});d.close();await privacy();});
- });}
+function settingsRow(label, run, variant=''){
+ const row=button(label,run,'settings-row '+variant);
+ row.append(icon('forward'));
+ return row;
+}
+function privacy(m){
+ const security=E('section',undefined,'settings-group');
+ security.append(E('h2',t('account_privacy')));
+ for(const [label,action] of [['family_password_change',changePassword],['account_email_change',changeEmail],['account_google_methods',googleMethods],['account_mfa',customerMfa],['account_devices',devices]]){
+  security.append(settingsRow(t(label),action));
+ }
+ const data=E('section',undefined,'settings-group');
+ append(data,E('h2',t('web_account_data')),settingsRow(t('account_delete'),deletion,'danger-text'));
+ append(m,security,data);
+}
+function changePassword(){
+ const label=t('family_password_change');
+ dialog(label,d=>form(d,'',f=>({old:input(f,'old',t('family_old_password'),'password'),next:input(f,'new',t('family_new_password'),'password')}),async v=>{
+  await call('password',{old_password:v.old.value,new_password:v.next.value});clearIdentity();login();
+ },label));
+}
+function changeEmail(){
+ const label=t('account_email_change');
+ dialog(label,d=>form(d,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+  const email=v.email.value;
+  await call('email',{email,password:v.password.value});
+  replaceDialog(d,E('h2',t('family_verify')),E('p',email,'account-email'));
+  form(d,'',f=>({code:input(f,'code',t('family_code')),password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+   await call('confirm-email',{code:v.code.value,password:v.password.value});clearIdentity();login();
+  },t('family_verify'));
+  d.querySelector('input').focus();
+ },label));
+}
+async function deletion(){
+ const status=await call('deletion');
+ dialog(t('account_delete'),d=>{
+  d.append(E('p',t('account_delete_notice')));
+  for(const transfer of status.incoming_transfers||[]){
+   const label=t('account_accept_transfer')+' · '+transfer.name;
+   form(d,label,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+    await call('accept-transfer',{transfer_id:transfer.id,password:v.password.value});d.close();await deletion();
+   },t('account_accept_transfer'));
+  }
+  if(status.ownership_transfer_required.length){
+   for(const family of status.ownership_transfer_required)if(family.eligible_parent_id){
+    form(d,t('account_transfer')+' · '+family.name,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+     await call('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:v.password.value});toast(t('account_done'));
+    },t('account_transfer'));
+   }
+  }else if(status.request?.state==='pending'){
+   form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+    await call('cancel-deletion',{password:v.password.value});d.close();await deletion();
+   },t('account_cancel_delete'));
+  }else{
+   const request=form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password'),confirmation:input(f,'confirmation',t('web_confirm_delete'))}),async v=>{
+    await call('deletion',{password:v.password.value,confirmation:v.confirmation.value});d.close();await deletion();
+   },t('account_delete'));
+   request.querySelector('button[type=submit]').classList.add('danger-action');
+  }
+ });
+}
 async function googleMethods(){
  const status=await call('google'),mfa=await call('mfa');
  dialog(t('account_google_methods'),d=>{
@@ -325,7 +456,46 @@ async function googleMethods(){
   },t(status.google_linked?'account_google_disconnect':'account_google_connect'));
  });
 }
-async function devices(){const result=await call('devices');dialog(t('account_devices'),d=>{for(const device of result.devices){const c=card(device.label);c.append(E('p',new Date(device.last_seen_at*1000).toLocaleString(state.lang)));form(c,t('account_revoke'),f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{await call('devices/revoke',{device_id:device.id,password:v.password.value});d.close();await start();});d.append(c);}});}
+async function devices(){
+ const {devices:items}=await call('devices');
+ dialog(t('account_devices'),d=>{
+  d.classList.add('devices-dialog');
+  const active=items.filter(device=>!device.revoked_at);
+  const revoked=items.filter(device=>device.revoked_at);
+  const deviceDate=value=>new Intl.DateTimeFormat(state.lang,{dateStyle:'medium',timeStyle:'short'}).format(value*1000);
+  function group(label,entries){
+   const section=E('section',undefined,'device-group');
+   section.append(E('h3',t(label)));
+   for(const device of entries){
+    const row=E('div',undefined,'device-row'),description=E('div',undefined,'device-description');
+    append(description,E('strong',device.label));
+    if(device.current)description.append(E('span',t('web_current_session'),'device-status'));
+    description.append(E('p',t(device.revoked_at?'web_revoked_on':'web_last_active')+' · '+deviceDate(device.revoked_at||device.last_seen_at),'small'));
+    row.append(description);
+    if(!device.revoked_at)row.append(button(t('account_revoke'),()=>confirmDeviceRevoke(device,d),'text-button danger-text'));
+    section.append(row);
+   }
+   if(!entries.length)section.append(E('p',t('web_no_sessions'),'small'));
+   d.append(section);
+  }
+  group('web_active_sessions',active);
+  if(revoked.length)group('web_revoked_sessions',revoked);
+ });
+}
+function confirmDeviceRevoke(device,list){
+ dialog(t('account_revoke'),d=>{
+  append(d,E('p',device.label,'device-name'),E('p',t(device.current?'web_revoke_current_hint':'web_revoke_device_hint')));
+  const confirmation=form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+   try{await call('devices/revoke',{device_id:device.id,password:v.password.value});}finally{v.password.value='';}
+   d.close();
+   list.close();
+   if(device.current){clearIdentity();login();return;}
+   toast(t('account_done'));
+   await devices();
+  },t('account_revoke'));
+  confirmation.querySelector('button[type=submit]').classList.add('danger-action');
+ });
+}
 async function customerMfa(){const status=await call('mfa');dialog(t('account_mfa'),d=>{
  if(status.enabled)form(d,t('account_mfa_disable'),f=>({password:input(f,'password',t('family_old_password'),'password'),code:input(f,'code',t('family_code'))}),async v=>{await call('mfa/disable',{password:v.password.value,code:v.code.value});d.close();clearIdentity();login();toast(t('account_done'));});
  else form(d,t('account_mfa'),f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{const r=await call('mfa/begin',{password:v.password.value});replaceDialog(d,E('h2',t('account_mfa')),E('p',t('account_mfa_setup')),E('pre',r.totp_secret));form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password'),code:input(f,'code',t('family_code'))}),async fields=>{const value=await call('mfa/enable',{password:fields.password.value,enrollment:r.enrollment,code:fields.code.value});replaceDialog(d,E('h2',t('account_mfa_recovery')),E('pre',value.recovery_codes.join('\n')),button(t('close'),()=>{d.close();clearIdentity();login();}));});});
