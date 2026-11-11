@@ -35,6 +35,9 @@ assert.equal(parse('\tDate\tAmount\n\t2026-11-10\t-12.05')[0].value.amount,1205)
 const combined = parse('Date;Amount;Debit;Credit\n2026-11-10;12.05;12.05;0\n2026-11-10;13.00;12.05;0\n2026-11-10;-12.05;0;12.05');
 assert.deepEqual(combined.map(row=>row.error||row.value.kind),['expense','import_amount_invalid','import_amount_invalid']);
 assert.equal(parse('Date;Debit\ninvalid;12.05')[0].original.kind,'expense');
+assert.equal(parse('Date;Amount;Direction\n2026-11-10;-12.05;income')[0].error,'import_direction_conflict');
+assert.equal(parse('Date;Amount;Direction\n2026-11-10;+12.05;expense')[0].error,'import_direction_conflict');
+assert.equal(parse('Date;Amount;Direction\n2026-11-10;12.05;expense')[0].value.kind,'expense');
 assert.equal(parse('Date;Сумма платежа;Валюта операции\n2026-11-10;900;USD')[0].error,'import_currency_invalid');
 assert.equal(parse('Date;Сумма платежа;Валюта операции;Валюта платежа\n2026-11-10;900;USD;RUB')[0].value.currency,'RUB');
 

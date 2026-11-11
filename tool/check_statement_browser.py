@@ -155,7 +155,7 @@ def run(browser, backend, actor, workspace, origin):
 
     header = (710, [(30,'Date'),(125,'Description'),(320,'Amount'),(440,'Currency')])
     page_one = [header, (686, [(30,'2026-11-09'),(125,'PDF merchant'),(320,'-42.19'),(440,'RUB')])]
-    page_two = [header, (686, [(30,'2026-11-10'),(125,'PDF income'),(320,'+57.21'),(440,'RUB')]),
+    page_two = [header, (686, [(30,'13/11/26'),(125,'PDF income'),(320,'+57.21'),(440,'RUB')]),
                 (640, [(125,'Total'),(320,'15.02'),(440,'RUB')])]
     launch.click()
     upload('statement.pdf', statement_pdf(page_one,page_two))
@@ -192,7 +192,56 @@ def run(browser, backend, actor, workspace, origin):
     close()
     launch.click()
     upload('overlap.csv', 'Date;Amount;Currency;Description;Transaction ID\n2026-11-15;-1.02;RUB;Renamed by bank;another-id')
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
     expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    close()
+    collision = 'Date;Amount;Currency;Description;Transaction ID\n2026-11-16;-3.14;RUB;Reused bank ID;another-id'
+    launch.click()
+    upload('collision.csv', collision)
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    save([('RUB',314)], select=True)
+    close()
+    launch.click()
+    upload('collision.csv', collision)
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    close()
+
+    mixed = ('Date;Amount;Currency;Description;Transaction ID\n'
+             '2026-11-16;-3.14;RUB;First payment;shared-bank-id\n'
+             '2026-11-17;-5.25;RUB;Second payment;shared-bank-id')
+    launch.click()
+    upload('bank-id-reused-in-one-file.csv', mixed)
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_have_count(2)
+    save([('RUB',314),('RUB',525)], select=True)
+    close()
+    launch.click()
+    upload('second-payment-only.csv', mixed.splitlines()[0] + '\n' + mixed.splitlines()[2])
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    expect(dialog.locator('tbody input[type=checkbox]')).to_be_disabled()
+    close()
+
+    other_account = str(uuid4())
+    backend.batch(actor, workspace, [{
+        'id': str(uuid4()), 'action': 'record.put', 'record_id': other_account, 'revision': 0, 'kind': 'account',
+        'visibility': 'private', 'audience': [], 'data': {'name': 'Другой счёт', 'currency': 'RUB', 'opening_minor': 0},
+    }, {
+        'id': str(uuid4()), 'action': 'record.put', 'record_id': str(uuid4()), 'revision': 0, 'kind': 'transaction',
+        'visibility': 'private', 'audience': [],
+        'data': {'kind': 'expense', 'amount_minor': 102, 'currency': 'RUB', 'date': '2026-11-18',
+                 'label': 'Already on other account', 'account_id': other_account},
+    }])
+    page.evaluate('async () => {await refresh();render()}')
+    launch.click()
+    upload('account-switch.csv', 'Date;Amount;Currency;Description\n2026-11-18;-1.02;RUB;Already on other account')
+    row = dialog.locator('tbody tr')
+    row.locator('select').select_option(label='Основной счёт')
+    checkbox = row.get_by_role('checkbox')
+    expect(checkbox).to_be_checked()
+    checkbox.uncheck()
+    checkbox.check()
+    row.locator('select').select_option(label='Другой счёт')
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    expect(checkbox).not_to_be_checked()
     close()
 
     launch.click()

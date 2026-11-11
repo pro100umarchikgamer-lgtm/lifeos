@@ -300,6 +300,8 @@
         const explicit = /^(income|credit|crdt|deposit|dep|зачисление|доход|приход)$/.test(direction) ? 'income' :
           /^(expense|debit|dbit|payment|pos|расход|списание)$/.test(direction) ? 'expense' : '';
         const splitKind = hasDebit ? 'expense' : hasCredit ? 'income' : '';
+        if (!splitKind && mapping.direction==='signed' &&
+            ((explicit==='income' && amount<0) || (explicit==='expense' && /^\+/.test(raw)))) fail('import_direction_conflict');
         if(splitKind){
           const splitAmount = choose(amountCandidates(hasDebit?debit:credit,currency,mapping.decimal),
             decimal,'import_number_ambiguous','import_amount_invalid');

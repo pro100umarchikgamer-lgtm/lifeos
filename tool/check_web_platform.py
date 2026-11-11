@@ -111,6 +111,27 @@ def main():
             page.unroute('**/account/api/sync*', track_writes)
             assert len(writes) == 1, writes
             checks.append('accepted_task_recovers_without_resubmitting')
+
+            writes.clear()
+            page.route('**/account/api/sync*', fail_refresh)
+            page.get_by_role('button', name='Добавить', exact=True).click()
+            editor = page.get_by_role('dialog')
+            field = editor.get_by_label('Название задачи', exact=True)
+            field.fill('Accepted task survives refresh failure')
+            editor.get_by_role('button', name='Сохранить', exact=True).click()
+            retry = editor.get_by_role('button', name='Повторить', exact=True)
+            expect(retry).to_be_enabled()
+            expect(field).to_be_disabled()
+            expect(editor.get_by_text('Изменения сохранены. Повторите обновление списка.')).to_be_visible()
+            page.unroute('**/account/api/sync*', fail_refresh)
+            page.route('**/account/api/sync*', track_writes)
+            retry.click()
+            expect(editor).to_have_count(0)
+            expect(page.get_by_text('Accepted task survives refresh failure', exact=True)).to_be_visible()
+            page.unroute('**/account/api/sync*', track_writes)
+            assert len(writes) == 1, writes
+            checks.append('accepted_editor_locks_fields_until_refresh')
+
             page.get_by_label('Поиск задач',exact=True).fill('заказ')
             expect(page.get_by_text('Забрать заказ',exact=True)).to_be_visible()
             expect(page.get_by_text('Подготовить план на неделю',exact=True)).to_have_count(0)

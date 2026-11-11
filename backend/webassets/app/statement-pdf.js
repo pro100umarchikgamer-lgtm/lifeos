@@ -12,7 +12,7 @@ const FIELD = {
   bankId: /^(?:transaction id|operation id|bank reference|fitid|идентификатор операции|номер операции)$/u,
   direction: /^(?:direction|transaction type|debit credit|тип операции|вид операции|направление)$/u,
 };
-const DATE = /^(?:\d{4}-\d\d-\d\d|\d{1,2}[./-]\d{1,2}[./-]\d{4})(?=$|[T ])/;
+const DATE = /^(?:\d{4}-\d\d-\d\d|\d{1,2}[./-]\d{1,2}(?:[./-]|\s*')\s*(?:\d{4}|\d{2}))(?=$|[T ])/;
 const SUMMARY = /^(?:opening balance|closing balance|balance (?:brought|carried) forward|totals?|начальный остаток|конечный остаток|входящий остаток|исходящий остаток|итого|всего)(?:$|[ :])/iu;
 const BALANCE = /^(?:opening balance|closing balance|balance (?:brought|carried) forward|начальный остаток|конечный остаток|входящий остаток|исходящий остаток)[: ]*$/iu;
 const CURRENCY = '[A-Z]{3}|[€₽₸]';

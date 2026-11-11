@@ -15,6 +15,12 @@ const WEB_COPY={
  'uz-Cyrl':{web_calendar:'Тақвим',family_kind_event:'Тадбир',web_upcoming:'Кейинги 7 кун',web_no_events:'Ҳозирча тадбирлар йўқ. Муҳим ишлар учун вақт ажратинг.',web_all_tasks:'Барча вазифалар',web_task_search:'Вазифаларни қидириш',web_task_status:'Вазифа ҳолати',web_all:'Барчаси',web_no_results:'Ҳеч нарса топилмади',web_event_start:'Тадбир бошланиши',web_timezone:'IANA вақт минтақаси ёки device',web_all_day:'Кун бўйи',web_repeat:'Такрорлаш',web_interval:'Такрорлаш оралиғи',web_until:'Шу санагача такрорлаш',web_repeat_none:'Такрорланмасин',web_repeat_daily:'Ҳар куни',web_repeat_weekly:'Ҳар ҳафта',web_repeat_monthly:'Ҳар ой',web_repeat_yearly:'Ҳар йил',web_deleted_pending:'Ёзув ўчирилади',web_delete_failed:'Ўчириш тасдиқланмади. Қайта уринишдан олдин янгиланг.',web_previous:'Олдинги ой',web_next:'Кейинги ой',web_month:'Ой',web_agenda:'Кун тартиби',web_partial_short:'қисман таржима',web_locale_coverage:'Янги экранлар рус, инглиз ва ўзбек тилининг иккала ёзувида таржима қилинган. Қолган тилларда янги ёзувлар инглизча.',web_conflict:'Ёзув бошқа қурилмада ўзгарган. Таҳрирларингизни нусхаланг ва сервер нусхасини юкланг.',web_uncertain:'Сервер ёзувни сақлаган бўлиши мумкин. Шу тугма билан такрорланг — нусха яратилмайди.',web_server_error:'Хизмат вақтинча мавжуд эмас. Кейинроқ уриниб кўринг.',web_view_changed:'Макон ёки сеанс ўзгарган. Ёзувни қайта очинг.',web_currency_mismatch:'Валюта ҳисоб билан мос бўлсин. Бир хил валютадаги ўтказма суммалари тенг бўлиши керак.',web_transfer_accounts:'Ўтказма учун икки хил ҳисоб керак.',web_install_button:'ULADIM ўрнатиш',web_loading:'Макон юкланмоқда…',web_quick_task:'Нима қилиш керак?',web_add_task:'Вазифа қўшиш',web_online_status:'Ҳисобингиз орқали синхронланади',web_day:'Танланган кун',web_cancel:'Бекор қилиш'}
 };
 let deferredInstall=null;
+for(const [locale,message] of Object.entries({
+ ru:'Изменения сохранены. Повторите обновление списка.',
+ en:'Your changes were saved. Retry loading the list.',
+ 'uz-Latn':'O‘zgarishlar saqlandi. Ro‘yxatni qayta yuklang.',
+ 'uz-Cyrl':'Ўзгаришлар сақланди. Рўйхатни қайта юкланг.'
+})) WEB_COPY[locale].web_saved_refresh=message;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function dateString(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 function eventRow(o){const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');append(caption,E('h3',o.record.data.title),E('p',new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'))+' · '+(o.allDay?t('web_all_day'):o.time),'small'));append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));return row;}
@@ -131,9 +137,10 @@ function form(container,title,build,submit,submitLabel=t('save')){
   pending=true;b.disabled=true;status.textContent='';
   try{await submit(values);status.textContent=t('account_done');}
   catch(error){
-   fields.disabled=initiallyDisabled||!!error.uncertain;
-   b.textContent=error.uncertain?t('retry'):submitLabel;
-   status.textContent=error.uncertain?t('web_uncertain'):errorText(error);
+   const retry=error.uncertain||error.refreshOnly;
+   fields.disabled=initiallyDisabled||!!retry;
+   b.textContent=retry?t('retry'):submitLabel;
+   status.textContent=error.refreshOnly?t('web_saved_refresh'):error.uncertain?t('web_uncertain'):errorText(error);
    if(error.code==='unauthorized')report(error);
   }finally{b.disabled=false;pending=false;}
  });
@@ -451,7 +458,8 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    operation={id:crypto.randomUUID(),action:'record.put',record_id:r?.id||crypto.randomUUID(),revision:r?.revision||0,kind,visibility:v.visibility.value,audience:r?.audience||(currentSpace()?.role==='child'?[currentSpace().profile_id]:[]),data};
   }
   if(!accepted){try{await saveOperation(operation,workspace);accepted=true;}catch(error){if(!error.uncertain)operation=null;throw error;}}
-  await refresh();d.close();render();onSaved?.();
+  try{await refresh();}catch(error){throw {...error,refreshOnly:true};}
+  d.close();render();onSaved?.();
  });
  if(r)container.append(button(t('family_use_server'),async()=>{d.close();await refresh();render();}));
  if(r?.editable)container.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));
@@ -557,7 +565,15 @@ function drawChart(canvas,currency,rows=records('transaction')){
  values.forEach((v,i)=>{ctx.fillStyle=colors[i];ctx.fillText(t(i?'expense':'income'),24,48+i*135);ctx.fillRect(24,64+i*135,ratio(v)*650,44);ctx.fillStyle=style.getPropertyValue('--ink');ctx.fillText(money(v,currency),24,132+i*135);});
 }
 function createSpace(kind){let operation;const d=dialog(t(kind==='family'?'family_create':'web_personal_create'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:crypto.randomUUID(),action:'workspace.create',kind,name:v.name.value};try{await call('family',operation);}catch(e){if(!e.uncertain)operation=null;throw e;}state.space=operation.workspace_id;d.close();await refresh();render();}));}
-function acceptInvite(){const d=dialog(t('family_accept'),container=>form(container,'',f=>({invitation:input(f,'invitation',t('family_invitation'))}),async v=>{await call('invitations/accept',{id:crypto.randomUUID(),invitation:v.invitation.value});d.close();await refresh();render();}));}
+function acceptInvite(){
+ let operation,accepted=false;
+ const d=dialog(t('family_accept'),container=>form(container,'',f=>({invitation:input(f,'invitation',t('family_invitation'))}),async v=>{
+  operation??={id:crypto.randomUUID(),invitation:v.invitation.value};
+  if(!accepted){try{await call('invitations/accept',operation);accepted=true;}catch(error){if(!error.uncertain)operation=null;throw error;}}
+  try{await refresh();}catch(error){throw {...error,refreshOnly:true};}
+  d.close();render();
+ }));
+}
 function familyPanel(m){const c=card(t('family_account'));m.append(c);c.append(button(t('family_create'),()=>createSpace('family')),button(t('family_owner'),()=>createSpace('personal')),button(t('family_accept'),acceptInvite));if(!state.roster)return;const {space,members,profiles}=state.roster;for(const member of members){const row=E('div',undefined,'row');append(row,E('span',member.user_id===state.session.user_id?t('family_you'):member.user_id,'text'),E('span',t('family_'+member.role),'pill'));c.append(row);}if(space.kind==='family'&&['parent','owner'].includes(space.role))c.append(button(t('family_invite'),()=>dialog(t('family_invite'),container=>{let operation;form(container,'',f=>({email:input(f,'email',t('family_invite_email'),'email'),role:select(f,'role',t('family_role'),['adult','parent','child'].map(k=>[k,t('family_'+k)]),'adult'),profile:select(f,'profile',t('family_child'),[['',t('family_none')],...profiles.map(p=>[p.id,p.name])],'')}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:space.id,action:'invite.create',email:v.email.value,role:v.role.value,profile_id:v.role.value==='child'?v.profile.value:null};const invite=await call('family',operation);replaceDialog(container,E('h2',t('family_invite')),E('p',t('family_invite_hint')),E('pre',invite.invitation),button(t('close'),()=>container.close()));});})),button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));}));}
 function openSettings(section){
  state.settingsTab=section;

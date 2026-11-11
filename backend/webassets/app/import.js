@@ -8,7 +8,11 @@ function statementWorker(request){return new Promise((resolve,reject)=>{
  worker.onerror=()=>{finish();reject({code:'import_format'});};
  worker.postMessage(JSON.stringify(request));
 });}
-function statementKey(v,account){return JSON.stringify([account,v.kind,v.amount,v.currency,v.date,v.label.trim()]);}
+function statementKey(v,account){return JSON.stringify([account,v.kind,v.amount,v.currency,v.date,(v.label||'').trim()]);}
+function storedStatementKey(record){
+ const v=record.data;
+ return statementKey({kind:v.kind,amount:v.amount_minor,currency:v.currency,date:v.date,label:v.label},v.account_id);
+}
 async function statementHash(value){
  const bytes=await crypto.subtle.digest('SHA-256',typeof value==='string'?new TextEncoder().encode(value):value);
  return [...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,'0')).join('');
@@ -144,15 +148,9 @@ function importStatement() {
    catch(error){preview=[];results.replaceChildren();totals.replaceChildren();showError(error);}
    finally{running=false;updateControls();}
   }
-  function existingKeys(){
-   const keys=new Set();
-   for(const r of records('transaction')){
-    const v=r.data;keys.add(statementKey({kind:v.kind,amount:v.amount_minor,currency:v.currency,date:v.date,label:v.label},v.account_id));
-   }
-   return keys;
-  }
+  function existingTransactions(){return new Map(records('transaction').map(record=>[record.id,storedStatementKey(record)]));}
   async function identify(){
-   const known=new Set(state.records.map(record=>record.id)),existing=existingKeys(),bankIDs=new Map();
+   const known=existingTransactions(),existing=new Set(known.values()),bankIDs=new Map();
    for(const row of preview){
     if(!row.value)continue;
     const value=row.value;
@@ -163,9 +161,9 @@ function importStatement() {
     const key=statementKey(value,target.id);
     const bankKey=value.bankID?JSON.stringify([target.id,value.bankID]):null;
     if(bankKey){
-     const previous=bankIDs.get(bankKey);
-     if(previous){row.repeated=true;if(previous.key!==key){previous.row.repeated=true;previous.row.selected=false;}}
-     else bankIDs.set(bankKey,{row,key});
+     const keys=bankIDs.get(bankKey)||new Set();
+     row.repeated=keys.has(key);
+     keys.add(key);bankIDs.set(bankKey,keys);
     }
     row.key=key;
     row.bankKey=bankKey;
@@ -174,9 +172,16 @@ function importStatement() {
     await Promise.all(preview.slice(i,i+200).filter(row=>row.targetID&&row.value).map(async row=>{
      const identity=row.bankKey?['uladim-statement-bank-v1',row.bankKey]:['uladim-statement-file-v2',parsed.fingerprint,row.targetID,row.line];
      row.id=await statementID(JSON.stringify([user,workspace,...identity]));
-     row.imported=known.has(row.id);
-     row.duplicate=existing.has(row.key)&&!row.imported;
-     row.selected=!row.imported&&!row.repeated&&(row.selectionPreference??(!row.duplicate&&!parsed.needsReview));
+     const bankCollision=row.bankKey&&(bankIDs.get(row.bankKey).size>1||known.has(row.id)&&known.get(row.id)!==row.key);
+     if(row.bankKey&&known.get(row.id)!==row.key){
+      const alternate=await statementID(JSON.stringify([user,workspace,'uladim-statement-bank-collision-v1',row.bankKey,row.key]));
+      if(bankCollision||known.get(alternate)===row.key)row.id=alternate;
+     }
+     row.imported=known.get(row.id)===row.key;
+     row.duplicate=!!(bankCollision||existing.has(row.key))&&!row.imported;
+     row.selectionKey=JSON.stringify([row.key,row.id,row.duplicate]);
+     const preference=row.selectionPreference?.key===row.selectionKey?row.selectionPreference.checked:undefined;
+     row.selected=!row.error&&!row.imported&&!row.repeated&&(preference??(!row.duplicate&&!parsed.needsReview));
     }));
     ensureContext();
    }
@@ -241,7 +246,7 @@ function importStatement() {
     const cell=E('td'),check=E('input');check.type='checkbox';check.checked=!!item.selected;
     check.disabled=!!(item.error||item.imported||item.repeated||!item.targetID||pending);
     check.setAttribute('aria-label',copy('include')+' · '+item.line);
-    check.addEventListener('change',()=>{item.selectionPreference=check.checked;item.selected=check.checked;summary();updateControls();statusCell.firstChild.textContent=rowStatus(item);});
+    check.addEventListener('change',()=>{item.selectionPreference={key:item.selectionKey,checked:check.checked};item.selected=check.checked;summary();updateControls();statusCell.firstChild.textContent=rowStatus(item);});
     cell.append(check);
     const statusCell=E('td');statusCell.append(E('span',rowStatus(item)));
     const accountCell=E('td');
@@ -287,11 +292,18 @@ function importStatement() {
    try{
     if(!pending){
      await refresh();ensureContext();
-     const currentIDs=new Set(state.records.map(r=>r.id));
+     const current=existingTransactions();
+     const keys=new Set(current.values());
      const child=currentSpace()?.role==='child';
      pending=[];
      for(const row of preview.filter(item=>item.selected)){
-      if(currentIDs.has(row.id)){row.imported=true;row.selected=false;continue;}
+      if(current.has(row.id)){
+       row.imported=current.get(row.id)===row.key;
+       row.selected=false;
+       if(!row.imported)row.error='import_save_conflict';
+       continue;
+      }
+      if(!row.duplicate&&keys.has(row.key)){row.duplicate=true;row.selected=false;row.selectionPreference=null;continue;}
       const value=row.value;
       pending.push({row,operation:{id:crypto.randomUUID(),action:'record.put',record_id:row.id,revision:0,kind:'transaction',
        visibility:child?'shared':'private',audience:child?[currentSpace().profile_id]:[],
@@ -314,8 +326,8 @@ function importStatement() {
      pending.splice(0,batch.length);
      if(reconcile){
       await refresh();ensureContext();
-      const visible=new Set(state.records.map(record=>record.id));
-      for(const {row} of batch)if(row.error==='import_save_conflict'&&visible.has(row.id)){row.error=null;row.imported=true;}
+      const visible=existingTransactions();
+      for(const {row} of batch)if(row.error==='import_save_conflict'&&visible.get(row.id)===row.key){row.error=null;row.imported=true;}
      }
     }
     pending=null;commit.textContent=t('import_confirm');
@@ -369,6 +381,7 @@ const STATEMENT_COPY={
   import_row_length:'Сократите слишком длинное описание или проверьте идентификатор.',
   import_save_rejected:'Сервер отклонил строку. Проверьте счёт и права на запись.',
   import_save_conflict:'Запись изменилась на сервере. Обновите предпросмотр.',
+  import_direction_conflict:'Знак суммы и вид операции противоречат друг другу. Проверьте оба значения.',
   import_pdf_encrypted:'PDF защищён паролем. Сохраните незашифрованную копию или скачайте выписку в другом формате.',
   import_pdf_scanned:'В PDF нет текстового слоя. Скачайте текстовую выписку или CSV.',
   import_pdf_layout:'В таблице PDF не удалось надёжно выделить операции. Попробуйте CSV или XLSX.',
@@ -400,6 +413,7 @@ const STATEMENT_COPY={
   import_row_length:'Shorten the description or check the bank transaction ID.',
   import_save_rejected:'The server rejected this row. Check the account and your write access.',
   import_save_conflict:'The record changed on the server. Refresh the preview.',
+  import_direction_conflict:'The amount sign and transaction type disagree. Check both values.',
   import_pdf_encrypted:'This PDF is password-protected. Save an unencrypted copy or download another format.',
   import_pdf_scanned:'This PDF has no text layer. Download a text statement or CSV.',
   import_pdf_layout:'The PDF table could not be read reliably. Try CSV or XLSX.',
