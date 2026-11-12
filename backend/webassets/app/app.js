@@ -948,7 +948,17 @@ function finance(m){
  const rows=()=>records('transaction').filter(r=>(!accountFilter.value||r.data.account_id===accountFilter.value)&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(r.data.label+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
  const accounts=card(t('web_accounts'));accounts.classList.add('finance-accounts');details.append(accounts);
  accounts.id='finance-accounts';accounts.tabIndex=-1;
- for(const a of records('account')){const row=E('div',undefined,'account-balance');append(row,E('span',a.data.name,'text'),E('strong',money(balance(a),a.data.currency)),iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));accounts.append(row);}if(!records('account').length)accounts.append(E('p',t('empty_money')));accounts.append(addButton(t('family_kind_account'),()=>editRecord('account')));
+ const addAccount=addButton(t('family_kind_account'),()=>editRecord('account'));
+ addAccount.classList.add('secondary');
+ accounts.prepend(append(E('div',undefined,'finance-section-head'),accounts.firstElementChild,addAccount));
+ const accountRecords=records('account');
+ for(const a of accountRecords){
+  const row=E('div',undefined,'account-balance');
+  const name=append(E('div',undefined,'account-name'),icon('money'),E('span',a.data.name,'text'));
+  append(row,name,E('strong',money(balance(a),a.data.currency)),iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));
+  accounts.append(row);
+ }
+ if(!accountRecords.length)accounts.append(emptyPanel('money',t('empty_money')));
  const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');details.append(chart);const chartControls=E('div',undefined,'chart-controls');chart.append(chartControls);
  chart.id='finance-analysis';chart.tabIndex=-1;
  const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];const currency=select(chartControls,'chart-currency',t('currency'),currencies.map(c=>[c,c]),currencies[0]);const mode=select(chartControls,'chart-mode',t('web_chart_type'),[['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.chart);
