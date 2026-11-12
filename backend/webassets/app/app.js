@@ -862,13 +862,12 @@ function finance(m){
   link.href='#finance-'+id;
   sections.append(link);
  }
- m.append(sections);
  const grid=E('div',undefined,'finance-grid');
  const activity=E('div',undefined,'finance-activity'),details=E('aside',undefined,'finance-details');
  append(grid,activity,details);m.append(grid);
  const summary=card(t('web_finance_summary'));
  summary.classList.add('finance-overview');details.append(summary);
- const ledger=card(t('web_history'));ledger.classList.add('ledger');activity.append(ledger);
+ const ledger=card(t('web_history'));ledger.classList.add('ledger');append(activity,ledger,sections);
  ledger.id='finance-ledger';ledger.tabIndex=-1;
  const filterPanel=E('details',undefined,'finance-filter-panel');
  const filterLabel=E('summary',t('web_filters'));

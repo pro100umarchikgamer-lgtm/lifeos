@@ -45,7 +45,9 @@ function importStatement() {
   const controls=E('fieldset',undefined,'statement-controls');
   const account=select(controls,'import-account',t('family_account_select'),[],'');
   const fileOptions=E('details',undefined,'statement-file-options');
-  const fileTitle=E('summary',chooseStep);fileOptions.append(fileTitle);controls.append(fileOptions);
+  const fileTitle=E('summary');
+  const fileTitleLabel=E('span',chooseStep);
+  fileTitle.append(fileTitleLabel);fileOptions.append(fileTitle);controls.append(fileOptions);
   const file=input(fileOptions,'statement-file',t('choose_file'),'file','',false);
   // A native, unfiltered picker lets iPadOS file providers supply local documents.
   // The parser checks file contents independently.
@@ -71,7 +73,8 @@ function importStatement() {
    receipt.hidden=stage!==2;
    controls.hidden=stage===2||accounts.length===0;
    fileOptions.open=stage===0;
-   fileTitle.textContent=source?.name||chooseStep;
+   fileTitleLabel.textContent=source?.name||chooseStep;
+   fileTitleLabel.title=source?.name||'';
    totals.hidden=results.hidden=stage===2;
    actions.hidden=stage===2||accounts.length===0;
   }
