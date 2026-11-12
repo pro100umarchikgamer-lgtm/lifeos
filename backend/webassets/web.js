@@ -21,15 +21,39 @@ function panel(title,body){return add(el('section',undefined,'card'),el('h2',tit
 function field(form,name,label,type='text'){const id='field-'+name;const l=el('label',label);l.htmlFor=id;const input=el(name==='message'?'textarea':'input');input.id=id;input.name=name;if(name!=='message')input.type=type;input.required=true;if(type==='password')input.autocomplete='current-password';form.append(l,input);return input;}
 function form(title,fields,submit,run){const f=el('form',undefined,'panel');f.append(el('h2',title));const inputs={};for(const [name,label,type]of fields)inputs[name]=field(f,name,label,type);const message=el('p');message.setAttribute('role','status');const button=el('button',submit);button.type='submit';f.append(message,button);f.addEventListener('submit',async e=>{e.preventDefault();button.disabled=true;message.textContent='';try{await run(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));message.textContent=tr('account_done');}catch(error){message.className='error';message.textContent=error.message;}finally{button.disabled=false;}});app.append(f);return f;}
 function login(){
- if(staff)controlNavigation=null;document.body.dataset.auth='true';app.classList.add('auth');heading(staff?'ULADIM Control':tr('family_login'));
+ if(staff)controlNavigation=null;
+ document.body.dataset.auth='true';
+ app.classList.add('auth');
+ heading(staff?'ULADIM Control':tr('family_login'));
+ if(!staff){
+  app.classList.add('focus-login');
+  const brand=el('a','ULADIM','brand focus-login-brand');
+  brand.href='/';
+  app.firstElementChild.replaceWith(brand);
+ }
  const f=form('',[['email',tr('family_email'),'email'],['password',tr('web_password'),'password']],tr('family_login'),async b=>{
  let r;try{r=await api('login',b);}finally{f.elements.password.value='';b.password='';}
  if(r.mfa_required){loginMfa(r.challenge);return;}csrf=r.csrf;app.classList.remove('auth');await dashboard();
  });f.elements.email.autocomplete='username';
- if(!staff&&googleEnabled)action(tr('account_google_sign_in'),async()=>{const value=await api('google/start',{});location.assign(value.authorization_url);});
- if(!staff){action(tr('family_register'),registration);action(tr('family_recovery'),recovery);}authLanguages();
+ if(!staff){
+  f.querySelector('h2').remove();
+  if(googleEnabled){
+   const divider=el('div',({ru:'или','uz-Latn':'yoki','uz-Cyrl':'ёки'})[authLanguage]||'or','focus-login-divider');
+   divider.setAttribute('aria-hidden','true');
+   app.append(divider);
+   action(tr('account_google_sign_in'),async()=>{const value=await api('google/start',{});location.assign(value.authorization_url);});
+   app.lastElementChild.classList.add('focus-login-google');
+  }
+  const links=el('div',undefined,'focus-login-links');
+  action(tr('family_register'),registration,links);
+  action(tr('family_recovery'),recovery,links);
+  app.append(links);
+ }
+ authLanguages();
+ if(!staff)app.lastElementChild.classList.add('focus-login-language');
 }
 function loginMfa(challenge){
+ app.classList.remove('focus-login');
  heading(tr('account_mfa'),tr('web_mfa_hint'));
  const f=form('',[['code',tr('family_code'),'text']],tr('family_login'),async b=>{let r;try{r=await api('login/mfa',{challenge,code:b.code.trim()});}catch(e){if(e.code==='invalid_credentials')e.message=tr('web_mfa_hint');throw e;}finally{f.elements.code.value='';b.code='';}challenge='';csrf=r.csrf;app.classList.remove('auth');await dashboard();});
  f.elements.code.autocomplete='one-time-code';f.elements.code.spellcheck=false;f.elements.code.focus();action(tr('cancel'),()=>{challenge='';login();});
@@ -129,7 +153,9 @@ async function publicPage(config) {
 })();
 
 async function registration(){
- const config=await api('config');heading(tr('family_register'));
+ const config=await api('config');
+ app.classList.remove('focus-login');
+ heading(tr('family_register'));
  const fields=[['email',tr('family_email'),'email'],['password',tr('family_password'),'password']];if(!config.registration_open)fields.push(['invitation',tr('family_invitation'),'text']);
  const f=form('',fields,tr('family_register'),async b=>{const email=b.email;try{await api('signup',b);}finally{f.elements.password.value='';b.password='';}heading(tr('family_verify'),tr('family_verify_hint'));
  form('',[['code',tr('family_code'),'text']],tr('family_verify'),async code=>{await api('confirm-signup',{email,code:code.code.trim()});login();notice(tr('account_done'));});action(tr('ux3_resend_verification'),async()=>{await api('resend-signup',{email});notice(tr('family_verify_hint'));});});
@@ -137,7 +163,8 @@ async function registration(){
  f.elements.password.autocomplete='new-password';app.append(link(tr('account_privacy'),'/privacy',true));
 }
 
-function recovery(){heading(tr('family_recovery'));form('',[['email',tr('family_email'),'email']],tr('account_send'),async b=>{const email=b.email;await api('recovery',{email});heading(tr('family_recovery'),tr('family_recovery_hint'));const f=form('',[['code',tr('family_code'),'text'],['password',tr('family_new_password'),'password']],tr('save'),async value=>{try{await api('reset',{email,...value});}finally{f.elements.password.value='';f.elements.code.value='';value.password='';value.code='';}login();notice(tr('account_done'));});f.elements.code.autocomplete='one-time-code';f.elements.password.autocomplete='new-password';});}
+function recovery(){
+ app.classList.remove('focus-login');heading(tr('family_recovery'));form('',[['email',tr('family_email'),'email']],tr('account_send'),async b=>{const email=b.email;await api('recovery',{email});heading(tr('family_recovery'),tr('family_recovery_hint'));const f=form('',[['code',tr('family_code'),'text'],['password',tr('family_new_password'),'password']],tr('save'),async value=>{try{await api('reset',{email,...value});}finally{f.elements.password.value='';f.elements.code.value='';value.password='';value.code='';}login();notice(tr('account_done'));});f.elements.code.autocomplete='one-time-code';f.elements.password.autocomplete='new-password';});}
 
 async function accountPrivacy(){heading('Аккаунт и приватность');action('Двухфакторная защита',customerMfa);const status=await api('deletion');for(const transfer of status.incoming_transfers||[]){form('Принять владение: '+transfer.name,[['password','Ваш пароль','password']],'Принять владение семьёй',async b=>{await api('accept-transfer',{transfer_id:transfer.id,password:b.password});await accountPrivacy();});}form('Сменить пароль',[['old_password','Текущий пароль','password'],['new_password','Новый пароль: от 7 символов','password']],'Сменить и выйти',async b=>{await api('password',b);login();});form('Сменить почту',[['email','Новый адрес','email'],['password','Текущий пароль','password']],'Отправить код',async b=>{await api('email',b);heading('Подтвердить новую почту');form('Код из письма',[['code','Код','text']],'Подтвердить и выйти',async value=>{await api('confirm-email',{code:value.code,password:b.password});login();});});app.append(el('h2','Удаление облачного аккаунта'));notice('Запрос можно отменить в течение 24 часов. Локальная база Android и общие записи семьи сохраняются. Срок очистки резервных копий требует отдельной проверки оператором.');if(status.ownership_transfer_required.length){notice('Сначала передайте владение семейным пространством другому родителю с его подтверждением.');for(const family of status.ownership_transfer_required){if(family.eligible_parent_id)form('Передать владение: '+family.name,[['password','Ваш пароль','password']],'Запросить согласие другого родителя',async b=>{await api('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:b.password});notice('Запрос создан. Другой родитель может принять его в разделе приватности своего аккаунта.');});}}else if(status.request?.state==='pending'){notice('Запрос ожидает исполнения после '+new Date(status.request.due_at*1000).toLocaleString());form('Отменить запрос',[['password','Текущий пароль','password']],'Отменить удаление',async b=>{await api('cancel-deletion',b);await accountPrivacy();});}else{if(status.request?.state==='attention')notice('Для исполнения нужна отдельная проверка: общие ссылки или права изменились. Данные не удалены.');form('Подтвердить запрос удаления',[['password','Текущий пароль','password'],['confirmation','Введите DELETE для подтверждения','text']],'Запросить удаление',async b=>{await api('deletion',b);await accountPrivacy();});}}
 async function staffUsers(){heading('Пользователи','Поиск только по ID или почте. Личные записи не доступны.');form('Поиск',[['search','ID или почта','text']],'Найти',async b=>{const result=await api('users?search='+encodeURIComponent(b.search));const list=el('div',undefined,'grid');for(const user of result.users){const card=panel(user.email,user.verified?'Почта подтверждена':'Почта не подтверждена');action('Открыть аккаунт',()=>staffUser(user.id),card);list.append(card);}app.append(list);});}

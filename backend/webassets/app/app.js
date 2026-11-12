@@ -257,11 +257,37 @@ let refreshTail=Promise.resolve();
 function refresh(){const epoch=privateEpoch;const run=async()=>{if(epoch!==privateEpoch)return;state.busy=true;try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();}finally{if(epoch===privateEpoch)state.busy=false;}};const pending=refreshTail.then(run,run);refreshTail=pending.catch(()=>{});return pending;}
 async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();render();}
 function login(){
- root.replaceChildren();const m=E('main',undefined,'login');const brand=E('a','ULADIM','brand');brand.href='/';append(m,brand,E('h1',t('family_login')));root.append(m);
- form(m,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('web_password'),'password')}),async v=>{let r;try{r=await call('login',{email:v.email.value,password:v.password.value});}finally{v.password.value='';}if(r.mfa_required){mfaStep(r.challenge);return;}state.csrf=r.csrf;await start();},t('family_login'));
- if(state.googleEnabled)m.append(button(t('account_google_sign_in'),()=>beginGoogle()));
- const actions=E('div',undefined,'actions');append(actions,button(t('family_register'),signup),button(t('family_recovery'),recover));m.append(actions);language(m);
+ root.replaceChildren();
+ const m=E('main',undefined,'login focus-login');
+ const brand=E('a','ULADIM','brand focus-login-brand');
+ brand.href='/';
+ append(m,brand,E('h1',t('family_login')));
+ root.append(m);
+ form(m,'',f=>{
+  const email=input(f,'email',t('family_email'),'email');
+  email.autocomplete='username';
+  return {email,password:input(f,'password',t('web_password'),'password')};
+ },async v=>{
+  let r;
+  try { r=await call('login',{email:v.email.value,password:v.password.value}); }
+  finally { v.password.value=''; }
+  if(r.mfa_required){mfaStep(r.challenge);return;}
+  state.csrf=r.csrf;
+  await start();
+ },t('family_login'));
+ if(state.googleEnabled){
+  const divider=E('div',(SIGNUP_COPY[state.lang]||SIGNUP_COPY.en).or,'focus-login-divider');
+  divider.setAttribute('aria-hidden','true');
+  append(m,divider,button(t('account_google_sign_in'),()=>beginGoogle(),'focus-login-google'));
+ }
+ const actions=E('div',undefined,'focus-login-links');
+ append(actions,button(t('family_register'),signup),button(t('family_recovery'),recover));
+ m.append(actions);
+ const locale=E('div',undefined,'focus-login-language');
+ language(locale);
+ m.append(locale);
 }
+
 async function beginGoogle(invitation){
  const result=await call('google/start',invitation?{invitation}:{});
  location.assign(result.authorization_url);
