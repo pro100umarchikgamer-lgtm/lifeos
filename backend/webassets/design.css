@@ -997,7 +997,11 @@ body[data-design=clarity] .calendar-page .calendar-date.is-today{border-radius:8
   background:var(--ux-green);
 }
 .calendar-page .calendar-event-time{font-weight:650;font-variant-numeric:tabular-nums}
-.calendar-page .calendar-picker{border-top:1px solid var(--ux-border);margin-block-start:14px}
+.calendar-page .calendar-picker{
+  border-top:1px solid var(--ux-border);
+  margin-block-start:14px;
+  padding-inline:2px;
+}
 @media(min-width:900px){
   .calendar-page .calendar-layout:not(.calendar-day-layout){grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
   body[data-design=clarity] .calendar-page .calendar-layout:not(.calendar-day-layout) .calendar-agenda{
@@ -1067,7 +1071,7 @@ body[data-design=clarity] .finance-page .finance-overview .finance-total{
   grid-template-columns:minmax(0,1fr);
   gap:3px;
 }
-.finance-page .finance-overview .currency-code{display:block;color:var(--ux-ink);font-weight:650}
+body[data-design=clarity] .finance-page .finance-overview .currency-code{display:block;color:var(--ux-ink);font-weight:650}
 .finance-page .finance-overview .finance-total > div{
   display:flex;
   flex-wrap:wrap;
