@@ -977,9 +977,15 @@ function finance(m){
   accounts.append(row);
  }
  if(!accountRecords.length)accounts.append(emptyPanel('money',t('empty_money')));
- const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');details.append(chart);const chartControls=E('div',undefined,'chart-controls');chart.append(chartControls);
+ const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');details.append(chart);
+ chart.prepend(append(E('div',undefined,'finance-section-head'),chart.firstElementChild));
+ const chartControls=E('div',undefined,'chart-controls'),chartCurrency=E('div'),chartMode=E('div');
+ chart.append(append(chartControls,chartCurrency,chartMode));
  chart.id='finance-analysis';chart.tabIndex=-1;
- const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];const currency=select(chartControls,'chart-currency',t('currency'),currencies.map(c=>[c,c]),currencies[0]);const mode=select(chartControls,'chart-mode',t('web_chart_type'),[['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.chart);
+ const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];
+ const currency=select(chartCurrency,'chart-currency',t('currency'),currencies.map(c=>[c,c]),currencies[0]);
+ const mode=select(chartMode,'chart-mode',t('web_chart_type'),[['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.chart);
+ currency.disabled=mode.disabled=!currencies.length;
  const legend=E('div',undefined,'chart-legend');chart.append(legend);const canvas=E('canvas');canvas.width=720;canvas.height=320;canvas.setAttribute('role','img');chart.append(canvas);
  const budgets=card(t('web_finance_budgets'));budgets.classList.add('finance-budgets');details.insertBefore(budgets,chart);
  budgets.id='finance-budgets';budgets.tabIndex=-1;
@@ -1010,7 +1016,14 @@ function finance(m){
   const activeScope=[from.value? t('web_period_start')+' '+displayDate(from.value):'',to.value? t('web_period_end')+' '+displayDate(to.value):'',accountFilter.value?accountFilter.selectedOptions[0]?.textContent:''].filter(Boolean);
   if(activeScope.length)summary.append(E('p',activeScope.join(' · '),'small finance-scope'));
   for(const code of currencies){const values=financeTotals(filtered,code),row=E('div',undefined,'finance-total');append(row,E('span',code,'currency-code'),E('div',undefined,'income'),E('div',undefined,'expense'));row.children[1].append(E('span',t('income'),'small'),E('strong',money(values.income,code)));row.children[2].append(E('span',t('expense'),'small'),E('strong',money(values.expense,code)));summary.append(row);}if(!currencies.length)summary.append(E('p',t('empty_money')));summary.append(E('p',t('web_totals'),'small'));
-  const values=financeTotals(filtered,currency.value);legend.replaceChildren();if(currency.value){legend.append(E('span',t('income')+' · '+money(values.income,currency.value),'income'),E('span',t('expense')+' · '+money(values.expense,currency.value),'expense'));}
+  const values=financeTotals(filtered,currency.value);legend.replaceChildren();
+  if(currency.value){
+   for(const kind of ['income','expense']){
+    const item=E('div',undefined,'chart-legend-row '+kind);
+    append(item,E('span',t(kind)),E('strong',money(values[kind],currency.value)));
+    legend.append(item);
+   }
+  }else legend.append(emptyPanel('money',t('empty_money')));
   state.chart=mode.value;preferences();canvas.hidden=mode.value==='compact'||!currency.value;drawChart(canvas,currency.value,filtered);
   const transfers=records('transfer').filter(r=>(!accountFilter.value||[r.data.from_id,r.data.to_id].includes(accountFilter.value))&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(t('family_kind_transfer')+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
   const entries=[...filtered,...transfers].sort((a,b)=>b.data.date.localeCompare(a.data.date));
