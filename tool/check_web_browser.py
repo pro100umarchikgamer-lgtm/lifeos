@@ -28,7 +28,7 @@ def check_header_layout(page):
     for width in (320,390,430):
         page.set_viewport_size({'width':width,'height':844})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),(page.url,width)
-        assert page.locator('.brand').evaluate('''element => {
+        assert page.locator('.brand:visible').evaluate('''element => {
             const range=document.createRange();range.selectNodeContents(element.firstChild);
             return range.getClientRects().length===1;
         }'''),('wordmark wraps',width)
