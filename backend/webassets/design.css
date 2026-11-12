@@ -731,6 +731,43 @@ body[data-design=clarity] .settings-group .danger-text {
 body[data-design=clarity] .settings-content .settings-group {
   margin-bottom: 14px;
 }
+body[data-design=clarity] .settings-page .intro{
+  border-bottom:1px solid var(--ux-border);
+  padding-block-end:14px;
+}
+body[data-design=clarity] .settings-page .intro h1{
+  font:500 clamp(1.85rem,4vw,3.25rem)/1.08 Georgia,"Times New Roman",serif;
+}
+body[data-design=clarity] .settings-page .profile-summary{
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+body[data-design=clarity] .profile-summary h2{
+  font:600 clamp(1.36rem,2.5vw,1.85rem)/1.16 Georgia,"Times New Roman",serif;
+  margin:0 0 14px;
+}
+.profile-identity{margin:0;border-block:1px solid var(--ux-border);padding-block:14px}
+.profile-identity dt{font-size:.875rem;font-weight:650}
+.profile-identity dd{margin:3px 0 0;overflow-wrap:anywhere}
+body[data-design=clarity] .profile-summary .settings-row,
+body[data-design=clarity] .profile-summary .profile-logout{padding-inline:0}
+body[data-design=clarity] .profile-summary .profile-logout{color:var(--ux-muted);margin-block-start:10px}
+@media(min-width:760px){
+  .settings-page .settings-content{min-width:0;border-inline-start:1px solid var(--ux-border);padding-inline-start:clamp(14px,3vw,28px)}
+}
+@media(max-width:759px){
+  body[data-design=clarity] .settings-page .settings-navigation{gap:0}
+  body[data-design=clarity] .settings-page .settings-navigation button.settings-item{
+    border:0;
+    border-bottom:1px solid var(--ux-border);
+    border-radius:0;
+    padding-inline:0;
+    background:transparent;
+  }
+}
 
 @media (max-width: 1099px) {
   .calendar-layout { grid-template-columns: minmax(0, 1fr); }

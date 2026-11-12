@@ -1098,7 +1098,14 @@ async function account(m){
   if(section===key)item.setAttribute('aria-current','page');
   navigation.append(item);
  }
- if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),settingsRow(t('account_privacy'),()=>openSettings('security')),button(t('family_logout'),async()=>{await call('logout',{});clearNoteDrafts();clearTaskActions();clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
+ if(section==='profile'){
+  const c=card(t('profile'));c.classList.add('profile-summary');
+  const identity=append(E('dl',undefined,'profile-identity'),E('dt',t('family_email')),E('dd',state.session.email,'account-email'));
+  const logout=button(t('family_logout'),async()=>{await call('logout',{});clearNoteDrafts();clearTaskActions();clearIdentity();login();},'text-button profile-logout');
+  append(c,identity,settingsRow(t('account_privacy'),()=>openSettings('security')),logout);
+  content.append(c);
+  if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));
+ }
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);
