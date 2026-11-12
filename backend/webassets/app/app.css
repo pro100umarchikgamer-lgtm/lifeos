@@ -265,3 +265,21 @@ body[data-design=clarity] .registration-dialog :is(button,input,a):focus-visible
   .registration-dialog .registration-intro { margin-bottom: 16px; }
   .registration-dialog .registration-legal { margin-top: 8px; }
 }
+
+body[data-design=clarity] .registration-dialog.recovery-dialog .recovery-back {
+  display: block;
+  width: fit-content;
+  min-height: 44px;
+  margin: 12px auto 0;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--registration-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+body[data-design=clarity] .registration-dialog.recovery-dialog .dialog-head h2 {
+  font-size: clamp(34px, 8.8vw, 43px);
+  text-wrap: balance;
+}

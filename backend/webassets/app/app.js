@@ -1021,7 +1021,7 @@ const SIGNUP_COPY = {
  'uz-Cyrl': {intro: 'Email манзилингизни киритинг ва парол яратинг.', or: 'ёки', privacy: 'Махфийлик'}
 };
 
-function signupBrand(container) {
+function authDialogBrand(container) {
  container.querySelector('.dialog-head').prepend(E('span','ULADIM','registration-brand'));
 }
 
@@ -1030,7 +1030,7 @@ async function signup() {
  const copy=SIGNUP_COPY[state.lang]||SIGNUP_COPY.en;
  const d=dialog(t('family_register'),container=>{
   container.classList.add('registration-dialog');
-  signupBrand(container);
+  authDialogBrand(container);
   container.append(E('p',copy.intro,'registration-intro'));
 
   form(container,'',f=>{
@@ -1046,7 +1046,7 @@ async function signup() {
     await call('signup',{email,password:v.password.value,...(v.invitation?{invitation:v.invitation.value}:{})});
    } finally { v.password.value=''; }
    replaceDialog(container,E('h2',t('family_verify')),E('p',t('family_verify_hint'),'registration-intro'));
-   signupBrand(container);
+   authDialogBrand(container);
    form(container,'',f=>({code:input(f,'code',t('family_code'))}),async fields=>{
     await call('confirm-signup',{email,code:fields.code.value.trim()});
     fields.code.value='';
@@ -1072,7 +1072,40 @@ async function signup() {
  });
 }
 
-function recover(){const d=dialog(t('family_recovery'),container=>form(container,'',f=>({email:input(f,'email',t('family_email'),'email')}),async v=>{const email=v.email.value;await call('recovery',{email});replaceDialog(container,E('h2',t('family_recovery')),E('p',t('family_recovery_hint')));form(container,'',f=>({code:input(f,'code',t('family_code')),password:input(f,'new-password',t('family_new_password'),'password')}),async fields=>{await call('reset',{email,code:fields.code.value,password:fields.password.value});d.close();login();toast(t('account_done'));});}));}
+const RECOVERY_COPY = {
+ ru: ['Восстановление пароля','Введите почту, которую используете в ULADIM.','Если аккаунт существует, код придёт на эту почту.','Отправить код','Сохранить пароль','Вернуться ко входу'],
+ en: ['Reset your password','Enter the email you use for ULADIM.','If an account exists, a code will be sent to this email.','Send code','Save password','Back to sign in'],
+ 'uz-Latn': ['Parolni tiklash','ULADIM uchun ishlatadigan email manzilingizni kiriting.','Hisob mavjud bo‘lsa, shu manzilga kod yuboriladi.','Kodni yuborish','Parolni saqlash','Kirishga qaytish'],
+ 'uz-Cyrl': ['Паролни тиклаш','ULADIM учун ишлатадиган email манзилингизни киритинг.','Ҳисоб мавжуд бўлса, шу манзилга код юборилади.','Кодни юбориш','Паролни сақлаш','Киришга қайтиш']
+};
+
+function recover(){
+ const [title,intro,sent,send,save,back]=RECOVERY_COPY[state.lang]||RECOVERY_COPY.en;
+ const d=dialog(title,container=>{
+  container.classList.add('registration-dialog','recovery-dialog');
+  authDialogBrand(container);
+  container.append(E('p',intro,'registration-intro'));
+  const backToLogin=()=>container.append(button(back,()=>container.close(),'recovery-back'));
+  form(container,'',f=>({email:input(f,'email',t('family_email'),'email')}),async v=>{
+   const email=v.email.value;
+   await call('recovery',{email});
+   replaceDialog(container,E('h2',title),E('p',sent,'registration-intro'));
+   authDialogBrand(container);
+   form(container,'',f=>({
+    code:input(f,'code',t('family_code')),
+    password:input(f,'new-password',t('family_new_password'),'password')
+   }),async fields=>{
+    await call('reset',{email,code:fields.code.value,password:fields.password.value});
+    d.close();
+    login();
+    toast(t('account_done'));
+   },save);
+   backToLogin();
+  },send);
+  backToLogin();
+ });
+}
+
 function settingsRow(label, run, variant=''){
  const row=button(label,run,'settings-row '+variant);
  row.append(icon('forward'));

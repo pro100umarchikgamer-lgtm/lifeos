@@ -20,17 +20,20 @@ function notice(text){app.append(el('div',text,'notice'));}
 function panel(title,body){return add(el('section',undefined,'card'),el('h2',title),el('p',body));}
 function field(form,name,label,type='text'){const id='field-'+name;const l=el('label',label);l.htmlFor=id;const input=el(name==='message'?'textarea':'input');input.id=id;input.name=name;if(name!=='message')input.type=type;input.required=true;if(type==='password')input.autocomplete='current-password';form.append(l,input);return input;}
 function form(title,fields,submit,run){const f=el('form',undefined,'panel');f.append(el('h2',title));const inputs={};for(const [name,label,type]of fields)inputs[name]=field(f,name,label,type);const message=el('p');message.setAttribute('role','status');const button=el('button',submit);button.type='submit';f.append(message,button);f.addEventListener('submit',async e=>{e.preventDefault();button.disabled=true;message.textContent='';try{await run(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));message.textContent=tr('account_done');}catch(error){message.className='error';message.textContent=error.message;}finally{button.disabled=false;}});app.append(f);return f;}
+function focusAuthHeading(title,description){
+ heading(title,description);
+ app.classList.add('focus-login');
+ const brand=el('a','ULADIM','brand focus-login-brand');
+ brand.href='/';
+ app.firstElementChild.replaceWith(brand);
+}
+
 function login(){
  if(staff)controlNavigation=null;
  document.body.dataset.auth='true';
  app.classList.add('auth');
- heading(staff?'ULADIM Control':tr('family_login'));
- if(!staff){
-  app.classList.add('focus-login');
-  const brand=el('a','ULADIM','brand focus-login-brand');
-  brand.href='/';
-  app.firstElementChild.replaceWith(brand);
- }
+ if(staff)heading('ULADIM Control');
+ else focusAuthHeading(tr('family_login'));
  const f=form('',[['email',tr('family_email'),'email'],['password',tr('web_password'),'password']],tr('family_login'),async b=>{
  let r;try{r=await api('login',b);}finally{f.elements.password.value='';b.password='';}
  if(r.mfa_required){loginMfa(r.challenge);return;}csrf=r.csrf;app.classList.remove('auth');await dashboard();
@@ -163,8 +166,44 @@ async function registration(){
  f.elements.password.autocomplete='new-password';app.append(link(tr('account_privacy'),'/privacy',true));
 }
 
+const RECOVERY_COPY = {
+ ru: ['Восстановление пароля','Введите почту, которую используете в ULADIM.','Если аккаунт существует, код придёт на эту почту.','Отправить код','Сохранить пароль','Вернуться ко входу'],
+ en: ['Reset your password','Enter the email you use for ULADIM.','If an account exists, a code will be sent to this email.','Send code','Save password','Back to sign in'],
+ 'uz-Latn': ['Parolni tiklash','ULADIM uchun ishlatadigan email manzilingizni kiriting.','Hisob mavjud bo‘lsa, shu manzilga kod yuboriladi.','Kodni yuborish','Parolni saqlash','Kirishga qaytish'],
+ 'uz-Cyrl': ['Паролни тиклаш','ULADIM учун ишлатадиган email манзилингизни киритинг.','Ҳисоб мавжуд бўлса, шу манзилга код юборилади.','Кодни юбориш','Паролни сақлаш','Киришга қайтиш']
+};
+
 function recovery(){
- app.classList.remove('focus-login');heading(tr('family_recovery'));form('',[['email',tr('family_email'),'email']],tr('account_send'),async b=>{const email=b.email;await api('recovery',{email});heading(tr('family_recovery'),tr('family_recovery_hint'));const f=form('',[['code',tr('family_code'),'text'],['password',tr('family_new_password'),'password']],tr('save'),async value=>{try{await api('reset',{email,...value});}finally{f.elements.password.value='';f.elements.code.value='';value.password='';value.code='';}login();notice(tr('account_done'));});f.elements.code.autocomplete='one-time-code';f.elements.password.autocomplete='new-password';});}
+ const [title,intro,sent,send,save,back]=RECOVERY_COPY[authLanguage]||RECOVERY_COPY.en;
+ const recoveryHeading=description=>{
+  focusAuthHeading(title,description);
+  const h=app.querySelector('h1');
+  h.tabIndex=-1;
+  h.focus();
+ };
+ const backToLogin=()=>{
+  const links=el('div',undefined,'focus-login-links focus-recovery-links');
+  action(back,login,links);
+  app.append(links);
+ };
+ recoveryHeading(intro);
+ form('',[['email',tr('family_email'),'email']],send,async b=>{
+  const email=b.email;
+  await api('recovery',{email});
+  recoveryHeading(sent);
+  const f=form('',[['code',tr('family_code'),'text'],['password',tr('family_new_password'),'password']],save,async value=>{
+   try { await api('reset',{email,...value}); }
+   finally { f.elements.password.value='';f.elements.code.value='';value.password='';value.code=''; }
+   login();
+   notice(tr('account_done'));
+  });
+  f.querySelector('h2').remove();
+  f.elements.code.autocomplete='one-time-code';
+  f.elements.password.autocomplete='new-password';
+  backToLogin();
+ }).querySelector('h2').remove();
+ backToLogin();
+}
 
 async function accountPrivacy(){heading('Аккаунт и приватность');action('Двухфакторная защита',customerMfa);const status=await api('deletion');for(const transfer of status.incoming_transfers||[]){form('Принять владение: '+transfer.name,[['password','Ваш пароль','password']],'Принять владение семьёй',async b=>{await api('accept-transfer',{transfer_id:transfer.id,password:b.password});await accountPrivacy();});}form('Сменить пароль',[['old_password','Текущий пароль','password'],['new_password','Новый пароль: от 7 символов','password']],'Сменить и выйти',async b=>{await api('password',b);login();});form('Сменить почту',[['email','Новый адрес','email'],['password','Текущий пароль','password']],'Отправить код',async b=>{await api('email',b);heading('Подтвердить новую почту');form('Код из письма',[['code','Код','text']],'Подтвердить и выйти',async value=>{await api('confirm-email',{code:value.code,password:b.password});login();});});app.append(el('h2','Удаление облачного аккаунта'));notice('Запрос можно отменить в течение 24 часов. Локальная база Android и общие записи семьи сохраняются. Срок очистки резервных копий требует отдельной проверки оператором.');if(status.ownership_transfer_required.length){notice('Сначала передайте владение семейным пространством другому родителю с его подтверждением.');for(const family of status.ownership_transfer_required){if(family.eligible_parent_id)form('Передать владение: '+family.name,[['password','Ваш пароль','password']],'Запросить согласие другого родителя',async b=>{await api('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:b.password});notice('Запрос создан. Другой родитель может принять его в разделе приватности своего аккаунта.');});}}else if(status.request?.state==='pending'){notice('Запрос ожидает исполнения после '+new Date(status.request.due_at*1000).toLocaleString());form('Отменить запрос',[['password','Текущий пароль','password']],'Отменить удаление',async b=>{await api('cancel-deletion',b);await accountPrivacy();});}else{if(status.request?.state==='attention')notice('Для исполнения нужна отдельная проверка: общие ссылки или права изменились. Данные не удалены.');form('Подтвердить запрос удаления',[['password','Текущий пароль','password'],['confirmation','Введите DELETE для подтверждения','text']],'Запросить удаление',async b=>{await api('deletion',b);await accountPrivacy();});}}
 async function staffUsers(){heading('Пользователи','Поиск только по ID или почте. Личные записи не доступны.');form('Поиск',[['search','ID или почта','text']],'Найти',async b=>{const result=await api('users?search='+encodeURIComponent(b.search));const list=el('div',undefined,'grid');for(const user of result.users){const card=panel(user.email,user.verified?'Почта подтверждена':'Почта не подтверждена');action('Открыть аккаунт',()=>staffUser(user.id),card);list.append(card);}app.append(list);});}

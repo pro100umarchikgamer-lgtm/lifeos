@@ -1191,3 +1191,5 @@ body main.focus-login :is(a,button,input,select):focus-visible {
     margin-top: max(24px, env(safe-area-inset-top));
   }
 }
+
+body main.focus-login .focus-recovery-links { justify-content: center; margin-bottom: 0; }
