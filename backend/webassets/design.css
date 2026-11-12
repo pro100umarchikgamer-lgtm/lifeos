@@ -1107,8 +1107,24 @@ body[data-design=clarity] .finance-section-head h2{
 }
 .account-name .ui-icon{width:18px;height:18px;color:var(--ux-green)}
 .finance-accounts .account-balance strong{font-variant-numeric:tabular-nums}
-body[data-design=clarity] .account-editor .dialog-head h2{font-family:Georgia,"Times New Roman",serif}
-body[data-design=clarity] .account-editor button[type=submit]{width:100%;margin-block-start:8px}
+body[data-design=clarity] :is(.account-editor,.transaction-editor) .dialog-head h2{
+  font:600 clamp(1.4rem,3vw,1.9rem)/1.16 Georgia,"Times New Roman",serif;
+}
+body[data-design=clarity] :is(.account-editor,.transaction-editor) button[type=submit]{width:100%;margin-block-start:8px}
+.transaction-editor .transaction-pair{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:0 12px;
+}
+.transaction-editor .transaction-value{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+.transaction-editor :is(input,select){min-inline-size:0;max-inline-size:100%}
+body[data-design=clarity] .transaction-editor .dialog-head{margin-block-end:8px;padding-block:6px}
+body[data-design=clarity] .transaction-editor label{margin-block:8px 4px}
+.transaction-editor > button{margin-block-start:8px}
+.transaction-editor > .danger{margin-inline-start:8px}
+@media(max-width:450px){
+  .transaction-editor .transaction-context{grid-template-columns:minmax(0,1fr)}
+}
 .finance-page .ledger .finance-filter-panel {
   border:1px solid var(--ux-border);
   border-radius:9px;

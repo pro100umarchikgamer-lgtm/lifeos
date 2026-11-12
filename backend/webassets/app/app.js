@@ -696,6 +696,7 @@ const NOTE_DRAFT_COPY={
  'uz-Cyrl':['Қораламани давом эттириш','Қоралама шу варақда сақланади.','Браузер қораламани шу варақда сақлай олмади.']
 };
 const NOTE_SEARCH_COPY={ru:'Поиск заметок',en:'Search notes','uz-Latn':'Qaydlarni qidirish','uz-Cyrl':'Қайдларни қидириш'};
+const TRANSACTION_TITLE={ru:'Операция',en:'Transaction','uz-Latn':'Operatsiya','uz-Cyrl':'Операция'};
 const noteDraftPrefix=()=>state.session?.user_id?'uladim-note-draft:'+state.session.user_id+':':'';
 function noteDraftKey(record){
  const prefix=noteDraftPrefix();
@@ -766,7 +767,7 @@ async function saveOperation(operation,workspace=state.space){
 function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  const workspace=state.space,epoch=privateEpoch,taskKey=kind==='task'&&!r?taskActionKey('create'):'';
  const pendingTask=readTaskAction(taskKey);
- const d=dialog(t('family_kind_'+kind),container=>{
+ const d=dialog(kind==='transaction'?(TRANSACTION_TITLE[state.lang]||TRANSACTION_TITLE.en):t('family_kind_'+kind),container=>{
  container.classList.add('record-editor',kind+'-editor');
  const draftKey=kind==='note'&&(!r||r.editable)?noteDraftKey(r):'';
  const draft=readNoteDraft(draftKey);
@@ -822,6 +823,14 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    fields.direction=select(f,'direction',t('family_kind_transaction'),[['expense',t('expense')],['income',t('income')]],data.kind||'expense');
    fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());fields.label=input(f,'label',t('family_name'),'text',data.label||'',false);
    fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency])],data.account_id||'');fields.account.addEventListener('change',()=>{const account=records('account').find(a=>a.id===fields.account.value);if(account)fields.currency.value=account.data.currency;});
+   const pair=(className,...controls)=>{
+    const row=E('div',undefined,'transaction-pair '+className);
+    for(const control of controls)row.append(append(E('div'),control.previousElementSibling,control));
+    return row;
+   };
+   append(f,pair('transaction-context',fields.direction,fields.account),
+    pair('transaction-value',fields.amount,fields.currency),fields.date.previousElementSibling,fields.date,
+    fields.label.previousElementSibling,fields.label);
   }
   if(kind==='budget'){fields.period=select(f,'period',t('family_period'),['week','month','year','custom'].map(k=>[k,t('family_'+k)]),data.period||'month');fields.start=input(f,'start',t('family_start'),'date',data.start_on||localDate());fields.end=input(f,'end',t('family_end'),'date',data.end_on||'',false);fields.rollover=select(f,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');}
   if(kind==='transfer'){if(records('account').length<2)f.append(E('p',t('web_transfer_accounts'),'error'));const accounts=records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency]);fields.from=select(f,'from',t('family_from'),accounts,data.from_id||accounts[0]?.[0]);fields.to=select(f,'to',t('family_to'),accounts,data.to_id||accounts[1]?.[0]);fields.received=input(f,'received',t('received_amount'),'text',decimalInput(data.received_minor||0,records('account').find(a=>a.id===data.to_id)?.data.currency||'RUB'));fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());}
