@@ -1,0 +1,9 @@
+# ULADIM Focus continuation
+
+Production is `a05ac09def36bb9b4aaf71eb4da626352c54d2d6` at <https://getuladim.space/app/>. This release includes the public homepage, sign-up, sign-in, password recovery, Today and Tasks. Hostinger reported successful activation. A fresh browser confirmed the matching JavaScript, CSS, and migration to the `uladim-interface-v30-focus-tasks` service worker cache. The preceding `54edbc6` configuration and image were retained for rollback.
+
+Continue on `work/uladim-web-platform`, PR [#3](https://github.com/pro100umarchikgamer-lgtm/lifeos/pull/3). `0e9e2fa` includes Calendar, Notes, the Finance overview and the Firefox date-picker fix. [Web CI and CodeQL passed](https://github.com/pro100umarchikgamer-lgtm/lifeos/actions/runs/43156769791). Later commits cover accounts, transaction forms, budgets, analytics, statement review, profile, security, devices, family, personal import, public information pages, and the appearance, access and support panels. See `git log --oneline a05ac09..HEAD` for the separate checkpoints.
+
+Targeted browser checks covered the calendar modes and native date input, note draft recovery, exact account and operation amounts, budget limits, chart themes, bank import in Chromium, Firefox and WebKit, selected-device revocation, family creation, personal import across sessions, and public information pages at mobile sizes. The 167 bank operations and six personal records were written to disposable test databases.
+
+The temporary Hostinger SSH key expired after the Tasks release. Use the existing authorized Codespace and [Hostinger release process](README.md) once an authorized session is available. Check the exact candidate and required CI before activation, verify a fresh encrypted backup and rollback, then verify the public asset hashes and service worker. Existing registration, payments, administrative access, and Android settings are outside this UI release.

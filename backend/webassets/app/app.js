@@ -1107,6 +1107,7 @@ async function account(m){
  title(m,pageTitle[section]||'account_manage');m.classList.add('settings-page');
  m.dataset.settingsDetail=String(Boolean(state.settingsTab));
  const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
+ content.dataset.section=section;
  navigation.setAttribute('aria-label',t('account_manage'));
  const back=button(t('web_back_settings'),()=>openSettings(''),'settings-back text-button');
  back.prepend(icon('back'));append(layout,navigation,content);append(m,back,layout);
