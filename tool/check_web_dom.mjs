@@ -30,7 +30,8 @@ try{
  w.document.querySelector('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
  await wait(()=>w.document.querySelector('.nav'));
  const home=w.document.querySelector('.today-page');
- assert(home.querySelector('.today-main .today-notes'),'Today notes follow tasks in the main column');
+ assert(home.querySelector('.today-grid > .today-notes'),'Today notes have their own grid area');
+ assert.equal(home.querySelector('.today-side').firstElementChild.classList.contains('today-finance'),true,'Finance starts the Today side column');
  assert(home.querySelector('.today-side .today-agenda'),'Today schedule belongs in the side column');
  button('История операций',home).click();
  const initialLedger=w.document.querySelector('#finance-ledger');

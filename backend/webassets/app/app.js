@@ -25,6 +25,13 @@ for(const [locale,message] of Object.entries({
  'uz-Cyrl':'Ўзгаришлар сақланди. Рўйхатни қайта юкланг.'
 })) WEB_COPY[locale].web_saved_refresh=message;
 for(const [locale,message] of Object.entries({ru:'Итого',en:'Net','uz-Latn':'Jami','uz-Cyrl':'Жами'}))WEB_COPY[locale].web_today_net=message;
+for(const [locale,copy] of Object.entries({
+ ru:['Расписание','{done} из {total}'],en:['Schedule','{done} of {total}'],
+ 'uz-Latn':['Kun tartibi','{total} tadan {done} ta'],'uz-Cyrl':['Кун тартиби','{total} тадан {done} та']
+})){
+ WEB_COPY[locale].web_today_schedule=copy[0];
+ WEB_COPY[locale].web_today_progress=copy[1];
+}
 for(const [locale,[retry,create,pending]] of Object.entries({
  ru:['Сохранение не подтверждено','Повторить создание','Действие сохранено только до перезагрузки.'],
  en:['Save unconfirmed','Retry creating task','This action is only available until reload.'],
@@ -416,16 +423,16 @@ function today(m){
  const occurrences=ULADIMDomain.occurrences(records('event'),day,dateString(end));
  const dayEvents=occurrences.filter(o=>o.day===day),upcoming=occurrences.filter(o=>o.day!==day);
  const grid=E('div',undefined,'today-grid');
- const main=E('div',undefined,'today-main'),side=E('div',undefined,'today-side');
- append(grid,main,side);m.append(grid);
+ const side=E('div',undefined,'today-side');
+ m.append(grid);
  const a=card(t('open_tasks'));
  a.classList.add('today-tasks');
  const progress=E('progress');progress.max=tasks.length||1;progress.value=done;
  progress.setAttribute('aria-label',t('completed')+' '+done+' / '+tasks.length);
- const progressBox=E('div',undefined,'today-progress');
- append(progressBox,E('span',t('completed')+' · '+done+' / '+tasks.length,'small'),progress);
  const taskHead=E('div',undefined,'today-task-head');
- append(taskHead,a.firstElementChild,progressBox);a.prepend(taskHead);
+ const count=t('web_today_progress').replace('{done}',done).replace('{total}',tasks.length);
+ append(taskHead,a.firstElementChild,E('span',count,'small'));
+ a.prepend(append(E('div',undefined,'today-progress'),taskHead,progress));
  const quick=E('form',undefined,'quick-capture'),field=E('input');
  field.name='quick-task';field.placeholder=t('web_quick_task');field.setAttribute('aria-label',t('web_quick_task'));
  field.maxLength=2000;field.required=true;field.enterKeyHint='done';
@@ -492,9 +499,20 @@ function today(m){
  const taskActions=E('div',undefined,'task-actions');
  taskActions.append(button(t('web_all_tasks'),()=>openTabSection('tasks','main h1'),'text-button'));
  if(!pendingCreate&&!draft.operation)taskActions.append(button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));
- a.append(taskActions);main.append(a);
+ a.append(taskActions);append(grid,a,side);
+
+ const finance=card(t('finances'));
+ finance.classList.add('today-finance');
+ const financeHead=E('div',undefined,'today-finance-head');
+ const history=button(t('web_history'),()=>openTabSection('money','#finance-ledger'),'text-button');
+ append(financeHead,finance.firstElementChild,history);
+ finance.append(financeHead);
+ summaries(finance);
+ finance.append(button(t('web_add_operation'),()=>editRecord('transaction'),'text-button today-add-operation'));
+ side.append(finance);
+
  if(dayEvents.length){
-  const schedule=card(t('web_calendar')+' · '+t('today'));
+  const schedule=card(t('web_today_schedule'));
   schedule.classList.add('today-schedule');
   const timeline=E('ol',undefined,'today-timeline');
   for(const o of dayEvents){
@@ -513,9 +531,11 @@ function today(m){
  const monday=offsetDate(currentDay,-((currentDay.getDay()+6)%7));
  for(let i=0;i<7;i++){
   const date=offsetDate(monday,i),key=dateString(date);
-  const control=button(String(date.getDate()),()=>{
+  const control=button(undefined,()=>{
    state.calendarDay=key;calendarMode='day';openTabSection('calendar','.calendar-agenda');
   },'secondary');
+  const weekday=date.toLocaleDateString(state.lang,{weekday:'short'});
+  append(control,E('span',weekday,'today-weekday'),E('strong',String(date.getDate())));
   control.setAttribute('aria-label',date.toLocaleDateString(state.lang,{weekday:'long',day:'numeric',month:'long'}));
   if(key===day)control.setAttribute('aria-current','date');
   week.append(control);
@@ -529,22 +549,13 @@ function today(m){
  agenda.append(agendaActions);
  side.append(agenda);
 
- const finance=card(t('finances'));
- finance.classList.add('today-finance');
- summaries(finance);
- const financeActions=E('div',undefined,'task-actions');
- append(financeActions,button(t('web_history'),()=>openTabSection('money','#finance-ledger'),'text-button'),
-  button(t('web_add_operation'),()=>editRecord('transaction'),'text-button'));
- finance.append(financeActions);
- side.append(finance);
-
  const notes=card(t('recent_notes'));
  notes.classList.add('today-notes');
  const recent=records('note').sort((a,b)=>b.seq-a.seq).slice(0,2);
  for(const r of recent)notes.append(button(r.data.body.split('\n')[0].slice(0,110)||t('family_kind_note'),()=>editRecord('note',r),'note-link'));
  if(!recent.length)notes.append(E('p',t('empty_notes'),'empty'));
  notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));
- main.append(notes);
+ grid.append(notes);
 
 }
 function taskRow(r){
