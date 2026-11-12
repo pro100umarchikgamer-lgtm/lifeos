@@ -648,12 +648,21 @@ function listTasks(m){
  const filters=E('div',undefined,'task-filters'),queryBox=E('div'),statusBox=E('div');append(filters,queryBox,statusBox);m.append(filters);
  const query=input(queryBox,'task-search',t('web_task_search'),'search',state.taskQuery,false);
  const status=select(statusBox,'task-status',t('web_task_status'),[['all',t('web_all')],['open',t('open_tasks')],['done',t('completed')]],state.taskStatus);
- const c=card();c.classList.add('task-list');m.append(c);
+ const c=E('div',undefined,'task-list');m.append(c);
  const draw=()=>{
   state.taskQuery=query.value;state.taskStatus=status.value;c.replaceChildren();
   const available=records('task'),rows=ULADIMDomain.tasks(available,query.value,status.value);
-  for(const r of rows.sort((a,b)=>a.data.completed-b.data.completed))c.append(taskRow(r));
-  if(!rows.length)c.append(emptyPanel('tasks',t(available.length?'web_no_results':'empty_tasks')));
+  if(!rows.length){c.append(emptyPanel('tasks',t(available.length?'web_no_results':'empty_tasks')));return;}
+  for(const [name,completed] of [['open_tasks',false],['completed',true]]){
+   const groupRows=rows.filter(r=>Boolean(r.data.completed)===completed);
+   if(!groupRows.length)continue;
+   const group=E('section',undefined,'task-group');
+   const heading=E('h2',t(name));heading.id='tasks-'+name;
+   group.setAttribute('aria-labelledby',heading.id);
+   group.append(append(E('div',undefined,'task-group-head'),heading,E('span',String(groupRows.length),'task-group-count')));
+   for(const record of groupRows)group.append(taskRow(record));
+   c.append(group);
+  }
  };
  query.addEventListener('input',draw);status.addEventListener('change',draw);draw();
 }

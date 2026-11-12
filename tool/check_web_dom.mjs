@@ -40,7 +40,10 @@ try{
  assert(w.document.querySelector('.finance-navigation a[href="#finance-accounts"]'),'Finance exposes direct links to its sections');
  button('Сегодня').click();
  button('Все задачи',w.document.querySelector('.today-page')).click();
+ assert(w.document.querySelector('#tasks-open_tasks').closest('.task-group').textContent.includes('Подготовить план'));
+ assert(w.document.querySelector('#tasks-completed').closest('.task-group').textContent.includes('Забрать заказ'));
  const search=w.document.querySelector('[name=task-search]');search.value='заказ';search.dispatchEvent(new w.Event('input'));
+ assert(!w.document.querySelector('#tasks-open_tasks'),'Empty task groups are omitted after filtering');
  assert(w.document.querySelector('main').textContent.includes('Забрать заказ'));assert(!w.document.querySelector('main').textContent.includes('Подготовить план'));
  change(w.document.querySelector('[name=task-status]'),'open');assert(!w.document.querySelector('main').textContent.includes('Забрать заказ'));
  button('Календарь').click();
