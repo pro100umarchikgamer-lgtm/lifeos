@@ -828,3 +828,21 @@ body[data-design=clarity] .calendar-modes button[aria-pressed=true],body[data-de
  body[data-design=clarity] .today-page .today-grid .today-agenda{order:3}
  body[data-design=clarity] .today-page .today-grid .today-notes{order:4}
 }
+
+.today-task-head{display:flex;justify-content:space-between;align-items:start;gap:8px;flex-wrap:wrap}
+.today-task-head h2{margin:0}
+.today-task-head .today-progress{margin:0}
+.quick-capture-status{margin:4px 0 10px;color:var(--ux-muted);font-size:.875rem;line-height:1.45}
+.quick-capture-status[hidden]{display:none}
+@media(max-width:759px){
+ body[data-design=clarity] header .workspace{width:auto;max-width:min(68%,22rem);min-width:0}
+ body[data-design=clarity] .today-page .intro{margin-bottom:12px}
+ body[data-design=clarity] .today-page .today-grid .card{padding:13px 14px!important}
+ body[data-design=clarity] .today-page .today-grid .today-task-head h2{margin-bottom:0}
+ .today-page .today-task-head{margin-bottom:7px}
+ .today-page .today-task-head .today-progress{min-width:0}
+ .today-page .today-tasks .task-actions,.today-page .today-finance .task-actions{gap:2px 8px}
+ .today-page .today-tasks .task-actions button,.today-page .today-finance .task-actions button{padding-inline:0}
+ .today-page .today-finance .today-money-row{gap:4px 8px}
+ .today-page .today-finance .today-money-row>.total{padding-block:5px}
+}

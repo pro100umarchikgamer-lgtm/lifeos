@@ -39,12 +39,94 @@ function action(label,run,parent=app){const button=el('button',label,'secondary'
 function showObject(value){const pre=el('pre',JSON.stringify(value,null,2));app.append(pre);}
 async function support(){heading('Поддержка','Сообщайте только сведения, которыми хотите поделиться. Не отправляйте пароли, коды, банковские выписки или личные документы.');const result=await api('support');for(const ticket of result.tickets){const row=add(el('section',undefined,'card'),el('h2',ticket.subject),el('p',ticket.category+' · '+ticket.state));action('Открыть обращение',async()=>{const r=await api('thread?id='+encodeURIComponent(ticket.id));heading(ticket.subject);for(const m of r.messages)app.append(panel(m.is_staff?'Поддержка':'Вы',m.body));form('Ответить',[['message','Сообщение','text']],'Отправить',async b=>{await api(staff?'support/reply':'support/reply',{...b,ticket_id:ticket.id,state:staff?'waiting':'open'});await support();});},row);app.append(row);}if(!staff)form('Новое обращение',[['subject','Тема','text'],['message','Сообщение','text']],'Отправить',async b=>{await api('support',{...b,category:'other'});await support();});}
 async function dashboard(){const session=await api('session');csrf=session.csrf;if(!staff){location.replace('/app');return;}delete document.body.dataset.auth;heading(staff?'Обзор сервиса':'Ваш ULADIM',staff?'Операционные показатели без доступа к личным записям пользователей.':session.email);const tabs=el('div',undefined,'tabs');app.append(tabs);action('Выйти',async()=>{await api('logout',{});csrf='';login();},tabs);if(staff){controlNavigation=makeControlNavigation(session,tabs);if(session.permissions.includes('dashboard.read')){const data=await api('dashboard');const grid=el('div',undefined,'grid metrics');for(const [key,value]of Object.entries(data)){if(typeof value==='number'||value===null)grid.append(metricCard(key,value));}app.append(grid);}else notice('Выберите доступный раздел.');}else{action('Поддержка',support,tabs);action('Аккаунт и приватность',accountPrivacy,tabs);const ent=await api('entitlements');const grid=el('div',undefined,'grid');grid.append(panel('Ваш доступ: '+ent.tier,ent.billing_managed_by?'Управляется через '+ent.billing_managed_by:'Платёж не оформлен. Текущий доступ не означает платную подписку.'));grid.append(panel('Данные на устройстве','Личные записи остаются в зашифрованной базе Android. Кабинет не предоставляет к ним доступ.'));app.append(grid);const devices=await api('devices');app.append(el('h2','Устройства'));for(const device of devices.devices){const row=add(el('div',undefined,'row'),el('span',device.label||'Устройство'),el('span',new Date(device.last_seen_at*1000).toLocaleString(),'badge'));if(!device.revoked_at)action('Отозвать доступ',async()=>{heading('Отозвать доступ устройства');form(device.label,[['password','Ваш пароль','password']],'Подтвердить отзыв',async b=>{await api('devices/revoke',{device_id:device.id,password:b.password});await dashboard();});},row);app.append(row);}notice('Покупки пока отключены. Free, Plus и Premium используют единый серверный каталог.');}}
-async function publicPage(){const path=location.pathname;if(['/privacy','/terms'].includes(path)){legalPage(path);return;}if(path==='/early-access'){await earlyAccess();return;}if(path==='/docs'){heading('Порядок в ваших делах','Today, задачи, заметки, счета и семейные пространства используют один аккаунт и серверные права. Веб-версия работает онлайн; Android хранит локальные записи в зашифрованной базе.');app.append(panel('Начните с одной записи','Создайте личное пространство, затем добавьте задачу, заметку или финансовый счёт. Для семьи создайте отдельное пространство и пригласите близких.'));installGuide(app);importGuide(app);app.append(link('Начать бесплатно','/app?action=signup'));return;}if(path==='/faq'){importFaq(app);return;}if(path==='/account'){try{await dashboard();}catch(e){if((e.code==='unauthorized'||e.code==='staff_unauthorized'))login();else throw e;}return;}if(path==='/'){await landing();return;}if(path==='/plans'){heading('Free, Plus, Premium','Выбирайте по действующим возможностям. Автоматических списаний нет.');await planComparison(app);app.append(link('Начать бесплатно','/app?action=signup'));return;}const pages={
-'/support':['Поможем разобраться','Войдите в аккаунт, чтобы создать обращение и видеть ответ. Передача диагностических данных не выполняется автоматически.','Не отправляйте пароли, одноразовые коды, личные документы и банковские выписки.'],
-'/delete-account':['Удаление аккаунта','Удаление облачного аккаунта и очистка локальной базы — разные действия. Эта операция не должна удалять данные других участников семьи.','Запрос на удаление доступен в кабинете и имеет 24-часовой срок отмены. Владение семьёй нужно заранее передать с согласием второго родителя. Сроки очистки резервных копий ещё не подтверждены.'],
-'/status':['Состояние сервиса','Если страница не загружается или синхронизация не завершается, повторите действие после восстановления соединения и обратитесь в поддержку. Эта страница не показывает внутренние метрики сервера.','Локальные функции Android работают независимо от облачного аккаунта.'],
-'/download':['Android-приложение','Новая подписанная сборка будет доступна после полного CI и проверки обновления с сохранением данных.','Ссылка на непроверенный APK не публикуется.']};const page=pages[path];heading(page[0],page[1]);app.append(panel('Что важно знать',page[2]));if(path==='/support'||path==='/delete-account')app.append(link('Открыть аккаунт','/account'));}
-(async()=>{try{authPacks=await (await fetch('/assets/locales.json',{cache:'no-store'})).json();if(!authPacks[authLanguage])authLanguage='ru';if(!staff){const config=await api('config');googleEnabled=Boolean(config.google_enabled);}if(staff){try{await dashboard();}catch(e){if((e.code==='unauthorized'||e.code==='staff_unauthorized'))login();else throw e;}}else await publicPage();}catch(e){heading('Не удалось загрузить');notice(e.message);}})();
+function publicNavigation(path) {
+ const header=document.querySelector('body > header');
+ const nav=header.querySelector('nav');
+ const signIn=nav.querySelector('a[href="/account"]');
+ const apps=el('a','Приложения');
+ apps.href='/download';
+ nav.insertBefore(apps,signIn);
+ nav.id='public-navigation';
+ for(const entry of nav.querySelectorAll('a')) {
+  if(entry.pathname===path)entry.setAttribute('aria-current','page');
+ }
+
+ const controls=el('div',undefined,'public-header-controls');
+ const mobileSignIn=signIn.cloneNode(true);
+ const toggle=el('button','Меню','public-menu-toggle');
+ toggle.type='button';
+ toggle.setAttribute('aria-controls',nav.id);
+ toggle.setAttribute('aria-expanded','false');
+ add(controls,mobileSignIn,toggle);
+ header.insertBefore(controls,nav);
+ header.classList.add('public-header');
+
+ const close=()=>toggle.setAttribute('aria-expanded','false');
+ toggle.addEventListener('click',()=>{
+  toggle.setAttribute('aria-expanded',String(toggle.getAttribute('aria-expanded')!=='true'));
+ });
+ document.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && toggle.getAttribute('aria-expanded')==='true' && toggle.getClientRects().length) {
+   close();
+   toggle.focus();
+  }
+ });
+ document.addEventListener('click',event=>{if(!header.contains(event.target))close();});
+}
+function startLink(config) {
+ return config.registration_open ? link('Начать бесплатно','/app?action=signup') : link('Открыть ULADIM','/app');
+}
+async function publicPage(config) {
+ const path=location.pathname;
+ if(path==='/account') {
+  try{await dashboard();}catch(e){if(e.code==='unauthorized'||e.code==='staff_unauthorized')login();else throw e;}
+  return;
+ }
+ document.body.classList.add('product-site');
+ publicNavigation(path);
+ if(path==='/'){await landing(config);return;}
+ app.classList.add('product-content');
+ if(['/privacy','/terms'].includes(path)){legalPage(path);return;}
+ if(path==='/early-access'){await earlyAccess();return;}
+ if(path==='/docs') {
+  heading('Порядок в ваших делах','Записывайте задачи и идеи, планируйте события и ведите финансы в одном аккаунте. Для общих дел можно создать семейное пространство.');
+  app.append(panel('Начните с одной записи','Добавьте задачу, заметку или финансовый счёт в личном пространстве. Если хотите планировать вместе с близкими, создайте семейное пространство и пригласите их.'));
+  installGuide(app);
+  importGuide(app);
+  app.append(startLink(config));
+  return;
+ }
+ if(path==='/faq'){importFaq(app);return;}
+ if(path==='/download'){applicationPage();return;}
+ if(path==='/plans') {
+  heading('Free, Plus, Premium','Пользуйтесь текущими возможностями ULADIM бесплатно. Платные подписки пока недоступны.');
+  await planComparison(app);
+  app.append(startLink(config));
+  return;
+ }
+ const pages={
+  '/support':['Поможем разобраться','Войдите в аккаунт, чтобы отправить обращение и прочитать ответ.','Опишите, что вы пытались сделать и на каком шаге возникла проблема. Пароли, коды и банковские выписки для обращения не нужны.'],
+  '/delete-account':['Удаление аккаунта','Удаление облачного аккаунта и очистка локальной базы — разные действия. Эта операция не должна удалять данные других участников семьи.','Запрос на удаление доступен в кабинете и имеет 24-часовой срок отмены. Владение семьёй нужно заранее передать с согласием второго родителя. Сроки очистки резервных копий ещё не подтверждены.'],
+  '/status':['Состояние сервиса','Если страница не загружается или синхронизация не завершается, повторите действие после восстановления соединения и обратитесь в поддержку. Эта страница не показывает внутренние метрики сервера.','Локальные функции Android работают независимо от облачного аккаунта.']
+ };
+ const [title,description,details]=pages[path];
+ heading(title,description);
+ app.append(panel(path==='/support'?'Как описать проблему':'Что важно знать',details));
+ if(path==='/support'||path==='/delete-account')app.append(link('Открыть аккаунт','/account'));
+}
+(async()=>{
+ try {
+  authPacks=await (await fetch('/assets/locales.json',{cache:'no-store'})).json();
+  if(!authPacks[authLanguage])authLanguage='ru';
+  if(staff) {
+   try{await dashboard();}catch(e){if(e.code==='unauthorized'||e.code==='staff_unauthorized')login();else throw e;}
+  }else{
+   const config=await api('config');
+   googleEnabled=Boolean(config.google_enabled);
+   await publicPage(config);
+  }
+ }catch(e){heading('Не удалось загрузить');notice(e.message);}
+})();
 
 async function registration(){
  const config=await api('config');heading(tr('family_register'));
@@ -131,25 +213,48 @@ function metricCard(key,value){const labels={accounts:'Аккаунты',users:'
 function makeControlNavigation(session,container){container.replaceChildren();const select=el('select');select.setAttribute('aria-label','Раздел Control');const routes=[['dashboard.read','Обзор','dashboard'],['users.read','Пользователи','users'],['applications.manage','Заявки на тест','applications'],['staff.manage','Команда','staff'],['support.read','Поддержка','support'],['audit.read','Аудит','audit'],['flags.manage','Настройки интерфейса','flags']];for(const [permission,title,path]of routes)if(session.permissions.includes(permission)){const option=el('option',title);option.value=path;select.append(option);}if(!session.permissions.includes('dashboard.read')){const choose=el('option','Выберите раздел');choose.value='';choose.disabled=true;choose.selected=true;select.prepend(choose);}container.append(select);select.addEventListener('change',async()=>{try{const path=select.value;if(path==='dashboard'){await dashboard();return;}if(path==='users'){await staffUsers();return;}if(path==='applications'){await staffApplications();return;}if(path==='staff'){await staffTeam();return;}if(path==='support'){await support();return;}if(path==='flags'){await staffFlags();return;}heading('Журнал аудита');const result=await api('audit');for(const event of result.events){const card=panel(event.action,new Date(event.created_at*1000).toLocaleString());card.append(el('p',event.reason));const details=el('details');details.append(el('summary','Изменения'));details.append(el('pre',JSON.stringify({before:JSON.parse(event.before_value),after:JSON.parse(event.after_value)},null,2)));card.append(details);app.append(card);}}catch(e){notice(e.message);}});action('Выйти',async()=>{await api('logout',{});csrf='';login();},container);return container;}
 
 
-async function landing(){
- const registrationConfig=await api('config');
- app.replaceChildren();app.classList.add('landing');document.body.classList.add('product-site');
- const hero=el('section',undefined,'product-hero'),copy=el('div',undefined,'hero-copy');add(copy,el('p','Меньше шума. Больше ясности.','eyebrow'),el('h1','Уладим день.\nОсвободим голову.'),el('p','Задачи, заметки и деньги — в ясной картине дня. Для себя и тех, с кем вы делите планы.','hero-description'));
- const actions=el('div',undefined,'hero-actions');add(actions,link(registrationConfig.registration_open?'Начать бесплатно':'Открыть ULADIM',registrationConfig.registration_open?'/app?action=signup':'/app'),link('Посмотреть возможности','/docs',true));copy.append(actions);copy.append(el('p',registrationConfig.registration_open?'Free без оплаты. Веб и отдельное Android-приложение.':'Закрытый доступ. Вход и восстановление доступны существующим участникам.','hero-caption'));hero.append(copy);
+async function landing(config){
+ app.replaceChildren();
+ app.classList.add('landing');
+ const hero=el('section',undefined,'product-hero');
+ const copy=el('div',undefined,'hero-copy');
+ add(copy,el('h1','Уладим день.\nОсвободим голову.'),el('p','Задачи, календарь, заметки и финансы для себя и семьи.','hero-description'));
+ const actions=el('div',undefined,'hero-actions');
+ add(actions,startLink(config),link('Возможности','/docs',true));
+ copy.append(actions);
+ if(!config.registration_open)copy.append(el('p','Регистрация по приглашениям.','hero-caption'));
+ hero.append(copy);
  const preview=el('section',undefined,'workspace-preview');preview.setAttribute('aria-label','Иллюстрация ULADIM на примере данных');
  const rail=el('aside',undefined,'preview-rail');rail.append(el('strong','ULADIM'));for(const label of ['Сегодня','Задачи','Календарь','Заметки','Финансы'])rail.append(el('span',label));
  const desk=el('div',undefined,'preview-workspace');add(desk,el('span','ПРИМЕР ИНТЕРФЕЙСА','preview-label'),el('h2','Сегодня'),el('p','Важное — перед глазами.'));
  const metrics=el('div',undefined,'preview-metrics');for(const [n,label]of [['3','задачи'],['1','событие'],['2/3','выполнено']]){const stat=el('div');add(stat,el('strong',n),el('span',label));metrics.append(stat);}desk.append(metrics);
  const list=el('div',undefined,'preview-task-list');for(const [done,label]of [[true,'Подготовить план на неделю'],[true,'Записать идею для проекта'],[false,'Обсудить семейные планы']]){const row=el('div',undefined,'preview-task');const mark=el('span','','preview-check'+(done?' checked':''));mark.setAttribute('aria-hidden','true');add(row,mark,el('span',label));list.append(row);}desk.append(list);
  const flow=el('div',undefined,'preview-flow');flow.setAttribute('aria-label','Иллюстрация сравнения доходов и расходов');flow.append(el('strong','Деньги на виду'));const bars=el('div',undefined,'preview-columns');for(const [i,h]of [32,50,42,74,58,84,65].entries()){const pair=el('div');const income=el('i'),expense=el('i');income.style.height=h+'%';expense.style.height=(h*.55)+'%';add(pair,income,expense);bars.append(pair);}flow.append(bars,el('p','Доходы и расходы · отдельно по валютам'));desk.append(flow);add(preview,rail,desk);hero.append(preview);app.append(hero);
- const ribbon=el('section',undefined,'product-ribbon');for(const text of ['Планируйте день','Сохраняйте идеи','Понимайте финансы','Делитесь планами'])ribbon.append(el('span',text));app.append(ribbon);
  const features=el('section',undefined,'product-features');
  for(const [title,body]of [['День — по вашему плану','Создавайте задачи, отмечайте сделанное и держите ближайшее перед глазами.'],['Мысли, которые не теряются','Записывайте идеи и возвращайтесь к нужной заметке без лишних шагов.'],['Финансы с понятной картиной','Ведите счета, доходы и расходы. Сравнивайте операции на диаграммах и выбирайте палитру. Валюты считаются отдельно.'],['Семья, в которой есть личное','Приглашайте близких в общее пространство. Родители управляют им на равных, доступ детей задаётся отдельно. Личные записи защищены правами.']]){const row=el('div',undefined,'feature-row');add(row,el('h2',title),el('p',body));features.append(row);}app.append(features);
- const android=panel('Android — отдельное приложение','Веб-версия и Android используют общие аккаунты и серверную синхронизацию выбранных пространств. PWA не заменяет APK. Проверенная ссылка на новую сборку появится после завершения Android-проверок.');android.append(link('О сборке Android','/download',true));app.append(android);
- await planComparison(app);installGuide(app);
+ const platforms=el('section',undefined,'product-platforms');
+ add(platforms,el('h2','ULADIM на ваших устройствах'),applicationCards(false));
+ app.append(platforms);
+ await planComparison(app);
  const faq=el('section',undefined,'product-faq');faq.append(el('h2','Частые вопросы'));
  for(const [question,answer]of [['Можно пользоваться без оплаты?','Да. Free доступен без покупки. Реальные платежи пока не подключены; Plus и Premium не продаются.'],['Нужен ли интернет?','Веб-версия работает прежде всего онлайн. В браузере кешируется интерфейс, а личные записи не сохраняются для полноценной работы без сети. У Android есть отдельное зашифрованное локальное хранилище.'],['Один ли аккаунт в вебе и Android?','Да. Используйте одинаковую почту. Передача записей зависит от выбранного пространства и его прав; сама авторизация не отправляет все локальные записи Android автоматически.'],['Что делать с прежним приглашением?','Откройте создание аккаунта. При открытой регистрации приглашение не требуется. Прежняя заявка сохранена: её статус и отмена доступны по ссылке «Прежние заявки».']]){const d=el('details');add(d,el('summary',question),el('p',answer));faq.append(d);}app.append(faq);
  const help=el('div',undefined,'hero-actions');add(help,link('Открыть ULADIM','/app'),link('Поддержка','/support',true),link('Прежние заявки','/early-access',true));app.append(help);
+}
+function applicationCards(full) {
+ const grid=el('div',undefined,'application-grid');
+ const web=panel('Веб-приложение','Откройте ULADIM в браузере или добавьте его на домашний экран телефона или планшета.');
+ add(web,link('Открыть веб-приложение','/app'),link('Как установить',full?'#installation':'/download#installation',true));
+ const android=panel('Android','Отдельное приложение для Android. Для новой сборки пока нет подтверждённой ссылки на скачивание.');
+ if(!full)android.append(link('Об Android-приложении','/download#android',true));
+ android.id='android';
+ return add(grid,web,android);
+}
+function applicationPage() {
+ heading('Приложения ULADIM','Работайте в браузере или добавьте ULADIM на домашний экран.');
+ app.append(applicationCards(true));
+ installGuide(app);
+ const target=document.getElementById(location.hash.slice(1));
+ if(target)requestAnimationFrame(()=>target.scrollIntoView());
 }
 async function planComparison(target){
  const data=await api('plans');const section=el('section',undefined,'plan-comparison');add(section,el('h2','Три тарифа. Понятные условия.'),el('p','Free — без оплаты. Продажи Plus и Premium пока не подключены. Сейчас сервер предоставляет перечисленные возможности во всех трёх уровнях; будущие цены и различия ещё не утверждены.'));
@@ -158,7 +263,9 @@ async function planComparison(target){
  for(const [key,label]of Object.entries(labels)){const row=el('tr');const th=el('th',label);th.scope='row';row.append(th);for(const tier of ['Free','Plus','Premium'])row.append(el('td',data.tiers[tier].features.includes(key)?'Доступно':'Не включено'));body.append(row);}table.append(body);scroll.append(table);section.append(scroll);target.append(section);
 }
 function installGuide(target){
- const section=el('section',undefined,'install-guide');add(section,el('h2','ULADIM на домашнем экране'),el('p','Откройте веб-приложение в браузере и добавьте его как PWA. Отдельная покупка не нужна.'));
+ const section=el('section',undefined,'install-guide');
+ section.id='installation';
+ add(section,el('h2','Установка на домашний экран'),el('p','Откройте веб-приложение и выберите инструкцию для своего устройства.'));
  for(const [title,body]of [['iPhone и iPad','Откройте /app в Safari. Нажмите «Поделиться» → «На экран Домой». Запускайте ULADIM с появившегося значка.'],['Android','Откройте /app в Chrome. В меню браузера выберите «Установить приложение» или «Добавить на главный экран».'],['Компьютер','В поддерживаемом браузере откройте /app и используйте кнопку установки рядом с адресной строкой. Можно работать и в обычной вкладке.']]){const d=el('details');add(d,el('summary',title),el('p',body));section.append(d);}target.append(section);
 }
 

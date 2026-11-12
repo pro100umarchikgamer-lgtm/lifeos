@@ -4,6 +4,7 @@ const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],fi
 let calendarMode='month';
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null;
 const pendingDeletes=new Map();
+const quickTasks=new Map();
 try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
 // Persist only interface preferences. Accounts, spaces, records and tokens stay in memory.
 function preferences(){try{localStorage.setItem('uladim-interface',JSON.stringify({lang:state.lang,theme:state.theme,palette:state.palette,chart:state.chart}));}catch{}applyTheme();}
@@ -226,7 +227,7 @@ function replaceDialog(d,...nodes){
  heading.focus({preventScroll:true});
 }
 
-function clearIdentity(){redrawFinance=null;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){redrawFinance=null;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function displayDate(date){return new Date(date+'T12:00:00').toLocaleDateString(state.lang,{year:'numeric',month:'short',day:'numeric'});}
 function minor(value,signed=false,currency='RUB'){return ULADIMMoney.parse(value,currency,signed);}
@@ -270,11 +271,15 @@ function mfaStep(challenge){
 }
 
 function language(container){const s=select(container,'language',t('language'),Object.entries(packs).map(([k,v])=>[k,v.name+(WEB_COPY[k]?'':' · '+t('web_partial_short'))]),state.lang);s.addEventListener('change',()=>{state.lang=s.value;preferences();if(state.session)render();else login();});}
+document.addEventListener('pointerdown',event=>{
+ const menu=root.querySelector('.nav-more[open]');
+ if(menu&&!menu.contains(event.target))menu.open=false;
+});
 function shell(){
  const previousMenu=root.querySelector('.nav-more');
  const keepMenu=previousMenu?.open&&previousMenu.dataset.tab===state.tab;
  navObserver?.disconnect();root.replaceChildren();const header=E('header');const brand=E('a','ULADIM','brand');brand.href='/app';brand.append(E('small',t('ux3_settings_body')));header.append(brand);
- const spaces=select(E('div'),'workspace','',state.spaces.map(s=>[s.id,s.name]),state.space);spaces.setAttribute('aria-label',t('family_account'));spaces.className='workspace';spaces.addEventListener('change',async()=>{document.querySelectorAll('dialog').forEach(d=>d.close());state.space=spaces.value;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;render();try{await readSpace();render();}catch(e){report(e);}});if(state.spaces.length)header.append(spaces);root.append(header);
+ const spaces=select(E('div'),'workspace','',state.spaces.map(s=>[s.id,s.name]),state.space);spaces.setAttribute('aria-label',t('family_account'));spaces.className='workspace';spaces.title=currentSpace()?.name||t('family_account');spaces.addEventListener('change',async()=>{document.querySelectorAll('dialog').forEach(d=>d.close());state.space=spaces.value;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;render();try{await readSpace();render();}catch(e){report(e);}});if(state.spaces.length)header.append(spaces);root.append(header);
  if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
  const m=E('main');m.id='content';root.append(m);const nav=E('nav',undefined,'nav');nav.setAttribute('aria-label','ULADIM');
  const secondary=E('details',undefined,'nav-more');
@@ -287,6 +292,9 @@ function shell(){
    secondary.open=false;
    if(key==='account')state.settingsTab='';
    state.tab=key;render();
+   window.scrollTo(0,0);
+   const heading=root.querySelector('main h1');
+   if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
   };
   const navItem=()=>{
    const b=button('',navigate);
@@ -349,9 +357,57 @@ function today(m){
  progress.setAttribute('aria-label',t('completed')+' '+done+' / '+tasks.length);
  const progressBox=E('div',undefined,'today-progress');
  append(progressBox,E('span',t('completed')+' · '+done+' / '+tasks.length,'small'),progress);
- a.firstElementChild.append(progressBox);
- const quick=E('form',undefined,'quick-capture'),field=E('input');field.name='quick-task';field.placeholder=t('web_quick_task');field.setAttribute('aria-label',t('web_quick_task'));field.maxLength=2000;field.required=true;const submit=E('button',undefined,'primary icon');submit.type='submit';submit.setAttribute('aria-label',t('web_add_task'));submit.append(icon('add'));append(quick,field,submit);let operation=null,accepted=false;
- quick.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;submit.disabled=true;field.readOnly=true;const workspace=state.space;try{operation=operation||{id:crypto.randomUUID(),action:'record.put',record_id:crypto.randomUUID(),revision:0,kind:'task',visibility:currentSpace()?.role==='child'?'shared':'private',audience:currentSpace()?.role==='child'?[currentSpace().profile_id]:[],data:{title:field.value.trim(),completed:0,assignment:'any',assignees:[],review:0}};if(!operation.data.title)throw {code:'invalid_input'};if(!accepted){await saveOperation(operation,workspace);accepted=true;}await refresh();render();}catch(error){if(!accepted&&!error.uncertain)operation=null;if(error.code==='unauthorized')report(error);else toast(errorText(error));if(error.uncertain)submit.setAttribute('aria-label',t('retry'));}finally{submit.disabled=false;field.readOnly=!!operation;}});a.append(quick);
+ const taskHead=E('div',undefined,'today-task-head');
+ append(taskHead,a.firstElementChild,progressBox);a.prepend(taskHead);
+ const quick=E('form',undefined,'quick-capture'),field=E('input');
+ field.name='quick-task';field.placeholder=t('web_quick_task');field.setAttribute('aria-label',t('web_quick_task'));
+ field.maxLength=2000;field.required=true;field.enterKeyHint='done';
+ const submit=E('button',undefined,'primary icon');submit.type='submit';
+ const feedback=E('p',undefined,'quick-capture-status');feedback.setAttribute('role','status');
+ append(quick,field,submit);append(a,quick,feedback);
+ const workspace=state.space,epoch=privateEpoch;
+ const draft=quickTasks.get(workspace)||{title:'',operation:null,accepted:false,busy:false,message:''};
+ quickTasks.set(workspace,draft);
+ field.value=draft.title;
+ field.addEventListener('input',()=>{draft.title=field.value;draft.message='';updateQuick();});
+ function updateQuick(){
+  submit.disabled=draft.busy;
+  field.readOnly=!!draft.operation;
+  submit.setAttribute('aria-label',t(draft.operation&&!draft.busy?'retry':'web_add_task'));
+  submit.replaceChildren(draft.operation&&!draft.busy?document.createTextNode('↻'):icon('add'));
+  feedback.hidden=!draft.message;feedback.textContent=draft.message;
+ }
+ updateQuick();
+ quick.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(draft.busy||state.space!==workspace||privateEpoch!==epoch)return;
+  const title=field.value.trim();
+  if(!title){draft.message=errorText({code:'invalid_input'});updateQuick();return;}
+  const space=currentSpace();
+  draft.operation??={id:crypto.randomUUID(),action:'record.put',record_id:crypto.randomUUID(),
+   revision:0,kind:'task',visibility:space?.role==='child'?'shared':'private',
+   audience:space?.role==='child'?[space.profile_id]:[],
+   data:{title,completed:0,assignment:'any',assignees:[],review:0}};
+  draft.title=field.value;draft.message='';draft.busy=true;updateQuick();
+  try{
+   if(!draft.accepted){await saveOperation(draft.operation,workspace);draft.accepted=true;}
+   await refresh();
+   if(privateEpoch!==epoch)return;
+   quickTasks.delete(workspace);
+   if(state.space===workspace&&state.tab==='today')render();
+  }catch(error){
+   if(privateEpoch!==epoch)return;
+   if(!draft.accepted&&!error.uncertain)draft.operation=null;
+   if(error.code==='unauthorized')report(error);
+   else draft.message=draft.accepted?t('web_saved_refresh'):error.uncertain?t('web_uncertain'):errorText(error);
+  }finally{
+   draft.busy=false;
+   if(privateEpoch===epoch&&state.space===workspace&&state.tab==='today'){
+    if(quick.isConnected)updateQuick();
+    else if(quickTasks.get(workspace)===draft)render();
+   }
+  }
+ });
  for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>openTabSection('tasks','main h1'),'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
  if(dayEvents.length){
   const schedule=card(t('web_calendar')+' · '+t('today'));
@@ -369,7 +425,8 @@ function today(m){
  const agenda=card(t('web_upcoming'));
  agenda.classList.add('today-agenda');
  const week=E('div',undefined,'today-week');
- const monday=offsetDate(new Date(day+'T12:00:00'),-((new Date(day+'T12:00:00').getDay()+6)%7));
+ const currentDay=new Date(day+'T12:00:00');
+ const monday=offsetDate(currentDay,-((currentDay.getDay()+6)%7));
  for(let i=0;i<7;i++){
   const date=offsetDate(monday,i),key=dateString(date);
   const control=button(String(date.getDate()),()=>{

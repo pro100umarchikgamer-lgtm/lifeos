@@ -18,3 +18,207 @@ body{font-size:16px;line-height:1.6}header,main,footer{max-width:1160px;padding:
 @media(max-width:800px){header,main,footer{padding-left:24px;padding-right:24px}.landing{padding-top:36px}.product-preview{grid-template-columns:1fr}.preview-money{border-left:0;border-top:1px solid var(--line)}.feature-row{grid-template-columns:1fr;gap:8px}.preview-day,.preview-money{padding:24px}.landing .hero-actions{gap:10px}.hero-actions .button{flex:1 1 auto}.hero-actions .button:nth-child(3){flex-basis:100%}.auth{padding-top:32px}}
 @media(max-width:480px){header,main,footer{padding-left:20px;padding-right:20px}header{gap:16px;padding-top:18px;padding-bottom:14px;min-height:90px}header nav{justify-content:flex-start;gap:2px}header nav a{padding:6px 10px 6px 0}.brand span{display:none}.landing h1{font-size:40px}.landing>p{font-size:16px}.landing .hero-actions{margin-bottom:32px}.product-preview{margin-bottom:44px}.feature-row{padding:20px 0}.auth h1{font-size:32px}.auth-language{max-width:100%}.auth>button{font-size:13px}.preview-amount{font-size:32px}}
 body[data-auth=true] header nav,body[data-auth=true] header .brand span,body[data-auth=true] footer{display:none}
+
+body.product-site > header.public-header {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 16px;
+  min-height: 68px;
+  padding-block: 12px;
+}
+body.product-site > header.public-header nav {
+  flex: 0 1 auto;
+  gap: clamp(6px, 1.6vw, 24px);
+}
+body.product-site > header.public-header nav a {
+  padding: 8px 6px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+body.product-site > header.public-header nav a:hover,
+body.product-site > header.public-header nav [aria-current="page"] {
+  color: var(--ux-green);
+  text-decoration: underline;
+  text-underline-offset: .25em;
+}
+body.product-site > header.public-header nav a[href="/account"],
+.public-header-controls > a {
+  border-radius: 9px;
+  border: 1px solid var(--ux-border);
+  background: var(--ux-surface);
+  color: var(--ux-green);
+  padding-inline: 14px;
+  font-weight: 650;
+}
+.public-header-controls { display: none; }
+body.product-site #app.product-content {
+  max-width: 960px;
+  padding-block: 32px 64px;
+}
+.product-content > .card { margin-block: 20px; }
+.product-content > h1 { margin-block: 10px 16px; }
+.product-content .install-guide, .product-content .import-faq {
+  margin-inline: 0;
+}
+.product-content [id] { scroll-margin-block-start: 20px; }
+body.product-site #app.landing > .product-features {
+  border-block: 1px solid var(--ux-border);
+  margin-block-end: 44px;
+  padding-block: 8px;
+}
+body.product-site .product-features .feature-row + .feature-row {
+  border: 0;
+}
+body.product-site .product-features .feature-row h2 { margin-block-end: 6px; }
+.application-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-block: 16px 28px;
+}
+.application-grid .card { min-width: 0; }
+.application-grid .card p { margin-block: 0 16px; }
+.application-grid .button { margin: 0 8px 8px 0; }
+body.product-site .product-content summary,
+body.product-site .product-faq summary {
+  cursor: pointer;
+  min-height: 44px;
+  align-content: center;
+}
+body.product-site .product-content details,
+body.product-site .product-faq details {
+  padding-block: 0;
+}
+body.product-site .product-content details[open] p,
+body.product-site .product-faq details[open] p {
+  margin-block: 0 14px;
+}
+body.product-site .hero-copy .hero-actions {
+  margin-block: 18px 0;
+}
+body.product-site .hero-copy .hero-caption {
+  margin-block: 10px 0;
+}
+body.product-site > footer:not([hidden]) {
+  padding-inline: 24px;
+  line-height: 2;
+}
+
+@media (max-width: 759px) {
+  body.product-site > header.public-header {
+    min-height: 64px;
+    padding: max(9px, env(safe-area-inset-top)) 16px 9px;
+    border-bottom: 1px solid var(--ux-border);
+    gap: 8px;
+    z-index: 2;
+  }
+  .public-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .public-header-controls > a, .public-header-controls > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 11px;
+    color: var(--ux-green);
+    font-size: 14px;
+  }
+  .public-header-controls > button {
+    background: transparent;
+    border-color: transparent;
+    gap: 7px;
+  }
+  .public-menu-toggle::after {
+    content: "";
+    width: 9px;
+    height: 7px;
+    border-block: 1px solid currentColor;
+  }
+  .public-menu-toggle[aria-expanded="true"] {
+    background: var(--ux-soft);
+  }
+  body.product-site > header.public-header nav {
+    display: none;
+    position: absolute;
+    inset: calc(100% + 6px) 12px auto;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px;
+    max-height: calc(100dvh - 78px);
+    overflow-y: auto;
+    background: var(--ux-surface);
+    border: 1px solid var(--ux-border);
+    border-radius: 12px;
+    box-shadow: 0 12px 24px #14271c1a;
+  }
+  body.product-site > header.public-header .public-header-controls:has([aria-expanded="true"]) + nav {
+    display: grid;
+  }
+  body.product-site > header.public-header nav a {
+    padding-inline: 12px;
+  }
+  body.product-site > header.public-header nav a + a {
+    border-top: 1px solid var(--ux-border);
+  }
+  body.product-site > header.public-header nav a[href="/account"] { display: none; }
+  body.product-site #app.landing:has(.product-hero) {
+    padding: 0 16px 32px;
+  }
+  body.product-site #app.landing > .product-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    padding-block: 24px;
+  }
+  body.product-site .hero-copy h1 {
+    font-size: clamp(34px, 10vw, 50px);
+    margin-block: 0 12px;
+    letter-spacing: -.052em;
+  }
+  body.product-site .hero-copy .hero-description {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  body.product-site .hero-copy .hero-actions .button {
+    flex: 0 1 auto;
+    width: auto;
+    padding-inline: 11px;
+  }
+  body.product-site .workspace-preview {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 580px;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px #193e2e0e;
+  }
+  body.product-site .preview-rail { display: none; }
+  body.product-site .preview-workspace {
+    padding: 14px 16px;
+  }
+  body.product-site .preview-workspace > p { margin-bottom: 12px; }
+  body.product-site .preview-task { font-size: 12px; padding-block: 8px; }
+  body.product-site .preview-task-list { padding-block: 8px; }
+  body.product-site .preview-columns { height: 56px; }
+  body.product-site #app.landing > .product-features { margin-block-end: 30px; }
+  body.product-site .product-features .feature-row + .feature-row {
+    border-top: 1px solid var(--ux-border);
+  }
+  body.product-site #app.product-content { padding: 24px 16px 48px; }
+  body.product-site .product-content > h1 { font-size: clamp(30px, 8vw, 40px); }
+  body.product-site .plan-comparison, body.product-site .install-guide { margin-block: 36px; }
+  body.product-site > footer:not([hidden]) { padding-inline: 16px; }
+}
+
+@media (max-width: 540px) {
+  .application-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  body.product-site .plan-comparison table { min-width: 0; table-layout: fixed; }
+  body.product-site .plan-comparison th, body.product-site .plan-comparison td {
+    padding: 10px 4px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  body.product-site .plan-comparison th:first-child { width: 42%; padding-inline-start: 8px; }
+}

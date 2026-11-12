@@ -16,15 +16,34 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     expect(page.get_by_text('Задача из быстрого ввода',exact=True)).to_be_visible()
     assert len([r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='task' and r['data']['title']=='Задача из быстрого ввода'])==1
     checks=['quick_task_persisted_once'];geometry=[]
+    attempts=[]
     def lose_response(route):
-        route.fetch();route.fulfill(status=502,content_type='application/json',body='{"error":"server_error"}')
+        attempts.append(route.request.post_data_json)
+        route.fetch();route.fulfill(status=503,content_type='application/json',body='{"error":"service_unavailable"}')
+    page.set_viewport_size({'width':390,'height':844})
+    more=page.locator('.nav-more')
+    more.locator('summary').click()
+    expect(more).to_have_attribute('open','')
+    page.get_by_role('heading',name='Сегодня',exact=True).click()
+    expect(more).not_to_have_attribute('open','')
+    more.locator('summary').press('Enter')
+    expect(more).to_have_attribute('open','')
+    page.keyboard.press('Escape')
+    expect(more).not_to_have_attribute('open','')
+    expect(more.locator('summary')).to_be_focused()
+    checks.append('mobile_navigation_closes_on_outside_click_and_escape')
     page.route('**/account/api/sync',lose_response)
     page.get_by_label('Что нужно сделать?',exact=True).fill('Проверка потерянного ответа')
     page.get_by_role('button',name='Добавить задачу',exact=True).click()
     expect(page.locator('.quick-capture input')).to_have_attribute('readonly','')
     expect(page.locator('.quick-capture button')).to_be_enabled()
+    open_tab(page,'Задачи')
+    open_tab(page,'Сегодня')
+    expect(page.locator('.quick-capture input')).to_have_value('Проверка потерянного ответа')
     page.unroute('**/account/api/sync',lose_response)
-    page.locator('.quick-capture button').click()
+    with page.expect_request(lambda request: request.url.endswith('/account/api/sync') and request.method=='POST') as retry:
+        page.locator('.quick-capture button').click()
+    assert retry.value.post_data_json==attempts[0]
     expect(page.get_by_text('Проверка потерянного ответа',exact=True)).to_be_visible()
     assert len([r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='task' and r['data']['title']=='Проверка потерянного ответа'])==1
     checks.append('lost_response_retry_no_duplicate')
