@@ -355,7 +355,10 @@ function login(){
  m.append(actions);
  const locale=E('div',undefined,'focus-login-language');
  language(locale);
- m.append(locale,focusLoginStory(E,state.lang));
+ m.append(locale);
+ const panel=E('div',undefined,'auth-form-panel');
+ panel.append(...m.childNodes);
+ m.append(focusLoginStory(E,state.lang),panel);
 }
 
 function focusLoginStory(create,lang){

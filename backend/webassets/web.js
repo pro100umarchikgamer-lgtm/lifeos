@@ -53,7 +53,12 @@ function login(){
   app.append(links);
  }
  authLanguages();
- if(!staff){app.lastElementChild.classList.add('focus-login-language');app.append(focusLoginStory(el,authLanguage));}
+ if(!staff){
+  app.lastElementChild.classList.add('focus-login-language');
+  const panel=el('div',undefined,'auth-form-panel');
+  panel.append(...app.childNodes);
+  app.append(focusLoginStory(el,authLanguage),panel);
+ }
 }
 function loginMfa(challenge){
  app.classList.remove('focus-login');
@@ -163,8 +168,7 @@ async function publicPage(config) {
 
 async function registration(){
  const config=await api('config');
- app.classList.remove('focus-login');
- heading(tr('family_register'));
+ focusAuthHeading(tr('family_register'));
  const fields=[['email',tr('family_email'),'email'],['password',tr('family_password'),'password']];if(!config.registration_open)fields.push(['invitation',tr('family_invitation'),'text']);
  const f=form('',fields,tr('family_register'),async b=>{const email=b.email;try{await api('signup',b);}finally{f.elements.password.value='';b.password='';}heading(tr('family_verify'),tr('family_verify_hint'));
  form('',[['code',tr('family_code'),'text']],tr('family_verify'),async code=>{await api('confirm-signup',{email,code:code.code.trim()});login();notice(tr('account_done'));});action(tr('ux3_resend_verification'),async()=>{await api('resend-signup',{email});notice(tr('family_verify_hint'));});});
@@ -359,11 +363,12 @@ async function landing(config) {
  app.classList.add('landing');
  const hero = el('section', undefined, 'product-hero');
  const copy = el('div', undefined, 'hero-copy');
- const title = add(el('h1'), el('span', 'Уладим день.'), ' ', el('span', 'Освободим голову.'));
- add(copy, title, el('p', 'Задачи, календарь, заметки и финансы для себя и семьи.', 'hero-description'));
+ const title = add(el('h1'), el('span', 'Дела, планы и финансы.'), ' ', el('span', 'Всё на своих местах.'));
+ add(copy, el('p', 'Личное и семейное пространство', 'hero-eyebrow'), title, el('p', 'Разгрузите голову: соберите задачи, события, заметки и финансы в одном пространстве — для себя и близких.', 'hero-description'));
  const actions = el('div', undefined, 'hero-actions');
  add(actions, startLink(config), link('Возможности', '/docs', true));
  copy.append(actions);
+ copy.append(el('p', 'В браузере на телефоне, планшете и компьютере.', 'hero-platform-note'));
  if (!config.registration_open) copy.append(el('p', 'Регистрация по приглашениям.', 'hero-caption'));
  app.append(add(hero, copy, todayPreview()));
 
@@ -390,9 +395,10 @@ async function landing(config) {
 }
 function applicationCards(full) {
  const grid=el('div',undefined,'application-grid');
- const web=panel('Веб-приложение','Откройте ULADIM в браузере или добавьте его на домашний экран телефона или планшета.');
+ const web=panel('Телефон, планшет и компьютер','ULADIM работает в браузере на iPhone, iPad, Android, Windows, macOS и Linux. На телефоне или планшете его можно добавить на домашний экран.');
  add(web,link('Открыть веб-приложение','/app'),link('Как установить',full?'#installation':'/download#installation',true));
- const android=panel('Android','Отдельное приложение для Android. Для новой сборки пока нет подтверждённой ссылки на скачивание.');
+ const android=panel('Приложение для Android','Отдельный Android-клиент. Опубликованные сборки и сведения о версиях доступны в GitHub Releases.');
+ android.append(link('Сборки Android','https://github.com/pro100umarchikgamer-lgtm/lifeos/releases',true));
  if(!full)android.append(link('Об Android-приложении','/download#android',true));
  android.id='android';
  return add(grid,web,android);

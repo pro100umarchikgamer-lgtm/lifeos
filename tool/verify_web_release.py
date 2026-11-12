@@ -5,6 +5,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 ASSETS = {
+    '/app/assets/auth-texture.webp': 'backend/webassets/app/auth-texture.webp',
     '/app/assets/app.js': 'backend/webassets/app/app.js',
     '/app/assets/import.js': 'backend/webassets/app/import.js',
     '/app/assets/statement-formats.js': 'backend/webassets/app/statement-formats.js',

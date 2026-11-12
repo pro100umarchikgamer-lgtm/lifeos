@@ -249,3 +249,32 @@ body.product-site.focus-home .hero-copy .hero-description{margin-bottom:24px}
 body.product-site .product-content .import-guide>.card{margin-block:16px;padding:26px;border-radius:14px}
 body.product-site .product-content .import-guide>.card h2{font:700 20px/1.3 Inter,system-ui,sans-serif;margin-bottom:12px}
 body.product-site .product-content .import-guide>.button{margin:12px 10px 0 0}
+/* Editorial rhythm from the public reference, with ULADIM's own composition. */
+body.product-site{--public-canvas:#f7f7f2;--public-ink:#242d27;--public-muted:#626d63;--public-green:#204d3e;--public-secondary:#a4483c}
+body.product-site.focus-home .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--public-muted);margin:0 0 24px}
+body.product-site.focus-home .hero-eyebrow::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--public-green)}
+body.product-site.focus-home .hero-copy h1{font-size:clamp(42px,4.8vw,66px);line-height:1.08;letter-spacing:-.045em;max-width:11em}
+body.product-site.focus-home .hero-copy h1 span+span{color:var(--public-secondary)}
+body.product-site.focus-home .hero-copy .hero-description{font-size:16px;line-height:1.8;max-width:31em}
+body.product-site.focus-home .hero-platform-note{font-size:12px;line-height:1.6;margin:20px 0 0;color:var(--public-muted)}
+body.product-site.focus-home .hero-caption{margin-top:8px;font-size:12px}
+body.product-site.focus-home .hero-copy .hero-actions .button{min-height:46px;border-radius:100px;padding:12px 22px;font-size:13px}
+body.product-site.focus-home .hero-copy .hero-actions .button.secondary{background:transparent;border:1px solid var(--public-rule);color:var(--public-ink)}
+body.product-site.focus-home .workspace-preview{border-radius:16px;box-shadow:0 20px 50px #14231a0b}
+body.product-site.focus-home #app.landing>.product-features{border:1px solid var(--public-rule);background:transparent}
+body.product-site.focus-home .feature-row svg{background:transparent;color:var(--public-secondary);padding:0;margin-bottom:15px;width:24px;height:24px}
+body.product-site.focus-home .product-features>h2{font-size:25px;margin-bottom:30px}
+body.product-site.focus-home .application-grid .card{box-shadow:none}
+body.product-site .product-content .import-faq>.button{margin-top:30px;margin-bottom:12px}
+body.product-site .application-grid .button+.button{margin-inline-start:8px}
+body.product-site[data-theme=dark]{--public-canvas:#121a15;--public-ink:#eef1e9;--public-muted:#b4c0b2;--public-green:#b8d6bd;--public-secondary:#e49d8d}
+@media(prefers-color-scheme:dark){body.product-site:not([data-theme=light]){--public-canvas:#121a15;--public-ink:#eef1e9;--public-muted:#b4c0b2;--public-green:#b8d6bd;--public-secondary:#e49d8d}}
+@media(max-width:759px){
+ body.product-site.focus-home .hero-eyebrow{font-size:10px;margin-bottom:20px}
+ body.product-site.focus-home .hero-copy h1{font-size:clamp(40px,10.5vw,58px);max-width:12em}
+ body.product-site.focus-home .hero-copy .hero-description{font-size:15px;margin-bottom:24px}
+ body.product-site.focus-home .hero-platform-note{margin-top:18px}
+ body.product-site.focus-home .product-features .feature-row{grid-template-columns:24px minmax(0,1fr);gap:16px}
+ body.product-site.focus-home .feature-row svg{padding:0;margin:2px 0 0}
+ body.product-site .application-grid .button+.button{margin:10px 0 0}
+}

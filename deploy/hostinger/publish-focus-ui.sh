@@ -40,6 +40,17 @@ source = {str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest()
           for p in (root/'backend').rglob('*') if p.is_file()
           and p.suffix in ('.py','.sql') and 'webassets' not in p.parts}
 changed = [name for name in source.keys() | live.keys() if source.get(name) != live.get(name)]
+# This release adds one image to the existing static asset allowlist. Require
+# byte-for-byte equality after removing exactly that literal; no API change can
+# pass this exception.
+if 'backend/web.py' in changed:
+    candidate = (root / 'backend/web.py').read_bytes()
+    running = subprocess.check_output(['docker','exec','lifeos-api-1','cat','/app/backend/web.py'])
+    addition = b"'app.css', 'auth-texture.webp', 'manifest.webmanifest'"
+    original = b"'app.css', 'manifest.webmanifest'"
+    if candidate.count(addition) == 1 and candidate.replace(addition, original) == running:
+        changed.remove('backend/web.py')
+        print('STATIC_ASSET_ALLOWLIST_ADDITION auth-texture.webp')
 if changed:
     raise SystemExit('Stopped: running backend differs from candidate: ' + ', '.join(sorted(changed)))
 print('BACKEND_AND_SCHEMA_UNCHANGED')
