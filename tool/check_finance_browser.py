@@ -38,7 +38,7 @@ def main():
         try:
             with sync_playwright() as p:
                 browser=p.chromium.launch()
-                context=browser.new_context(viewport={'width':1440,'height':1000},color_scheme='light',locale='ru-RU')
+                context=browser.new_context(viewport={'width':1440,'height':1000},color_scheme='light',locale='ru-RU',service_workers='block')
                 page=context.new_page();errors=[];requests=[]
                 page.on('pageerror',lambda e:errors.append(str(e)))
                 page.on('request',lambda r:requests.append({'url':r.url,'body':r.post_data or ''}))
@@ -81,6 +81,8 @@ def main():
                 dialog.get_by_role('button',name='Импортировать выбранное',exact=True).click()
                 expect(dialog.get_by_role('button',name='Повторить',exact=True)).to_be_enabled()
                 dialog.get_by_role('button',name='Повторить',exact=True).click()
+                expect(dialog.locator('.statement-receipt')).to_contain_text('Сохранено операций · 2')
+                dialog.get_by_role('button',name='Вернуться к проверке',exact=True).click()
                 expect(dialog.locator('tbody input:checked')).to_have_count(0)
                 stored=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='transaction']
                 assert len(stored)==2 and {r['data']['amount_minor'] for r in stored}=={123456,200000}
