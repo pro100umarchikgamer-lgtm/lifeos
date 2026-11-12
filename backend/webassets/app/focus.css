@@ -79,8 +79,7 @@ body[data-design=clarity] dialog .dialog-head h2{font-family:inherit;font-size:2
 @media(min-width:760px) and (max-width:999px){
  body[data-design=clarity] #root>main:not(.login){padding:26px 24px 48px}
  body[data-design=clarity] .today-page .today-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:'tasks' 'side' 'notes';grid-template-rows:auto}
- body[data-design=clarity] .today-page .today-side{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
- body[data-design=clarity] .today-page .today-side .today-finance{grid-column:1/-1}
+ body[data-design=clarity] .today-page .today-side{grid-template-columns:minmax(0,1fr);gap:18px}
  body[data-design=clarity] .today-page .intro::after{width:48%}
 }
 @media(max-width:759px){

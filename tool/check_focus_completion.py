@@ -47,6 +47,10 @@ def main():
                 page.evaluate("theme=>{state.theme=theme;preferences();render()}", theme)
                 open_tab(page, 'Сегодня')
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (name, theme)
+                if name == 'ipad':
+                    side_width = page.locator('.today-side').bounding_box()['width']
+                    for card in page.locator('.today-side .card').all():
+                        assert abs(card.bounding_box()['width'] - side_width) <= 1, (name, theme)
                 page.screenshot(path=str(out / f'{name}-{theme}-today.png'), full_page=True)
                 page.locator('.header-profile').click()
                 open_settings(page, 'devices')
