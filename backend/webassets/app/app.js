@@ -1075,7 +1075,25 @@ function acceptInvite(){
   d.close();render();
  }));
 }
-function familyPanel(m){const c=card(t('family_account'));m.append(c);c.append(button(t('family_create'),()=>createSpace('family')),button(t('family_owner'),()=>createSpace('personal')),button(t('family_accept'),acceptInvite));if(!state.roster)return;const {space,members,profiles}=state.roster;for(const member of members){const row=E('div',undefined,'row');append(row,E('span',member.user_id===state.session.user_id?t('family_you'):member.user_id,'text'),E('span',t('family_'+member.role),'pill'));c.append(row);}if(space.kind==='family'&&['parent','owner'].includes(space.role))c.append(button(t('family_invite'),()=>dialog(t('family_invite'),container=>{let operation;form(container,'',f=>({email:input(f,'email',t('family_invite_email'),'email'),role:select(f,'role',t('family_role'),['adult','parent','child'].map(k=>[k,t('family_'+k)]),'adult'),profile:select(f,'profile',t('family_child'),[['',t('family_none')],...profiles.map(p=>[p.id,p.name])],'')}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:space.id,action:'invite.create',email:v.email.value,role:v.role.value,profile_id:v.role.value==='child'?v.profile.value:null};const invite=await call('family',operation);replaceDialog(container,E('h2',t('family_invite')),E('p',t('family_invite_hint')),E('pre',invite.invitation),button(t('close'),()=>container.close()));});})),button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));}));}
+function familyPanel(m){
+ const c=card(t('family_account'));c.classList.add('family-panel');
+ const actions=E('div',undefined,'family-workspace-actions');
+ append(actions,button(t('family_create'),()=>createSpace('family')),
+  button(t('family_owner'),()=>createSpace('personal'),'secondary'),
+  button(t('family_accept'),acceptInvite,'secondary'));
+ append(c,actions);m.append(c);
+ if(!state.roster)return;
+ const {space,members,profiles}=state.roster;
+ const roster=E('div',undefined,'family-roster');
+ if(space.name)roster.append(E('h3',space.name));
+ for(const member of members){
+  const row=E('div',undefined,'row');
+  append(row,E('span',member.user_id===state.session.user_id?t('family_you'):member.user_id,'text'),E('span',t('family_'+member.role),'pill'));
+  roster.append(row);
+ }
+ c.append(roster);
+ if(space.kind==='family'&&['parent','owner'].includes(space.role))c.append(append(E('div',undefined,'family-workspace-actions'),button(t('family_invite'),()=>dialog(t('family_invite'),container=>{let operation;form(container,'',f=>({email:input(f,'email',t('family_invite_email'),'email'),role:select(f,'role',t('family_role'),['adult','parent','child'].map(k=>[k,t('family_'+k)]),'adult'),profile:select(f,'profile',t('family_child'),[['',t('family_none')],...profiles.map(p=>[p.id,p.name])],'')}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:space.id,action:'invite.create',email:v.email.value,role:v.role.value,profile_id:v.role.value==='child'?v.profile.value:null};const invite=await call('family',operation);replaceDialog(container,E('h2',t('family_invite')),E('p',t('family_invite_hint')),E('pre',invite.invitation),button(t('close'),()=>container.close()));});})),button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));})));
+}
 function openSettings(section){
  state.settingsTab=section;
  render();

@@ -792,6 +792,24 @@ body[data-design=clarity] .security-panel .settings-row{padding-inline:0}
   align-items:baseline;
   gap:0 8px;
 }
+body[data-design=clarity] .settings-page .family-panel{
+  background:transparent;
+  border:0;
+  border-radius:0;
+  padding:0;
+  box-shadow:none;
+}
+body[data-design=clarity] .family-panel h2{
+  font:600 clamp(1.36rem,2.5vw,1.85rem)/1.16 Georgia,"Times New Roman",serif;
+  margin:0 0 12px;
+}
+.family-workspace-actions{display:flex;flex-wrap:wrap;gap:6px;margin-block:10px}
+.family-roster{margin-block:16px;border-block:1px solid var(--ux-border)}
+.family-roster h3{margin:10px 0;overflow-wrap:anywhere}
+.family-roster .text{min-width:0;overflow-wrap:anywhere}
+@media(max-width:430px){
+  .family-workspace-actions{display:grid;grid-template-columns:minmax(0,1fr)}
+}
 @media(min-width:760px){
   .settings-page .settings-content{min-width:0;border-inline-start:1px solid var(--ux-border);padding-inline-start:clamp(14px,3vw,28px)}
 }
