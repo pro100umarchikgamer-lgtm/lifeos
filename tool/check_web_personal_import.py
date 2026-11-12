@@ -60,7 +60,9 @@ def run(output, engine):
     with fixture(https=True) as (origin, backend, actor, workspace), sync_playwright() as playwright:
         executable = os.environ.get('ULADIM_CHROMIUM') if engine == 'chromium' else None
         browser = getattr(playwright, engine).launch(**({'executable_path': executable} if executable else {}))
-        page = browser.new_page(viewport={'width': 390, 'height': 844}, locale='ru-RU', ignore_https_errors=True)
+        # The refresh failure must be injected by the page route, including in WebKit.
+        page = browser.new_page(viewport={'width': 390, 'height': 844}, locale='ru-RU',
+                                service_workers='block', ignore_https_errors=True)
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
         login(page, origin)

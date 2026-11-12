@@ -89,7 +89,9 @@ def main():
 
 
 def run(browser, backend, actor, workspace, origin):
-    context = browser.new_context(viewport={'width': 1180, 'height': 820}, locale='ru-RU', ignore_https_errors=origin.startswith('https:'))
+    # Keep the 503 injection on the page's request path in WebKit. PWA caching has separate acceptance tests.
+    context = browser.new_context(viewport={'width': 1180, 'height': 820}, locale='ru-RU',
+                                  service_workers='block', ignore_https_errors=origin.startswith('https:'))
     page = context.new_page()
     page.goto(origin + '/app/')
     page.locator('input[name=email]').fill(actor['email'])
