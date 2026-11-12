@@ -25,6 +25,14 @@ for(const [locale,message] of Object.entries({
  'uz-Cyrl':'Ўзгаришлар сақланди. Рўйхатни қайта юкланг.'
 })) WEB_COPY[locale].web_saved_refresh=message;
 for(const [locale,message] of Object.entries({ru:'Итого',en:'Net','uz-Latn':'Jami','uz-Cyrl':'Жами'}))WEB_COPY[locale].web_today_net=message;
+for(const [locale,[retry,create,pending]] of Object.entries({
+ ru:['Сохранение не подтверждено','Повторить создание','Действие сохранено только до перезагрузки.'],
+ en:['Save unconfirmed','Retry creating task','This action is only available until reload.'],
+ 'uz-Latn':['Saqlash tasdiqlanmadi','Yaratishni takrorlash','Harakat sahifa qayta yuklanguncha saqlanadi.'],
+ 'uz-Cyrl':['Сақлаш тасдиқланмади','Яратишни такрорлаш','Ҳаракат саҳифа қайта юклангунча сақланади.']
+})){
+ Object.assign(WEB_COPY[locale],{web_task_unconfirmed:retry,web_task_retry_create:create,web_task_tab_only:pending});
+}
 for(const [locale,message] of Object.entries({ru:'Импорт и синхронизация',en:'Import and sync','uz-Latn':'Import va sinxronlash','uz-Cyrl':'Импорт ва синхронлаш'}))WEB_COPY[locale].web_personal_import=message;
 for(const [locale,labels] of Object.entries({
  ru:['Дополнительные параметры','Операции','Бюджеты'],
@@ -182,7 +190,7 @@ function form(container,title,build,submit,submitLabel=t('save')){
    const retry=error.uncertain||error.refreshOnly;
    fields.disabled=initiallyDisabled||!!retry;
    b.textContent=retry?t('retry'):submitLabel;
-   status.textContent=error.refreshOnly?t('web_saved_refresh'):error.uncertain?t('web_uncertain'):errorText(error);
+   status.textContent=error.displayMessage||(error.refreshOnly?t('web_saved_refresh'):error.uncertain?t('web_uncertain'):errorText(error));
    if(error.code==='unauthorized')report(error);
   }finally{b.disabled=false;pending=false;}
  });
@@ -340,6 +348,38 @@ function openTabSection(tab,selector){
  section.focus({preventScroll:true});
  section.scrollIntoView({block:'start'});
 }
+function taskActionKey(slot){
+ const account=state.session?.user_id;
+ return account&&state.space?'uladim-task-action:'+account+':'+state.space+':'+slot:'';
+}
+function readTaskAction(key){
+ if(!key)return null;
+ try{
+  const action=JSON.parse(sessionStorage.getItem(key)||'null'),op=action?.operation;
+  if(op?.action==='record.put'&&op.kind==='task'&&typeof op.id==='string'&&typeof op.record_id==='string'&&typeof op.data?.title==='string')return action;
+ }catch{}
+ return null;
+}
+function storeTaskAction(key,operation,accepted=false,conflict=false){
+ if(!key)return false;
+ try{
+  if(operation)sessionStorage.setItem(key,JSON.stringify({operation,accepted,conflict}));
+  else sessionStorage.removeItem(key);
+  return true;
+ }catch{return false;}
+}
+function clearTaskActions(){
+ const account=state.session?.user_id;
+ if(!account)return;
+ const prefix='uladim-task-action:'+account+':';
+ try{
+  for(let i=sessionStorage.length-1;i>=0;i--){
+   const key=sessionStorage.key(i);
+   if(key?.startsWith(prefix))sessionStorage.removeItem(key);
+  }
+ }catch{}
+}
+function pendingTaskMessage(accepted){return t(accepted?'web_saved_refresh':'web_task_unconfirmed');}
 function onboarding(m){
  m.classList.add('onboarding');const c=card();c.classList.add('setup-panel');c.append(icon('today'),E('h1',t('welcome_title')),E('p',t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')));const alternative=E('div',undefined,'setup-alternative');alternative.append(button(t('family_accept'),acceptInvite,'text-button'));append(m,c,alternative);
 }
@@ -366,8 +406,13 @@ function today(m){
  const submit=E('button',undefined,'primary icon');submit.type='submit';
  const feedback=E('p',undefined,'quick-capture-status');feedback.setAttribute('role','status');
  append(quick,field,submit);append(a,quick,feedback);
- const workspace=state.space,epoch=privateEpoch;
- const draft=quickTasks.get(workspace)||{title:'',operation:null,accepted:false,busy:false,message:''};
+ const workspace=state.space,epoch=privateEpoch,key=taskActionKey('quick');
+ const saved=readTaskAction(key);
+ const pendingCreate=readTaskAction(taskActionKey('create'));
+ quick.hidden=!!pendingCreate&&!saved;
+ if(quick.hidden)a.insertBefore(button(t('web_task_retry_create'),()=>editRecord('task'),'secondary'),feedback);
+ const draft=quickTasks.get(workspace)||{title:saved?.operation.data.title||'',operation:saved?.operation||null,
+  accepted:!!saved?.accepted,busy:false,message:saved?pendingTaskMessage(saved.accepted):''};
  quickTasks.set(workspace,draft);
  field.value=draft.title;
  field.addEventListener('input',()=>{draft.title=field.value;draft.message='';updateQuick();});
@@ -389,18 +434,26 @@ function today(m){
    revision:0,kind:'task',visibility:space?.role==='child'?'shared':'private',
    audience:space?.role==='child'?[space.profile_id]:[],
    data:{title,completed:0,assignment:'any',assignees:[],review:0}};
+  const durable=storeTaskAction(key,draft.operation,draft.accepted);
   draft.title=field.value;draft.message='';draft.busy=true;updateQuick();
   try{
-   if(!draft.accepted){await saveOperation(draft.operation,workspace);draft.accepted=true;}
-   await refresh();
+   if(!draft.accepted){
+    await saveOperation(draft.operation,workspace);
+    if(privateEpoch!==epoch)return;
+    draft.accepted=true;storeTaskAction(key,draft.operation,true);
+   }
+   if(state.space===workspace)await refresh();
    if(privateEpoch!==epoch)return;
+   storeTaskAction(key,null);
    quickTasks.delete(workspace);
-   if(state.space===workspace&&state.tab==='today')render();
+   if(state.space===workspace&&['today','tasks'].includes(state.tab))render();
   }catch(error){
    if(privateEpoch!==epoch)return;
-   if(!draft.accepted&&!error.uncertain)draft.operation=null;
+   if(!draft.accepted&&!error.uncertain&&error.code!=='unauthorized'){
+    draft.operation=null;storeTaskAction(key,null);
+   }
    if(error.code==='unauthorized')report(error);
-   else draft.message=draft.accepted?t('web_saved_refresh'):error.uncertain?t('web_uncertain'):errorText(error);
+   else draft.message=draft.operation?(durable?pendingTaskMessage(draft.accepted):t('web_task_tab_only')):errorText(error);
   }finally{
    draft.busy=false;
    if(privateEpoch===epoch&&state.space===workspace&&state.tab==='today'){
@@ -409,7 +462,11 @@ function today(m){
    }
   }
  });
- for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));const taskActions=E('div',undefined,'task-actions');append(taskActions,button(t('web_all_tasks'),()=>openTabSection('tasks','main h1'),'text-button'),button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));a.append(taskActions);main.append(a);
+ for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));
+ const taskActions=E('div',undefined,'task-actions');
+ taskActions.append(button(t('web_all_tasks'),()=>openTabSection('tasks','main h1'),'text-button'));
+ if(!pendingCreate&&!draft.operation)taskActions.append(button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));
+ a.append(taskActions);main.append(a);
  if(dayEvents.length){
   const schedule=card(t('web_calendar')+' · '+t('today'));
   schedule.classList.add('today-schedule');
@@ -466,7 +523,13 @@ function today(m){
 }
 function taskRow(r){
  const row=E('div',undefined,'row task-row'),check=E('input'),label=E('span',r.data.title,'text');
+ const target=append(E('label',undefined,'task-check-target'),check);
  const workspace=state.space,epoch=privateEpoch,key=workspace+':'+r.id;
+ const storageKey=taskActionKey('toggle:'+r.id),saved=readTaskAction(storageKey);
+ if(saved&&!taskChanges.has(key)){
+  taskChanges.set(key,{operation:saved.operation,phase:saved.conflict?'conflict':saved.accepted?'saved':'write',
+   busy:false,message:saved.conflict?errorText({code:'conflict'}):pendingTaskMessage(saved.accepted)});
+ }
  check.type='checkbox';check.setAttribute('aria-label',r.data.title);
  const edit=iconButton('more',t('edit')+' · '+r.data.title,()=>editRecord('task',r));
  const status=E('div',undefined,'task-change-status'),message=E('span');
@@ -488,21 +551,29 @@ function taskRow(r){
   let failed=false;
   change.busy=true;update();
   try{
-   if(change.phase==='write'){await saveOperation(change.operation,workspace);change.phase='saved';}
+   if(change.phase==='write'){
+    await saveOperation(change.operation,workspace);
+    if(epoch!==privateEpoch)return;
+    change.phase='saved';storeTaskAction(storageKey,change.operation,true);
+   }
    if(epoch!==privateEpoch)return;
    if(workspace===state.space)await refresh();
    if(epoch!==privateEpoch)return;
+   storeTaskAction(storageKey,null);
    taskChanges.delete(key);
    if(workspace===state.space&&['today','tasks'].includes(state.tab))render();
   }catch(error){
    if(epoch!==privateEpoch)return;
    failed=true;
-   if(error.code==='conflict'||error.code==='revision_conflict')change.phase='conflict';
-   if(change.phase==='saved')change.message=t('web_saved_refresh');
+   if(error.code==='conflict'||error.code==='revision_conflict'){
+    change.phase='conflict';storeTaskAction(storageKey,change.operation,false,true);
+   }
+   if(change.phase==='saved')change.message=pendingTaskMessage(true);
    else if(change.phase==='conflict')change.message=errorText({code:'conflict'});
-   else if(error.uncertain)change.message=t('web_uncertain');
+   else if(error.uncertain)change.message=t(change.durable===false?'web_task_tab_only':'web_task_unconfirmed');
    else taskChanges.delete(key);
    if(!taskChanges.has(key)||['unauthorized','workspace_forbidden','service_restricted'].includes(error.code)){
+    if(error.code!=='unauthorized')storeTaskAction(storageKey,null);
     taskChanges.delete(key);report(error);
    }
   }finally{
@@ -519,13 +590,24 @@ function taskRow(r){
   if(r.data.assignees.length){editRecord('task',r);return;}
   const operation={id:crypto.randomUUID(),action:'record.put',record_id:r.id,revision:r.revision,
    kind:r.kind,visibility:r.visibility,audience:r.audience,data:{...r.data,completed}};
-  taskChanges.set(key,{operation,phase:'write',busy:false,message:''});
+  const durable=storeTaskAction(storageKey,operation);
+  taskChanges.set(key,{operation,phase:'write',busy:false,message:'',durable});
   return complete();
  });
- append(row,check,label,edit,status);update();return row;
+ append(row,target,label,edit,status);update();return row;
 }
 function listTasks(m){
- title(m,'widget_tasks',()=>editRecord('task'));
+ const retryCreate=readTaskAction(taskActionKey('create'));
+ const retryQuick=readTaskAction(taskActionKey('quick'));
+ m.classList.add('tasks-page');
+ title(m,'widget_tasks',retryCreate||retryQuick?null:()=>editRecord('task'));
+ if(retryCreate||retryQuick)m.querySelector('.intro').append(button(t('web_task_retry_create'),()=>{
+  if(retryCreate)editRecord('task');
+  else{
+   openTabSection('today','.today-tasks h2');
+   root.querySelector('.quick-capture button')?.focus({preventScroll:true});
+  }
+ },'secondary'));
  const filters=E('div',undefined,'task-filters'),queryBox=E('div'),statusBox=E('div');append(filters,queryBox,statusBox);m.append(filters);
  const query=input(queryBox,'task-search',t('web_task_search'),'search',state.taskQuery,false);
  const status=select(statusBox,'task-status',t('web_task_status'),[['all',t('web_all')],['open',t('open_tasks')],['done',t('completed')]],state.taskStatus);
@@ -614,12 +696,15 @@ async function saveOperation(operation,workspace=state.space){
  return item;
 }
 function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
- const workspace=state.space;const d=dialog(t('family_kind_'+kind),container=>{
+ const workspace=state.space,epoch=privateEpoch,taskKey=kind==='task'&&!r?taskActionKey('create'):'';
+ const pendingTask=readTaskAction(taskKey);
+ const d=dialog(t('family_kind_'+kind),container=>{
  container.classList.add('record-editor',kind+'-editor');
  const draftKey=kind==='note'&&(!r||r.editable)?noteDraftKey(r):'';
  const draft=readNoteDraft(draftKey);
  const [ ,localDraft,failedDraft]=NOTE_DRAFT_COPY[state.lang]||NOTE_DRAFT_COPY.en;
- let operation=draft?.operation||null,accepted=Boolean(draft?.accepted);const fields={};
+ let operation=draft?.operation||pendingTask?.operation||null,accepted=Boolean(draft?.accepted||pendingTask?.accepted);
+ const fields={};
  const draftRevision=draft?.revision??r?.revision??0;
  const draftNotice=draftKey?E('p',undefined,'small note-draft-status'):null;
  if(draftNotice)draftNotice.setAttribute('role','status');
@@ -634,7 +719,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  };
  const editor=form(container,'',f=>{
   const data=r?.data||{};const disabled=r&&!r.editable;
-  if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',data.title||data.name||'');
+  if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',pendingTask?.operation.data.title||data.title||data.name||'');
   if(kind==='event'){
    const schedule=data.schedule||{};
    fields.localStart=input(f,'localStart',t('web_event_start'),'datetime-local',schedule.localStart?.slice(0,16)||eventDay+'T09:00');
@@ -660,7 +745,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   }
   if(kind==='note')fields.body=input(f,'body',t('note_text'),'textarea',draft?.body??data.body??'');
   if(kind==='task'){
-   fields.completed=input(f,'completed',t('completed'),'checkbox');fields.completed.checked=!!data.completed;fields.completed.disabled=!!data.assignees?.length;
+   fields.completed=input(f,'completed',t('completed'),'checkbox');fields.completed.checked=!!(pendingTask?.operation.data.completed??data.completed);fields.completed.disabled=!!data.assignees?.length;
    if(data.assignees?.length){f.append(E('p',t('family_review_pending')));for(const pid of data.assignees){const profile=state.roster.profiles.find(p=>p.id===pid);f.append(button(t('complete')+' · '+(profile?.name||pid),async()=>{await saveOperation({id:crypto.randomUUID(),action:'task.complete',record_id:r.id,revision:r.revision,profile_id:pid,completed:true});d.close();await refresh();render();}));}}
   }
   if(['account','transaction','budget'].includes(kind))fields.currency=input(f,'currency',t('currency'),'text',data.currency||'RUB');
@@ -673,6 +758,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   if(kind==='budget'){fields.period=select(f,'period',t('family_period'),['week','month','year','custom'].map(k=>[k,t('family_'+k)]),data.period||'month');fields.start=input(f,'start',t('family_start'),'date',data.start_on||localDate());fields.end=input(f,'end',t('family_end'),'date',data.end_on||'',false);fields.rollover=select(f,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');}
   if(kind==='transfer'){if(records('account').length<2)f.append(E('p',t('web_transfer_accounts'),'error'));const accounts=records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency]);fields.from=select(f,'from',t('family_from'),accounts,data.from_id||accounts[0]?.[0]);fields.to=select(f,'to',t('family_to'),accounts,data.to_id||accounts[1]?.[0]);fields.received=input(f,'received',t('received_amount'),'text',decimalInput(data.received_minor||0,records('account').find(a=>a.id===data.to_id)?.data.currency||'RUB'));fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());}
   fields.visibility=select(kind==='event'?f.querySelector('.event-options'):f,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
+  if(pendingTask)fields.visibility.value=pendingTask.operation.visibility;
   if(draftNotice){
    if(draft){fields.visibility.value=draft.visibility;draftNotice.textContent=localDraft;}
    fields.body.addEventListener('input',keepDraft);
@@ -681,7 +767,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   }
   if(disabled)f.disabled=true;return fields;
  },async v=>{
-  if(workspace!==state.space)throw {code:'view_changed'};
+  if(workspace!==state.space||epoch!==privateEpoch)throw {code:'view_changed'};
   if(!operation){let data={...r?.data};
    if(kind==='note')data={body:v.body.value};
    if(kind==='event'){
@@ -706,17 +792,32 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   }
   if(!accepted){
    keepDraft();
-   try{await saveOperation(operation,workspace);accepted=true;keepDraft();}
-   catch(error){if(!error.uncertain){operation=null;keepDraft();}throw error;}
+   const durable=!taskKey||storeTaskAction(taskKey,operation);
+   try{
+    await saveOperation(operation,workspace);
+    if(epoch!==privateEpoch)return;
+    accepted=true;keepDraft();
+    if(taskKey)storeTaskAction(taskKey,operation,true);
+   }catch(error){
+    if(epoch!==privateEpoch)return;
+    if(!error.uncertain&&(error.code!=='unauthorized'||!taskKey)){
+     operation=null;keepDraft();
+     if(taskKey)storeTaskAction(taskKey,null);
+    }
+    if(taskKey&&error.uncertain)error.displayMessage=t(durable?'web_task_unconfirmed':'web_task_tab_only');
+    throw error;
+   }
   }
   try{await refresh();}catch(error){throw {...error,refreshOnly:true};}
+  if(epoch!==privateEpoch)return;
   if(draftKey)writeNoteDraft(draftKey,null);
+  if(taskKey)storeTaskAction(taskKey,null);
   d.close();render();onSaved?.();
  });
  if(operation){
   editor.querySelector('fieldset').disabled=true;
   editor.querySelector('button[type=submit]').textContent=t('retry');
-  editor.querySelector('.error').textContent=t(accepted?'web_saved_refresh':'web_uncertain');
+  editor.querySelector('.error').textContent=pendingTask?pendingTaskMessage(accepted):t(accepted?'web_saved_refresh':'web_uncertain');
  }
  if(r)container.append(button(t('family_use_server'),async()=>{
   await refresh();
@@ -724,6 +825,9 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   d.close();render();
  }));
  if(r?.editable)container.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));
+ });
+ if(taskKey)d.addEventListener('close',()=>{
+  if(epoch===privateEpoch&&workspace===state.space&&['today','tasks'].includes(state.tab)&&readTaskAction(taskKey))render();
  });
 }
 function summaries(container){
@@ -870,7 +974,7 @@ async function account(m){
   if(section===key)item.setAttribute('aria-current','page');
   navigation.append(item);
  }
- if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),settingsRow(t('account_privacy'),()=>openSettings('security')),button(t('family_logout'),async()=>{await call('logout',{});clearNoteDrafts();clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
+ if(section==='profile'){const c=card(t('profile'));append(c,E('p',state.session.email,'account-email'),settingsRow(t('account_privacy'),()=>openSettings('security')),button(t('family_logout'),async()=>{await call('logout',{});clearNoteDrafts();clearTaskActions();clearIdentity();login();},'text-button'));content.append(c);if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));}
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);

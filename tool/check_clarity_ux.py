@@ -1,9 +1,10 @@
 """Clarity iteration: real disposable backend, actual browser writes and visual evidence."""
 from pathlib import Path
 import json
+from uuid import uuid4
 from tool.web_browser_navigation import open_tab, open_settings
 from playwright.sync_api import sync_playwright, expect
-from tool.check_web_platform import fixture, login
+from tool.check_web_platform import PASSWORD, fixture, login
 OUT=Path('web_evidence/clarity');OUT.mkdir(parents=True,exist_ok=True)
 with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     browser=p.chromium.launch()
@@ -38,9 +39,38 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     expect(page.locator('.quick-capture input')).to_have_attribute('readonly','')
     expect(page.locator('.quick-capture button')).to_be_enabled()
     open_tab(page,'Задачи')
+    page.get_by_role('searchbox',name='Поиск задач').fill('Проверка потерянного ответа')
     open_tab(page,'Сегодня')
     expect(page.locator('.quick-capture input')).to_have_value('Проверка потерянного ответа')
     page.unroute('**/account/api/sync',lose_response)
+    other_workspace=str(uuid4())
+    backend.family(actor,{'id':str(uuid4()),'action':'workspace.create','workspace_id':other_workspace,'kind':'personal','name':'Второе пространство'})
+    page.reload()
+    workspace=page.get_by_role('combobox',name='Аккаунт и семья')
+    workspace.select_option(other_workspace)
+    expect(page.locator('.quick-capture input')).to_have_value('')
+    workspace.select_option(wid)
+    expect(page.locator('.quick-capture input')).to_have_value('Проверка потерянного ответа')
+    mail={}
+    backend._deliver=lambda db,email,code,purpose:mail.update({email:code})
+    other_email='other@example.test'
+    other_session=backend.register(other_email,PASSWORD)
+    other_actor=backend.authenticate(other_session['token'])
+    backend.verify(other_actor,mail[other_email])
+    other_actor=backend.authenticate(other_session['token'])
+    backend.family(other_actor,{'id':str(uuid4()),'action':'workspace.create','workspace_id':str(uuid4()),'kind':'personal','name':'Чужое пространство'})
+    page.context.clear_cookies()
+    page.reload()
+    page.get_by_label('Электронная почта',exact=True).fill(other_email)
+    page.locator('input[name=password]').fill(PASSWORD)
+    page.get_by_role('button',name='Войти',exact=True).click()
+    expect(page.locator('.quick-capture input')).to_have_value('')
+    expect(page.get_by_text('Проверка потерянного ответа',exact=True)).to_have_count(0)
+    page.context.clear_cookies()
+    login(page,origin)
+    workspace.select_option(wid)
+    expect(page.locator('.quick-capture input')).to_have_value('Проверка потерянного ответа')
+    checks.append('pending_task_isolated_by_account_and_workspace')
     with page.expect_request(lambda request: request.url.endswith('/account/api/sync') and request.method=='POST') as retry:
         page.locator('.quick-capture button').click()
     assert retry.value.post_data_json==attempts[0]
@@ -70,6 +100,10 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     expect(task.get_by_role('checkbox')).not_to_be_checked()
     page.screenshot(path=str(OUT/'task-retry-390.png'))
     page.unroute('**/account/api/sync',lose_response)
+    page.reload()
+    open_tab(page,'Задачи')
+    search.fill(task_title)
+    expect(task.get_by_role('button',name='Повторить',exact=True)).to_be_enabled()
     with page.expect_request(lambda request: request.url.endswith('/account/api/sync') and request.method=='POST') as completion_retry:
         task.get_by_role('button',name='Повторить',exact=True).click()
     assert completion_retry.value.post_data_json==attempts[-1]
@@ -77,13 +111,29 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     expect(task.get_by_role('button',name='Повторить',exact=True)).to_have_count(0)
     record=next(r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='task' and r['data']['title']==task_title)
     assert record['data']['completed']==1 and record['revision']==2
-    checks.append('task_completion_retry_survives_filter_change')
+    checks.append('task_completion_retry_survives_filter_change_and_reload')
+    page.get_by_role('button',name='Добавить',exact=True).click()
+    editor=page.get_by_role('dialog')
+    editor.get_by_label('Название задачи').fill('Задача из формы после перезагрузки')
+    page.route('**/account/api/sync',lose_response,times=1)
+    editor.get_by_role('button',name='Сохранить',exact=True).click()
+    expect(editor.get_by_role('button',name='Повторить',exact=True)).to_be_enabled()
+    page.reload()
+    open_tab(page,'Задачи')
+    page.get_by_role('button',name='Повторить создание',exact=True).click()
+    expect(editor.get_by_label('Название задачи')).to_have_value('Задача из формы после перезагрузки')
+    with page.expect_request(lambda request: request.url.endswith('/account/api/sync') and request.method=='POST') as editor_retry:
+        editor.get_by_role('button',name='Повторить',exact=True).click()
+    assert editor_retry.value.post_data_json==attempts[-1]
+    expect(editor).to_have_count(0)
+    assert len([r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='task' and r['data']['title']=='Задача из формы после перезагрузки'])==1
+    checks.append('task_editor_creation_retry_survives_reload')
     expect(page.locator('#alerts .toast')).to_have_count(0,timeout=6000)
     for theme in ('light','dark'):
         page.evaluate('v=>{state.theme=v;preferences()}',theme)
         for width in (320,375,390,430,768,1024,1280,1440):
             page.set_viewport_size({'width':width,'height':900})
-            for tab,label in [('today','Сегодня'),('money','Финансы'),('account','Профиль')]:
+            for tab,label in [('today','Сегодня'),('tasks','Задачи'),('money','Финансы'),('account','Профиль')]:
                 open_tab(page,label)
                 expect(page.locator('h1')).to_be_visible()
                 if tab=='account':open_settings(page,'profile')
@@ -117,4 +167,4 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     assert not errors,errors
     (OUT/'results.json').write_text(json.dumps({'checks':checks,'geometry':geometry,'page_errors':errors},ensure_ascii=False,indent=2))
     browser.close()
-print('Clarity UX: quick-task persistence, settings separation, 48 viewport/theme checks passed')
+print('Clarity UX: task recovery, settings separation, 64 viewport/theme checks passed')

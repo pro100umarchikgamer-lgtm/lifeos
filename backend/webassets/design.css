@@ -482,6 +482,14 @@ body[data-design=clarity] .task-row {
   padding-block: 8px;
 }
 .task-row input[type=checkbox] { justify-self: center; margin: 0; }
+.task-check-target {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  cursor: pointer;
+}
 .task-row .text { overflow-wrap: anywhere; }
 .task-change-status:not([hidden]) {
   grid-column: 2 / -1;
@@ -491,6 +499,23 @@ body[data-design=clarity] .task-row {
   gap: 8px 12px;
   color: var(--ux-muted);
   font-size: .875rem;
+}
+.task-change-status button { min-height: 44px; }
+.quick-capture[hidden] { display: none; }
+@media(max-width:759px) {
+  body[data-design=clarity] .tasks-page .intro { margin-bottom: 12px; }
+  .tasks-page .task-filters {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  body[data-design=clarity] .tasks-page .task-list { padding: 4px 10px; }
+  body[data-design=clarity] .tasks-page .task-row { min-height: 52px; gap: 4px; padding-block: 4px; }
+  .tasks-page .task-change-status:not([hidden]) {
+    gap: 2px 8px;
+    padding-bottom: 2px;
+  }
+  .tasks-page .task-change-status button { padding-inline: 10px; }
 }
 .notes-toolbar { max-width: 32rem; margin-bottom: 18px; }
 .notes-toolbar input { min-width: 0; }
