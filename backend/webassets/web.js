@@ -112,15 +112,21 @@ async function publicPage(config) {
  document.body.classList.add('product-site');
  publicNavigation(path);
  if(path==='/'){await landing(config);return;}
- app.classList.add('product-content');
+ document.body.classList.add('focus-public');
+ app.classList.add('product-content','focus-info');
  if(['/privacy','/terms'].includes(path)){legalPage(path);return;}
  if(path==='/early-access'){await earlyAccess();return;}
  if(path==='/docs') {
   heading('Порядок в ваших делах','Записывайте задачи и идеи, планируйте события и ведите финансы в одном аккаунте. Для общих дел можно создать семейное пространство.');
-  app.append(panel('Начните с одной записи','Добавьте задачу, заметку или финансовый счёт в личном пространстве. Если хотите планировать вместе с близкими, создайте семейное пространство и пригласите их.'));
+  const links=el('nav',undefined,'guide-navigation');links.setAttribute('aria-label','Разделы руководства');
+  for(const [label,href] of [['Начало работы','#first-record'],['Установка','#installation'],['Импорт данных','#import'],['Вопросы и ответы','/faq']]){
+   const jump=el('a',label);jump.href=href;links.append(jump);
+  }
+  const first=panel('Начните с одной записи','Добавьте задачу, заметку или финансовый счёт в личном пространстве. Если хотите планировать вместе с близкими, создайте семейное пространство и пригласите их.');
+  first.id='first-record';
+  add(app,startLink(config),links,first);
   installGuide(app);
   importGuide(app);
-  app.append(startLink(config));
   return;
  }
  if(path==='/faq'){importFaq(app);return;}

@@ -223,8 +223,8 @@ body.product-site > footer:not([hidden]) {
   body.product-site .plan-comparison th:first-child { width: 42%; padding-inline-start: 8px; }
 }
 
-/* Focus homepage. Keep public account pages and the workspace styles independent. */
-body.focus-home {
+/* Focus palette for public pages. */
+body:is(.focus-home,.focus-public) {
   --ux-bg: #f7f6f0;
   --ux-surface: #fdfcf9;
   --ux-ink: #1b2822;
@@ -235,7 +235,7 @@ body.focus-home {
   background: var(--ux-bg);
   color: var(--ux-ink);
 }
-body.focus-home[data-theme="dark"] {
+body:is(.focus-home,.focus-public)[data-theme="dark"] {
   --ux-bg: #101b18;
   --ux-surface: #1a2721;
   --ux-ink: #edf5ee;
@@ -245,7 +245,7 @@ body.focus-home[data-theme="dark"] {
   --ux-soft: #254035;
 }
 @media (prefers-color-scheme: dark) {
-  body.focus-home[data-theme="system"] {
+  body:is(.focus-home,.focus-public)[data-theme="system"] {
     --ux-bg: #101b18;
     --ux-surface: #1a2721;
     --ux-ink: #edf5ee;
@@ -448,4 +448,46 @@ body.product-site.focus-home .product-features .feature-row {
   body.product-site.focus-home .product-features .feature-row { display: flex; align-items: flex-start; gap: 12px; }
   .focus-home .feature-row svg { flex: 0 0 25px; }
   .focus-home .feature-row h3 { margin-top: 0; }
+}
+body.product-site #app.focus-info {
+  max-width: 920px;
+  padding-block-start: clamp(24px, 5vw, 64px);
+}
+.product-site .focus-info > .eyebrow { display: none; }
+.product-site .focus-info > h1 {
+  margin-block: 0 14px;
+  font: 600 clamp(2rem, 5vw, 3.5rem)/1.06 Georgia, "Times New Roman", serif;
+  letter-spacing: -.035em;
+  color: var(--ux-ink);
+  overflow-wrap: anywhere;
+}
+.product-site .focus-info h2 {
+  font: 600 clamp(1.36rem, 3vw, 2rem)/1.17 Georgia, "Times New Roman", serif;
+}
+.product-site .focus-info > p:first-of-type { max-width: 64ch; }
+.product-site .focus-info > .card,
+.product-site .focus-info > :is(.install-guide,.import-guide,.import-faq,.plan-comparison) {
+  max-width: none;
+  margin: 22px 0;
+  padding: 16px 0 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--ux-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.focus-info .guide-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0 16px;
+  border-bottom: 1px solid var(--ux-border);
+  margin-block: 12px 0;
+}
+.focus-info .guide-navigation a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ux-green);
+  text-underline-offset: 3px;
 }
