@@ -308,6 +308,23 @@ body[data-design=clarity] .danger-action { background: #9a3830; color: #fff; }
   font-size: 12px;
 }
 body[data-design=clarity] .device-row button { min-height: 44px; }
+body[data-design=clarity] :is(.devices-dialog,.device-revoke-dialog) .dialog-head h2{
+  font:600 clamp(1.38rem,3vw,1.9rem)/1.16 Georgia,"Times New Roman",serif;
+}
+body[data-design=clarity] .devices-dialog .device-group h3{
+  padding:8px 12px;
+  margin:0;
+  border-radius:8px;
+  background:var(--ux-soft);
+  color:var(--ux-ink);
+}
+.devices-dialog .device-group .device-row:first-of-type{border-top:0}
+body[data-design=clarity] .devices-dialog .device-row button{border:1px solid var(--ux-border)}
+body[data-design=clarity] .device-revoke-dialog button[type=submit]{width:100%}
+@media(max-width:430px){
+  .devices-dialog .device-row{grid-template-columns:minmax(0,1fr)}
+  .devices-dialog .device-row button{width:100%}
+}
 
 @media (min-width: 760px) and (max-width: 999px) {
   body[data-design=clarity] .nav { width: 108px; }

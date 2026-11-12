@@ -1354,6 +1354,7 @@ async function devices(){
 }
 function confirmDeviceRevoke(device,list){
  dialog(t('account_revoke'),d=>{
+  d.classList.add('device-revoke-dialog');
   append(d,E('p',device.label,'device-name'),E('p',t(device.current?'web_revoke_current_hint':'web_revoke_device_hint')));
   const confirmation=form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
    try{await call('devices/revoke',{device_id:device.id,password:v.password.value});}finally{v.password.value='';}
