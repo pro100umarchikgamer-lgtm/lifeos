@@ -1,6 +1,6 @@
 'use strict';
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
-const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'forest',chart:'bar',generation:0,busy:false,googleEnabled:false};
+const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'violet',chart:'bar',generation:0,busy:false,googleEnabled:false};
 let calendarMode='month';
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null;
 const pendingDeletes=new Map();
@@ -78,8 +78,18 @@ function offsetDate(date,days){
 }
 function calendar(m){
  const addEvent=()=>editRecord('event',null,{eventDay:state.calendarDay});
- title(m,'web_calendar',addEvent);
+ const copy={
+  ru:['Планы и встречи','Ваши планы и встречи в одном месте.','Новое событие','Добавить событие'],
+  en:['Plans and gatherings','Your plans and gatherings, all in one place.','New event','Add event'],
+  'uz-Latn':['Rejalar va uchrashuvlar','Rejalaringiz va uchrashuvlaringiz bir joyda.','Yangi tadbir','Tadbir qo‘shish'],
+  'uz-Cyrl':['Режалар ва учрашувлар','Режаларингиз ва учрашувларингиз бир жойда.','Янги тадбир','Тадбир қўшиш']
+ }[state.lang]||['Plans and gatherings','Your plans and gatherings, all in one place.','New event','Add event'];
+ title(m,'web_calendar');
  m.classList.add('calendar-page');
+ const intro=m.querySelector('.intro'),introText=intro.firstElementChild;
+ introText.prepend(E('div',copy[0],'eyebrow'));
+ introText.append(E('p',copy[1],'workspace-description'));
+ intro.append(addButton(copy[2],addEvent));
  const date=new Date(state.calendarDay+'T12:00:00'),year=date.getFullYear(),month=date.getMonth();
  const [weekLabel,dayLabel,previousWeek,nextWeek,previousDay,nextDay]=CALENDAR_COPY[state.lang]||CALENDAR_COPY.en;
  const weekStart=offsetDate(date,-((date.getDay()+6)%7));
@@ -94,14 +104,13 @@ function calendar(m){
   },'secondary');
   control.setAttribute('aria-pressed',String(calendarMode===key));modes.append(control);
  }
- m.append(modes);
  const layout=E('div',undefined,'calendar-layout'),monthPanel=card(),agenda=card();
+ layout.dataset.mode=calendarMode;
  monthPanel.classList.add('calendar-month');
  agenda.classList.add('calendar-agenda');
  if(calendarMode==='day')layout.classList.add('calendar-day-layout');
  append(layout,monthPanel,agenda);
  m.append(layout);
-
  const showDate=(next,focus)=>{
   state.calendarDay=next;
   render();
@@ -116,7 +125,9 @@ function calendar(m){
  const period=calendarMode==='month'?date.toLocaleDateString(state.lang,{month:'long',year:'numeric'}):
   calendarMode==='week'?new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).formatRange(from,offsetDate(to,-1)):
   date.toLocaleDateString(state.lang,{day:'numeric',month:'long'});
- append(toolbar,previous,E('h2',period),next);
+ const periodNavigation=E('div',undefined,'calendar-period');
+ append(periodNavigation,previous,E('h2',period),next);
+ append(toolbar,periodNavigation,modes);
  const grid=E('div',undefined,'calendar-grid');
  append(monthPanel,toolbar,grid);
  if(calendarMode!=='day')for(let i=0;i<7;i++){
@@ -130,31 +141,49 @@ function calendar(m){
   if(!byDay.has(o.day))byDay.set(o.day,[]);
   byDay.get(o.day).push(o);
  }
- if(calendarMode==='month')for(let i=0;i<(from.getDay()+6)%7;i++)grid.append(E('span',undefined,'calendar-offset'));
+ if(calendarMode==='month'){
+  const offset=(from.getDay()+6)%7;
+  for(let i=offset;i>0;i--)grid.append(E('span',String(offsetDate(from,-i).getDate()),'calendar-offset'));
+ }
  const today=localDate();
  if(calendarMode!=='day')for(let d=from;d<to;d=offsetDate(d,1)){
   const key=dateString(d),items=byDay.get(key)||[];
-  const b=button(String(d.getDate()),()=>showDate(key,'.calendar-date[aria-pressed=true]'),'calendar-date');
+  const b=button('',()=>showDate(key,'.calendar-date[aria-pressed=true]'),'calendar-date');
+  b.append(E('span',String(d.getDate()),'calendar-date-number'));
   b.setAttribute('aria-label',d.toLocaleDateString(state.lang,{day:'numeric',month:'long'})+(items.length?' · '+items.map(o=>o.record.data.title).join(', '):''));
   b.setAttribute('aria-pressed',String(key===state.calendarDay));
   if(key===today){b.classList.add('is-today');b.setAttribute('aria-current','date');}
-  if(items.length){const count=E('span',String(items.length),'event-count');count.setAttribute('aria-hidden','true');b.append(count);}
+  if(items.length){
+   const dots=E('span',undefined,'calendar-event-dots');dots.setAttribute('aria-hidden','true');
+   for(const o of items.slice(0,3)){const dot=E('span');dot.dataset.visibility=o.record.visibility;dots.append(dot);}
+   b.append(dots);
+  }
   grid.append(b);
  }
  if(calendarMode==='month'){
-  const remaining=(8-to.getDay())%7;
-  for(let i=0;i<remaining;i++)grid.append(E('span',undefined,'calendar-offset'));
+  const remaining=(7-((to.getDay()+6)%7))%7;
+  for(let i=0;i<remaining;i++)grid.append(E('span',String(offsetDate(to,i).getDate()),'calendar-offset'));
  }
- const dateHeading=E('h2',date.toLocaleDateString(state.lang,{weekday:'long',day:'numeric',month:'long'}),'calendar-agenda-date');
+ if(all.length&&calendarMode!=='day'){
+  const legend=E('div',undefined,'calendar-legend');
+  for(const visibility of ['private','shared'])if(all.some(o=>o.record.visibility===visibility)){
+   const item=E('span',t('family_'+visibility));item.dataset.visibility=visibility;legend.append(item);
+  }
+  monthPanel.append(legend);
+ }
  const agendaHead=E('div',undefined,'calendar-agenda-head');
- append(agendaHead,dateHeading,addButton(t('family_kind_event'),addEvent));
+ const dateHeading=E('h2',undefined,'calendar-agenda-date');
+ dateHeading.setAttribute('aria-label',date.toLocaleDateString(state.lang,{weekday:'long',day:'numeric',month:'long'}));
+ append(dateHeading,E('strong',date.toLocaleDateString(state.lang,{day:'numeric'}),'calendar-day-number'),E('span',new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).formatToParts(date).find(part=>part.type==='month')?.value||date.toLocaleDateString(state.lang,{month:'long'})));
+ append(agendaHead,E('div',date.toLocaleDateString(state.lang,{weekday:'long'}),'calendar-day-weekday'),dateHeading);
  agenda.append(agendaHead);
  const selected=byDay.get(state.calendarDay)||[];
  if(selected.length){
   const events=E('div',undefined,'calendar-events');
-  for(const o of selected)events.append(eventRow(o,true));
+  for(const o of selected){const row=eventRow(o,true);row.dataset.visibility=o.record.visibility;events.append(row);}
   agenda.append(events);
  }else agenda.append(emptyPanel('calendar',t('web_no_events')));
+ const add=addButton(copy[3],addEvent);add.classList.add('calendar-add-event');agenda.append(add);
  const picker=E('div',undefined,'calendar-picker');
  const field=input(picker,'calendar-day',t('web_day'),'date',state.calendarDay);
  field.addEventListener('change',()=>{if(field.value)showDate(field.value,'[name=calendar-day]');});
@@ -297,6 +326,7 @@ function updateSyncStatus(){
 function refresh(){const epoch=privateEpoch;const run=async()=>{if(epoch!==privateEpoch)return;state.busy=true;state.syncState='loading';updateSyncStatus();try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();if(epoch===privateEpoch&&(!state.space||state.syncSpace===state.space)){state.lastRead=Date.now();state.syncState='read';}}catch(error){if(epoch===privateEpoch)state.syncState='error';throw error;}finally{if(epoch===privateEpoch){state.busy=false;updateSyncStatus();}}};const pending=refreshTail.then(run,run);refreshTail=pending.catch(()=>{});return pending;}
 async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();render();}
 function login(){
+ delete document.body.dataset.referenceLayout;
  root.replaceChildren();
  const m=E('main',undefined,'login focus-login');
  const brand=E('a','ULADIM','brand focus-login-brand');
@@ -365,71 +395,77 @@ document.addEventListener('pointerdown',event=>{
  const menu=root.querySelector('.nav-more[open]');
  if(menu&&!menu.contains(event.target))menu.open=false;
 });
+const REFERENCE_COPY={
+ ru:['Планирование','Финансы','Пространство','Обзор финансов','Семья и участники','Добро пожаловать','Задачи к выполнению','Расходы за месяц','Ближайшее событие','Моё пространство','Последние операции','Счета','Лаванда','Баланс счетов'],
+ en:['Planning','Finances','Workspace','Financial overview','Family and members','Welcome back','Tasks to do','Monthly expenses','Next event','My workspace','Recent transactions','Accounts','Lavender','Account balances'],
+ 'uz-Latn':['Rejalashtirish','Moliya','Makon','Moliya sharhi','Oila va a’zolar','Xush kelibsiz','Bajariladigan vazifalar','Oylik xarajatlar','Keyingi tadbir','Mening makonim','Oxirgi operatsiyalar','Hisoblar','Lavanda','Hisoblar balansi'],
+ 'uz-Cyrl':['Режалаштириш','Молия','Макон','Молия шарҳи','Оила ва аъзолар','Хуш келибсиз','Бажариладиган вазифалар','Ойлик харажатлар','Кейинги тадбир','Менинг маконим','Охирги операциялар','Ҳисоблар','Лаванда','Ҳисоблар баланси']
+};
+function referenceCopy(index){return (REFERENCE_COPY[state.lang]||REFERENCE_COPY.en)[index];}
+function referenceNavigate(tab,section=''){
+ state.referenceSection=section;state.tab=tab;
+ if(tab==='account')state.settingsTab=section;
+ render();window.scrollTo(0,0);
+ if(tab==='money'&&section){root.querySelector('#finance-'+section)?.scrollIntoView({block:'start'});}
+ const heading=root.querySelector('main h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+}
 function shell(){
  const previousMenu=root.querySelector('.nav-more');
  const keepMenu=previousMenu?.open&&previousMenu.dataset.tab===state.tab;
- navObserver?.disconnect();root.replaceChildren();const header=E('header');const brand=E('a','ULADIM','brand');brand.href='/app';brand.append(E('small',t('ux3_settings_body')));header.append(brand);
- const spaces=select(E('div'),'workspace','',state.spaces.map(s=>[s.id,s.name]),state.space);spaces.setAttribute('aria-label',t('family_account'));spaces.className='workspace';spaces.title=currentSpace()?.name||t('family_account');spaces.addEventListener('change',async()=>{document.querySelectorAll('dialog').forEach(d=>d.close());state.generation++;state.lastRead=0;state.syncState='loading';state.space=spaces.value;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;render();try{await refresh();render();}catch(e){report(e);}});const tools=E('div',undefined,'header-tools');
- const status=E('span',undefined,'workspace-sync');status.setAttribute('role','status');
- const theme=button('',()=>{
-  const dark=state.theme==='dark'||(state.theme==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);
-  state.theme=dark?'light':'dark';preferences();
- },'icon header-theme');
- theme.append(icon('appearance'));theme.setAttribute('aria-label',(SYNC_COPY[state.lang]||SYNC_COPY.en)[4]);
- const profile=button('',()=>{state.tab='account';openSettings('');window.scrollTo(0,0);},'icon header-profile');
- profile.append(icon('account'));profile.setAttribute('aria-label',t('profile'));
- if(state.spaces.length)tools.append(spaces);append(tools,theme,profile);header.append(status,tools);root.append(header);updateSyncStatus();
- if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
- const m=E('main');m.id='content';root.append(m);const nav=E('nav',undefined,'nav');nav.setAttribute('aria-label','ULADIM');
- const secondary=E('details',undefined,'nav-more');
- secondary.dataset.tab=state.tab;secondary.open=Boolean(keepMenu);
+ navObserver?.disconnect();root.replaceChildren();document.body.dataset.referenceLayout='b12';
+ const header=E('header'),nav=E('nav',undefined,'nav reference-sidebar');nav.setAttribute('aria-label','ULADIM');
+ const brand=E('a','ULADIM','brand');brand.href='/app';nav.append(brand);
+ const spaces=select(E('div'),'workspace','',state.spaces.map(s=>[s.id,s.name]),state.space);spaces.setAttribute('aria-label',t('family_account'));spaces.className='workspace';spaces.title=currentSpace()?.name||t('family_account');spaces.addEventListener('change',async()=>{document.querySelectorAll('dialog').forEach(d=>d.close());state.generation++;state.lastRead=0;state.syncState='loading';state.space=spaces.value;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;render();try{await refresh();render();}catch(e){report(e);}});
+ const workspaceCard=E('div',undefined,'reference-workspace');
+ append(workspaceCard,E('span',(currentSpace()?.name||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),spaces);nav.append(workspaceCard);
+ const secondary=E('details',undefined,'nav-more');secondary.dataset.tab=state.tab;secondary.open=Boolean(keepMenu);
  const summary=E('summary');append(summary,icon('more'),E('span',t('web_more')));secondary.append(summary);
  const menu=E('div',undefined,'nav-menu');secondary.append(menu);
  secondary.addEventListener('keydown',event=>{if(event.key==='Escape'&&secondary.open){event.preventDefault();secondary.open=false;summary.focus();}});
- for(const [key,label] of [['today','today'],['tasks','widget_tasks'],['calendar','web_calendar'],['notes','widget_notes'],['money','finances'],['account','profile']]){
-  const navigate=()=>{
-   secondary.open=false;
-   if(key==='account')state.settingsTab='';
-   state.tab=key;render();
-   window.scrollTo(0,0);
-   const heading=root.querySelector('main h1');
-   if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
-  };
-  const navItem=()=>{
-   const b=button('',navigate);
-   append(b,icon(key),E('span',t(label)));
-   if(state.tab===key)b.setAttribute('aria-current','page');
-   return b;
-  };
-  const item=navItem();
-  if(['notes','account'].includes(key)){
-   item.classList.add('nav-secondary');
-   menu.append(navItem());
-  }
-  nav.append(item);
- }
- if(['notes','account'].includes(state.tab)){summary.classList.add('active');summary.setAttribute('aria-current','page');}
- nav.append(secondary);root.append(nav);
- let measureFrame=0;
- const measureChrome=()=>{
-  measureFrame=0;
-  if(!nav.isConnected||!header.isConnected)return;
-  const heights=[['--nav-height',nav.getBoundingClientRect().height],['--app-header-height',header.getBoundingClientRect().height]];
-  for(const [name,height] of heights){
-   const value=height+'px';
-   if(document.body.style.getPropertyValue(name)!==value)document.body.style.setProperty(name,value);
-  }
+ const makeItem=(tab,label,symbol,section='')=>{
+  const item=button('',()=>referenceNavigate(tab,section),'reference-nav-item');item.dataset.tab=tab;item.dataset.section=section;
+  append(item,icon(symbol),E('span',label));
+  const activeSection=tab==='money'?(state.referenceSection||''):tab==='account'?(state.settingsTab==='family'?'family':''):'';
+  if(state.tab===tab&&activeSection===section)item.setAttribute('aria-current','page');
+  if(tab==='tasks'){const count=records('task').filter(r=>!r.data.completed).length;if(count)item.append(E('span',String(count),'reference-nav-count'));}
+  return item;
  };
- measureChrome();
- // Changing a CSS variable can resize the observed chrome. Do the write outside observer delivery.
- navObserver=new ResizeObserver(()=>{if(!measureFrame)measureFrame=requestAnimationFrame(measureChrome);});
- navObserver.observe(nav);navObserver.observe(header);return m;
+ const planning=E('div',undefined,'reference-nav-group');planning.append(E('p',referenceCopy(0),'reference-nav-label'));
+ for(const [tab,label,symbol]of [['today','today','today'],['tasks','widget_tasks','tasks'],['calendar','web_calendar','calendar'],['notes','widget_notes','notes']])planning.append(makeItem(tab,t(label),symbol));
+ const finances=E('div',undefined,'reference-nav-group reference-finance-group');finances.append(E('p',referenceCopy(1),'reference-nav-label'));
+ finances.append(makeItem('money',referenceCopy(3),'money'),makeItem('money',referenceCopy(11),'money','accounts'),makeItem('money',t('web_finance_budgets'),'money','budgets'));
+ const importItem=button(statementCopy('title'),importStatement,'reference-nav-item');importItem.prepend(icon('notes'));finances.append(importItem);
+ const spaceGroup=E('div',undefined,'reference-nav-group reference-space-group');spaceGroup.append(E('p',referenceCopy(2),'reference-nav-label'),makeItem('account',referenceCopy(4),'account','family'));
+ append(nav,planning,finances,spaceGroup);
+ // Existing destinations stay reachable in the compact phone menu.
+ menu.append(makeItem('notes',t('widget_notes'),'notes'),makeItem('account',t('profile'),'account'),makeItem('account',referenceCopy(4),'account','family'));
+ const profile=()=>referenceNavigate('account');
+ const footer=E('div',undefined,'reference-sidebar-footer');
+ const status=E('span',undefined,'workspace-sync');status.setAttribute('role','status');footer.append(status);
+ footer.append(button(t('account_support'),()=>referenceNavigate('account','support'),'text-button reference-help'));
+ const identity=button('',profile,'reference-identity');identity.setAttribute('aria-label',t('profile'));append(identity,E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),E('span',state.session.email||t('profile')));footer.append(identity);nav.append(footer,secondary);
+ const compactMoney=makeItem('money',t('finances'),'money');compactMoney.classList.add('reference-compact-money');nav.append(compactMoney);
+ const compactProfile=makeItem('account',t('profile'),'account');compactProfile.classList.add('reference-compact-profile');nav.append(compactProfile);
+ const pageLabels={today:'today',tasks:'widget_tasks',calendar:'web_calendar',notes:'widget_notes',money:'finances',account:'profile'};
+ const crumbs=E('div',undefined,'reference-breadcrumb');append(crumbs,E('span',currentSpace()?.name||referenceCopy(9)),icon('forward'),E('strong',t(pageLabels[state.tab]||'today')));
+ const tools=E('div',undefined,'header-tools');
+ const date=button(new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',year:'numeric'}),()=>{state.calendarDay=localDate();referenceNavigate('calendar');},'secondary reference-date');date.prepend(icon('calendar'));
+ const theme=button('',()=>{const dark=state.theme==='dark'||(state.theme==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);state.theme=dark?'light':'dark';preferences();redrawFinance?.();},'icon header-theme');theme.append(icon('appearance'));theme.setAttribute('aria-label',(SYNC_COPY[state.lang]||SYNC_COPY.en)[4]);
+ const profileButton=button('',profile,'icon header-profile');profileButton.append(E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'));profileButton.setAttribute('aria-label',t('profile'));
+ append(tools,date,theme,profileButton);append(header,crumbs,tools);
+ root.append(header,nav);
+ if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
+ const m=E('main');m.id='content';root.append(m);updateSyncStatus();
+ let frame=0;
+ const measure=()=>{frame=0;if(!nav.isConnected)return;document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');};
+ measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);return m;
 }
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
 function render(){redrawFinance=null;if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='calendar')calendar(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);
 }
 function openTabSection(tab,selector){
+ state.referenceSection='';
  state.tab=tab;
  render();
  const section=root.querySelector(selector);
@@ -474,16 +510,21 @@ function onboarding(m){
  m.classList.add('onboarding');const c=card();c.classList.add('setup-panel');c.append(icon('today'),E('h1',t('welcome_title')),E('p',t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')));const alternative=E('div',undefined,'setup-alternative');alternative.append(button(t('family_accept'),acceptInvite,'text-button'));append(m,c,alternative);
 }
 function today(m){
- title(m,'today');m.classList.add('today-page');
- const quickActions=E('div',undefined,'today-actionbar');
- for(const [kind,label,symbol] of [['task','family_kind_task','tasks'],['note','family_kind_note','notes'],['event','family_kind_event','calendar'],['transaction','web_add_operation','money']]){
-  const action=button(t(label),()=>editRecord(kind),'secondary');action.prepend(icon(symbol));quickActions.append(action);
- }
- m.append(quickActions);
+ title(m,'today',()=>editRecord('task'));m.classList.add('today-page');
  const tasks=records('task'),open=tasks.filter(r=>!r.data.completed),done=tasks.length-open.length;
  const day=localDate(),end=new Date(day+'T12:00:00');end.setDate(end.getDate()+8);
  const occurrences=ULADIMDomain.occurrences(records('event'),day,dateString(end));
  const dayEvents=occurrences.filter(o=>o.day===day),upcoming=occurrences.filter(o=>o.day!==day);
+ const tiles=E('div',undefined,'reference-summary');
+ const tile=(label,value,symbol,run,detail='')=>{const item=button('',run,'reference-summary-tile');append(item,icon(symbol),E('span',label,'reference-tile-label'),E('strong',value));if(detail)item.append(E('span',detail,'reference-tile-detail'));tiles.append(item);};
+ tile(referenceCopy(6),String(open.length),'tasks',()=>referenceNavigate('tasks'),t('web_today_progress').replace('{done}',done).replace('{total}',tasks.length));
+ const monthly=records('transaction').filter(r=>r.data.date.slice(0,7)===day.slice(0,7)),currencies=[...new Set([...monthly,...records('account')].map(r=>r.data.currency))];
+ const expenses=currencies.map(currency=>money(financeTotals(monthly,currency).expense,currency));
+ tile(referenceCopy(7),expenses.join(' · ')||'—','money',()=>referenceNavigate('money'),new Date(day+'T12:00:00').toLocaleDateString(state.lang,{month:'long'}));
+ const next=occurrences.find(o=>o.day>day||o.allDay||o.at>=Date.now());
+ tile(referenceCopy(8),next?.record.data.title||'—','calendar',()=>referenceNavigate('calendar'),next?next.day+' · '+(next.allDay?t('web_all_day'):next.time):t('web_no_events'));
+ tile(referenceCopy(9),currentSpace()?.name||referenceCopy(9),'account',()=>referenceNavigate('account','family'),t(currentSpace()?.kind==='family'?'family_account':'family_private'));
+ m.append(tiles);
  const grid=E('div',undefined,'today-grid');
  const side=E('div',undefined,'today-side');
  m.append(grid);
@@ -561,7 +602,8 @@ function today(m){
  const taskActions=E('div',undefined,'task-actions');
  taskActions.append(button(t('web_all_tasks'),()=>openTabSection('tasks','main h1'),'text-button'));
  if(!pendingCreate&&!draft.operation)taskActions.append(button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));
- a.append(taskActions);append(grid,a,side);
+ const primary=E('div',undefined,'today-primary');
+ a.append(taskActions);primary.append(a);append(grid,primary,side);
 
  const finance=card(t('finances'));
  finance.classList.add('today-finance');
@@ -569,7 +611,24 @@ function today(m){
  const history=button(t('web_history'),()=>openTabSection('money','#finance-ledger'),'text-button');
  append(financeHead,finance.firstElementChild,history);
  finance.append(financeHead);
- summaries(finance);
+ const balanceBlock=E('div',undefined,'reference-balance');finance.append(balanceBlock);
+ const reportCurrency=currencies[0];
+ for(const currency of currencies){
+  const accounts=records('account').filter(r=>r.data.currency===currency);
+  if(!accounts.length)continue;
+  const sum=accounts.reduce((total,account)=>total+balance(account),0n);
+  const line=E('div');append(line,E('span',referenceCopy(13),'small'),E('strong',money(sum,currency)));balanceBlock.append(line);
+ }
+ if(!balanceBlock.children.length)balanceBlock.append(E('p',t('empty_money'),'empty'));
+ const financeCanvas=E('canvas',undefined,'reference-finance-chart');financeCanvas.width=720;financeCanvas.height=320;
+ financeCanvas.setAttribute('aria-label',t('income')+' · '+t('expense'));financeCanvas.setAttribute('role','img');
+ if(reportCurrency&&monthly.some(r=>r.data.currency===reportCurrency)){
+  finance.append(financeCanvas);
+  redrawFinance=()=>drawChart(financeCanvas,reportCurrency,monthly,'smooth');requestAnimationFrame(redrawFinance);
+  const totals=financeTotals(monthly,reportCurrency),legend=E('div',undefined,'reference-finance-legend');
+  append(legend,E('span',t('income')+' · '+money(totals.income,reportCurrency),'income'),E('span',t('expense')+' · '+money(totals.expense,reportCurrency),'expense'));finance.append(legend);
+ }else finance.append(E('p',t('empty_money'),'empty'));
+
  finance.append(button(t('web_add_operation'),()=>editRecord('transaction'),'text-button today-add-operation'));
  side.append(finance);
 
@@ -611,6 +670,14 @@ function today(m){
  agenda.append(agendaActions);
  side.append(agenda);
 
+ const latest=card(referenceCopy(10));latest.classList.add('today-transactions');
+ for(const r of records('transaction').sort((a,b)=>b.data.date.localeCompare(a.data.date)||b.seq-a.seq).slice(0,4)){
+  const row=button('',()=>editRecord('transaction',r),'reference-transaction');
+  const copy=E('span',undefined,'reference-transaction-copy');append(copy,E('strong',r.data.label||t(r.data.kind)),E('small',r.data.date));
+  append(row,icon('money'),copy,E('strong',(r.data.kind==='income'?'+':'−')+money(BigInt(r.data.amount_minor),r.data.currency),r.data.kind));latest.append(row);
+ }
+ if(!records('transaction').length)latest.append(E('p',t('empty_money'),'empty'));
+ latest.append(button(t('web_all_operations'),()=>openTabSection('money','#finance-ledger'),'text-button'));primary.append(latest);
  const notes=card(t('recent_notes'));
  notes.classList.add('today-notes');
  const recent=records('note').sort((a,b)=>b.seq-a.seq).slice(0,2);
@@ -780,27 +847,52 @@ function clearNoteDrafts(){
  }catch{}
 }
 function listNotes(m){
- title(m,'widget_notes',()=>editRecord('note'));
+ const copy={
+  ru:['Ваши идеи','Важное, к чему хочется вернуться.','Новая заметка','Все заметки'],
+  en:['Your ideas','Keep what you want to come back to.','New note','All notes'],
+  'uz-Latn':['Fikrlaringiz','Qaytishni istagan muhim narsalaringiz.','Yangi qayd','Barcha qaydlar'],
+  'uz-Cyrl':['Фикрларингиз','Қайтишни истаган муҳим нарсаларингиз.','Янги қайд','Барча қайдлар']
+ }[state.lang]||['Your ideas','Keep what you want to come back to.','New note','All notes'];
+ title(m,'widget_notes');
  m.classList.add('notes-page');
+ const intro=m.querySelector('.intro'),introText=intro.firstElementChild;
+ introText.prepend(E('div',copy[0],'eyebrow'));
+ introText.append(E('p',copy[1],'workspace-description'));
+ intro.append(addButton(copy[2],()=>editRecord('note')));
  const toolbar=E('div',undefined,'notes-toolbar');
- const search=input(toolbar,'search',NOTE_SEARCH_COPY[state.lang]||NOTE_SEARCH_COPY.en,'search','',false);
+ const libraryHeading=E('div',undefined,'notes-library-heading');
+ const count=E('span',undefined,'notes-count');
+ append(libraryHeading,E('h2',copy[3]),count);
+ const searchField=E('div',undefined,'notes-search');
+ const search=input(searchField,'search',NOTE_SEARCH_COPY[state.lang]||NOTE_SEARCH_COPY.en,'search','',false);
+ search.placeholder=NOTE_SEARCH_COPY[state.lang]||NOTE_SEARCH_COPY.en;
+ const searchIcon=icon(''),searchPath=document.createElementNS(searchIcon.namespaceURI,'path');
+ searchPath.setAttribute('d','M17.5 10.5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Zm-2 5 5 5');
+ searchIcon.append(searchPath);searchField.append(searchIcon);
+ append(toolbar,libraryHeading,searchField);
  const library=E('div',undefined,'notes-library');
  const [resumeDraft]=NOTE_DRAFT_COPY[state.lang]||NOTE_DRAFT_COPY.en;
- if(readNoteDraft(noteDraftKey(null)))toolbar.append(button(resumeDraft,()=>editRecord('note'),'secondary'));
+ if(readNoteDraft(noteDraftKey(null))){const resume=button(resumeDraft,()=>editRecord('note'),'secondary');resume.classList.add('notes-resume');toolbar.append(resume);}
  append(m,toolbar,library);
  const draw=()=>{
   library.replaceChildren();
   const needle=search.value.trim().toLocaleLowerCase(state.lang),available=records('note');
   const rows=available.filter(r=>r.data.body.toLocaleLowerCase(state.lang).includes(needle)).sort((a,b)=>b.seq-a.seq);
+  count.textContent=String(rows.length);
   for(const r of rows){
    const c=E('article',undefined,'card note-card');
+   const head=E('div',undefined,'note-card-header');
+   append(head,icon('notes'),E('span',t('family_'+r.visibility),'note-visibility'));
    const content=E('div',undefined,'note-card-content');
    const firstLine=r.data.body.split('\n')[0];
    const preview=(firstLine.length>100?r.data.body.slice(100):r.data.body.slice(firstLine.length)).trimStart();
    content.append(E('h2',firstLine.slice(0,100)||t('family_kind_note')));
    if(preview)content.append(E('p',preview.slice(0,280),'note note-preview'));
-   content.append(button(readNoteDraft(noteDraftKey(r))?resumeDraft:t('edit'),()=>editRecord('note',r),'text-button'));
-   append(c,icon('notes'),content);
+   const footer=E('div',undefined,'note-card-footer');
+   const edit=button(readNoteDraft(noteDraftKey(r))?resumeDraft:t('edit'),()=>editRecord('note',r),'text-button');
+   edit.append(icon('forward'));
+   footer.append(edit);
+   append(c,head,content,footer);
    library.append(c);
   }
   if(!rows.length)library.append(emptyPanel('notes',t(available.length?'web_no_results':'empty_notes')));
@@ -815,8 +907,25 @@ async function saveOperation(operation,workspace=state.space){
  if(item.status!=='accepted')throw {code:item.status==='conflict'?'conflict':item.error};
  return item;
 }
+function transactionAccountKey(workspace=state.space){
+ const user=state.session?.user_id;
+ return user&&workspace?'uladim-transaction-account:'+user+':'+workspace:'';
+}
+function defaultTransactionAccount(key,accounts){
+ let saved='';
+ try{if(key)saved=sessionStorage.getItem(key)||'';}catch{}
+ return accounts.find(account=>account.id===saved)||accounts[0]||null;
+}
+function rememberTransactionAccount(key,account){
+ if(!key)return;
+ try{
+  if(account)sessionStorage.setItem(key,account);
+  else sessionStorage.removeItem(key);
+ }catch{}
+}
 function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  const workspace=state.space,epoch=privateEpoch,taskKey=kind==='task'&&!r?taskActionKey('create'):'';
+ const accountKey=kind==='transaction'?transactionAccountKey(workspace):'';
  const pendingTask=readTaskAction(taskKey);
  const d=dialog(kind==='transaction'?(TRANSACTION_TITLE[state.lang]||TRANSACTION_TITLE.en):t('family_kind_'+kind),container=>{
  container.classList.add('record-editor',kind+'-editor');
@@ -874,11 +983,24 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    if(data.assignees?.length){f.append(E('p',t('family_review_pending')));for(const pid of data.assignees){const profile=state.roster.profiles.find(p=>p.id===pid);f.append(button(t('complete')+' · '+(profile?.name||pid),async()=>{await saveOperation({id:crypto.randomUUID(),action:'task.complete',record_id:r.id,revision:r.revision,profile_id:pid,completed:true});d.close();await refresh();render();}));}}
   }
   if(['account','transaction','budget'].includes(kind))fields.currency=input(f,'currency',t('currency'),'text',data.currency||'RUB');
-  if(['account','transaction','budget','transfer'].includes(kind))fields.amount=input(f,'amount',t(kind==='account'?'opening_balance':'amount'),'text',decimalInput(data.opening_minor??data.amount_minor??data.limit_minor??data.sent_minor??0,data.currency||records('account').find(a=>a.id===data.from_id)?.data.currency||'RUB'));
+  if(['account','transaction','budget','transfer'].includes(kind)){
+   fields.amount=input(f,'amount',t(kind==='account'?'opening_balance':'amount'),'text',kind==='transaction'&&!r?'':decimalInput(data.opening_minor??data.amount_minor??data.limit_minor??data.sent_minor??0,data.currency||records('account').find(a=>a.id===data.from_id)?.data.currency||'RUB'));
+   if(kind==='transaction'&&!r)fields.amount.placeholder=decimalInput(0,fields.currency.value);
+  }
   if(kind==='transaction'){
    fields.direction=select(f,'direction',t('family_kind_transaction'),[['expense',t('expense')],['income',t('income')]],data.kind||'expense');
    fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());fields.label=input(f,'label',t('family_name'),'text',data.label||'',false);
-   fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency])],data.account_id||'');fields.account.addEventListener('change',()=>{const account=records('account').find(a=>a.id===fields.account.value);if(account)fields.currency.value=account.data.currency;});
+   const accounts=records('account'),selected=r?data.account_id:defaultTransactionAccount(accountKey,accounts)?.id;
+   fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...accounts.map(a=>[a.id,a.data.name+' · '+a.data.currency])],selected||'');
+   const accountCurrency=()=>{
+    const account=accounts.find(a=>a.id===fields.account.value);
+    if(account){
+     fields.currency.value=account.data.currency;
+     if(!r)fields.amount.placeholder=decimalInput(0,account.data.currency);
+    }
+   };
+   if(!r)accountCurrency();
+   fields.account.addEventListener('change',accountCurrency);
    append(f,pair('transaction-context',fields.direction,fields.account),
     pair('transaction-value',fields.amount,fields.currency),fields.date.previousElementSibling,fields.date,
     fields.label.previousElementSibling,fields.label);
@@ -932,6 +1054,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
     await saveOperation(operation,workspace);
     if(epoch!==privateEpoch)return;
     accepted=true;keepDraft();
+    if(kind==='transaction')rememberTransactionAccount(accountKey,operation.data.account_id);
     if(taskKey)storeTaskAction(taskKey,operation,true);
    }catch(error){
     if(epoch!==privateEpoch)return;
@@ -1099,17 +1222,17 @@ function finance(m){
  for(const field of [search,from,to,accountFilter,currency,mode])field.addEventListener(field===search?'input':'change',draw);requestAnimationFrame(draw);
 }
 function financeTotals(rows,currency){let income=0n,expense=0n;for(const r of rows.filter(r=>r.data.currency===currency)){if(r.data.kind==='income')income+=BigInt(r.data.amount_minor);else expense+=BigInt(r.data.amount_minor);}return {income,expense};}
-function drawChart(canvas,currency,rows=records('transaction')){
+function drawChart(canvas,currency,rows=records('transaction'),chartStyle=state.chart){
  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,720,320);if(!currency)return;
  const {income,expense}=financeTotals(rows,currency),style=getComputedStyle(document.body),colors=[style.getPropertyValue('--income'),style.getPropertyValue('--expense')],values=[income,expense],sum=income+expense,max=income>expense?income:expense;
  canvas.setAttribute('aria-label',t('income')+': '+money(income,currency)+'; '+t('expense')+': '+money(expense,currency));
  ctx.font=(14*720/Math.max(canvas.clientWidth||720,240))+'px system-ui';ctx.fillStyle=style.getPropertyValue('--muted');if(!sum){ctx.fillText(t('empty_money'),24,150);return;}
  const ratio=(v,m=max)=>Number(v*1000000n/m)/1000000;
- if(state.chart==='donut'){let angle=-Math.PI/2;values.forEach((v,i)=>{if(!v)return;ctx.beginPath();ctx.strokeStyle=colors[i];ctx.lineWidth=42;ctx.arc(360,155,100,angle,angle+ratio(v,sum)*Math.PI*2);ctx.stroke();angle+=ratio(v,sum)*Math.PI*2;});return;}
- if(['line','smooth'].includes(state.chart)){
+ if(chartStyle==='donut'){let angle=-Math.PI/2;values.forEach((v,i)=>{if(!v)return;ctx.beginPath();ctx.strokeStyle=colors[i];ctx.lineWidth=42;ctx.arc(360,155,100,angle,angle+ratio(v,sum)*Math.PI*2);ctx.stroke();angle+=ratio(v,sum)*Math.PI*2;});return;}
+ if(['line','smooth'].includes(chartStyle)){
   const days=new Map();for(const r of rows.filter(r=>r.data.currency===currency)){if(!days.has(r.data.date))days.set(r.data.date,[0n,0n]);days.get(r.data.date)[r.data.kind==='income'?0:1]+=BigInt(r.data.amount_minor);}
   const dates=[...days.keys()].sort();const start=Date.parse(dates[0]),end=Date.parse(dates.at(-1));
-  for(let k=0;k<2;k++){let running=0n;const points=dates.map(date=>{running+=days.get(date)[k];return [40+(end===start?0:(Date.parse(date)-start)/(end-start)*640),270-ratio(running)*225];});ctx.strokeStyle=colors[k];ctx.lineWidth=3;ctx.beginPath();points.forEach(([x,y],i)=>{if(!i)ctx.moveTo(x,y);else if(state.chart==='smooth'){const [px,py]=points[i-1],mid=(px+x)/2;ctx.bezierCurveTo(mid,py,mid,y,x,y);}else ctx.lineTo(x,y);});ctx.stroke();for(const [x,y]of points){ctx.fillStyle=colors[k];ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();}}
+  for(let k=0;k<2;k++){let running=0n;const points=dates.map(date=>{running+=days.get(date)[k];return [40+(end===start?0:(Date.parse(date)-start)/(end-start)*640),270-ratio(running)*225];});ctx.strokeStyle=colors[k];ctx.lineWidth=3;ctx.beginPath();points.forEach(([x,y],i)=>{if(!i)ctx.moveTo(x,y);else if(chartStyle==='smooth'){const [px,py]=points[i-1],mid=(px+x)/2;ctx.bezierCurveTo(mid,py,mid,y,x,y);}else ctx.lineTo(x,y);});ctx.stroke();for(const [x,y]of points){ctx.fillStyle=colors[k];ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();}}
   ctx.fillStyle=style.getPropertyValue('--muted');ctx.fillText(dates[0],40,304);ctx.textAlign='right';ctx.fillText(dates.at(-1),680,304);ctx.textAlign='left';return;
  }
  values.forEach((v,i)=>{ctx.fillStyle=colors[i];ctx.fillText(t(i?'expense':'income'),24,48+i*135);ctx.fillRect(24,64+i*135,ratio(v)*650,44);ctx.fillStyle=style.getPropertyValue('--ink');ctx.fillText(money(v,currency),24,132+i*135);});
@@ -1125,23 +1248,59 @@ function acceptInvite(){
  }));
 }
 function familyPanel(m){
- const c=card(t('family_account'));c.classList.add('family-panel');
+ const copy={
+  ru:['Вместе проще','Личные планы и общие дела — в своих пространствах.','Активно','Личное пространство','Семейное пространство','Создать пространство','Ваши личные планы и заметки','Общие задачи, бюджет и календарь','Участники пространства','Участников','Владелец'],
+  en:['Better together','Personal plans and shared activities, in your own spaces.','Active','Personal workspace','Family workspace','Create workspace','Your personal plans and notes','Shared tasks, budget and calendar','Workspace members','Members','Owner'],
+  'uz-Latn':['Birga osonroq','Shaxsiy rejalar va umumiy ishlar — o‘z makonlaringizda.','Faol','Shaxsiy makon','Oilaviy makon','Makon yaratish','Shaxsiy rejalaringiz va qaydlaringiz','Umumiy vazifalar, budjet va taqvim','Makon a’zolari','A’zolar','Egasi'],
+  'uz-Cyrl':['Бирга осонроқ','Шахсий режалар ва умумий ишлар — ўз маконларингизда.','Фаол','Шахсий макон','Оилавий макон','Макон яратиш','Шахсий режаларингиз ва қайдларингиз','Умумий вазифалар, бюджет ва тақвим','Макон аъзолари','Аъзолар','Эгаси']
+ }[state.lang]||['Better together','Personal plans and shared activities, in your own spaces.','Active','Personal workspace','Family workspace','Create workspace','Your personal plans and notes','Shared tasks, budget and calendar','Workspace members','Members','Owner'];
+ const page=m.closest('main'),intro=page?.querySelector('.intro');
+ page?.classList.add('reference-family-page');
+ const breadcrumb=root.querySelector('.reference-breadcrumb strong');if(breadcrumb)breadcrumb.textContent=referenceCopy(4);
+ if(intro){const heading=intro.querySelector('h1');heading.textContent=referenceCopy(4);heading.before(E('div',copy[0],'eyebrow'));heading.after(E('p',copy[1],'reference-account-description'));}
+ const c=card();c.classList.add('family-panel','reference-family-panel');
+ const spaces=E('div',undefined,'reference-space-grid');
+ for(const workspace of state.spaces){
+  const active=workspace.id===state.space;
+  const choice=button('',()=>{
+   if(active)return;
+   const picker=root.querySelector('select[name=workspace]');
+   if(picker){picker.value=workspace.id;picker.dispatchEvent(new Event('change',{bubbles:true}));}
+  },'reference-space-card');
+  choice.dataset.workspace=workspace.id;choice.setAttribute('aria-pressed',String(active));
+  const top=E('span',undefined,'reference-space-card-top');
+  append(top,E('span',(workspace.name||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'));
+  if(active)top.append(E('span','✓ '+copy[2],'reference-space-active'));
+  append(choice,top,E('strong',workspace.name,'reference-space-name'),E('span',workspace.kind==='family'?copy[4]:copy[3],'reference-space-kind'));
+  if(active&&state.roster?.space?.id===workspace.id)choice.append(E('span',copy[9]+': '+state.roster.members.length,'reference-space-member-count'));
+  const detail=E('span',workspace.kind==='family'?copy[7]:copy[6],'reference-space-detail');detail.prepend(icon(workspace.kind==='family'?'account':'notes'));choice.append(detail);spaces.append(choice);
+ }
+ const create=button('',()=>createSpace('family'),'reference-space-card reference-space-create');
+ append(create,icon('add'),E('strong',copy[5]),E('span',t('family_create'),'reference-space-kind'));spaces.append(create);
+ c.append(spaces);
  const actions=E('div',undefined,'family-workspace-actions');
- append(actions,button(t('family_create'),()=>createSpace('family')),
-  button(t('family_owner'),()=>createSpace('personal'),'secondary'),
-  button(t('family_accept'),acceptInvite,'secondary'));
+ append(actions,button(t('web_personal_create'),()=>createSpace('personal'),'text-button'),
+  button(t('family_accept'),acceptInvite,'text-button'));
  append(c,actions);m.append(c);
  if(!state.roster)return;
  const {space,members,profiles}=state.roster;
- const roster=E('div',undefined,'family-roster');
- if(space.name)roster.append(E('h3',space.name));
+ const roster=card(copy[8]);roster.classList.add('family-roster','reference-family-roster');
+ if(space.name)roster.append(E('p',space.name,'reference-roster-space'));
  for(const member of members){
-  const row=E('div',undefined,'row');
-  append(row,E('span',member.user_id===state.session.user_id?t('family_you'):member.user_id,'text'),E('span',t('family_'+member.role),'pill'));
+  const self=member.user_id===state.session.user_id;
+  const row=E('div',undefined,'row reference-family-member'),avatar=E('span',undefined,'reference-avatar');
+  if(self)avatar.textContent=(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang);else avatar.append(icon('account'));
+  const role=member.role==='owner'?copy[10]:t('family_'+member.role);
+  const identity=append(E('div',undefined,'reference-member-copy'),E('strong',self?state.session.email:member.user_id),E('span',(self?t('family_you')+' · ':'')+role));
+  append(row,avatar,identity,E('span',role,'reference-member-role'));
   roster.append(row);
  }
  c.append(roster);
- if(space.kind==='family'&&['parent','owner'].includes(space.role))c.append(append(E('div',undefined,'family-workspace-actions'),button(t('family_invite'),()=>dialog(t('family_invite'),container=>{let operation;form(container,'',f=>({email:input(f,'email',t('family_invite_email'),'email'),role:select(f,'role',t('family_role'),['adult','parent','child'].map(k=>[k,t('family_'+k)]),'adult'),profile:select(f,'profile',t('family_child'),[['',t('family_none')],...profiles.map(p=>[p.id,p.name])],'')}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:space.id,action:'invite.create',email:v.email.value,role:v.role.value,profile_id:v.role.value==='child'?v.profile.value:null};const invite=await call('family',operation);replaceDialog(container,E('h2',t('family_invite')),E('p',t('family_invite_hint')),E('pre',invite.invitation),button(t('close'),()=>container.close()));});})),button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));})));
+ if(space.kind==='family'&&['parent','owner'].includes(space.role)){
+  const invite=button(t('family_invite'),()=>dialog(t('family_invite'),container=>{let operation;form(container,'',f=>({email:input(f,'email',t('family_invite_email'),'email'),role:select(f,'role',t('family_role'),['adult','parent','child'].map(k=>[k,t('family_'+k)]),'adult'),profile:select(f,'profile',t('family_child'),[['',t('family_none')],...profiles.map(p=>[p.id,p.name])],'')}),async v=>{operation=operation||{id:crypto.randomUUID(),workspace_id:space.id,action:'invite.create',email:v.email.value,role:v.role.value,profile_id:v.role.value==='child'?v.profile.value:null};const invite=await call('family',operation);replaceDialog(container,E('h2',t('family_invite')),E('p',t('family_invite_hint')),E('pre',invite.invitation),button(t('close'),()=>container.close()));});}),'reference-family-invite');
+  invite.prepend(icon('add'));(intro||actions).append(invite);
+  actions.append(button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));},'text-button'));
+ }
 }
 function openSettings(section){
  state.settingsTab=section;
@@ -1168,14 +1327,31 @@ async function account(m){
   navigation.append(item);
  }
  if(section==='profile'){
+  const copy={
+   ru:['Ваш аккаунт','Управляйте своим аккаунтом и предпочтениями.','Личные данные','Подтверждена','Не подтверждена','Выйти из аккаунта','Завершить текущий сеанс на этом устройстве'],
+   en:['Your account','Manage your account and preferences.','Personal details','Verified','Not verified','Sign out of your account','End the current session on this device'],
+   'uz-Latn':['Hisobingiz','Hisobingiz va sozlamalaringizni boshqaring.','Shaxsiy ma’lumotlar','Tasdiqlangan','Tasdiqlanmagan','Hisobdan chiqish','Ushbu qurilmadagi joriy seansni tugatish'],
+   'uz-Cyrl':['Ҳисобингиз','Ҳисобингиз ва созламаларингизни бошқаринг.','Шахсий маълумотлар','Тасдиқланган','Тасдиқланмаган','Ҳисобдан чиқиш','Ушбу қурилмадаги жорий сеансни тугатиш']
+  }[state.lang]||['Your account','Manage your account and preferences.','Personal details','Verified','Not verified','Sign out of your account','End the current session on this device'];
+  m.classList.add('reference-profile-page');
+  const heading=m.querySelector('.intro h1');heading.textContent=t('profile');heading.before(E('div',copy[0],'eyebrow'));heading.after(E('p',copy[1],'reference-account-description'));
   const c=card(t('profile'));c.classList.add('profile-summary');
-  const identity=append(E('dl',undefined,'profile-identity'),E('dt',t('family_email')),E('dd',state.session.email,'account-email'));
+  c.querySelector('h2').textContent=copy[2];
+  const email=E('dd',state.session.email,'account-email');
+  const identity=append(E('div',undefined,'reference-profile-identity'),E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),append(E('dl',undefined,'profile-identity'),E('dt',t('family_email')),email));
+  const verified=E('span',copy[state.session.verified?3:4],'reference-profile-verified');verified.dataset.verified=String(Boolean(state.session.verified));identity.append(verified);
+  const options=E('div',undefined,'reference-profile-options');
+  for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar']]){
+   const action=settingsRow(t(label),()=>openSettings(key),'reference-profile-option');action.prepend(icon(symbol));options.append(action);
+  }
   const logout=button(t('family_logout'),async()=>{await call('logout',{});clearNoteDrafts();clearTaskActions();clearIdentity();login();},'text-button profile-logout');
-  append(c,identity,settingsRow(t('account_privacy'),()=>openSettings('security')),logout);
-  content.append(c);
+  logout.append(icon('forward'));
+  const signout=card();signout.classList.add('reference-profile-signout');
+  append(signout,append(E('div'),E('h2',copy[5]),E('p',copy[6])),logout);
+  append(c,identity,options);append(content,c,signout);
   if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));
  }
- if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
+ if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['violet',referenceCopy(12)],['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);
  if(section==='devices')await devices(content).catch(error=>{if(error.code==='unauthorized'){report(error);return;}if(content.isConnected){content.replaceChildren(E('h2',t('account_devices')),E('p',errorText(error),'error'),button(t('retry'),()=>openSettings('devices'),'secondary'));}});

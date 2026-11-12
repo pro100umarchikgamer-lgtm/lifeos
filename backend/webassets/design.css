@@ -2272,3 +2272,433 @@ body.product-site .product-content .import-guide>.button{margin:12px 10px 0 0}
 
 .statement-date-help.is-resolved>h3,.statement-date-help.is-resolved>p:not(.statement-date-examples){display:none}
 .statement-date-help.is-resolved label{margin-top:0}
+
+/* app/reference.css */
+/* Actual B12 video composition, applied to existing ULADIM records and actions. */
+body[data-design=clarity][data-reference-layout=b12]{--ux-bg:#f5f6f2;--ux-surface:#fff;--ux-ink:#25242d;--ux-muted:#7c7a86;--ux-border:#e9e8ed;--ux-green:#6956bd;--ux-soft:#efebfa;--ux-radius:12px;--bg:var(--ux-bg);--card:var(--ux-surface);--ink:var(--ux-ink);--muted:var(--ux-muted);--line:var(--ux-border);--accent:var(--ux-green);--soft:var(--ux-soft);background:var(--ux-bg);font-size:14px}
+body[data-design=clarity][data-reference-layout=b12][data-theme=dark]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#a8a4b6;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}
+@media(prefers-color-scheme:dark){body[data-design=clarity][data-reference-layout=b12][data-theme=system]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#a8a4b6;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}}
+body[data-reference-layout=b12][data-palette=forest]{--ux-green:#286550;--ux-soft:#e7f0e9}
+body[data-reference-layout=b12][data-palette=ocean]{--ux-green:#38729b;--ux-soft:#e6f0f7}
+body[data-reference-layout=b12][data-palette=pistachio]{--ux-green:#617d45;--ux-soft:#edf2e5}
+body[data-reference-layout=b12][data-theme=dark][data-palette=forest]{--ux-green:#a8d9bf;--ux-soft:#2c3c35}
+body[data-reference-layout=b12][data-theme=dark][data-palette=ocean]{--ux-green:#a8d3ef;--ux-soft:#293745}
+body[data-reference-layout=b12][data-theme=dark][data-palette=pistachio]{--ux-green:#c7dfa9;--ux-soft:#343d2d}
+body[data-design=clarity][data-reference-layout=b12] #root{min-width:0;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root :is(h1,h2,h3){font-family:inherit;letter-spacing:-.025em;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root h1{font-size:29px;font-weight:720;line-height:1.25;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root h2{font-size:16px;font-weight:650;line-height:1.4}
+body[data-design=clarity][data-reference-layout=b12] #root h3{font-size:14px;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root>header{position:fixed;inset:0 0 auto 248px;height:72px;box-sizing:border-box;padding:0 34px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--ux-surface);border-bottom:1px solid var(--ux-border);box-shadow:none;z-index:25;width:auto;max-width:none}
+body[data-design=clarity][data-reference-layout=b12] #root>main:not(.login){margin:0 0 0 248px;max-width:none;width:calc(100% - 248px);padding:108px 34px 48px;box-sizing:border-box;min-width:0;min-height:100dvh}
+body[data-design=clarity][data-reference-layout=b12] #root>.reference-sidebar{position:fixed;inset:0 auto 0 0;width:248px;height:100dvh;max-height:100dvh;box-sizing:border-box;border:0;border-right:1px solid var(--ux-border);background:var(--ux-surface);padding:28px 18px 12px;display:flex;flex-direction:column;align-items:stretch;gap:0;overflow-y:auto;overflow-x:hidden;z-index:30;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .brand{display:block;padding:0 12px 24px;font-size:25px;font-weight:800;letter-spacing:-.05em;color:var(--ux-ink);text-decoration:none;min-height:auto}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-workspace{display:flex;gap:10px;align-items:center;padding:12px 10px;border:1px solid var(--ux-border);border-radius:10px;margin:0 0 22px;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-avatar{display:inline-grid;place-items:center;flex:none;width:34px;height:34px;border-radius:10px;background:var(--ux-soft);color:var(--ux-green);font-size:14px;font-weight:650}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-workspace select.workspace{min-width:0;flex:1;width:100%;max-width:100%;border:0;padding:0 18px 0 0;border-radius:0;min-height:34px;background-color:transparent;color:var(--ux-ink);font-size:13px;font-weight:650;text-overflow:ellipsis}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-nav-group{display:flex;flex-direction:column;gap:3px;margin-bottom:20px;flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-nav-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:650;color:var(--ux-muted);padding:0 12px;margin:0 0 8px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;text-align:start;gap:12px;padding:10px 12px;min-height:44px;border-radius:8px;background:transparent;border:0;color:var(--ux-muted);font-size:13px;font-weight:500;line-height:1.4;max-width:100%;width:100%}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item>svg{width:18px;height:18px;flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item[aria-current=page]{background:var(--ux-soft);color:var(--ux-green);font-weight:650}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item:hover{background:var(--ux-soft)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-nav-count{margin-inline-start:auto;background:var(--ux-bg);color:var(--ux-muted);border-radius:20px;min-width:22px;height:22px;display:grid;place-items:center;font-size:11px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar-footer{margin-top:auto;display:grid;gap:8px;padding-top:16px;background:var(--ux-surface)}
+body[data-design=clarity][data-reference-layout=b12] #root .workspace-sync{display:block;white-space:normal;max-width:none;font-size:11px;line-height:1.6;color:var(--ux-muted);padding:12px;border:1px solid var(--ux-border);border-radius:8px;background:var(--ux-bg);overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root .workspace-sync[data-status=error]{color:var(--expense)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-help{justify-content:flex-start;font-size:12px;color:var(--ux-muted);padding:6px 12px;text-align:start;background:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-identity{border:0;border-top:1px solid var(--ux-border);border-radius:0;background:transparent;padding:14px 8px 4px;display:flex;gap:10px;align-items:center;justify-content:flex-start;color:var(--ux-ink);font-size:12px;min-width:0;text-align:start}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-identity>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-compact-money,.reference-compact-profile,.nav-more){display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-breadcrumb{display:flex;align-items:center;gap:12px;font-size:12px;min-width:0;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-breadcrumb>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:24ch}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-breadcrumb svg{width:12px;height:12px;flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-breadcrumb strong{font-weight:550;white-space:nowrap;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .header-tools{display:flex;align-items:center;flex:none;gap:8px;width:auto}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-date{display:flex;align-items:center;gap:8px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:8px;color:var(--ux-muted);min-height:38px;font-size:11px;padding:7px 10px;white-space:nowrap}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-date svg{width:16px;height:16px;color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.header-profile,.header-theme){min-width:40px;min-height:40px;width:40px;padding:0;border:0;background:none;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .header-profile .reference-avatar{width:30px;height:30px;border-radius:50%}
+body[data-design=clarity][data-reference-layout=b12] #root .intro{margin:0 0 24px;min-height:auto;padding:0;gap:16px;align-items:center;overflow:visible}
+body[data-design=clarity][data-reference-layout=b12] #root .intro::after{display:none;content:none}
+body[data-design=clarity][data-reference-layout=b12] #root .eyebrow{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ux-muted);margin:0 0 8px}
+body[data-design=clarity][data-reference-layout=b12] #root button{border-radius:8px;font-size:13px;font-weight:550}
+body[data-design=clarity][data-reference-layout=b12] #root button:where(:not(.ghost):not(.secondary):not(.text-button):not(.icon):not(.reference-summary-tile):not(.reference-nav-item):not(.reference-identity):not(.reference-transaction):not(.reference-help)){background:var(--ux-green);color:var(--ux-surface)}
+body[data-design=clarity][data-reference-layout=b12] #root .card{border:1px solid var(--ux-border);border-radius:12px;background:var(--ux-surface);box-shadow:none;padding:20px}
+body[data-design=clarity][data-reference-layout=b12] #root :is(input,select,textarea){border-radius:7px;border:1px solid var(--ux-border);background:var(--ux-surface);color:var(--ux-ink);font-size:14px;min-height:44px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-summary-tile{display:flex;align-items:flex-start;flex-direction:column;gap:9px;text-align:start;min-width:0;padding:17px;border:1px solid var(--ux-border);border-radius:10px;background:var(--ux-surface);color:var(--ux-ink);box-shadow:none;min-height:156px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-summary-tile>.ui-icon{width:20px;height:20px;padding:7px;box-sizing:content-box;border-radius:8px;background:var(--ux-soft);color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-summary-tile>strong{font-size:18px;line-height:1.35;font-weight:650;overflow-wrap:anywhere;max-width:100%;text-wrap:pretty}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-tile-label{font-size:11px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-tile-detail{font-size:11px;line-height:1.4;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'tasks finance' 'transactions agenda' 'notes schedule';grid-template-rows:auto;gap:20px;align-items:start;border:0;padding:0}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-side{display:contents}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid .card{border:1px solid var(--ux-border);border-radius:12px;padding:20px!important;background:var(--ux-surface);box-shadow:none;min-width:0;align-self:start}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid h2{font-size:16px;margin:0 0 12px}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks{grid-area:tasks;grid-row:1!important}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-side .today-finance{grid-area:finance;grid-column:2!important;grid-row:1}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-transactions{grid-area:transactions}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-side .today-agenda{grid-area:agenda;grid-column:2!important;grid-row:2}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-side .today-schedule{grid-area:schedule;grid-column:2!important;grid-row:3}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-notes{grid-area:notes}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .task-row{padding:12px 0;min-height:52px;gap:8px}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .task-actions{padding:0;margin-top:8px;gap:12px;flex-wrap:wrap}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .task-actions button{font-size:11px;min-height:40px}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-money-row strong{font-size:17px}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-money-row>div{padding:10px 0}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-money-row>.total{background:var(--ux-soft);border-radius:8px;padding:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction{display:flex;align-items:center;gap:10px;text-align:start;padding:13px 0;border:0;border-bottom:1px solid var(--ux-border);border-radius:0;width:100%;background:none;color:var(--ux-ink);min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction>svg{width:18px;height:18px;padding:8px;box-sizing:content-box;border-radius:8px;color:var(--ux-green);background:var(--ux-soft);flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction-copy{display:grid;gap:4px;flex:1;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction-copy strong{font-size:12px;line-height:1.45;font-weight:550;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction-copy small{font-size:10px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction>strong{font-size:12px;font-weight:600;white-space:nowrap}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction>strong.expense{color:var(--expense)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction>strong.income{color:var(--income)}
+body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters{padding:18px 20px;margin:0;border:1px solid var(--ux-border);border-bottom:0;border-radius:12px 12px 0 0;background:var(--ux-surface)}
+body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-list{background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:0 0 12px 12px;padding:0 20px 12px}
+body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-group{background:none;border:0;border-radius:0;padding:20px 0 0;margin:0;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-group h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-layout{grid-template-columns:210px minmax(0,1fr);gap:28px}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-navigation{border:1px solid var(--ux-border);border-radius:10px;background:var(--ux-surface);padding:10px;align-self:start}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-navigation .settings-item{border:0;border-radius:7px;min-height:44px;padding:10px;gap:6px;background:none;color:var(--ux-muted);font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-navigation .settings-item[aria-current=page]{background:var(--ux-soft);color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-content{min-width:0;padding:0;background:none;border:0}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.card{border-radius:10px;max-width:none}
+body[data-design=clarity][data-reference-layout=b12] #root .profile-summary .profile-identity{padding:18px 0;margin:0;border-bottom:1px solid var(--ux-border);display:grid;gap:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .profile-summary .account-email{font-size:20px;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root .profile-summary .profile-logout{margin-top:14px;color:var(--expense)}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-group{background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:10px;padding:20px;margin-bottom:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-group h2{font-size:14px;padding-bottom:10px;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-group .settings-row{border:0;border-bottom:1px solid var(--ux-border);border-radius:0;min-height:60px;padding:12px 0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-grid{gap:20px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-overview{background:var(--ux-surface);color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-overview :is(h2,strong,.small){color:inherit}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-overview .today-money-row>.total{background:var(--ux-soft);color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-overview .finance-summary-period{color:var(--ux-muted)}
+body[data-reference-layout=b12] dialog{border-radius:12px;padding:24px;background:var(--ux-surface);color:var(--ux-ink);border:1px solid var(--ux-border);max-height:calc(100dvh - 32px);max-width:calc(100vw - 24px);overflow-y:auto;box-sizing:border-box}
+body[data-reference-layout=b12] dialog::backdrop{background:#17132360;backdrop-filter:blur(3px)}
+body[data-reference-layout=b12] dialog .dialog-head{padding-bottom:15px;margin-bottom:18px}
+body[data-reference-layout=b12] dialog .dialog-head h2{font-size:20px;font-family:inherit}
+body[data-reference-layout=b12] #alerts{z-index:100}
+@media(min-width:760px) and (max-width:1099px){
+ body[data-design=clarity][data-reference-layout=b12] #root>.reference-sidebar{width:200px;padding:24px 12px 12px}
+ body[data-design=clarity][data-reference-layout=b12] #root>header{left:200px;padding:0 24px}
+ body[data-design=clarity][data-reference-layout=b12] #root>main:not(.login){margin-left:200px;width:calc(100% - 200px);padding:102px 24px 40px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-date{display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-summary-tile{min-height:136px}
+ body[data-design=clarity][data-reference-layout=b12] #root .settings-layout{grid-template-columns:170px minmax(0,1fr);gap:18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid{gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid .card{padding:16px!important}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction{flex-wrap:wrap}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction>strong{margin-left:44px}
+}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root>header{left:0;height:80px;padding:8px 16px 24px;gap:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root>main:not(.login){margin:0;width:100%;padding:104px 16px 100px;min-height:100dvh}
+ body[data-design=clarity][data-reference-layout=b12] #root>.reference-sidebar{inset:auto 0 0;width:100%;height:76px;max-height:76px;padding:5px 6px max(5px,env(safe-area-inset-bottom));border:0;border-top:1px solid var(--ux-border);display:grid;grid-template-columns:repeat(6,minmax(0,1fr));overflow:visible;gap:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar :is(.brand,.reference-workspace,.reference-nav-label,.reference-finance-group,.reference-space-group,.reference-help,.reference-identity){display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-nav-group,.reference-sidebar-footer){display:contents}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item{display:flex;flex-direction:column;justify-content:center;text-align:center;align-items:center;gap:5px;min-height:60px;height:60px;padding:5px 1px;min-width:0;font-size:10px;line-height:1.2;border-radius:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item>span:not(.reference-nav-count){max-width:100%;overflow-wrap:normal}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-nav-count{display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-compact-money,
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-compact-profile{display:flex}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .workspace-sync{position:fixed;top:55px;left:16px;right:16px;padding:0;border:0;background:none;font-size:10px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-breadcrumb{gap:7px;font-size:11px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-breadcrumb>span{max-width:16ch}
+ body[data-design=clarity][data-reference-layout=b12] #root .header-tools{gap:1px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-date{display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .intro{margin-bottom:20px;gap:10px;align-items:flex-start}
+ body[data-design=clarity][data-reference-layout=b12] #root .intro h1{font-size:26px}
+ body[data-design=clarity][data-reference-layout=b12] #root .intro>button{min-height:40px;padding:9px 12px;white-space:nowrap;flex:none;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-summary-tile{padding:13px;min-height:148px;gap:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-summary-tile>strong{font-size:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid{display:flex;flex-direction:column;gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid .card{width:100%;padding:18px!important;box-sizing:border-box}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-side{display:contents}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-tasks{order:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-finance{order:1}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-transactions{order:2}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-schedule{order:3}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-agenda{order:4}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-notes{order:5}
+ body[data-design=clarity][data-reference-layout=b12] #root .settings-layout{display:block}
+ body[data-design=clarity][data-reference-layout=b12] #root .settings-navigation{width:100%;box-sizing:border-box}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-transaction>strong{font-size:12px;white-space:normal;text-align:end}
+ body[data-reference-layout=b12] dialog{padding:20px;max-height:calc(100dvh - 20px);border-radius:12px}
+}
+@media(prefers-color-scheme:dark){
+ body[data-reference-layout=b12][data-theme=system][data-palette=forest]{--ux-green:#a8d9bf;--ux-soft:#2c3c35}
+ body[data-reference-layout=b12][data-theme=system][data-palette=ocean]{--ux-green:#a8d3ef;--ux-soft:#293745}
+ body[data-reference-layout=b12][data-theme=system][data-palette=pistachio]{--ux-green:#c7dfa9;--ux-soft:#343d2d}
+}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-workspace{display:flex;position:fixed;top:8px;left:14px;margin:0;padding:4px 6px;width:calc(100% - 112px);max-width:290px;min-height:38px;border:0;background:var(--ux-surface);box-sizing:border-box}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-workspace .reference-avatar{width:28px;height:28px;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-workspace select.workspace{font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-breadcrumb{visibility:hidden;min-width:0;flex:1}
+ body[data-design=clarity][data-reference-layout=b12] #root .header-tools{margin-left:auto}
+}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar-footer .workspace-sync{margin:0;width:100%;box-sizing:border-box}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-balance{display:grid;gap:14px;margin:12px 0 14px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-balance>div{display:grid;gap:6px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-balance strong{font-size:27px;letter-spacing:-.035em;font-weight:650}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-finance-chart{display:block;width:100%;height:auto;max-height:190px;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-finance-legend{display:flex;gap:10px 18px;flex-wrap:wrap;font-size:11px;line-height:1.5;margin:6px 0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-finance-legend .income{color:var(--income)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-finance-legend .expense{color:var(--expense)}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-notes .note-link{display:flex;align-items:center;gap:14px}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-notes{grid-column:1/-1;grid-row:3}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-side .today-schedule{grid-column:1/-1!important;grid-row:4}
+@media(min-width:760px){body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-compact-money,body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-compact-profile{display:none}}
+@media(max-width:759px){body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar-footer .workspace-sync{width:auto}}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-identity{flex-direction:row;width:100%}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-notes .note-link{flex-direction:row;justify-content:flex-start;text-align:start}
+@media(max-width:759px){body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item>span:not(.reference-nav-count){font-size:10px;line-height:1.2;letter-spacing:-.02em}}
+/* Independent dashboard columns stay balanced when the owner has few records. */
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid{grid-template-areas:'main side' 'notes notes';grid-template-rows:auto;align-items:start}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-primary{grid-area:main;min-width:0;display:grid;gap:20px;align-content:start}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-side{grid-area:side;display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-content:start}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page :is(.today-primary,.today-side)>.card{grid-area:auto;grid-column:auto!important;grid-row:auto!important}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-notes{grid-area:notes}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page :is(.today-primary,.today-side){display:contents}
+}
+body[data-design=clarity][data-reference-layout=b12]{--ux-button:#6956bd;--ux-button-ink:#fff}
+body[data-design=clarity][data-reference-layout=b12][data-theme=dark]{--ux-button:#7460c8}
+body[data-design=clarity][data-reference-layout=b12][data-palette=forest]{--ux-button:#286550}
+body[data-design=clarity][data-reference-layout=b12][data-palette=ocean]{--ux-button:#38729b}
+body[data-design=clarity][data-reference-layout=b12][data-palette=pistachio]{--ux-button:#617d45}
+body[data-design=clarity][data-reference-layout=b12] #root button:where(:not(.ghost):not(.secondary):not(.text-button):not(.icon):not(.reference-summary-tile):not(.reference-nav-item):not(.reference-identity):not(.reference-transaction):not(.reference-help)){background:var(--ux-button);color:var(--ux-button-ink)}
+@media(prefers-color-scheme:dark){body[data-design=clarity][data-reference-layout=b12][data-theme=system][data-palette=violet]{--ux-button:#7460c8}}
+
+/* app/reference-workspaces.css */
+/* Calendar and notes: the quiet surfaces and violet detail of the B12 reference. */
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page){--workspace-accent:var(--ux-button);--workspace-accent-ink:var(--ux-button-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro{align-items:flex-end;gap:24px;margin-bottom:26px;min-height:0;border:0}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .eyebrow{font-size:10px;font-weight:650;line-height:1.4;letter-spacing:.12em;text-transform:uppercase;color:var(--ux-muted);margin:0 0 8px}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro h1{font-size:30px;font-weight:700;line-height:1.2;letter-spacing:-.035em;margin:0 0 8px}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .workspace-description{font-size:13px;line-height:1.5;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro>button{flex:none;min-height:40px;border:0;border-radius:7px;padding:10px 16px;background:var(--workspace-accent);color:var(--workspace-accent-ink);font-size:12px;font-weight:600;box-shadow:0 3px 8px #55409112}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro>button svg{width:17px;height:17px}
+
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(270px,1fr);gap:20px;align-items:stretch;padding:0;border:0;max-width:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout>.card{border:1px solid var(--ux-border);border-radius:9px;background:var(--ux-surface);padding:22px;box-shadow:none;margin:0;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-month{min-height:445px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:0 0 24px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period{display:flex;align-items:center;gap:6px;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar h2{font-size:16px;line-height:1.35;font-weight:600;letter-spacing:-.015em;text-transform:capitalize;margin:0;padding:0 5px;text-align:left;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button{flex:none;min-height:36px;min-width:30px;width:30px;height:36px;padding:6px;border:0;border-radius:5px;background:transparent;color:var(--ux-muted);box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button:hover{background:var(--ux-bg);color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button svg{width:16px;height:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes{display:flex;flex-wrap:nowrap;width:auto;max-width:none;gap:2px;padding:3px;margin:0;background:var(--ux-bg);border:0;border-radius:6px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes button{flex:none;min-width:0;min-height:32px;padding:6px 10px;border:0;border-radius:4px;background:transparent;color:var(--ux-muted);font-size:11px!important;font-weight:500;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes button[aria-pressed=true]{color:var(--ux-green);background:var(--ux-surface);box-shadow:0 1px 4px #2823330c;font-weight:600}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0 7px;max-width:none;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid:empty{display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid .weekday{padding:0 0 13px;font-size:11px;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;color:var(--ux-muted);text-align:center}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page :is(.calendar-date,.calendar-offset){position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;min-width:0;min-height:50px;height:50px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--ux-ink);font-size:13px;font-weight:400;line-height:1;gap:0;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-offset{color:var(--ux-muted);opacity:.45;padding-bottom:3px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date:hover{background:var(--ux-bg);box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date.is-today{box-shadow:inset 0 0 0 1px var(--ux-border);color:var(--ux-green);font-weight:650}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date[aria-pressed=true]{background:var(--workspace-accent);color:var(--workspace-accent-ink);font-weight:600;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date-number{display:block}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots{position:absolute;left:0;right:0;bottom:10px;display:flex;align-items:center;justify-content:center;gap:3px;height:4px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots>span{width:4px;height:4px;border-radius:50%;background:#8d74c8}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots>span[data-visibility=shared]{background:#cba17c}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date[aria-pressed=true] .calendar-event-dots>span{background:#fff}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend{display:flex;flex-wrap:wrap;gap:16px;border-top:1px solid var(--ux-border);padding-top:13px;margin-top:15px;color:var(--ux-muted);font-size:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend>span{display:flex;align-items:center;gap:6px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend>span::before{content:'';display:block;width:5px;height:5px;border-radius:50%;background:#8d74c8}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend>span[data-visibility=shared]::before{background:#cba17c}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda{display:flex;flex-direction:column;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-head{display:block;margin:0 0 8px;padding:0 0 19px;border-bottom:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-weekday{font-size:10px;font-weight:650;line-height:1.5;text-transform:uppercase;letter-spacing:.1em;color:var(--ux-muted);margin-bottom:8px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-date{display:flex;align-items:baseline;gap:7px;max-width:none;font-size:13px;line-height:1.2;font-weight:400;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-date .calendar-day-number{font-size:32px;font-weight:550;letter-spacing:-.04em;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events{margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row{position:relative;display:flex;align-items:center;gap:6px;background:transparent;border:0;border-bottom:1px solid var(--ux-border);border-radius:0;margin:0;padding:14px 0;min-height:64px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row:last-child{border-bottom:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row::before{display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row>.text{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:baseline;gap:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-time{font-size:10px;line-height:1.4;font-variant-numeric:tabular-nums;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3{position:relative;font-size:12px;line-height:1.5;font-weight:600;letter-spacing:0;margin:0;padding-left:12px;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3::before{content:'';position:absolute;top:7px;left:0;width:5px;height:5px;border-radius:50%;background:#8d74c8}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row[data-visibility=shared] h3::before{background:#cba17c}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row>button{min-width:30px;width:30px;min-height:36px;padding:6px;color:var(--ux-muted);background:transparent}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row>button svg{width:16px;height:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-add-event{align-self:flex-start;justify-content:flex-start;min-height:40px;background:transparent;border:0;padding:8px 0;color:var(--ux-green);font-size:11px;font-weight:500;border-radius:5px;gap:6px;margin:8px 0 14px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-add-event svg{width:15px;height:15px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker{margin: auto 0 0;padding:16px 0 0;border-top:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker label{font-size:10px;font-weight:500;margin:0 0 6px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker input{width:100%;min-height:38px;padding:7px 10px;background:var(--ux-surface);color:var(--ux-ink);font-size:12px;border:1px solid var(--ux-border);border-radius:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .workspace-empty{min-height:160px;padding:22px 0;gap:12px;text-align:left;align-items:flex-start}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .workspace-empty>svg{width:32px;height:32px;padding:7px;border-radius:8px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .workspace-empty p{font-size:12px;line-height:1.65;max-width:25ch}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout{grid-template-columns:minmax(0,1fr)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout .calendar-month{min-height:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout .calendar-toolbar{margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout .calendar-agenda{min-height:320px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout[data-mode=week] .calendar-month{min-height:0}
+
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;max-width:none;margin:0 0 22px;padding:0 0 17px;border-bottom:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library-heading{display:flex;align-items:center;gap:9px;flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library-heading h2{font-size:14px;font-weight:600;line-height:1.5;letter-spacing:0;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:1px 6px;border-radius:5px;background:var(--ux-soft);color:var(--ux-green);font-size:10px;line-height:1;font-variant-numeric:tabular-nums}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search{position:relative;width:min(100%,300px);margin-left:auto}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>input{width:100%;min-height:39px;padding:9px 12px 9px 35px;border:1px solid var(--ux-border);border-radius:6px;background:var(--ux-surface);color:var(--ux-ink);font-size:12px;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>input::placeholder{color:var(--ux-muted);opacity:1}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>svg{position:absolute;left:11px;top:12px;width:16px;height:16px;color:var(--ux-muted);pointer-events:none}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-resume{min-height:39px;padding:8px 12px;border:1px solid var(--ux-border);border-radius:6px;background:var(--ux-surface);color:var(--ux-green);font-size:11px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:stretch}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library .note-card{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;min-height:260px;padding:21px 22px 0;border:1px solid var(--ux-border);border-radius:9px;background:var(--ux-surface);box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 19px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-header>svg{width:31px;height:31px;padding:7px;border-radius:7px;background:var(--ux-soft);color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-visibility{font-size:10px;line-height:1.5;color:var(--ux-muted);font-weight:400}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content{display:block;flex:1;min-width:0;align-self:stretch;padding-bottom:20px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content h2{font-size:16px;line-height:1.5;letter-spacing:-.015em;font-weight:650;margin:0 0 11px;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content .note-preview{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.75;font-weight:400;letter-spacing:0;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer{display:flex;align-items:center;min-width:0;border-top:1px solid var(--ux-border);margin-top:auto;padding:5px 0}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer>button.text-button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:43px;padding:9px 0;margin:0;border:0;border-radius:4px;background:transparent;color:var(--ux-green);font-size:11px;font-weight:550;text-align:left}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer>button svg{width:15px;height:15px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library>.workspace-empty{grid-column:1/-1;min-height:260px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:9px}
+
+@media(min-width:760px) and (max-width:999px){
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout{grid-template-columns:minmax(0,1.5fr) minmax(235px,1fr);gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout>.card{padding:18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar{flex-direction:column;align-items:stretch;gap:14px;margin-bottom:22px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period{justify-content:space-between}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes{align-self:flex-start}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page :is(.calendar-date,.calendar-offset){min-height:48px;height:48px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid{gap:4px 2px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots{bottom:7px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro{display:flex;flex-wrap:wrap;align-items:flex-start;gap:17px;margin-bottom:23px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro h1{font-size:27px;margin-bottom:7px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .eyebrow{font-size:9px;margin-bottom:7px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .workspace-description{font-size:12px;max-width:32ch}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro>button{min-height:42px;padding:10px 13px;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout{grid-template-columns:minmax(0,1fr);gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout>.card{padding:18px 16px;border-radius:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-month{min-height:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar{flex-direction:column;align-items:stretch;gap:16px;margin-bottom:22px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period{justify-content:space-between}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar h2{font-size:15px;text-align:center}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button{width:38px;min-width:38px;min-height:38px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;max-width:none;gap:3px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes button{min-height:38px;font-size:12px!important;padding:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid{gap:3px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page :is(.calendar-date,.calendar-offset){min-height:44px;height:44px;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid .weekday{font-size:10px;padding-bottom:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots{bottom:6px;gap:2px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots>span{width:3px;height:3px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend{font-size:10px;gap:15px;padding-top:12px;margin-top:13px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda{min-height:300px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-head{padding-bottom:15px;margin-bottom:4px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3{font-size:13px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-add-event{font-size:12px;min-height:44px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker input{min-height:44px;font-size:13px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-toolbar{flex-wrap:wrap;gap:15px;padding-bottom:17px;margin-bottom:18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search{width:100%;margin:0;order:3}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>input{min-height:44px;font-size:13px;padding-block:10px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>svg{top:14px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-resume{margin-left:auto}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library{grid-template-columns:minmax(0,1fr);gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library .note-card{min-height:240px;padding:20px 20px 0}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content h2{font-size:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content .note-preview{font-size:13px;line-height:1.75}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer>button.text-button{min-height:46px;font-size:12px}
+}
+@media(prefers-reduced-motion:no-preference){
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card{transition:border-color .15s ease}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card:hover{border-color:var(--ux-green);transform:none}
+}
+
+/* app/reference-account.css */
+/* Account and workspaces follow the B12 composition with real account data. */
+body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro{align-items:flex-end;gap:24px;margin-bottom:26px;min-height:0}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro .eyebrow{font-size:10px;font-weight:650;letter-spacing:.12em;line-height:1.4;text-transform:uppercase;margin:0 0 8px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro h1{font-size:29px;font-weight:700;line-height:1.25;margin:0 0 8px;letter-spacing:-.035em}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-account-description{font-size:13px;line-height:1.5;color:var(--ux-muted);margin:0;max-width:65ch}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .settings-layout{display:block}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .settings-content{display:block}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page :is(.settings-navigation,.settings-back){display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.reference-family-panel{padding:0;border:0;border-radius:0;background:none;box-shadow:none;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;min-width:0;min-height:200px;padding:20px;text-align:start;border:1px solid var(--ux-border);border-radius:11px;background:var(--ux-surface);box-shadow:none;color:var(--ux-ink);font-weight:400;line-height:1.5;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card[aria-pressed=true]{border-color:var(--ux-green);box-shadow:0 0 0 2px var(--ux-soft)}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card:hover{background:var(--ux-surface);border-color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin-bottom:17px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-card .reference-avatar{width:40px;height:40px;border-radius:12px;font-size:18px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-active{font-size:10px;line-height:1.5;background:var(--ux-soft);color:var(--ux-green);border-radius:20px;padding:4px 8px;font-weight:500}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-name{display:block;font-size:14px;font-weight:650;line-height:1.5;margin-bottom:6px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-kind{font-size:12px;color:var(--ux-muted);font-weight:400;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-member-count{font-size:11px;color:var(--ux-muted);margin-top:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-detail{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--ux-muted);border-top:1px solid var(--ux-border);padding-top:13px;margin-top:auto;width:100%;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-detail svg{flex:none;width:15px;height:15px}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-create{justify-content:center;align-items:center;text-align:center;border-style:dashed;gap:9px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-create>svg{width:24px;height:24px;padding:10px;box-sizing:content-box;background:var(--ux-soft);color:var(--ux-green);border-radius:12px;margin-bottom:4px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-create>strong{font-size:14px;font-weight:650}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-panel>.family-workspace-actions{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0 18px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-panel>.family-workspace-actions>button{font-size:11px;background:none;color:var(--ux-green);padding:6px 0;min-height:36px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .intro>.reference-family-invite{min-height:40px;border-radius:7px;padding:10px 16px;background:var(--ux-button,var(--ux-green));color:var(--ux-button-ink,#fff);font-size:12px;line-height:1.4;flex:none;box-shadow:0 3px 8px #55409112}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-invite svg{width:17px;height:17px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-panel>.reference-family-roster{padding:20px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:11px;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-roster>h2{font-size:15px;font-weight:650;margin:0 0 5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-roster-space{font-size:11px;color:var(--ux-muted);margin:0 0 14px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-member{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--ux-border);border-bottom:0;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-member>.reference-avatar{width:34px;height:34px;border-radius:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-member>.reference-avatar svg{width:18px;height:18px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy{flex:1;min-width:0;display:grid;gap:3px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy>strong{font-size:12px;font-weight:600;overflow-wrap:anywhere;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy>span{font-size:10px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-role{font-size:11px;color:var(--ux-muted);text-align:end;max-width:28%;line-height:1.5}
+
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-content>.profile-summary{padding:22px;border:1px solid var(--ux-border);border-radius:10px;background:var(--ux-surface);box-shadow:none;margin-bottom:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-summary>h2{font-size:15px;font-weight:650;margin:0 0 22px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:22px;margin-bottom:8px;border-bottom:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity>.reference-avatar{width:48px;height:48px;border-radius:50%;font-size:21px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-summary .profile-identity{flex:1;min-width:0;background:none;border:0;padding:0;margin:0;gap:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-identity dt{font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin:0;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-identity dd.account-email{font-size:14px;font-weight:550;line-height:1.6;margin:0;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified{font-size:10px;color:var(--ux-muted);font-weight:400;display:flex;align-items:center;gap:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified[data-verified=true]{color:var(--income)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified[data-verified=true]::before{content:'✓';font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-options{display:grid}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-options>.reference-profile-option{display:flex;align-items:center;justify-content:flex-start;gap:12px;min-height:64px;padding:14px 0;border:0;border-bottom:1px solid var(--ux-border);border-radius:0;background:none;color:var(--ux-ink);font-size:12px;font-weight:500;text-align:start}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-option>svg:first-child{width:19px;height:19px;padding:8px;box-sizing:content-box;flex:none;background:var(--ux-soft);color:var(--ux-green);border-radius:8px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-option>svg:last-child{width:16px;height:16px;margin-inline-start:auto;color:var(--ux-muted);flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-options>.reference-profile-option:last-child{border-bottom:0;padding-bottom:0}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.reference-profile-signout{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 22px;border:1px solid var(--ux-border);border-radius:10px;background:var(--ux-surface);box-shadow:none;margin-bottom:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout h2{font-size:12px;font-weight:600;margin:0 0 5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout p{font-size:11px;line-height:1.5;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout .profile-logout{color:var(--expense);background:none;border:1px solid var(--ux-border);border-radius:7px;font-size:11px;padding:7px 10px;min-height:36px;flex:none;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout .profile-logout svg{width:16px;height:16px}
+
+@media(max-width:1099px){
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-layout{grid-template-columns:190px minmax(0,1fr);gap:18px}
+}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-bottom:22px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro h1{font-size:25px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+ body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card{min-height:190px;padding:20px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .settings-layout{display:block}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-layout{display:block}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page[data-settings-detail=false] .settings-navigation{display:flex;flex-direction:row;overflow-x:auto;gap:4px;padding:6px;margin-bottom:18px;scrollbar-width:thin}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-navigation>.settings-item{flex:none;white-space:nowrap;padding:8px 10px;font-size:11px;min-height:38px;gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page[data-settings-detail=false] .settings-content{display:block}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-content>.profile-summary{padding:18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity{gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified{flex:0 0 calc(100% - 60px);margin-inline-start:60px}
+ body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.reference-profile-signout{align-items:flex-start;flex-direction:column;padding:18px;gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-member-role{max-width:30%;font-size:10px}
+}

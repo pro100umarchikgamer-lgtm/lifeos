@@ -1,0 +1,143 @@
+/* Calendar and notes: the quiet surfaces and violet detail of the B12 reference. */
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page){--workspace-accent:var(--ux-button);--workspace-accent-ink:var(--ux-button-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro{align-items:flex-end;gap:24px;margin-bottom:26px;min-height:0;border:0}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .eyebrow{font-size:10px;font-weight:650;line-height:1.4;letter-spacing:.12em;text-transform:uppercase;color:var(--ux-muted);margin:0 0 8px}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro h1{font-size:30px;font-weight:700;line-height:1.2;letter-spacing:-.035em;margin:0 0 8px}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .workspace-description{font-size:13px;line-height:1.5;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro>button{flex:none;min-height:40px;border:0;border-radius:7px;padding:10px 16px;background:var(--workspace-accent);color:var(--workspace-accent-ink);font-size:12px;font-weight:600;box-shadow:0 3px 8px #55409112}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro>button svg{width:17px;height:17px}
+
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(270px,1fr);gap:20px;align-items:stretch;padding:0;border:0;max-width:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout>.card{border:1px solid var(--ux-border);border-radius:9px;background:var(--ux-surface);padding:22px;box-shadow:none;margin:0;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-month{min-height:445px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:0 0 24px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period{display:flex;align-items:center;gap:6px;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar h2{font-size:16px;line-height:1.35;font-weight:600;letter-spacing:-.015em;text-transform:capitalize;margin:0;padding:0 5px;text-align:left;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button{flex:none;min-height:36px;min-width:30px;width:30px;height:36px;padding:6px;border:0;border-radius:5px;background:transparent;color:var(--ux-muted);box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button:hover{background:var(--ux-bg);color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button svg{width:16px;height:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes{display:flex;flex-wrap:nowrap;width:auto;max-width:none;gap:2px;padding:3px;margin:0;background:var(--ux-bg);border:0;border-radius:6px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes button{flex:none;min-width:0;min-height:32px;padding:6px 10px;border:0;border-radius:4px;background:transparent;color:var(--ux-muted);font-size:11px!important;font-weight:500;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes button[aria-pressed=true]{color:var(--ux-green);background:var(--ux-surface);box-shadow:0 1px 4px #2823330c;font-weight:600}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0 7px;max-width:none;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid:empty{display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid .weekday{padding:0 0 13px;font-size:11px;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;color:var(--ux-muted);text-align:center}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page :is(.calendar-date,.calendar-offset){position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;min-width:0;min-height:50px;height:50px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--ux-ink);font-size:13px;font-weight:400;line-height:1;gap:0;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-offset{color:var(--ux-muted);opacity:.45;padding-bottom:3px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date:hover{background:var(--ux-bg);box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date.is-today{box-shadow:inset 0 0 0 1px var(--ux-border);color:var(--ux-green);font-weight:650}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date[aria-pressed=true]{background:var(--workspace-accent);color:var(--workspace-accent-ink);font-weight:600;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date-number{display:block}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots{position:absolute;left:0;right:0;bottom:10px;display:flex;align-items:center;justify-content:center;gap:3px;height:4px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots>span{width:4px;height:4px;border-radius:50%;background:#8d74c8}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots>span[data-visibility=shared]{background:#cba17c}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-date[aria-pressed=true] .calendar-event-dots>span{background:#fff}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend{display:flex;flex-wrap:wrap;gap:16px;border-top:1px solid var(--ux-border);padding-top:13px;margin-top:15px;color:var(--ux-muted);font-size:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend>span{display:flex;align-items:center;gap:6px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend>span::before{content:'';display:block;width:5px;height:5px;border-radius:50%;background:#8d74c8}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend>span[data-visibility=shared]::before{background:#cba17c}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda{display:flex;flex-direction:column;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-head{display:block;margin:0 0 8px;padding:0 0 19px;border-bottom:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-weekday{font-size:10px;font-weight:650;line-height:1.5;text-transform:uppercase;letter-spacing:.1em;color:var(--ux-muted);margin-bottom:8px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-date{display:flex;align-items:baseline;gap:7px;max-width:none;font-size:13px;line-height:1.2;font-weight:400;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-date .calendar-day-number{font-size:32px;font-weight:550;letter-spacing:-.04em;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events{margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row{position:relative;display:flex;align-items:center;gap:6px;background:transparent;border:0;border-bottom:1px solid var(--ux-border);border-radius:0;margin:0;padding:14px 0;min-height:64px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row:last-child{border-bottom:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row::before{display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row>.text{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:baseline;gap:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-time{font-size:10px;line-height:1.4;font-variant-numeric:tabular-nums;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3{position:relative;font-size:12px;line-height:1.5;font-weight:600;letter-spacing:0;margin:0;padding-left:12px;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3::before{content:'';position:absolute;top:7px;left:0;width:5px;height:5px;border-radius:50%;background:#8d74c8}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row[data-visibility=shared] h3::before{background:#cba17c}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row>button{min-width:30px;width:30px;min-height:36px;padding:6px;color:var(--ux-muted);background:transparent}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row>button svg{width:16px;height:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-add-event{align-self:flex-start;justify-content:flex-start;min-height:40px;background:transparent;border:0;padding:8px 0;color:var(--ux-green);font-size:11px;font-weight:500;border-radius:5px;gap:6px;margin:8px 0 14px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-add-event svg{width:15px;height:15px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker{margin: auto 0 0;padding:16px 0 0;border-top:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker label{font-size:10px;font-weight:500;margin:0 0 6px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker input{width:100%;min-height:38px;padding:7px 10px;background:var(--ux-surface);color:var(--ux-ink);font-size:12px;border:1px solid var(--ux-border);border-radius:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .workspace-empty{min-height:160px;padding:22px 0;gap:12px;text-align:left;align-items:flex-start}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .workspace-empty>svg{width:32px;height:32px;padding:7px;border-radius:8px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .workspace-empty p{font-size:12px;line-height:1.65;max-width:25ch}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout{grid-template-columns:minmax(0,1fr)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout .calendar-month{min-height:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout .calendar-toolbar{margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-day-layout .calendar-agenda{min-height:320px}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout[data-mode=week] .calendar-month{min-height:0}
+
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;max-width:none;margin:0 0 22px;padding:0 0 17px;border-bottom:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library-heading{display:flex;align-items:center;gap:9px;flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library-heading h2{font-size:14px;font-weight:600;line-height:1.5;letter-spacing:0;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:1px 6px;border-radius:5px;background:var(--ux-soft);color:var(--ux-green);font-size:10px;line-height:1;font-variant-numeric:tabular-nums}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search{position:relative;width:min(100%,300px);margin-left:auto}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>input{width:100%;min-height:39px;padding:9px 12px 9px 35px;border:1px solid var(--ux-border);border-radius:6px;background:var(--ux-surface);color:var(--ux-ink);font-size:12px;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>input::placeholder{color:var(--ux-muted);opacity:1}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>svg{position:absolute;left:11px;top:12px;width:16px;height:16px;color:var(--ux-muted);pointer-events:none}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-resume{min-height:39px;padding:8px 12px;border:1px solid var(--ux-border);border-radius:6px;background:var(--ux-surface);color:var(--ux-green);font-size:11px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:stretch}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library .note-card{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;min-height:260px;padding:21px 22px 0;border:1px solid var(--ux-border);border-radius:9px;background:var(--ux-surface);box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 19px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-header>svg{width:31px;height:31px;padding:7px;border-radius:7px;background:var(--ux-soft);color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-visibility{font-size:10px;line-height:1.5;color:var(--ux-muted);font-weight:400}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content{display:block;flex:1;min-width:0;align-self:stretch;padding-bottom:20px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content h2{font-size:16px;line-height:1.5;letter-spacing:-.015em;font-weight:650;margin:0 0 11px;color:var(--ux-ink)}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content .note-preview{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.75;font-weight:400;letter-spacing:0;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer{display:flex;align-items:center;min-width:0;border-top:1px solid var(--ux-border);margin-top:auto;padding:5px 0}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer>button.text-button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:43px;padding:9px 0;margin:0;border:0;border-radius:4px;background:transparent;color:var(--ux-green);font-size:11px;font-weight:550;text-align:left}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer>button svg{width:15px;height:15px}
+body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library>.workspace-empty{grid-column:1/-1;min-height:260px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:9px}
+
+@media(min-width:760px) and (max-width:999px){
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout{grid-template-columns:minmax(0,1.5fr) minmax(235px,1fr);gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout>.card{padding:18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar{flex-direction:column;align-items:stretch;gap:14px;margin-bottom:22px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period{justify-content:space-between}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes{align-self:flex-start}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page :is(.calendar-date,.calendar-offset){min-height:48px;height:48px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid{gap:4px 2px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots{bottom:7px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro{display:flex;flex-wrap:wrap;align-items:flex-start;gap:17px;margin-bottom:23px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro h1{font-size:27px;margin-bottom:7px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .eyebrow{font-size:9px;margin-bottom:7px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro .workspace-description{font-size:12px;max-width:32ch}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.calendar-page,.notes-page) .intro>button{min-height:42px;padding:10px 13px;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout{grid-template-columns:minmax(0,1fr);gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-layout>.card{padding:18px 16px;border-radius:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-month{min-height:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar{flex-direction:column;align-items:stretch;gap:16px;margin-bottom:22px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period{justify-content:space-between}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar h2{font-size:15px;text-align:center}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period button{width:38px;min-width:38px;min-height:38px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;max-width:none;gap:3px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-modes button{min-height:38px;font-size:12px!important;padding:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid{gap:3px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page :is(.calendar-date,.calendar-offset){min-height:44px;height:44px;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-grid .weekday{font-size:10px;padding-bottom:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots{bottom:6px;gap:2px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots>span{width:3px;height:3px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-legend{font-size:10px;gap:15px;padding-top:12px;margin-top:13px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda{min-height:300px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-agenda-head{padding-bottom:15px;margin-bottom:4px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3{font-size:13px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-add-event{font-size:12px;min-height:44px}
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-picker input{min-height:44px;font-size:13px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-toolbar{flex-wrap:wrap;gap:15px;padding-bottom:17px;margin-bottom:18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search{width:100%;margin:0;order:3}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>input{min-height:44px;font-size:13px;padding-block:10px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-search>svg{top:14px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-resume{margin-left:auto}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library{grid-template-columns:minmax(0,1fr);gap:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .notes-library .note-card{min-height:240px;padding:20px 20px 0}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content h2{font-size:16px}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-content .note-preview{font-size:13px;line-height:1.75}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card-footer>button.text-button{min-height:46px;font-size:12px}
+}
+@media(prefers-reduced-motion:no-preference){
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card{transition:border-color .15s ease}
+ body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card:hover{border-color:var(--ux-green);transform:none}
+}

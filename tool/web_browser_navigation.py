@@ -3,6 +3,9 @@
 
 def open_tab(page, label):
     nav = page.locator('.nav')
+    if label == 'Финансы' and nav.locator('[data-tab=money][data-section=""]:visible').count():
+        nav.locator('[data-tab=money][data-section=""]:visible').click()
+        return
     if label in ('Профиль', 'Заметки') and nav.locator('.nav-more').is_visible():
         nav.locator('.nav-more > summary').click()
     nav.get_by_role('button', name=label, exact=True).click()
