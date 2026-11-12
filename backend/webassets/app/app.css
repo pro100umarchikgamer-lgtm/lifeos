@@ -99,3 +99,169 @@ body[data-design=clarity] .today-grid .card{padding-top:18px;padding-bottom:18px
 .personal-import-preview label{display:flex;align-items:flex-start;gap:10px;min-height:36px}
 .personal-import-preview input[type=checkbox]{flex:none;width:20px;height:20px;margin:0}
 .personal-import-preview + .actions [hidden]{display:none}
+
+body[data-design=clarity] dialog.registration-dialog {
+  --registration-surface: #fdfcf9;
+  --registration-ink: #1b2822;
+  --registration-muted: #4d5c53;
+  --registration-accent: #105345;
+  --registration-line: #84938a;
+  width: min(520px, 100% - 28px);
+  padding: clamp(19px, 4vw, 34px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--registration-surface);
+  color: var(--registration-ink);
+  scroll-padding: 12px;
+}
+body[data-design=clarity][data-theme=dark] dialog.registration-dialog {
+  --registration-surface: #1a2721;
+  --registration-ink: #edf5ee;
+  --registration-muted: #b4c6bb;
+  --registration-accent: #9dddc0;
+  --registration-line: #8ba399;
+}
+@media (prefers-color-scheme: dark) {
+  body[data-design=clarity][data-theme=system] dialog.registration-dialog {
+    --registration-surface: #1a2721;
+    --registration-ink: #edf5ee;
+    --registration-muted: #b4c6bb;
+    --registration-accent: #9dddc0;
+    --registration-line: #8ba399;
+  }
+}
+body[data-design=clarity] dialog.registration-dialog::backdrop {
+  background: rgb(14 28 23 / 42%);
+  backdrop-filter: blur(3px);
+}
+body[data-design=clarity] .registration-dialog .dialog-head {
+  position: static;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 8px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+.registration-dialog .registration-brand {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.045em;
+  color: var(--registration-accent);
+}
+body[data-design=clarity] .registration-dialog .dialog-head h2 {
+  grid-area: 2 / 1 / 3 / -1;
+  margin: 0;
+  font: 700 clamp(28px, 7.8vw, 43px)/1.1 Georgia, serif;
+  letter-spacing: -.045em;
+  color: var(--registration-ink);
+}
+body[data-design=clarity] .registration-dialog .dialog-close {
+  grid-area: 1 / 2;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: -6px -7px -6px 0;
+  color: var(--registration-accent);
+}
+.registration-dialog .registration-intro {
+  margin: 8px 0 22px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--registration-muted);
+}
+body[data-design=clarity] .registration-dialog form {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+body[data-design=clarity] .registration-dialog fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
+}
+body[data-design=clarity] .registration-dialog label {
+  margin: 0;
+  color: var(--registration-ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+body[data-design=clarity] .registration-dialog input {
+  min-width: 0;
+  min-height: 47px;
+  margin: 0 0 9px;
+  border: 1px solid var(--registration-line);
+  border-radius: 10px;
+  background: var(--registration-surface);
+  color: var(--registration-ink);
+  font-size: 16px;
+}
+body[data-design=clarity] .registration-dialog input::placeholder { color: var(--registration-muted); }
+.registration-dialog form [role=status] { margin: 0; }
+.registration-dialog form [role=status]:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+body[data-design=clarity] .registration-dialog form > button[type=submit],
+body[data-design=clarity] .registration-dialog > .registration-secondary {
+  min-height: 47px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--registration-accent);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 650;
+}
+body[data-design=clarity] .registration-dialog form > button[type=submit] {
+  position: static;
+  margin: 0;
+  box-shadow: none;
+  background: var(--registration-accent);
+  color: var(--registration-surface);
+}
+body[data-design=clarity] .registration-dialog > .registration-secondary {
+  margin-top: 12px;
+  background: transparent;
+  color: var(--registration-accent);
+}
+.registration-dialog .registration-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 0;
+  color: var(--registration-muted);
+  font-size: 13px;
+}
+.registration-dialog .registration-divider::before,
+.registration-dialog .registration-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+.registration-dialog .registration-legal {
+  margin: 14px 0 0;
+  text-align: center;
+}
+.registration-dialog .registration-legal a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--registration-accent);
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+body[data-design=clarity] .registration-dialog :is(button,input,a):focus-visible {
+  outline: 2px solid var(--registration-accent);
+  outline-offset: 3px;
+}
+@media (max-width: 480px), (max-height: 570px) {
+  body[data-design=clarity] .registration-dialog .dialog-head { gap: 11px 8px; }
+  .registration-dialog .registration-intro { margin-bottom: 16px; }
+  .registration-dialog .registration-legal { margin-top: 8px; }
+}

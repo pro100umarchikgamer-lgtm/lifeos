@@ -988,17 +988,61 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 setInterval(()=>{if(state.session&&document.visibilityState==='visible'&&!document.querySelector('dialog')&&navigator.onLine)refresh().then(render).catch(report);},30000);
 (async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';applyTheme();const config=await call('config');state.googleEnabled=Boolean(config.google_enabled);try{if(new URLSearchParams(location.search).get('google')==='return')await googleReturn();else await start();}catch(error){if(error.code==='unauthorized'){login();if(new URLSearchParams(location.search).get('action')==='signup')await signup();}else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
 
-async function signup(){
+const SIGNUP_COPY = {
+ ru: {intro: 'Введите почту и придумайте пароль.', or: 'или', privacy: 'Конфиденциальность'},
+ en: {intro: 'Enter your email and choose a password.', or: 'or', privacy: 'Privacy'},
+ 'uz-Latn': {intro: 'Email manzilingizni kiriting va parol yarating.', or: 'yoki', privacy: 'Maxfiylik'},
+ 'uz-Cyrl': {intro: 'Email манзилингизни киритинг ва парол яратинг.', or: 'ёки', privacy: 'Махфийлик'}
+};
+
+function signupBrand(container) {
+ container.querySelector('.dialog-head').prepend(E('span','ULADIM','registration-brand'));
+}
+
+async function signup() {
  const config=await call('config');
+ const copy=SIGNUP_COPY[state.lang]||SIGNUP_COPY.en;
  const d=dialog(t('family_register'),container=>{
- form(container,'',f=>{const fields={email:input(f,'email',t('family_email'),'email'),password:input(f,'new-password',t('family_password'),'password')};if(!config.registration_open)fields.invitation=input(f,'invitation',t('family_invitation'));return fields;},async v=>{
- const email=v.email.value;try{await call('signup',{email,password:v.password.value,...(v.invitation?{invitation:v.invitation.value}:{})});}finally{v.password.value='';}
- replaceDialog(container,E('h2',t('family_verify')),E('p',t('family_verify_hint')));
- form(container,'',f=>({code:input(f,'code',t('family_code'))}),async fields=>{await call('confirm-signup',{email,code:fields.code.value.trim()});fields.code.value='';d.close();login();toast(t('account_done'));},t('family_verify'));
- container.append(button(t('ux3_resend_verification'),async()=>{await call('resend-signup',{email});toast(t('family_verify_hint'));}));
- },t('family_register'));
- if(config.google_enabled)container.append(button(t('account_google_sign_in'),()=>beginGoogle(container.querySelector('[name=invitation]')?.value)));
- const legal=E('p',undefined,'small');append(legal,anchor(t('account_privacy'),'/privacy'));container.append(legal);
+  container.classList.add('registration-dialog');
+  signupBrand(container);
+  container.append(E('p',copy.intro,'registration-intro'));
+
+  form(container,'',f=>{
+   const email=input(f,'email',t('family_email'),'email');
+   email.placeholder='name@example.com';
+   const password=input(f,'new-password',t('family_password'),'password');
+   const fields={email,password};
+   if(!config.registration_open)fields.invitation=input(f,'invitation',t('family_invitation'));
+   return fields;
+  },async v=>{
+   const email=v.email.value;
+   try {
+    await call('signup',{email,password:v.password.value,...(v.invitation?{invitation:v.invitation.value}:{})});
+   } finally { v.password.value=''; }
+   replaceDialog(container,E('h2',t('family_verify')),E('p',t('family_verify_hint'),'registration-intro'));
+   signupBrand(container);
+   form(container,'',f=>({code:input(f,'code',t('family_code'))}),async fields=>{
+    await call('confirm-signup',{email,code:fields.code.value.trim()});
+    fields.code.value='';
+    d.close();
+    login();
+    toast(t('account_done'));
+   },t('family_verify'));
+   container.append(button(t('ux3_resend_verification'),async()=>{
+    await call('resend-signup',{email});
+    toast(t('family_verify_hint'));
+   },'registration-secondary'));
+  },t('family_register'));
+
+  if(config.google_enabled){
+   const divider=E('div',copy.or,'registration-divider');
+   divider.setAttribute('aria-hidden','true');
+   const google=button(t('account_google_sign_in'),()=>beginGoogle(container.querySelector('[name=invitation]')?.value),'registration-secondary');
+   append(container,divider,google);
+  }
+  const privacy=E('a',copy.privacy);
+  privacy.href='/privacy';
+  container.append(append(E('p',undefined,'registration-legal'),privacy));
  });
 }
 
