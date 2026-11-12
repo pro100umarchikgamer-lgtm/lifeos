@@ -921,7 +921,7 @@ function balance(a){let result=BigInt(a.data.opening_minor);for(const r of recor
 function finance(m){
  title(m,'finances');m.classList.add('finance-page');
  const toolbar=E('div',undefined,'finance-toolbar');
- append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'text-button'),button(statementCopy('title'),importStatement,'secondary'));
+ append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'secondary'),button(statementCopy('title'),importStatement,'secondary'));
  m.querySelector('.intro').append(toolbar);
  const sections=E('nav',undefined,'finance-navigation');
  sections.setAttribute('aria-label',t('finances'));
@@ -932,10 +932,10 @@ function finance(m){
  }
  const grid=E('div',undefined,'finance-grid');
  const activity=E('div',undefined,'finance-activity'),details=E('aside',undefined,'finance-details');
- append(grid,activity,details);m.append(grid);
+ append(grid,activity,details);append(m,sections,grid);
  const summary=card(t('web_finance_summary'));
  summary.classList.add('finance-overview');details.append(summary);
- const ledger=card(t('web_history'));ledger.classList.add('ledger');append(activity,ledger,sections);
+ const ledger=card(t('web_history'));ledger.classList.add('ledger');activity.append(ledger);
  ledger.id='finance-ledger';ledger.tabIndex=-1;
  const filterPanel=E('details',undefined,'finance-filter-panel');
  const filterLabel=E('summary',t('web_filters'));
