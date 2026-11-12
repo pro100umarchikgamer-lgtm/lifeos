@@ -1,12 +1,14 @@
 """Actual canvas pixels must follow system-theme changes without navigation."""
+import os
 from playwright.sync_api import sync_playwright
 from tool.check_web_platform import fixture, login
+from tool.web_browser_navigation import open_tab
 
 def main():
     with fixture() as (origin,*_),sync_playwright() as p:
-        browser=p.chromium.launch();context=browser.new_context(color_scheme='light');page=context.new_page()
+        browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}));context=browser.new_context(color_scheme='light');page=context.new_page()
         try:
-            login(page,origin);page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
+            login(page,origin);open_tab(page,'Финансы')
             page.wait_for_function('''()=>{const c=document.querySelector('canvas');if(!c)return false;
                 const pixel=c.getContext('2d').getImageData(30,70,1,1).data;
                 const color=getComputedStyle(document.body).getPropertyValue('--income').trim();

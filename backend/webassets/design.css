@@ -2304,7 +2304,7 @@ body.product-site[data-theme=dark]{--public-canvas:#121a15;--public-ink:#eef1e9;
 
 /* app/reference.css */
 /* Actual B12 video composition, applied to existing ULADIM records and actions. */
-body[data-design=clarity][data-reference-layout=b12]{--ux-bg:#f5f6f2;--ux-surface:#fff;--ux-ink:#25242d;--ux-muted:#7c7a86;--ux-border:#e9e8ed;--ux-green:#6956bd;--ux-soft:#efebfa;--ux-radius:12px;--bg:var(--ux-bg);--card:var(--ux-surface);--ink:var(--ux-ink);--muted:var(--ux-muted);--line:var(--ux-border);--accent:var(--ux-green);--soft:var(--ux-soft);background:var(--ux-bg);font-size:14px}
+body[data-design=clarity][data-reference-layout=b12]{--ux-bg:#f5f6f2;--ux-surface:#fff;--ux-ink:#25242d;--ux-muted:#686574;--ux-border:#e9e8ed;--ux-green:#6956bd;--ux-soft:#efebfa;--ux-radius:12px;--bg:var(--ux-bg);--card:var(--ux-surface);--ink:var(--ux-ink);--muted:var(--ux-muted);--line:var(--ux-border);--accent:var(--ux-green);--soft:var(--ux-soft);background:var(--ux-bg);font-size:14px}
 body[data-design=clarity][data-reference-layout=b12][data-theme=dark]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#a8a4b6;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}
 @media(prefers-color-scheme:dark){body[data-design=clarity][data-reference-layout=b12][data-theme=system]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#a8a4b6;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}}
 body[data-reference-layout=b12][data-palette=forest]{--ux-green:#286550;--ux-soft:#e7f0e9}

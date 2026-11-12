@@ -69,19 +69,24 @@ def main():
                     (OUT/'login-failure.json').write_text(json.dumps({'engine':ENGINE,'fixture':'HTTP loopback only; no production credentials','responses':responses,'cookies':[{'name':c['name'],'secure':c['secure'],'httpOnly':c['httpOnly']} for c in context.cookies()],'body':page.locator('body').inner_text(),'page_errors':errors},ensure_ascii=False,indent=2))
                     raise
                 page.screenshot(path=str(OUT/'iphone-today-light.png'),full_page=False)
-                assert page.locator('.nav svg[aria-hidden=true]:visible').count()==5
+                assert page.locator('.nav svg[aria-hidden=true]:visible').count()==6
+                assert set(page.locator('.nav button[data-tab][data-section=""]:visible').evaluate_all('(items)=>items.map(item=>item.dataset.tab)'))=={'today','tasks','calendar','notes','money','account'}
                 for nav_button in page.locator('.nav button:visible,.nav-more > summary:visible').all():
                     box=nav_button.bounding_box();assert box['width']>=44 and box['height']>=44
                 for w,h,n in [(820,1180,'ipad'),(1440,960,'desktop')]:
                     page.set_viewport_size({'width':w,'height':h})
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                     if DESIGN:
-                        nav=page.locator('.nav').bounding_box();assert nav['x']==0 and nav['width']<250 and nav['height']>500
+                        nav=page.locator('.nav').bounding_box()
+                        if w>=760:
+                            assert nav['x']==0 and nav['y']==0 and 0<nav['width']<w/3 and nav['height']==h
+                            assert page.locator('main').bounding_box()['x']>=nav['width']
+                        else:assert nav['width']==w and nav['height']>=44 and nav['y']+nav['height']==h
                     page.screenshot(path=str(OUT/(n+'-today-light.png')),full_page=False)
                 page.set_viewport_size({'width':390,'height':844})
                 checks.append('svg_navigation_named_controls_and_tablet_desktop_layout')
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-                page.get_by_role('button',name='Задачи',exact=True).click()
+                open_tab(page,'Задачи')
                 page.get_by_role('button',name='Добавить',exact=True).click()
                 dialog=page.get_by_role('dialog')
                 heading_id=dialog.get_attribute('aria-labelledby')
@@ -95,7 +100,7 @@ def main():
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
                 checks.append('create_and_complete_task_shared_with_android_protocol')
                 open_tab(page,'Заметки')
-                page.get_by_role('button',name='Добавить',exact=True).click()
+                page.get_by_role('button',name='Новая заметка',exact=True).click()
                 page.get_by_label('Текст заметки',exact=True).fill('Одна запись при повторе после потери ответа')
                 def lose_response(route):
                     route.fetch();route.abort()
@@ -107,7 +112,7 @@ def main():
                 self_records=backend.pull(actor,wid,0)['records']
                 assert sum(r['data'].get('body')=='Одна запись при повторе после потери ответа' for r in self_records)==1
                 checks.append('lost_response_retry_is_idempotent')
-                page.get_by_role('button',name='Финансы',exact=True).click()
+                open_tab(page,'Финансы')
                 expect(page.get_by_role('heading',name='Финансы',exact=True,level=1)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-finance-light.png'),full_page=False)
                 for width,height,name in [(320,740,'small-phone'),(820,1180,'ipad'),(1100,900,'compact-desktop'),(1440,960,'desktop')]:
@@ -117,7 +122,7 @@ def main():
                 checks.append('responsive_320_390_820_1100_1440')
                 page.set_viewport_size({'width':390,'height':844})
                 open_tab(page,'Профиль')
-                expect(page.get_by_role('heading',name='Управление аккаунтом',exact=True)).to_be_visible()
+                expect(page.get_by_role('heading',name='Профиль',exact=True,level=1)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-account-light.png'),full_page=False)
                 def luminance(hex_color):
                     if len(hex_color)==4:hex_color='#'+''.join(c*2 for c in hex_color[1:])
@@ -144,7 +149,7 @@ def main():
                 open_settings(page,'appearance')
                 page.get_by_label('Оформление',exact=True).select_option('dark')
                 page.get_by_label('Цветовая палитра',exact=True).select_option('ocean')
-                page.get_by_role('button',name='Финансы',exact=True).click()
+                open_tab(page,'Финансы')
                 page.screenshot(path=str(OUT/'iphone-finance-dark.png'),full_page=False)
                 await_sw=page.evaluate('navigator.serviceWorker.ready.then(()=>true)')
                 assert await_sw

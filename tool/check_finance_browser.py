@@ -1,6 +1,7 @@
 """Real browser + production WSGI, disposable two-user data, no production traffic."""
 from dataclasses import replace
 import json
+import os
 import tempfile
 import threading
 import uuid
@@ -12,6 +13,7 @@ from backend.config import Settings
 from backend.production import Application
 from backend.service import Backend
 from tool.check_pwa_browser import Quiet
+from tool.web_browser_navigation import open_tab
 
 OUT=Path('web_evidence/finance-release')
 PASSWORD='synthetic-finance-release-password'
@@ -37,15 +39,16 @@ def main():
         threading.Thread(target=server.serve_forever,daemon=True).start()
         try:
             with sync_playwright() as p:
-                browser=p.chromium.launch()
+                browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
                 context=browser.new_context(viewport={'width':1440,'height':1000},color_scheme='light',locale='ru-RU',service_workers='block')
                 page=context.new_page();errors=[];requests=[]
                 page.on('pageerror',lambda e:errors.append(str(e)))
                 page.on('request',lambda r:requests.append({'url':r.url,'body':r.post_data or ''}))
                 page.goto(origin+'/app');page.locator('input[name=email]').fill(actor['email']);page.locator('input[name=password]').fill(PASSWORD);page.get_by_role('button',name='Войти',exact=True).click()
                 expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
-                page.get_by_role('navigation').get_by_role('button',name='Финансы',exact=True).click()
-                expect(page.get_by_role('button',name='Импортировать выписку',exact=True)).to_be_visible()
+                open_tab(page,'Финансы')
+                import_button=page.locator('.finance-toolbar').get_by_role('button',name='Импортировать выписку',exact=True)
+                expect(import_button).to_be_visible()
                 checks.append({'case':'shared domain worker preserves exact KWD/JPY and rejects unsafe inputs','expected':'exact minor units or explicit rejection','actual':page.evaluate('''async()=>{
                   const parse=async(text,extension='csv')=>statementWorker({action:'parse',bytes:btoa(unescape(encodeURIComponent(text))),extension,encoding:'auto',delimiter:'auto',currency:'RUB'});
                   const mapping={header:0,date:0,amount:1,description:2,currency:3,dateFormat:'iso',decimal:'.',defaultCurrency:'RUB',direction:'signed'};
@@ -65,7 +68,7 @@ def main():
                 }""")
                 checks.append({'case':'10,000 rows, row limit and shared budget carry','expected':'bounded parser; exact Android budget remainder','actual':'passed'})
                 statement='date;amount;description;currency\n2026-11-10;-1 234,56;Магазин;RUB\n2026-11-10;2000,00;<img src=x onerror=alert(1)>;RUB\n2026-02-30;10,00;Неверная дата;RUB'
-                page.get_by_role('button',name='Импортировать выписку',exact=True).click();dialog=page.get_by_role('dialog')
+                import_button.click();dialog=page.get_by_role('dialog')
                 dialog.locator('input[type=file]').set_input_files({'name':'statement.csv','mimeType':'text/csv','buffer':statement.encode()})
                 expect(dialog.locator('tbody tr')).to_have_count(3)
                 assert dialog.locator('tbody input:checked').count()==2
@@ -91,7 +94,7 @@ def main():
                 dialog.get_by_role('button',name='Закрыть',exact=True).click()
                 expect(page.locator('.account-balance strong')).to_have_text('865,44 RUB')
                 checks.append({'case':'visible account balance immediately after import','expected':'865.44 RUB, including opening balance','actual':'passed'})
-                page.get_by_role('button',name='Импортировать выписку',exact=True).click();dialog=page.get_by_role('dialog')
+                import_button.click();dialog=page.get_by_role('dialog')
                 dialog.locator('input[type=file]').set_input_files({'name':'renamed.csv','mimeType':'text/csv','buffer':statement.encode()})
                 expect(dialog.locator('tbody tr')).to_have_count(3)
                 assert dialog.locator('tbody input:checked').count()==0
@@ -113,7 +116,7 @@ def main():
                         page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(width,theme,'page overflow')
                         if width>=760:
-                            assert page.evaluate("document.querySelector('.nav').getBoundingClientRect().top>=document.querySelector('header').getBoundingClientRect().bottom-1"),(width,theme,'navigation overlaps header')
+                            assert page.evaluate('''()=>{const nav=document.querySelector('.nav').getBoundingClientRect(),header=document.querySelector('header').getBoundingClientRect(),main=document.querySelector('main').getBoundingClientRect();return nav.right<=header.left+1&&nav.right<=main.left+1;}'''),(width,theme,'sidebar overlaps header or content')
                         violations=page.locator('.finance-filters input:visible,.finance-filters select:visible,.intro button:visible,.nav button:visible').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width<24||r.height<24||r.left<0||r.right>innerWidth+1;}).map(e=>e.name||e.textContent)''')
                         assert not violations,(width,theme,violations)
                         if width in [390,768,1440]:

@@ -138,7 +138,7 @@ def main():
             page.get_by_label('Статус задачи',exact=True).select_option('open')
             expect(page.get_by_text('Забрать заказ',exact=True)).to_have_count(0);checks.append('task_search_and_completion_filter')
             page.locator('.nav').get_by_role('button',name='Календарь',exact=True).click()
-            page.get_by_role('button',name='Добавить',exact=True).click()
+            page.get_by_role('button',name='Новое событие',exact=True).click()
             d=page.get_by_role('dialog');d.get_by_label('Название',exact=True).fill('Проверяемое событие')
             d.locator('[name=localStart]').fill('2026-11-12T14:30')
             d.locator('.event-options > summary').click()
@@ -173,12 +173,26 @@ def main():
                     page.set_viewport_size({'width':width,'height':900})
                     for tab,label in [('today','Сегодня'),('calendar','Календарь'),('tasks','Задачи'),('notes','Заметки'),('money','Финансы'),('account','Профиль')]:
                         open_tab(page,label)
-                        selected=page.locator('.nav [aria-current=page]:visible')
-                        expect(selected).to_have_text('Ещё' if width<760 and tab in ('notes','account') else label)
+                        selected=page.locator(f'.nav button[data-tab="{tab}"][data-section=""][aria-current=page]:visible')
+                        if tab=='account' and width>=760:
+                            # Desktop profile lives in the shared header and
+                            # sidebar identity control, outside the module list.
+                            expect(page.locator('.header-profile')).to_have_accessible_name('Профиль')
+                            expect(page.locator('.reference-identity')).to_be_visible()
+                            expect(page.locator('.reference-breadcrumb strong')).to_have_text(label)
+                        else:
+                            expect(selected).to_have_count(1)
+                            expect(selected.locator('span:not(.reference-nav-count)')).to_have_text('Обзор финансов' if tab=='money' and width>=760 else label)
+                        if width<760:
+                            expect(page.locator('.nav button[data-tab]:visible')).to_have_count(6)
+                            expect(page.locator('.nav .nav-more')).to_be_hidden()
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width,tab)
                         for control in page.locator('.nav button:visible').all():
                             box=control.bounding_box();assert box and box['width']>=44 and box['height']>=44,(width,tab,'touch-target')
-                            assert control.locator('span:last-child').evaluate('(s)=>{const a=s.getBoundingClientRect(),b=s.closest("button").getBoundingClientRect();return a.left>=b.left&&a.right<=b.right&&a.top>=b.top&&a.bottom<=b.bottom}'),(width,tab,'nav-label-clipped')
+                            expect(control).not_to_have_accessible_name('')
+                            label_span=control.locator(':scope > span:not(.reference-nav-count):not(.reference-avatar)')
+                            if label_span.count():
+                                assert label_span.evaluate('(s)=>{const a=s.getBoundingClientRect(),b=s.closest("button").getBoundingClientRect();return a.left>=b.left&&a.right<=b.right&&a.top>=b.top&&a.bottom<=b.bottom}'),(width,tab,'nav-label-clipped')
                         if tab=='tasks':
                             page.locator('[name=task-search]').fill('');page.locator('[name=task-status]').select_option('all')
                         if tab=='calendar':
@@ -194,11 +208,14 @@ def main():
                         if tab=='account':
                             expect(page.locator('.settings-navigation')).to_be_visible()
                             open_settings(page,'profile')
+                            expect(page.locator('.profile-summary .account-email')).to_have_text('web@example.test')
+                            for option in ('Оформление','Аккаунт и приватность','Устройства и сессии'):
+                                expect(page.locator('.reference-profile-options').get_by_role('button',name=option,exact=True)).to_be_visible()
                             expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_have_count(0)
                             open_settings(page,'support')
                             expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
                         page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=False)
-                    page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
+                    open_tab(page,'Финансы')
                     page.get_by_role('button',name='Добавить операцию',exact=True).click()
                     d=page.get_by_role('dialog');expect(d).to_be_visible()
                     d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Проверка экранной формы')

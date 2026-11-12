@@ -47,7 +47,7 @@ def run(browser, origin, output, name, width, height):
             raise
         finally:
             page.remove_listener('response', record_account_response)
-        calendar_label = page.locator('.nav > button').filter(has_text='Календарь').locator('span:last-child')
+        calendar_label = page.locator('.nav').get_by_role('button', name='Календарь', exact=True).locator('span').first
         assert calendar_label.evaluate('''label => {
             const text = document.createRange();
             text.selectNodeContents(label);
@@ -58,7 +58,9 @@ def run(browser, origin, output, name, width, height):
         expect(timeline.locator('time')).to_have_text(['09:00', '14:00', '18:30'])
         expect(page.locator('.today-tasks time')).to_have_count(0)
         expect(page.locator('.today-progress progress')).to_have_attribute('value', '1')
-        expect(page.locator('.today-finance .total')).to_contain_text('146 480,00')
+        expect(page.locator('.reference-balance strong')).to_have_text('266 480,00 RUB')
+        expect(page.locator('.reference-finance-legend')).to_contain_text('Доход · 150 000,00 RUB')
+        expect(page.locator('.reference-finance-legend')).to_contain_text('Расход · 3 520,00 RUB')
         if width < 760:
             assert page.locator('.today-finance').bounding_box()['y'] < timeline.bounding_box()['y']
         capture('today')
@@ -82,7 +84,7 @@ def run(browser, origin, output, name, width, height):
         selected = page.locator('.calendar-date[aria-pressed=true]')
         expect(selected).to_be_visible()
         expect(page.locator('.calendar-agenda-date')).to_contain_text('12')
-        page.locator('.calendar-agenda').get_by_role('button', name='Событие', exact=True).click()
+        page.locator('.calendar-agenda').get_by_role('button', name='Добавить событие', exact=True).click()
         dialog = page.get_by_role('dialog')
         expect(dialog.locator('[name=localStart]')).to_have_value('2026-11-12T09:00')
         dialog.get_by_role('button', name='Закрыть', exact=True).click()

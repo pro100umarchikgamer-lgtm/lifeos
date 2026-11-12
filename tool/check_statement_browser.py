@@ -16,6 +16,7 @@ from backend.service import Backend
 from tool.check_pwa_browser import Quiet
 from tool.check_statement_documents import statement_pdf, statement_xlsx
 from tool.web_test_tls import enable_test_tls
+from tool.web_browser_navigation import open_tab
 
 PASSWORD = 'synthetic-statement-acceptance-pass'
 OUT = Path('web_evidence/statement-import-' + os.environ.get('ULADIM_BROWSER', 'chromium'))
@@ -98,8 +99,8 @@ def run(browser, backend, actor, workspace, origin):
     page.locator('input[name=password]').fill(PASSWORD)
     page.get_by_role('button', name='Войти', exact=True).click()
     expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
-    page.get_by_role('navigation').get_by_role('button', name='Финансы', exact=True).click()
-    launch = page.get_by_role('button', name='Импортировать выписку', exact=True)
+    open_tab(page, 'Финансы')
+    launch = page.locator('#content').get_by_role('button', name='Импортировать выписку', exact=True)
     launch.click()
     dialog = page.get_by_role('dialog')
     expect(dialog.get_by_text('Для импорта нужен счёт.', exact=False)).to_be_visible()
@@ -390,7 +391,7 @@ def run(browser, backend, actor, workspace, origin):
         second.locator('input[name=password]').fill(PASSWORD)
         second.get_by_role('button', name='Войти', exact=True).click()
         expect(second.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
-        second.get_by_role('navigation').get_by_role('button', name='Финансы', exact=True).click()
+        open_tab(second, 'Финансы')
         second.locator('.finance-filter-panel summary').click()
         second.locator('input[name=finance-search]').fill('Lost reply')
         expect(second.locator('.ledger-row')).to_have_count(1)
