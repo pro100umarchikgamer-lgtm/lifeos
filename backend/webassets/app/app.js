@@ -1085,7 +1085,8 @@ function openSettings(section){
 }
 async function account(m){
  const section=state.settingsTab||'profile';
- title(m,section==='personal-import'?'web_personal_import':'account_manage');m.classList.add('settings-page');
+ const pageTitle={security:'account_privacy','personal-import':'web_personal_import'};
+ title(m,pageTitle[section]||'account_manage');m.classList.add('settings-page');
  m.dataset.settingsDetail=String(Boolean(state.settingsTab));
  const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
  navigation.setAttribute('aria-label',t('account_manage'));
@@ -1218,6 +1219,7 @@ function settingsRow(label, run, variant=''){
  return row;
 }
 function privacy(m){
+ m.classList.add('security-panel');
  const group=label=>{
   const section=E('section',undefined,'settings-group');
   section.append(E('h2',t(label)));

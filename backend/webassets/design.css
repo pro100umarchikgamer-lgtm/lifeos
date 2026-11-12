@@ -755,6 +755,26 @@ body[data-design=clarity] .profile-summary h2{
 body[data-design=clarity] .profile-summary .settings-row,
 body[data-design=clarity] .profile-summary .profile-logout{padding-inline:0}
 body[data-design=clarity] .profile-summary .profile-logout{color:var(--ux-muted);margin-block-start:10px}
+body[data-design=clarity] .security-panel .settings-group{
+  background:transparent;
+  border:0;
+  border-bottom:1px solid var(--ux-border);
+  border-radius:0;
+  margin-block:0 20px;
+}
+body[data-design=clarity] .security-panel .settings-group h2{
+  font:600 clamp(1.22rem,2.4vw,1.65rem)/1.16 Georgia,"Times New Roman",serif;
+  margin:0 0 8px;
+}
+body[data-design=clarity] .security-panel .settings-row{padding-inline:0}
+.security-panel .settings-row-copy{
+  display:flex;
+  flex:1;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:0 8px;
+}
 @media(min-width:760px){
   .settings-page .settings-content{min-width:0;border-inline-start:1px solid var(--ux-border);padding-inline-start:clamp(14px,3vw,28px)}
 }
