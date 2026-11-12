@@ -94,7 +94,7 @@ def main():
                     route.continue_()
 
             page.route('**/account/api/sync*', fail_refresh)
-            task.get_by_role('checkbox').check()
+            task.get_by_role('checkbox').click()
             retry = task.get_by_role('button', name='Повторить', exact=True)
             expect(retry).to_be_visible()
             expect(task.get_by_role('checkbox')).to_be_checked()

@@ -5,6 +5,7 @@ let calendarMode='month';
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null;
 const pendingDeletes=new Map();
 const quickTasks=new Map();
+const taskChanges=new Map();
 try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
 // Persist only interface preferences. Accounts, spaces, records and tokens stay in memory.
 function preferences(){try{localStorage.setItem('uladim-interface',JSON.stringify({lang:state.lang,theme:state.theme,palette:state.palette,chart:state.chart}));}catch{}applyTheme();}
@@ -227,7 +228,7 @@ function replaceDialog(d,...nodes){
  heading.focus({preventScroll:true});
 }
 
-function clearIdentity(){redrawFinance=null;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){redrawFinance=null;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function displayDate(date){return new Date(date+'T12:00:00').toLocaleDateString(state.lang,{year:'numeric',month:'short',day:'numeric'});}
 function minor(value,signed=false,currency='RUB'){return ULADIMMoney.parse(value,currency,signed);}
@@ -465,38 +466,63 @@ function today(m){
 }
 function taskRow(r){
  const row=E('div',undefined,'row task-row'),check=E('input'),label=E('span',r.data.title,'text');
- const workspace=state.space;
- check.type='checkbox';check.checked=!!r.data.completed;check.disabled=!r.editable;
- label.classList.toggle('done',check.checked);check.setAttribute('aria-label',r.data.title);
- let operation=null,accepted=false;
+ const workspace=state.space,epoch=privateEpoch,key=workspace+':'+r.id;
+ check.type='checkbox';check.setAttribute('aria-label',r.data.title);
  const edit=iconButton('more',t('edit')+' · '+r.data.title,()=>editRecord('task',r));
- const retry=button(t('retry'),()=>complete());
+ const status=E('div',undefined,'task-change-status'),message=E('span');
+ message.setAttribute('role','status');
+ const retry=button(t('retry'),()=>complete(),'secondary');
+ append(status,message,retry);
+ function update(){
+  const change=taskChanges.get(key);
+  check.checked=Boolean(change?.phase==='saved'?change.operation.data.completed:r.data.completed);
+  label.classList.toggle('done',check.checked);
+  check.disabled=!r.editable||!!change;edit.disabled=!!change;
+  row.setAttribute('aria-busy',String(!!change?.busy));
+  status.hidden=!change?.message;message.textContent=change?.message||'';
+  retry.disabled=!!change?.busy;
+ }
  async function complete(){
-  check.disabled=true;edit.disabled=true;retry.disabled=true;
+  const change=taskChanges.get(key);
+  if(!change||change.busy||workspace!==state.space||epoch!==privateEpoch)return;
+  let failed=false;
+  change.busy=true;update();
   try{
-   if(workspace!==state.space)throw {code:'view_changed'};
-   if(!accepted){
-    operation??={id:crypto.randomUUID(),action:'record.put',record_id:r.id,revision:r.revision,
-     kind:r.kind,visibility:r.visibility,audience:r.audience,data:{...r.data,completed:check.checked?1:0}};
-    const result=await saveOperation(operation,workspace);
-    accepted=true;r.revision=result.revision;r.data=operation.data;
-    label.classList.toggle('done',check.checked);
-   }
-   await refresh();render();
+   if(change.phase==='write'){await saveOperation(change.operation,workspace);change.phase='saved';}
+   if(epoch!==privateEpoch)return;
+   if(workspace===state.space)await refresh();
+   if(epoch!==privateEpoch)return;
+   taskChanges.delete(key);
+   if(workspace===state.space&&['today','tasks'].includes(state.tab))render();
   }catch(error){
-   if(!accepted&&!error.uncertain&&error.code!=='conflict'){operation=null;check.checked=!!r.data.completed;}
-   if(error.code==='conflict')accepted=true;
-   if(operation)row.append(retry);else retry.remove();
-   report(error);
+   if(epoch!==privateEpoch)return;
+   failed=true;
+   if(error.code==='conflict'||error.code==='revision_conflict')change.phase='conflict';
+   if(change.phase==='saved')change.message=t('web_saved_refresh');
+   else if(change.phase==='conflict')change.message=errorText({code:'conflict'});
+   else if(error.uncertain)change.message=t('web_uncertain');
+   else taskChanges.delete(key);
+   if(!taskChanges.has(key)||['unauthorized','workspace_forbidden','service_restricted'].includes(error.code)){
+    taskChanges.delete(key);report(error);
+   }
   }finally{
-   retry.disabled=false;check.disabled=!r.editable||!!operation;edit.disabled=!!operation;
+   change.busy=false;
+   if(epoch===privateEpoch&&workspace===state.space&&['today','tasks'].includes(state.tab)){
+    if(row.isConnected)update();
+    else if(failed)render();
+   }
   }
  }
  check.addEventListener('change',()=>{
-  if(r.data.assignees.length){check.checked=!!r.data.completed;editRecord('task',r);return;}
+  const completed=check.checked?1:0;
+  check.checked=!!r.data.completed;
+  if(r.data.assignees.length){editRecord('task',r);return;}
+  const operation={id:crypto.randomUUID(),action:'record.put',record_id:r.id,revision:r.revision,
+   kind:r.kind,visibility:r.visibility,audience:r.audience,data:{...r.data,completed}};
+  taskChanges.set(key,{operation,phase:'write',busy:false,message:''});
   return complete();
  });
- append(row,check,label,edit);return row;
+ append(row,check,label,edit,status);update();return row;
 }
 function listTasks(m){
  title(m,'widget_tasks',()=>editRecord('task'));

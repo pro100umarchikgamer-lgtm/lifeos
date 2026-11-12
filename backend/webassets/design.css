@@ -483,6 +483,15 @@ body[data-design=clarity] .task-row {
 }
 .task-row input[type=checkbox] { justify-self: center; margin: 0; }
 .task-row .text { overflow-wrap: anywhere; }
+.task-change-status:not([hidden]) {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--ux-muted);
+  font-size: .875rem;
+}
 .notes-toolbar { max-width: 32rem; margin-bottom: 18px; }
 .notes-toolbar input { min-width: 0; }
 .notes-library {

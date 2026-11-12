@@ -91,7 +91,7 @@ def main():
                 page.get_by_role('button',name='Сохранить',exact=True).click()
                 expect(page.get_by_text('Новая задача из веба',exact=True)).to_be_visible()
                 assert any(r['data'].get('title')=='Новая задача из веба' for r in backend.pull(actor,wid,0)['records'])
-                page.get_by_role('checkbox',name='Новая задача из веба',exact=True).check()
+                page.get_by_role('checkbox',name='Новая задача из веба',exact=True).click()
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
                 checks.append('create_and_complete_task_shared_with_android_protocol')
                 open_tab(page,'Заметки')

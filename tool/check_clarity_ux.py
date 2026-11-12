@@ -56,6 +56,28 @@ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
     expect(page.get_by_text('Сохранено перед ошибкой обновления',exact=True)).to_be_visible()
     assert len([r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='task' and r['data']['title']=='Сохранено перед ошибкой обновления'])==1
     checks.append('accepted_save_failed_refresh_retry_no_duplicate')
+    open_tab(page,'Задачи')
+    task_title='Задача из быстрого ввода'
+    page.route('**/account/api/sync',lose_response)
+    task=page.locator('.task-row').filter(has_text=task_title)
+    task.get_by_role('checkbox').click()
+    expect(task.get_by_role('button',name='Повторить',exact=True)).to_be_enabled()
+    search=page.get_by_role('searchbox',name='Поиск задач')
+    search.fill('Нет такой задачи')
+    expect(task).to_have_count(0)
+    search.fill(task_title)
+    expect(task.get_by_role('button',name='Повторить',exact=True)).to_be_enabled()
+    expect(task.get_by_role('checkbox')).not_to_be_checked()
+    page.screenshot(path=str(OUT/'task-retry-390.png'))
+    page.unroute('**/account/api/sync',lose_response)
+    with page.expect_request(lambda request: request.url.endswith('/account/api/sync') and request.method=='POST') as completion_retry:
+        task.get_by_role('button',name='Повторить',exact=True).click()
+    assert completion_retry.value.post_data_json==attempts[-1]
+    expect(task.get_by_role('checkbox')).to_be_checked()
+    expect(task.get_by_role('button',name='Повторить',exact=True)).to_have_count(0)
+    record=next(r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='task' and r['data']['title']==task_title)
+    assert record['data']['completed']==1 and record['revision']==2
+    checks.append('task_completion_retry_survives_filter_change')
     expect(page.locator('#alerts .toast')).to_have_count(0,timeout=6000)
     for theme in ('light','dark'):
         page.evaluate('v=>{state.theme=v;preferences()}',theme)
