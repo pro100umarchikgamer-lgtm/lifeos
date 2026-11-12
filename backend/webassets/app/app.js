@@ -1428,19 +1428,21 @@ async function personalImportCenter(host){
  const files=card(copy('oneTime'),copy('local'));
  files.classList.add('personal-import-center');
  const list=E('ul',undefined,'personal-import-sources');
- const choices=[['calendars','calendarFiles','importCalendars'],['notes','noteFiles','importNotes'],['tasks','taskFiles','importTasks']];
- for(const [label,formats,action] of choices){
+ const choices=[['calendar','calendars','calendarFiles','importCalendars'],['notes','notes','noteFiles','importNotes'],['tasks','tasks','taskFiles','importTasks']];
+ for(const [symbol,label,formats,action] of choices){
   const row=E('li');
-  append(row,append(E('div'),E('strong',copy(label)),E('p',copy(formats),'small')),
+  const labelBlock=append(E('div',undefined,'personal-import-source'),icon(symbol),
+   append(E('div'),E('strong',copy(label)),E('p',copy(formats),'small')));
+  append(row,labelBlock,
     button(copy(action),()=>openPersonalImport(parser,copy(action)),'secondary'));
   list.append(row);
  }
- const backup=E('li');
- append(backup,append(E('div'),E('strong',copy('backups')),E('p',copy('backupStatus'),'small')));
  files.append(list,E('p',copy('structuredStatus'),'small'));
- list.append(backup);
+ const backup=card(copy('backups'),copy('backupStatus'));
  const sync=card(copy('sync'),copy('googleStatus'));
- append(host,files,sync,anchor(state.lang==='ru'?'Руководство по импорту':'Import guide','/docs#import'));
+ backup.classList.add('personal-import-status-card');sync.classList.add('personal-import-status-card');
+ const guide=anchor(state.lang==='ru'?'Руководство по импорту':'Import guide','/docs#import');guide.classList.add('personal-import-guide-link');
+ append(host,files,backup,sync,guide);
 }
 
 function openPersonalImport(parser,titleText){

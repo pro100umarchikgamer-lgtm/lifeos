@@ -807,8 +807,18 @@ body[data-design=clarity] .family-panel h2{
 .family-roster{margin-block:16px;border-block:1px solid var(--ux-border)}
 .family-roster h3{margin:10px 0;overflow-wrap:anywhere}
 .family-roster .text{min-width:0;overflow-wrap:anywhere}
+body[data-design=clarity] .settings-content .personal-import-center h2,
+body[data-design=clarity] .settings-content .personal-import-status-card h2{
+  font:600 clamp(1.22rem,2.4vw,1.65rem)/1.16 Georgia,"Times New Roman",serif;
+  margin:0 0 8px;
+}
+.personal-import-source{display:flex;align-items:start;gap:10px;min-width:0}
+.personal-import-source .ui-icon{color:var(--ux-green);margin-block-start:2px}
+body[data-design=clarity] .settings-content .personal-import-status-card{background:var(--ux-soft);box-shadow:none}
+.personal-import-guide-link{display:inline-flex;align-items:center;min-height:44px;color:var(--ux-green)}
 @media(max-width:430px){
   .family-workspace-actions{display:grid;grid-template-columns:minmax(0,1fr)}
+  .personal-import-center .personal-import-sources button{width:100%}
 }
 @media(min-width:760px){
   .settings-page .settings-content{min-width:0;border-inline-start:1px solid var(--ux-border);padding-inline-start:clamp(14px,3vw,28px)}
