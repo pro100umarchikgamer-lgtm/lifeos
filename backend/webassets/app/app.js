@@ -697,6 +697,8 @@ const NOTE_DRAFT_COPY={
 };
 const NOTE_SEARCH_COPY={ru:'Поиск заметок',en:'Search notes','uz-Latn':'Qaydlarni qidirish','uz-Cyrl':'Қайдларни қидириш'};
 const TRANSACTION_TITLE={ru:'Операция',en:'Transaction','uz-Latn':'Operatsiya','uz-Cyrl':'Операция'};
+const BUDGET_EMPTY_COPY={ru:'Добавьте бюджет, чтобы следить за лимитом.',en:'Add a budget to track a spending limit.',
+ 'uz-Latn':'Xarajat chegarasini kuzatish uchun byudjet qo‘shing.','uz-Cyrl':'Харажат чегарасини кузатиш учун бюджет қўшинг.'};
 const noteDraftPrefix=()=>state.session?.user_id?'uladim-note-draft:'+state.session.user_id+':':'';
 function noteDraftKey(record){
  const prefix=noteDraftPrefix();
@@ -788,6 +790,11 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  };
  const editor=form(container,'',f=>{
   const data=r?.data||{};const disabled=r&&!r.editable;
+  const pair=(className,...controls)=>{
+   const row=E('div',undefined,'finance-field-pair '+className);
+   for(const control of controls)row.append(append(E('div'),control.previousElementSibling,control));
+   return row;
+  };
   if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',pendingTask?.operation.data.title||data.title||data.name||'');
   if(kind==='event'){
    const schedule=data.schedule||{};
@@ -823,16 +830,18 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    fields.direction=select(f,'direction',t('family_kind_transaction'),[['expense',t('expense')],['income',t('income')]],data.kind||'expense');
    fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());fields.label=input(f,'label',t('family_name'),'text',data.label||'',false);
    fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency])],data.account_id||'');fields.account.addEventListener('change',()=>{const account=records('account').find(a=>a.id===fields.account.value);if(account)fields.currency.value=account.data.currency;});
-   const pair=(className,...controls)=>{
-    const row=E('div',undefined,'transaction-pair '+className);
-    for(const control of controls)row.append(append(E('div'),control.previousElementSibling,control));
-    return row;
-   };
    append(f,pair('transaction-context',fields.direction,fields.account),
     pair('transaction-value',fields.amount,fields.currency),fields.date.previousElementSibling,fields.date,
     fields.label.previousElementSibling,fields.label);
   }
-  if(kind==='budget'){fields.period=select(f,'period',t('family_period'),['week','month','year','custom'].map(k=>[k,t('family_'+k)]),data.period||'month');fields.start=input(f,'start',t('family_start'),'date',data.start_on||localDate());fields.end=input(f,'end',t('family_end'),'date',data.end_on||'',false);fields.rollover=select(f,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');}
+  if(kind==='budget'){
+   fields.period=select(f,'period',t('family_period'),['week','month','year','custom'].map(k=>[k,t('family_'+k)]),data.period||'month');
+   fields.start=input(f,'start',t('web_period_start'),'date',data.start_on||localDate());
+   fields.end=input(f,'end',t('web_period_end'),'date',data.end_on||'',false);
+   fields.rollover=select(f,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');
+   append(f,pair('budget-value',fields.amount,fields.currency),fields.period.previousElementSibling,fields.period,
+    pair('budget-dates',fields.start,fields.end),fields.rollover.previousElementSibling,fields.rollover);
+  }
   if(kind==='transfer'){if(records('account').length<2)f.append(E('p',t('web_transfer_accounts'),'error'));const accounts=records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency]);fields.from=select(f,'from',t('family_from'),accounts,data.from_id||accounts[0]?.[0]);fields.to=select(f,'to',t('family_to'),accounts,data.to_id||accounts[1]?.[0]);fields.received=input(f,'received',t('received_amount'),'text',decimalInput(data.received_minor||0,records('account').find(a=>a.id===data.to_id)?.data.currency||'RUB'));fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());}
   fields.visibility=select(kind==='event'?f.querySelector('.event-options'):f,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
   if(pendingTask)fields.visibility.value=pendingTask.operation.visibility;
@@ -972,11 +981,27 @@ function finance(m){
  chart.id='finance-analysis';chart.tabIndex=-1;
  const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];const currency=select(chartControls,'chart-currency',t('currency'),currencies.map(c=>[c,c]),currencies[0]);const mode=select(chartControls,'chart-mode',t('web_chart_type'),[['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.chart);
  const legend=E('div',undefined,'chart-legend');chart.append(legend);const canvas=E('canvas');canvas.width=720;canvas.height=320;canvas.setAttribute('role','img');chart.append(canvas);
- const budgets=card(t('family_kind_budget'));budgets.classList.add('finance-budgets');details.insertBefore(budgets,chart);
+ const budgets=card(t('web_finance_budgets'));budgets.classList.add('finance-budgets');details.insertBefore(budgets,chart);
  budgets.id='finance-budgets';budgets.tabIndex=-1;
- const budgetLabels=new Map();for(const r of records('budget')){const row=E('div',undefined,'budget-line'),text=E('div'),amount=E('p',money(r.data.limit_minor,r.data.currency),'small');append(text,E('h3',r.data.name),amount);budgetLabels.set(r.id,amount);append(row,text,iconButton('more',t('edit')+' · '+r.data.name,()=>editRecord('budget',r)));budgets.append(row);}
- if(budgetLabels.size){const epoch=privateEpoch;statementWorker({action:'budgets',at:localDate(),records:records('transaction'),budgets:records('budget')}).then(result=>{if(epoch!==privateEpoch||!m.isConnected)return;for(const r of records('budget'))budgetLabels.get(r.id).textContent=t('remaining')+': '+money(result.remaining[r.id],r.data.currency)+' · '+t('budget_limit')+': '+money(r.data.limit_minor,r.data.currency);}).catch(error=>{if(m.isConnected)budgets.append(E('p',errorText(error),'error'));});}
- budgets.append(addButton(t('family_kind_budget'),()=>editRecord('budget')));
+ const addBudget=addButton(t('family_kind_budget'),()=>editRecord('budget'));
+ addBudget.classList.add('secondary');
+ budgets.prepend(append(E('div',undefined,'finance-section-head'),budgets.firstElementChild,addBudget));
+ const budgetRecords=records('budget'),budgetLabels=new Map();
+ for(const r of budgetRecords){
+  const row=E('div',undefined,'budget-line'),text=E('div'),amount=E('strong','—');
+  const metrics=E('div',undefined,'budget-metrics');
+  append(metrics,append(E('div'),E('span',t('remaining'),'small'),amount),
+   append(E('div'),E('span',t('budget_limit'),'small'),E('strong',money(r.data.limit_minor,r.data.currency))));
+  append(text,E('h3',r.data.name),metrics);budgetLabels.set(r.id,amount);
+  append(row,text,iconButton('more',t('edit')+' · '+r.data.name,()=>editRecord('budget',r)));budgets.append(row);
+ }
+ if(budgetLabels.size){
+  const epoch=privateEpoch;
+  statementWorker({action:'budgets',at:localDate(),records:records('transaction'),budgets:budgetRecords}).then(result=>{
+   if(epoch!==privateEpoch||!m.isConnected)return;
+   for(const r of budgetRecords)budgetLabels.get(r.id).textContent=money(result.remaining[r.id],r.data.currency);
+  }).catch(error=>{if(m.isConnected)budgets.append(E('p',errorText(error),'error'));});
+ }else budgets.append(emptyPanel('money',BUDGET_EMPTY_COPY[state.lang]||BUDGET_EMPTY_COPY.en));
  function draw(){
   state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};const active=Object.values(state.financeFilters).filter(Boolean).length;
   filterLabel.textContent=t('web_filters')+(active?' · '+active:'');
