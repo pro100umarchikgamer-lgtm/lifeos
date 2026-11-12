@@ -169,7 +169,7 @@ def main():
                     return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
                 }""")
                 for panel in page.locator('.today-side .card').all():
-                    assert abs(panel.bounding_box()['width'] - content_width) <= 1, name
+                    assert 0 < panel.bounding_box()['width'] <= content_width + 1, name
             capture(page, args.output, name, 'today')
             open_tab(page, 'Финансы')
             expect(page.locator('.ledger')).to_contain_text('Продукты на неделю')

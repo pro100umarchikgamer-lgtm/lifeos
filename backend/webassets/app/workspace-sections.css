@@ -1,0 +1,240 @@
+/* Workspace content surfaces. Presentation only: existing controls and actions remain intact. */
+body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page){
+ --section-radius:18px;
+ --section-shadow:0 4px 20px rgb(22 55 41 / 3%);
+}
+body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) :is(h1,h2,h3){
+ font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+ letter-spacing:-.025em;
+}
+body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) .intro h1{
+ font-size:clamp(28px,3vw,36px);font-weight:720;line-height:1.18;
+}
+body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) .intro{
+ margin-bottom:26px;min-height:48px;
+}
+body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) .workspace-empty{
+ min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:28px;
+}
+body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) .workspace-empty>svg{
+ width:42px;height:42px;padding:9px;border-radius:13px;background:var(--ux-soft);color:var(--ux-green);
+}
+body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) .workspace-empty p{max-width:32ch;margin:0;line-height:1.65}
+
+/* Tasks are one calm, scan-friendly list, with filters separated from task content. */
+body[data-design=clarity] main.tasks-page .task-filters{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,220px);gap:18px;padding:18px 22px;margin:0 0 24px;
+ background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:var(--section-radius);box-shadow:var(--section-shadow);
+}
+body[data-design=clarity] main.tasks-page .task-filters label{margin:0 0 7px;font-size:12px;font-weight:650;color:var(--ux-muted)}
+body[data-design=clarity] main.tasks-page .task-filters :is(input,select){min-height:46px;background:var(--ux-bg);border-color:var(--ux-border);border-radius:10px}
+body[data-design=clarity] main.tasks-page .task-list{display:grid;gap:24px}
+body[data-design=clarity] main.tasks-page .task-group{
+ padding:0 22px 4px;border:1px solid var(--ux-border);border-radius:var(--section-radius);background:var(--ux-surface);box-shadow:var(--section-shadow);overflow:hidden;
+}
+body[data-design=clarity] main.tasks-page .task-group-head{
+ display:flex;align-items:center;justify-content:space-between;padding:21px 0 16px;margin:0;border-bottom:1px solid var(--ux-border);
+}
+body[data-design=clarity] main.tasks-page .task-group-head h2{font-size:16px;font-weight:700;margin:0}
+body[data-design=clarity] main.tasks-page .task-group-count{display:inline-grid;place-items:center;min-width:29px;height:26px;padding:0 8px;border-radius:8px;background:var(--ux-soft);color:var(--ux-green);font-size:12px;font-weight:700}
+body[data-design=clarity] main.tasks-page .task-row{min-height:70px;padding:14px 0;gap:14px}
+body[data-design=clarity] main.tasks-page .task-row input[type=checkbox]{width:22px;height:22px;min-height:22px;accent-color:var(--ux-green)}
+body[data-design=clarity] main.tasks-page .task-row .text{font-size:15px;line-height:1.55}
+body[data-design=clarity] main.tasks-page .task-row .done{opacity:.7}
+body[data-design=clarity] main.tasks-page .task-row button.icon{border-radius:9px}
+body[data-design=clarity] main.tasks-page .task-row button.icon:hover{background:var(--ux-soft)}
+
+/* Calendar has a roomy month surface and a clearly separated agenda. */
+body[data-design=clarity] main.calendar-page .calendar-modes{
+ width:fit-content;max-width:100%;display:inline-grid;grid-template-columns:repeat(3,minmax(70px,1fr));gap:4px;padding:5px;background:var(--ux-soft);border-radius:12px;margin:0 0 22px;
+}
+body[data-design=clarity] main.calendar-page .calendar-modes button{border:0;border-radius:8px;background:transparent;color:var(--ux-muted);padding:9px 18px;min-height:44px;font-size:13px}
+body[data-design=clarity] main.calendar-page .calendar-modes button[aria-pressed=true]{background:var(--ux-surface);color:var(--ux-green);box-shadow:0 2px 7px rgb(17 50 35 / 7%);font-weight:700}
+body[data-design=clarity] main.calendar-page .calendar-layout{padding:0;border:0;gap:22px;align-items:start}
+body[data-design=clarity] main.calendar-page .calendar-layout .card{
+ padding:24px;border:1px solid var(--ux-border);border-radius:var(--section-radius);background:var(--ux-surface);box-shadow:var(--section-shadow);
+}
+body[data-design=clarity] main.calendar-page .calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px}
+body[data-design=clarity] main.calendar-page .calendar-toolbar h2{font-size:19px;font-weight:700;text-align:center;margin:0}
+body[data-design=clarity] main.calendar-page .calendar-toolbar button{border:1px solid var(--ux-border);border-radius:10px;background:var(--ux-surface)}
+body[data-design=clarity] main.calendar-page .calendar-grid{gap:6px}
+body[data-design=clarity] main.calendar-page .calendar-grid .weekday{font-size:11px;letter-spacing:.06em;color:var(--ux-muted);text-transform:uppercase;padding:8px 0 12px;text-align:center}
+body[data-design=clarity] main.calendar-page :is(.calendar-date,.calendar-offset){min-height:64px;border:0;border-radius:11px;position:relative}
+body[data-design=clarity] main.calendar-page .calendar-date{background:transparent;color:var(--ux-ink);padding:10px 4px;font-size:14px;font-weight:550;gap:6px}
+body[data-design=clarity] main.calendar-page .calendar-date:hover{background:var(--ux-soft)}
+body[data-design=clarity] main.calendar-page .calendar-date.is-today{box-shadow:inset 0 0 0 1px var(--ux-green);color:var(--ux-green)}
+body[data-design=clarity] main.calendar-page .calendar-date[aria-pressed=true]{background:var(--ux-green);color:var(--ux-surface);box-shadow:none;border-radius:11px}
+body[data-design=clarity] main.calendar-page .event-count{min-width:18px;height:18px;border-radius:50%;font-size:10px;background:var(--ux-soft);color:var(--ux-green);display:inline-grid;place-items:center}
+body[data-design=clarity] main.calendar-page .calendar-agenda-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+body[data-design=clarity] main.calendar-page .calendar-agenda-date{font-size:18px;font-weight:700;line-height:1.4;margin:0;max-width:25ch}
+body[data-design=clarity] main.calendar-page .calendar-agenda-head button{font-size:12px;min-height:44px;padding:8px 12px}
+body[data-design=clarity] main.calendar-page .calendar-events .event-row{padding:16px 12px 16px 19px;background:var(--ux-bg);border:0;border-radius:11px;margin:10px 0}
+body[data-design=clarity] main.calendar-page .calendar-events .event-row::before{left:0;top:13px;bottom:13px;width:3px;border-radius:3px;background:var(--ux-green)}
+body[data-design=clarity] main.calendar-page .calendar-picker{margin:20px 0 0;padding:16px 0 0;border-top:1px solid var(--ux-border)}
+body[data-design=clarity] main.calendar-page .calendar-picker label{font-size:12px;font-weight:650;color:var(--ux-muted);margin:0 0 7px}
+
+/* Notes keep the reading surface quiet while feeling like deliberate objects. */
+body[data-design=clarity] main.notes-page .notes-toolbar{max-width:540px;margin:0 0 24px}
+body[data-design=clarity] main.notes-page .notes-toolbar label{font-size:12px;color:var(--ux-muted);font-weight:650;margin:0 0 7px}
+body[data-design=clarity] main.notes-page .notes-toolbar input{min-height:48px;border-radius:12px;background:var(--ux-surface)}
+body[data-design=clarity] main.notes-page .notes-library{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:20px;align-items:stretch}
+body[data-design=clarity] main.notes-page .notes-library .note-card{
+ display:flex;align-items:flex-start;gap:14px;min-height:220px;padding:24px;border:1px solid var(--ux-border);border-radius:var(--section-radius);background:var(--ux-surface);box-shadow:var(--section-shadow);
+}
+body[data-design=clarity] main.notes-page .note-card>svg{width:34px;height:34px;padding:8px;border-radius:10px;background:var(--ux-soft);color:var(--ux-green);flex:none}
+body[data-design=clarity] main.notes-page .note-card-content{display:flex;flex-direction:column;min-width:0;align-self:stretch;flex:1}
+body[data-design=clarity] main.notes-page .note-card h2{font-size:17px;line-height:1.4;font-weight:700;margin:3px 0 10px}
+body[data-design=clarity] main.notes-page .note-card .note-preview{font-size:14px;line-height:1.75;margin:0 0 20px;color:var(--ux-muted)}
+body[data-design=clarity] main.notes-page .note-card button.text-button{margin-top:auto;font-size:13px}
+
+/* Finance preserves the ledger-first arrangement and gives supporting details distinct surfaces. */
+body[data-design=clarity] main.finance-page .intro{gap:20px;align-items:center}
+body[data-design=clarity] main.finance-page .finance-toolbar{gap:8px;flex-wrap:wrap;margin:0}
+body[data-design=clarity] main.finance-page .finance-toolbar button{min-height:44px;padding:10px 14px;font-size:13px;border-radius:10px}
+body[data-design=clarity] main.finance-page .finance-navigation{display:flex;gap:5px;padding:5px;margin:0 0 24px;border:1px solid var(--ux-border);background:var(--ux-surface);border-radius:12px;width:fit-content;max-width:100%;flex-wrap:wrap}
+body[data-design=clarity] main.finance-page .finance-navigation a{padding:8px 16px;border-radius:8px;min-height:44px;color:var(--ux-muted);font-size:13px;font-weight:600;text-decoration:none}
+body[data-design=clarity] main.finance-page .finance-navigation a:hover{color:var(--ux-green);background:var(--ux-soft)}
+body[data-design=clarity] main.finance-page .finance-grid{gap:22px;align-items:start}
+body[data-design=clarity] main.finance-page .finance-details{gap:18px}
+body[data-design=clarity] main.finance-page .finance-grid .card,
+body[data-design=clarity] main.finance-page .finance-details .card{
+ padding:22px;border:1px solid var(--ux-border);border-radius:var(--section-radius);background:var(--ux-surface);box-shadow:var(--section-shadow);
+}
+body[data-design=clarity] main.finance-page .finance-grid .ledger{padding:22px;border:1px solid var(--ux-border);background:var(--ux-surface);border-radius:var(--section-radius)}
+body[data-design=clarity] main.finance-page .ledger h2{font-size:18px;font-weight:700;margin:0 0 18px}
+body[data-design=clarity] main.finance-page .ledger .finance-filter-panel{padding:0 14px;margin:0 0 14px;border:1px solid var(--ux-border);background:var(--ux-bg);border-radius:10px}
+body[data-design=clarity] main.finance-page .ledger .finance-filter-panel summary{min-height:44px;font-size:13px;color:var(--ux-muted);font-weight:600}
+body[data-design=clarity] main.finance-page .ledger .finance-filters{gap:12px;padding-bottom:16px}
+body[data-design=clarity] main.finance-page .ledger-row{padding:16px 0;gap:8px 14px;border-color:var(--ux-border)}
+body[data-design=clarity] main.finance-page .ledger-row h3{font-size:14px;font-weight:650;line-height:1.5}
+body[data-design=clarity] main.finance-page .ledger-row p{font-size:12px;margin:4px 0 0}
+body[data-design=clarity] main.finance-page .ledger-row strong{font-size:15px;font-variant-numeric:tabular-nums}
+body[data-design=clarity] main.finance-page .finance-grid .finance-overview{background:var(--ux-green);color:var(--ux-surface);border-color:transparent}
+body[data-design=clarity] main.finance-page .finance-overview h2{font-size:16px;font-weight:650;color:inherit;margin:0 0 16px}
+body[data-design=clarity] main.finance-page .finance-overview :is(.currency-code,p,.small,.income,.expense){color:inherit}
+body[data-design=clarity] main.finance-page .finance-overview .small{opacity:.8}
+body[data-design=clarity] main.finance-page .finance-overview .finance-total{padding:10px 0;border-top:1px solid currentColor;gap:8px}
+body[data-design=clarity] main.finance-page .finance-overview .finance-total:first-of-type{border-top:0}
+body[data-design=clarity] main.finance-page .finance-overview .finance-total strong{font-size:19px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+body[data-design=clarity] main.finance-page .finance-overview .currency-code{font-size:11px;letter-spacing:.12em;font-weight:700;color:inherit;margin-bottom:8px}
+body[data-design=clarity] main.finance-page .finance-section-head{margin-bottom:18px;gap:8px;align-items:center}
+body[data-design=clarity] main.finance-page .finance-section-head h2{font-size:16px;font-weight:700;margin:0}
+body[data-design=clarity] main.finance-page .finance-section-head button{font-size:12px;min-height:44px;padding:7px 10px;border-radius:8px}
+body[data-design=clarity] main.finance-page .account-balance{padding:14px 0;gap:8px 10px;border-color:var(--ux-border)}
+body[data-design=clarity] main.finance-page .account-balance .account-name{font-size:13px;font-weight:600}
+body[data-design=clarity] main.finance-page .account-balance strong{font-size:15px;letter-spacing:-.02em}
+body[data-design=clarity] main.finance-page .budget-line{padding:15px 0;border-color:var(--ux-border)}
+body[data-design=clarity] main.finance-page .budget-line h3{font-size:14px;font-weight:650;margin-bottom:12px}
+body[data-design=clarity] main.finance-page .budget-metrics{gap:12px}
+body[data-design=clarity] main.finance-page .budget-metrics span{font-size:11px;color:var(--ux-muted);margin-bottom:4px}
+body[data-design=clarity] main.finance-page .budget-metrics strong{font-size:14px;line-height:1.4}
+body[data-design=clarity] main.finance-page .finance-analysis .chart-controls{gap:12px;margin:0 0 18px}
+body[data-design=clarity] main.finance-page .finance-analysis .chart-controls label{font-size:11px;color:var(--ux-muted);font-weight:650;margin-bottom:6px}
+body[data-design=clarity] main.finance-page .finance-analysis canvas:not([hidden]){border:0;border-radius:10px;background:var(--ux-bg);padding:10px}
+body[data-design=clarity] main.finance-page .chart-legend-row{font-size:12px;padding:9px 0}
+
+/* Settings are an intentional application page rather than an assembly of dialogs. */
+body[data-design=clarity] main.settings-page .settings-layout{grid-template-columns:minmax(170px,220px) minmax(0,720px);gap:26px}
+body[data-design=clarity] main.settings-page .settings-navigation{
+ padding:8px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:var(--section-radius);gap:4px;box-shadow:var(--section-shadow);
+}
+body[data-design=clarity] main.settings-page .settings-navigation button.settings-item{border:0;border-radius:10px;padding:13px 14px;min-height:48px;font-size:13px;font-weight:550;color:var(--ux-muted);background:transparent}
+body[data-design=clarity] main.settings-page .settings-navigation button.settings-item[aria-current=page]{background:var(--ux-soft);color:var(--ux-green);font-weight:700}
+body[data-design=clarity] main.settings-page .settings-navigation button.settings-item:hover{background:var(--ux-soft)}
+body[data-design=clarity] main.settings-page .settings-content{border:0;padding:0;min-width:0}
+body[data-design=clarity] main.settings-page .settings-content>.card,
+body[data-design=clarity] main.settings-page .settings-content .settings-group,
+body[data-design=clarity] main.settings-page .settings-content.devices-panel{
+ padding:24px;border:1px solid var(--ux-border);background:var(--ux-surface);border-radius:var(--section-radius);box-shadow:var(--section-shadow);margin:0 0 20px;
+}
+body[data-design=clarity] main.settings-page .settings-content h2{font-size:18px;font-weight:700;margin:0 0 20px}
+body[data-design=clarity] main.settings-page .settings-content .settings-group>.settings-row{border-top:1px solid var(--ux-border);border-radius:0;padding:14px 0;margin:0;min-height:54px}
+body[data-design=clarity] main.settings-page .settings-content .settings-group>.settings-row:last-child{padding-bottom:0}
+body[data-design=clarity] main.settings-page .settings-content .settings-row-status{font-size:12px;margin-top:5px;color:var(--ux-muted)}
+body[data-design=clarity] main.settings-page .profile-identity{margin:0 0 18px;padding:16px;background:var(--ux-bg);border-radius:11px}
+body[data-design=clarity] main.settings-page .profile-identity dt{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ux-muted);margin-bottom:7px}
+body[data-design=clarity] main.settings-page .profile-identity dd{font-size:16px;font-weight:600;margin:0;overflow-wrap:anywhere}
+body[data-design=clarity] main.settings-page .settings-grid label{font-size:12px;font-weight:650;color:var(--ux-muted);margin:18px 0 7px}
+body[data-design=clarity] main.settings-page .settings-grid select{background:var(--ux-bg);min-height:48px;border-radius:10px}
+body[data-design=clarity] main.settings-page .device-group h3{font-family:inherit;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--ux-bg);padding:12px;border-radius:9px;color:var(--ux-muted)}
+body[data-design=clarity] main.settings-page .device-row{padding:17px 0;gap:14px}
+body[data-design=clarity] main.settings-page .device-description>strong{font-size:14px;font-weight:650}
+body[data-design=clarity] main.settings-page .device-description p{font-size:12px}
+body[data-design=clarity] main.settings-page .family-roster{padding:0;background:transparent;border:0}
+body[data-design=clarity] main.settings-page .family-roster>h3{padding:14px;background:var(--ux-bg);border-radius:9px;margin:20px 0 4px}
+body[data-design=clarity] main.settings-page .personal-import-sources li{padding:18px 0}
+body[data-design=clarity] main.settings-page .personal-import-status-card{padding:20px 24px}
+body[data-design=clarity] main.settings-page .personal-import-status-card p{margin-bottom:0}
+
+/* Matching form treatment; no field names, ordering, validations or submit actions change. */
+body[data-design=clarity] dialog.record-editor,
+body[data-design=clarity] dialog.device-revoke-dialog{
+ padding:26px;border-radius:20px;border:1px solid var(--ux-border);box-shadow:0 24px 80px rgb(0 0 0 / 18%);
+}
+body[data-design=clarity] dialog.record-editor .dialog-head,
+body[data-design=clarity] dialog.device-revoke-dialog .dialog-head{border-bottom:1px solid var(--ux-border);padding-bottom:18px;margin-bottom:20px}
+body[data-design=clarity] dialog.record-editor .dialog-head h2,
+body[data-design=clarity] dialog.device-revoke-dialog .dialog-head h2{font:700 23px/1.25 Inter,ui-sans-serif,system-ui,sans-serif;letter-spacing:-.03em}
+body[data-design=clarity] dialog.record-editor label{font-size:12px;font-weight:650;color:var(--ux-muted);margin:16px 0 7px}
+body[data-design=clarity] dialog.record-editor :is(input,select,textarea){min-height:48px;border-radius:10px;background:var(--ux-bg);font-size:15px}
+body[data-design=clarity] dialog.record-editor textarea{min-height:200px;line-height:1.7}
+body[data-design=clarity] dialog.record-editor button[type=submit]{min-height:48px;border-radius:11px}
+
+@media(min-width:1100px){
+ body[data-design=clarity] main.calendar-page .calendar-layout:not(.calendar-day-layout){grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr)}
+ body[data-design=clarity] main.finance-page .finance-grid{grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr)}
+}
+@media(min-width:760px) and (max-width:1099px){
+ body[data-design=clarity] main.finance-page .finance-grid{grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity] main.finance-page .finance-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+ body[data-design=clarity] main.calendar-page .calendar-layout{grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity] main.settings-page .settings-layout{grid-template-columns:170px minmax(0,1fr);gap:18px}
+}
+@media(max-width:759px){
+ body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) .intro{margin-bottom:22px;gap:14px;align-items:flex-start}
+ body[data-design=clarity] main.tasks-page .task-filters{padding:16px;gap:14px;grid-template-columns:minmax(0,1fr);margin-bottom:18px}
+ body[data-design=clarity] main.tasks-page .task-group{padding:0 16px 3px}
+ body[data-design=clarity] main.tasks-page .task-group-head{padding:17px 0 13px}
+ body[data-design=clarity] main.tasks-page .task-row{min-height:64px}
+ body[data-design=clarity] main.calendar-page .calendar-layout{grid-template-columns:minmax(0,1fr);gap:18px}
+ body[data-design=clarity] main.calendar-page .calendar-layout .card{padding:18px}
+ body[data-design=clarity] main.calendar-page .calendar-toolbar h2{font-size:16px}
+ body[data-design=clarity] main.calendar-page .calendar-date,body[data-design=clarity] main.calendar-page .calendar-offset{min-height:46px;border-radius:8px}
+ body[data-design=clarity] main.calendar-page .calendar-grid{gap:3px}
+ body[data-design=clarity] main.calendar-page .calendar-modes{display:grid;width:100%;margin-bottom:18px}
+ body[data-design=clarity] main.calendar-page .calendar-agenda-head{gap:12px}
+ body[data-design=clarity] main.calendar-page .calendar-agenda-date{font-size:16px}
+ body[data-design=clarity] main.notes-page .notes-library{grid-template-columns:minmax(0,1fr);gap:16px}
+ body[data-design=clarity] main.notes-page .notes-library .note-card{padding:20px;min-height:190px}
+ body[data-design=clarity] main.finance-page .intro{flex-direction:column;align-items:stretch}
+ body[data-design=clarity] main.finance-page .finance-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);width:100%;gap:8px}
+ body[data-design=clarity] main.finance-page .finance-toolbar button{font-size:12px;min-height:44px;padding:10px}
+ body[data-design=clarity] main.finance-page .finance-toolbar button:first-child{grid-column:1/-1}
+ body[data-design=clarity] main.finance-page .finance-navigation{display:grid;width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;margin-bottom:18px}
+ body[data-design=clarity] main.finance-page .finance-navigation a{justify-content:center;min-height:44px;font-size:12px;padding:8px}
+ body[data-design=clarity] main.finance-page .finance-grid{grid-template-columns:minmax(0,1fr);gap:18px}
+ body[data-design=clarity] main.finance-page .finance-details{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+ body[data-design=clarity] main.finance-page .finance-grid .card,body[data-design=clarity] main.finance-page .finance-details .card,body[data-design=clarity] main.finance-page .finance-grid .ledger{padding:20px}
+ body[data-design=clarity] main.settings-page .settings-layout{display:block}
+ body[data-design=clarity] main.settings-page .settings-navigation{padding:8px;margin-bottom:20px;gap:3px}
+ body[data-design=clarity] main.settings-page .settings-content>.card,body[data-design=clarity] main.settings-page .settings-content .settings-group,body[data-design=clarity] main.settings-page .settings-content.devices-panel{padding:20px}
+ body[data-design=clarity] main.settings-page .device-row{grid-template-columns:minmax(0,1fr);gap:10px}
+ body[data-design=clarity] main.settings-page .device-row button{justify-self:start;width:auto;font-size:12px}
+ body[data-design=clarity] dialog.record-editor{padding:20px;border-radius:16px}
+}
+@media(prefers-reduced-motion:no-preference){
+ body[data-design=clarity] main.notes-page .note-card{transition:border-color .15s ease,transform .15s ease}
+ body[data-design=clarity] main.notes-page .note-card:hover{border-color:var(--ux-green);transform:translateY(-2px)}
+}
+/* Override earlier screen-specific editorial font declarations consistently. */
+body[data-design=clarity] #root main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page) :is(h1,h2,h3){font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body[data-design=clarity] #root main.finance-page .finance-overview h2{font-family:Inter,ui-sans-serif,system-ui,sans-serif!important;font-size:16px!important;font-weight:650!important;color:inherit}
+@media(min-width:1100px){
+ body[data-design=clarity] main.finance-page .finance-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+ body[data-design=clarity] main.finance-page .finance-activity{grid-column:1/span 2;grid-row:1;min-width:0}
+ body[data-design=clarity] main.finance-page .finance-details{display:contents}
+ body[data-design=clarity] main.finance-page .finance-details .finance-overview{grid-column:3;grid-row:1}
+ body[data-design=clarity] main.finance-page .finance-details .finance-accounts{grid-column:1;grid-row:2}
+ body[data-design=clarity] main.finance-page .finance-details .finance-budgets{grid-column:2;grid-row:2}
+ body[data-design=clarity] main.finance-page .finance-details .finance-analysis{grid-column:3;grid-row:2}
+}

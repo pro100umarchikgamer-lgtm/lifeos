@@ -54,7 +54,10 @@ function importStatement() {
   const help=E('p',copy('help'),'small');help.id=file.id+'-help';file.setAttribute('aria-describedby',help.id);fileOptions.append(help);
   const sheetControls=E('div');controls.append(sheetControls);
   const advanced=E('details',undefined,'statement-advanced');
-  advanced.append(E('summary',copy('advanced')));controls.append(advanced);
+  const advancedTitle=E('summary');advancedTitle.append(E('span',copy('advanced')),E('span',copy('advanced_badge'),'statement-advanced-badge'));advanced.append(advancedTitle,E('p',copy('advanced_help'),'small'));controls.append(advanced);
+  const dateHelp=E('section',undefined,'statement-date-help');dateHelp.hidden=true;controls.insertBefore(dateHelp,advanced);
+  const recognitionHelp=E('section',undefined,'statement-recognition-help');recognitionHelp.hidden=true;controls.insertBefore(recognitionHelp,advanced);
+  recognitionHelp.append(E('p',copy('recognition_help')),button(copy('open_advanced'),()=>{advanced.open=true;const field=fields.date?.value==='-1'?fields.date:fields.amount?.value==='-1'?fields.amount:encoding;field.focus();field.scrollIntoView({block:'center'});},'secondary'));
   const encoding=select(advanced,'encoding',t('encoding'),[['auto',copy('auto')],['utf8','UTF-8'],['utf16','UTF-16 LE'],['utf-16be','UTF-16 BE'],['cp1251','Windows-1251'],['windows-1252','Windows-1252']],'auto');
   const delimiter=select(advanced,'delimiter',t('web_delimiter'),[['auto',copy('auto')],[';', ';'],[',',','],['\t','Tab'],['|','|']],'auto');
   const mapping=E('div',undefined,'statement-mapping');advanced.append(mapping);
@@ -113,7 +116,7 @@ function importStatement() {
    const matching=accounts.filter(a=>a.data.currency===currency);
    return matching.length===1?matching[0]:null;
   }
-  function showError(error){if(!closed)status.textContent=copy(error.code||'import_format');}
+  function showError(error){if(!closed){status.textContent=copy(error.code||'import_format');recognitionHelp.hidden=!['import_mapping_required','import_encoding_required','import_delimiter_ambiguous'].includes(error.code);}}
   function ready(row){return !!row.value&&!row.error&&!row.imported&&!row.repeated&&!row.duplicate&&!!row.targetID&&!parsed?.needsReview;}
   function updateControls(){
    selectReady.disabled=running||!!pending||!preview.some(row=>ready(row)&&!row.selected);
@@ -125,7 +128,7 @@ function importStatement() {
    if(pending||!source)return;
    const turn=++generation;
    setStage(0);attempted=[];
-   preview=[];parsed=null;mapping.replaceChildren();sheetControls.replaceChildren();results.replaceChildren();totals.replaceChildren();
+   preview=[];parsed=null;mapping.replaceChildren();dateHelp.replaceChildren();dateHelp.hidden=true;recognitionHelp.hidden=true;sheetControls.replaceChildren();results.replaceChildren();totals.replaceChildren();
    running=true;updateControls();status.textContent=copy('reading');
    try{
     if(source.size>5*1024*1024)throw {code:'import_limit'};
@@ -163,7 +166,7 @@ function importStatement() {
     if(turn!==generation)return;ensureContext();parsed.fingerprint=fingerprint;buildMapping();
     await buildPreview();
    }catch(error){
-    if(turn===generation){showError(error);if(['import_mapping_required','import_encoding_required','import_delimiter_ambiguous'].includes(error.code))advanced.open=true;}
+    if(turn===generation)showError(error);
    }finally{if(turn===generation){running=false;updateControls();}}
   }
   function buildMapping(){
@@ -182,7 +185,16 @@ function importStatement() {
      fields[key].value='-1';
     }
    });
-   fields.dateFormat=select(mapping,'dateFormat',t('date_format'),[['auto',copy('auto')],['iso','YYYY-MM-DD'],['dmy','DD.MM.YYYY / DD/MM/YYYY'],['mdy','MM/DD/YYYY'],['excel',t('excel_date')]],detected.dateFormat);
+   dateHelp.replaceChildren(E('h3',copy('date_help_title')),E('p',copy('date_help_body')));
+   fields.dateFormat=select(dateHelp,'dateFormat',t('date_format'),[['auto',copy('auto')],['iso','YYYY-MM-DD'],['dmy',copy('date_day_first')],['mdy',copy('date_month_first')],['excel',t('excel_date')]],detected.dateFormat);
+   const dateExamples=E('p',undefined,'statement-date-examples');dateHelp.append(dateExamples);
+   function showDateExample(){
+    const sample=preview.find(row=>row.original?.date)?.original.date||parsed.rows[detected.header+1]?.[detected.date]||'';
+    dateExamples.textContent=sample?copy('date_example')+' '+sample:'';
+   }
+   fields.dateFormat.addEventListener('change',showDateExample);showDateExample();
+   // The same date-format control stays visible after the first choice so the user can correct it.
+   dateHelp.dataset.needed='false';
    fields.decimal=select(mapping,'decimal',t('decimal_separator'),[['auto',copy('auto')],['.','1,234.56'],[',','1.234,56']],detected.decimal);
    fields.direction=select(mapping,'direction',t('amount_direction'),[['signed','+ '+t('income')+' / − '+t('expense')],['income',t('income')],['expense',t('expense')]],'signed');
    // The mode determines which amount fields apply; hidden alternatives never
@@ -198,7 +210,7 @@ function importStatement() {
    }
    updateMapping();
    for(const field of Object.values(fields))field.addEventListener('change',()=>{updateMapping();review();});
-   mapping.append(E('p',copy('mapping_help'),'small'),button(copy('apply_mapping'),review,'secondary'));
+   mapping.append(button(copy('show_date_format'),()=>{dateHelp.hidden=false;dateHelp.dataset.needed='true';fields.dateFormat.focus();dateHelp.scrollIntoView({block:'center'});},'text-button'),E('p',copy('mapping_help'),'small'),button(copy('apply_mapping'),review,'secondary'));
   }
   async function review(){
    if(!parsed||running||pending)return;
@@ -263,7 +275,13 @@ function importStatement() {
    settings.defaultCurrency=defaultAccount()?.data.currency;
    preview=ULADIMStatement.preview(parsed,settings);
    await identify();page=0;setStage(1);draw();
-   if(preview.length&&preview.every(row=>row.error))advanced.open=true;
+   const dateProblem=preview.some(row=>['import_date_ambiguous','import_date_invalid'].includes(row.error));
+   if(dateProblem)dateHelp.dataset.needed='true';
+   dateHelp.hidden=dateHelp.dataset.needed!=='true';
+   dateHelp.classList.toggle('is-resolved',!dateProblem);
+   const example=preview.find(row=>row.original?.date),exampleText=dateHelp.querySelector('.statement-date-examples');
+   if(exampleText&&example)exampleText.textContent=copy('date_example')+' '+example.original.date+(example.value?.date?' → '+example.value.date:'');
+   recognitionHelp.hidden=!preview.length||!preview.every(row=>row.error)||dateProblem;
   }
   function rowStatus(row){
    if(row.saved)return copy('saved');
@@ -456,7 +474,7 @@ const STATEMENT_COPY={
   amount_mode:'Как задана сумма',amount_signed:'Одна сумма со знаком + / −',amount_split:'Отдельные столбцы дохода и расхода',amount_typed:'Сумма и тип операции',
   mapping_help:'Изменения применяются ко всем строкам. В названиях столбцов показаны примеры из файла.',apply_mapping:'Проверить все строки',
   import_direction_invalid:'Проверьте тип операции: доход или расход.',
-  advanced:'Исправить распознавание',auto:'Автоматически',bank_id:'Идентификатор операции',direction_field:'Тип операции',reading:'Распознаём выписку…',
+  advanced_badge:'Для опытных',advanced_help:'Расширенные настройки файла. Обычно их менять не нужно: используйте их, только если выписка распознана неверно.',recognition_help:'Нужно уточнить структуру файла. Откройте расширенные настройки и проверьте дату и сумму по примерам.',open_advanced:'Открыть расширенные настройки',date_help_title:'Уточните формат даты',date_help_body:'Выберите порядок дня и месяца. Настройка применится ко всей выписке.',date_day_first:'День → месяц (4 мая)',date_month_first:'Месяц → день (5 апреля)',date_example:'Пример из вашей выписки:',show_date_format:'Формат даты',advanced:'Исправить распознавание',auto:'Автоматически',bank_id:'Идентификатор операции',direction_field:'Тип операции',reading:'Распознаём выписку…',
   saved:'сохранено',skipped:'пропущено',selected:'выбрано',needs_review:'требуют проверки',ready:'Готово',rows:'строк',
   include:'Включить',status:'Статус',edit_row:'Исправить строку',no_rows:'В выписке нет операций для проверки.',
   partially_finished:'Сохранена только часть строк. Проверьте ошибки и пропущенные операции.',
@@ -495,7 +513,7 @@ const STATEMENT_COPY={
   amount_mode:'Amount format',amount_signed:'One signed amount + / −',amount_split:'Separate income and expense columns',amount_typed:'Amount and transaction type',
   mapping_help:'Changes apply to every row. Column choices include examples from the file.',apply_mapping:'Check all rows',
   import_direction_invalid:'Check the transaction type: income or expense.',
-  advanced:'Correct recognition',auto:'Automatic',bank_id:'Transaction ID',direction_field:'Transaction type',reading:'Reading statement…',
+  advanced_badge:'Advanced',advanced_help:'Advanced file settings. Usually no changes are needed; use these only if the statement was read incorrectly.',recognition_help:'The file structure needs clarification. Open advanced settings and check the date and amount against the examples.',open_advanced:'Open advanced settings',date_help_title:'Confirm the date format',date_help_body:'Choose the day and month order once for the whole statement.',date_day_first:'Day first (4 May)',date_month_first:'Month first (5 April)',date_example:'Example from your statement:',show_date_format:'Date format',advanced:'Correct recognition',auto:'Automatic',bank_id:'Transaction ID',direction_field:'Transaction type',reading:'Reading statement…',
   saved:'saved',skipped:'skipped',selected:'selected',needs_review:'need review',ready:'Ready',rows:'rows',
   include:'Include',status:'Status',edit_row:'Correct row',no_rows:'There are no transactions to review in this statement.',
   partially_finished:'Only part of the statement was saved. Review errors and skipped transactions.',

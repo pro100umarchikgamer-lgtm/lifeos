@@ -69,6 +69,7 @@ jobs:
           python -m tool.check_focus_completion
           python -m tool.check_workspace_switch_focus
           python -m tool.check_focus_auth
+          python -m tool.check_import_simple
       - name: Align Firefox home ownership inside the test container
         run: |
           if [ "$HOME" = /github/home ] && [ "$(stat -c %u "$HOME")" != "$(id -u)" ]; then

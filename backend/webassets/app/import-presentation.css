@@ -1,0 +1,31 @@
+/* Presentation only: recognition, validation and persistence stay in import.js. */
+.statement-controls{display:grid;gap:8px;min-width:0}
+.statement-controls>label{margin-top:8px}
+.statement-file-options{border:1px dashed var(--ux-border,var(--line));border-radius:14px;padding:0 16px;margin:12px 0;background:var(--ux-surface,var(--card))}
+.statement-file-options summary{min-height:54px;font-weight:650;color:var(--ux-green,var(--accent))}
+.statement-file-options input[type=file]{margin:0 0 10px;max-width:100%;font-size:14px}
+.statement-advanced{border-top:1px solid var(--ux-border,var(--line));padding-top:4px;margin-block:10px}
+.statement-advanced>summary{display:flex;justify-content:space-between;gap:12px;min-height:48px;font-size:14px;font-weight:600;color:var(--ux-muted,var(--muted))}
+.statement-advanced>summary::after{content:'+';font-size:20px;font-weight:400;margin-left:auto}
+.statement-advanced[open]>summary::after{content:'−'}
+.statement-advanced-badge{font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;background:var(--ux-soft,var(--soft));color:var(--ux-muted,var(--muted))}
+.statement-advanced>p{max-width:60ch;margin:2px 0 18px}
+.statement-mapping{padding-top:8px;margin-top:16px;border-top:1px solid var(--ux-border,var(--line));min-width:0}
+.statement-mapping>select{max-width:100%;text-overflow:ellipsis}
+.statement-date-help,.statement-recognition-help{padding:18px 20px;border-radius:14px;background:var(--ux-soft,var(--soft));border:1px solid var(--ux-border,var(--line));margin-block:12px}
+.statement-date-help[hidden],.statement-recognition-help[hidden]{display:none!important}
+.statement-date-help h3{font-size:16px;margin:0 0 6px;line-height:1.4}
+.statement-date-help p,.statement-recognition-help p{font-size:14px;margin:0 0 12px;max-width:60ch}
+.statement-date-help label{font-weight:650;margin-top:10px}
+.statement-date-help .statement-date-examples{font-size:12px;margin:9px 0 0;font-variant-numeric:tabular-nums}
+.statement-dialog .statement-bulk{margin-block:12px;gap:8px;align-items:center}
+.statement-dialog .statement-bulk button{font-size:13px;min-height:40px}
+.statement-dialog .import-status{margin-block:10px;font-size:13px;color:var(--ux-muted,var(--muted))}
+@media(max-width:640px){
+ .statement-date-help,.statement-recognition-help{padding:15px}
+ .statement-advanced-badge{font-size:10px;white-space:nowrap}
+ .statement-date-help select{font-size:14px}
+}
+
+.statement-date-help.is-resolved>h3,.statement-date-help.is-resolved>p:not(.statement-date-examples){display:none}
+.statement-date-help.is-resolved label{margin-top:0}

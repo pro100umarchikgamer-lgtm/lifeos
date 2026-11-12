@@ -475,6 +475,11 @@ function onboarding(m){
 }
 function today(m){
  title(m,'today');m.classList.add('today-page');
+ const quickActions=E('div',undefined,'today-actionbar');
+ for(const [kind,label,symbol] of [['task','family_kind_task','tasks'],['note','family_kind_note','notes'],['event','family_kind_event','calendar'],['transaction','web_add_operation','money']]){
+  const action=button(t(label),()=>editRecord(kind),'secondary');action.prepend(icon(symbol));quickActions.append(action);
+ }
+ m.append(quickActions);
  const tasks=records('task'),open=tasks.filter(r=>!r.data.completed),done=tasks.length-open.length;
  const day=localDate(),end=new Date(day+'T12:00:00');end.setDate(end.getDate()+8);
  const occurrences=ULADIMDomain.occurrences(records('event'),day,dateString(end));
@@ -609,7 +614,13 @@ function today(m){
  const notes=card(t('recent_notes'));
  notes.classList.add('today-notes');
  const recent=records('note').sort((a,b)=>b.seq-a.seq).slice(0,2);
- for(const r of recent)notes.append(button(r.data.body.split('\n')[0].slice(0,110)||t('family_kind_note'),()=>editRecord('note',r),'note-link'));
+ for(const r of recent){
+  const lines=r.data.body.split('\n'),label=lines[0].slice(0,110)||t('family_kind_note');
+  const note=button('',()=>editRecord('note',r),'note-link');note.setAttribute('aria-label',label);
+  const text=E('span',undefined,'today-note-text');text.append(E('strong',label));
+  const excerpt=lines.slice(1).join(' ').trim();if(excerpt)text.append(E('span',excerpt.slice(0,110),'note-excerpt'));
+  append(note,icon('notes'),text);notes.append(note);
+ }
  if(!recent.length)notes.append(E('p',t('empty_notes'),'empty'));
  notes.append(button(t('family_kind_note'),()=>editRecord('note'),'text-button'));
  grid.append(notes);
