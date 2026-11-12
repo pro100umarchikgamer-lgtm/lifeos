@@ -52,7 +52,19 @@ for(const [locale,labels] of Object.entries({
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function dateString(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
-function eventRow(o){const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');append(caption,E('h3',o.record.data.title),E('p',new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'))+' · '+(o.allDay?t('web_all_day'):o.time),'small'));append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));return row;}
+function eventRow(o,agenda=false){
+ const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');
+ const title=E('h3',o.record.data.title),when=o.allDay?t('web_all_day'):o.time;
+ if(agenda){
+  const time=E(o.allDay?'span':'time',when,'calendar-event-time');
+  if(!o.allDay)time.dateTime=new Date(o.at).toISOString();
+  append(caption,time,title);
+ }else{
+  const date=new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'));
+  append(caption,title,E('p',date+' · '+when,'small'));
+ }
+ return append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));
+}
 const CALENDAR_COPY={
  ru:['Неделя','День','Предыдущая неделя','Следующая неделя','Предыдущий день','Следующий день'],
  en:['Week','Day','Previous week','Next week','Previous day','Next day'],
@@ -129,13 +141,20 @@ function calendar(m){
   if(items.length){const count=E('span',String(items.length),'event-count');count.setAttribute('aria-hidden','true');b.append(count);}
   grid.append(b);
  }
+ if(calendarMode==='month'){
+  const remaining=(8-to.getDay())%7;
+  for(let i=0;i<remaining;i++)grid.append(E('span',undefined,'calendar-offset'));
+ }
  const dateHeading=E('h2',date.toLocaleDateString(state.lang,{weekday:'long',day:'numeric',month:'long'}),'calendar-agenda-date');
  const agendaHead=E('div',undefined,'calendar-agenda-head');
  append(agendaHead,dateHeading,addButton(t('family_kind_event'),addEvent));
  agenda.append(agendaHead);
  const selected=byDay.get(state.calendarDay)||[];
- for(const o of selected)agenda.append(eventRow(o));
- if(!selected.length)agenda.append(E('p',t('web_no_events'),'empty'));
+ if(selected.length){
+  const events=E('div',undefined,'calendar-events');
+  for(const o of selected)events.append(eventRow(o,true));
+  agenda.append(events);
+ }else agenda.append(emptyPanel('calendar',t('web_no_events')));
  const picker=E('div',undefined,'calendar-picker');
  const field=input(picker,'calendar-day',t('web_day'),'date',state.calendarDay);
  field.addEventListener('change',()=>{if(field.value)showDate(field.value,'[name=calendar-day]');});

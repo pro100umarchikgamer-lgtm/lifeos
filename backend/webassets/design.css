@@ -915,9 +915,85 @@ body[data-design=clarity][data-theme="light"]{
 .import-faq summary{cursor:pointer;font-weight:650;min-height:36px}
 
 .calendar-modes{display:flex;flex-wrap:wrap;gap:6px;margin-block:0 14px}
-body[data-design=clarity] .calendar-modes button[aria-pressed=true],body[data-design=clarity] .today-week button[aria-current=date]{background:var(--ux-soft);color:var(--ux-green);border-color:var(--ux-green)}
+body[data-design=clarity] .today-week button[aria-current=date]{background:var(--ux-soft);color:var(--ux-green);border-color:var(--ux-green)}
 .calendar-day-layout{grid-template-columns:minmax(0,1fr);max-width:58rem}
 .calendar-day-layout .calendar-toolbar{margin:0}
+body[data-design=clarity] .calendar-page .intro{
+  align-items:center;
+  border-bottom:1px solid var(--ux-border);
+  padding-block-end:18px;
+}
+body[data-design=clarity] .calendar-page .intro h1{font-size:clamp(2rem,4vw,3.5rem);line-height:1.04}
+.calendar-page .calendar-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:23rem}
+body[data-design=clarity] .calendar-page .calendar-modes button{
+  min-width:0;
+  padding-inline:4px;
+  background:transparent;
+  border-color:var(--ux-border);
+  color:var(--ux-ink);
+}
+body[data-design=clarity] .calendar-page .calendar-modes button[aria-pressed=true]{
+  background:var(--ux-green);
+  border-color:var(--ux-green);
+  color:var(--ux-surface);
+}
+.calendar-page .calendar-layout{border-top:1px solid var(--ux-border);padding-block-start:16px}
+body[data-design=clarity] .calendar-page .calendar-layout .card{
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+body[data-design=clarity] .calendar-page .calendar-layout .calendar-month{background:var(--ux-bg)}
+body[data-design=clarity] .calendar-page .calendar-toolbar h2,
+body[data-design=clarity] .calendar-page .calendar-agenda-date{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:clamp(1.2rem,2.3vw,1.75rem);
+  line-height:1.16;
+}
+.calendar-page .calendar-toolbar h2{text-transform:none}
+.calendar-page .calendar-toolbar h2::first-letter{text-transform:uppercase}
+.calendar-page .calendar-grid{gap:0}
+body[data-design=clarity] .calendar-page .calendar-date,.calendar-page .calendar-offset{
+  border-bottom:1px solid var(--ux-border);
+  border-radius:0;
+}
+body[data-design=clarity] .calendar-page .calendar-date[aria-pressed=true],
+body[data-design=clarity] .calendar-page .calendar-date.is-today{border-radius:8px}
+.calendar-page .calendar-offset{border-inline-end:1px solid var(--ux-border)}
+.calendar-page .calendar-date:not([aria-pressed=true]){border-inline-end:1px solid var(--ux-border)}
+.calendar-page .calendar-agenda-head{gap:6px 12px}
+.calendar-page .calendar-events{margin-block:8px 10px}
+.calendar-page .calendar-events .event-row{
+  position:relative;
+  border-inline-start:1px solid var(--ux-border);
+  padding-inline-start:15px;
+  margin-inline-start:5px;
+}
+.calendar-page .calendar-events .event-row::before{
+  content:"";
+  position:absolute;
+  inset-inline-start:-4px;
+  inset-block-start:19px;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--ux-green);
+}
+.calendar-page .calendar-event-time{font-weight:650;font-variant-numeric:tabular-nums}
+.calendar-page .calendar-picker{border-top:1px solid var(--ux-border);margin-block-start:14px}
+@media(min-width:900px){
+  .calendar-page .calendar-layout:not(.calendar-day-layout){grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
+  body[data-design=clarity] .calendar-page .calendar-layout:not(.calendar-day-layout) .calendar-agenda{
+    padding-inline-start:clamp(14px,2vw,24px);
+    border-inline-start:1px solid var(--ux-border);
+  }
+}
+@media(max-width:899px){
+  .calendar-page .calendar-layout{grid-template-columns:minmax(0,1fr)}
+  body[data-design=clarity] .calendar-page .calendar-layout .calendar-agenda{padding-block-start:14px;border-top:1px solid var(--ux-border)}
+}
 .today-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-block:0 10px}
 .today-week button{padding-inline:0;min-width:0;min-height:44px;font-variant-numeric:tabular-nums}
 
