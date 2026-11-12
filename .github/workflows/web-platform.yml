@@ -2,7 +2,7 @@ name: ULADIM Web client
 on:
   pull_request:
     branches: [feature/uladim-hostinger-launch]
-    paths: ['backend/webassets/**', 'backend/web.py', 'backend/account_lifecycle.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/web_browser_navigation.py', 'tool/web_test_tls.py', 'tool/check_google_browser.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'tool/check_statement*', 'backend/tests/**', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
+    paths: ['backend/webassets/**', 'backend/web.py', 'backend/account_lifecycle.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/web_browser_navigation.py', 'tool/web_test_tls.py', 'tool/check_google_browser.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'tool/check_statement*', 'backend/tests/**', 'tool/check_focus*', 'tool/check_workspace_switch_focus.py', 'tool/verify_web_release.py', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -64,6 +64,11 @@ jobs:
         run: python -m tool.check_web_platform
       - name: Clarity hierarchy and selected-device revocation
         run: python -m tool.check_clarity_review
+      - name: Focus settings, refresh status and delayed workspace switching
+        run: |
+          python -m tool.check_focus_completion
+          python -m tool.check_workspace_switch_focus
+          python -m tool.check_focus_auth
       - name: Align Firefox home ownership inside the test container
         run: |
           if [ "$HOME" = /github/home ] && [ "$(stat -c %u "$HOME")" != "$(id -u)" ]; then

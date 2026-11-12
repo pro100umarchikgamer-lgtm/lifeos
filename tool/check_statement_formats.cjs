@@ -47,3 +47,18 @@ assert.equal(parse('Date;Billing Amount;Currency;Billing Currency\n2026-11-10;90
 
 const formulaCurrency = ULADIMStatement.table([['Date','Amount','Currency'], ['2026-11-10','900','\ufffd']], 'XLSX');
 assert.equal(preview(formulaCurrency,{...formulaCurrency.detection,defaultCurrency:'RUB'})[0].error,'import_unreadable_cell');
+
+// Choosing an amount strategy must isolate it from other exported totals.
+const alternativeAmounts = read(new TextEncoder().encode('Date;Amount;Debit;Credit;Direction;Description\n2026-11-10;-12.05;0;99.00;income;Store'), {});
+assert.deepEqual(preview(alternativeAmounts,{...alternativeAmounts.detection,defaultCurrency:'RUB',amountMode:'signed'})[0].value,
+  {date:'2026-11-10',kind:'expense',amount:1205,currency:'RUB',label:'Store',bankID:''});
+assert.equal(preview(alternativeAmounts,{...alternativeAmounts.detection,defaultCurrency:'RUB',amountMode:'split'})[0].value.amount,9900);
+assert.equal(preview(alternativeAmounts,{...alternativeAmounts.detection,defaultCurrency:'RUB',amountMode:'typed'})[0].error,'import_direction_conflict');
+assert.equal(ULADIMStatement.columnCompatible(alternativeAmounts,5,'amount'),false);
+assert.equal(ULADIMStatement.columnCompatible(alternativeAmounts,1,'amount'),true);
+assert.equal(ULADIMStatement.columnCompatible(alternativeAmounts,0,'date'),true);
+assert.equal(ULADIMStatement.columnCompatible(alternativeAmounts,5,'date'),false);
+
+assert.equal(parse('Date;Amount;Direction\n2026-11-10;12.05;unknown',{amountMode:'typed'})[0].error,'import_direction_invalid');
+assert.equal(parse('Date;Amount;Direction\n2026-11-10;12.05;transfer',{amountMode:'signed'})[0].error,'import_transfer_review');
+assert.equal(parse('Date;Amount\n2026-11-10;12.05',{amountMode:'signed',direction:'expense'})[0].value.kind,'expense');

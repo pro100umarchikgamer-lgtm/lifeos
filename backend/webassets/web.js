@@ -53,7 +53,7 @@ function login(){
   app.append(links);
  }
  authLanguages();
- if(!staff)app.lastElementChild.classList.add('focus-login-language');
+ if(!staff){app.lastElementChild.classList.add('focus-login-language');app.append(focusLoginStory(el,authLanguage));}
 }
 function loginMfa(challenge){
  app.classList.remove('focus-login');
@@ -516,4 +516,18 @@ function importFaq(host){
  faq.append(link('Пошаговое руководство','/docs#import'));
  host.append(faq);
  if(location.hash==='#import')requestAnimationFrame(()=>faq.scrollIntoView());
+}
+
+function focusLoginStory(create,lang){
+ const copy={
+  ru:['Меньше суеты.','Больше ясности.','Важное — в одном месте. Задачи, планы и финансы в вашем ритме.','Задачи и заметки','События и календарь','Личные и семейные финансы','В браузере на телефоне, планшете и компьютере.'],
+  en:['Less to juggle.','More clarity.','Keep what matters together. Tasks, plans and finances at your pace.','Tasks and notes','Events and calendar','Personal and family finances','In your browser on phone, tablet and desktop.'],
+  'uz-Latn':['Kamroq tashvish.','Ko‘proq aniqlik.','Muhim ishlar bir joyda. Vazifalar, rejalar va moliya o‘z maromingizda.','Vazifalar va qaydlar','Tadbirlar va taqvim','Shaxsiy va oilaviy moliya','Telefon, planshet va kompyuter brauzerida.'],
+  'uz-Cyrl':['Камроқ ташвиш.','Кўпроқ аниқлик.','Муҳим ишлар бир жойда. Вазифалар, режалар ва молия ўз маромингизда.','Вазифалар ва қайдлар','Тадбирлар ва тақвим','Шахсий ва оилавий молия','Телефон, планшет ва компьютер браузерида.']
+ }[lang]||['Less to juggle.','More clarity.','Keep what matters together. Tasks, plans and finances at your pace.','Tasks and notes','Events and calendar','Personal and family finances','In your browser on phone, tablet and desktop.'];
+ const aside=create('aside',undefined,'focus-login-story');
+ const heading=create('h2');heading.append(create('span',copy[0]),create('span',copy[1]));
+ const list=create('ul');for(const text of copy.slice(3,6))list.append(create('li',text));
+ aside.append(create('div','ULADIM · '+(lang==='ru'?'ФОКУС':'FOCUS'),'focus-story-label'),heading,create('p',copy[2]),list,create('p',copy[6],'focus-story-footnote'));
+ return aside;
 }

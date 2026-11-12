@@ -271,7 +271,25 @@
     return options.size === 1 ? [...options][0] : null;
   }
 
+  function columnCompatible(source, column, role, header = source.detection.header) {
+    if (column < 0) return true;
+    const samples = source.rows.slice(header + 1, header + 51).map(row => (row[column] || '').trim()).filter(Boolean);
+    if (!samples.length) return true;
+    if (role === 'date') return samples.some(value =>
+      Object.values(dateCandidates(value,'auto')).some(Boolean) || Object.values(dateCandidates(value,'excel')).some(Boolean));
+    if (['amount','debit','credit'].includes(role)) return samples.some(value => Object.keys(amountCandidates(value,'KWD','auto')).length);
+    return true;
+  }
+
   function preview(source, mapping) {
+    // Exported balances and alternative amount columns are not interchangeable.
+    // An explicit user choice owns both the magnitude and direction for every row.
+    if (mapping.amountMode === 'split') mapping = {...mapping,amount:-1,direction:'signed'};
+    else if (mapping.amountMode === 'signed') mapping = {...mapping,debit:-1,credit:-1,direction:['income','expense'].includes(mapping.direction)?mapping.direction:'signed'};
+    else if (mapping.amountMode === 'typed') {
+      mapping = {...mapping,debit:-1,credit:-1,direction:'signed'};
+      if (!(mapping.directionColumn >= 0)) fail('import_mapping_required');
+    }
     if (mapping.date < 0 || Math.max(mapping.amount,mapping.debit ?? -1,mapping.credit ?? -1) < 0) fail('import_mapping_required');
     const get = (row,key) => (row[mapping[key]] || '').trim();
     const nonzero = value => Boolean(value && !/^[+−-]?0+(?:[.,]0+)?$/.test(value));
@@ -313,8 +331,9 @@
         if (/\bxfer\b|transfer|перевод|internal movement/.test(direction)) fail('import_transfer_review');
         const amount = choose(item.amounts,decimal,'import_number_ambiguous','import_amount_invalid');
         if (!amount || (hasDebit && hasCredit)) fail('import_amount_invalid');
-        const explicit = /^(income|credit|crdt|deposit|dep|зачисление|доход|приход)$/.test(direction) ? 'income' :
+        const explicit = ['signed','split'].includes(mapping.amountMode) ? '' : /^(income|credit|crdt|deposit|dep|зачисление|доход|приход)$/.test(direction) ? 'income' :
           /^(expense|debit|dbit|payment|pos|расход|списание)$/.test(direction) ? 'expense' : '';
+        if (mapping.amountMode==='typed' && !explicit) fail('import_direction_invalid');
         const splitKind = hasDebit ? 'expense' : hasCredit ? 'income' : '';
         if (!splitKind && mapping.direction==='signed' &&
             ((explicit==='income' && amount<0) || (explicit==='expense' && /^\+/.test(raw)))) fail('import_direction_conflict');
@@ -332,5 +351,5 @@
       } catch (error) { return {line,row,original,error:error.code || 'import_format'}; }
     });
   }
-  globalThis.ULADIMStatement = Object.freeze({read,table,preview});
+  globalThis.ULADIMStatement = Object.freeze({read,table,preview,columnCompatible});
 })();

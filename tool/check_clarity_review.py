@@ -1,5 +1,6 @@
 """Capture Clarity on the real app with disposable data and verify device revocation."""
 import argparse
+import os
 import uuid
 from pathlib import Path
 
@@ -43,7 +44,7 @@ def check_account(page, baseline):
 
 
 def check_revocation(page, backend, actor):
-    dialog = page.get_by_role('dialog')
+    dialog = page.locator('.devices-panel')
     expect(dialog.get_by_text('Текущий сеанс', exact=True)).to_have_count(1)
     expect(dialog.locator('input[type=password]')).to_have_count(0)
     selected = dialog.locator('.device-row').filter(has_text='Android · Pixel')
@@ -63,10 +64,10 @@ def check_revocation(page, backend, actor):
         confirm.get_by_role('button', name='Отозвать доступ', exact=True).click()
     assert response.value.status == 200
     assert response.value.request.post_data_json['device_id'] == before['Android · Pixel']['id']
-    expect(page.get_by_role('dialog').get_by_text('Завершённые сеансы')).to_be_visible()
+    expect(page.locator('.devices-panel').get_by_text('Завершённые сеансы')).to_be_visible()
     expect(selected.get_by_role('button')).to_have_count(0)
     expect(survivor.get_by_role('button', name='Отозвать доступ', exact=True)).to_be_visible()
-    expect(page.get_by_role('dialog').get_by_text('Текущий сеанс', exact=True)).to_have_count(1)
+    expect(page.locator('.devices-panel').get_by_text('Текущий сеанс', exact=True)).to_have_count(1)
     after = {device['id']: device['revoked_at'] for device in backend.list_devices(actor, '')['devices']}
     assert [device['label'] for device in before.values()
             if device['revoked_at'] != after[device['id']]] == ['Android · Pixel']
@@ -149,7 +150,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     with fixture() as (origin, backend, actor, wid), sync_playwright() as p:
         prepare_devices(backend, actor)
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(**({'executable_path': os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
         for name, width, height in VIEWPORTS:
             context = browser.new_context(
                 viewport={'width': width, 'height': height}, locale='ru-RU',
@@ -197,8 +198,8 @@ def main():
             capture(page, args.output, name, 'account')
             if args.baseline:
                 page.get_by_role('dialog').get_by_role('button', name='Закрыть', exact=True).click()
-            page.get_by_role('button', name='Устройства и сессии', exact=True).click()
-            expect(page.get_by_role('dialog')).to_be_visible()
+            page.locator('.settings-content').get_by_role('button', name='Устройства и сессии', exact=True).click()
+            expect(page.locator('.devices-panel')).to_be_visible()
             capture(page, args.output, name, 'devices')
             if not args.baseline and name == 'desktop':
                 check_revocation(page, backend, actor)

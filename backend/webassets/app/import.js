@@ -64,7 +64,16 @@ function importStatement() {
   const actions=E('div',undefined,'actions statement-actions');
   const commit=E('button',t('import_confirm'));commit.type='button';commit.disabled=true;
   commit.addEventListener('click',()=>commitRows().catch(report));
-  actions.append(commit);append(container,steps,need,controls,status,receipt,totals,results,actions);
+  const selectReady=button(copy('select_ready'),()=>{
+   for(const row of preview)if(ready(row)){row.selected=true;row.selectionPreference={key:row.selectionKey,checked:true};}
+   draw();
+  },'secondary');
+  const clearSelection=button(copy('clear_selection'),()=>{
+   for(const row of preview){row.selected=false;row.selectionPreference={key:row.selectionKey,checked:false};}
+   draw();
+  },'text-button');
+  const bulk=E('div',undefined,'actions statement-bulk');bulk.append(selectReady,clearSelection);
+  actions.append(commit);append(container,steps,need,controls,status,receipt,totals,bulk,results,actions);
   function setStage(next){
    stage=next;
    for(const [i,item] of [...steps.children].entries()){
@@ -75,7 +84,7 @@ function importStatement() {
    fileOptions.open=stage===0;
    fileTitleLabel.textContent=source?.name||chooseStep;
    fileTitleLabel.title=source?.name||'';
-   totals.hidden=results.hidden=stage===2;
+   totals.hidden=results.hidden=stage===2;bulk.hidden=stage!==1;
    actions.hidden=stage===2||accounts.length===0;
   }
   setStage(0);
@@ -105,7 +114,10 @@ function importStatement() {
    return matching.length===1?matching[0]:null;
   }
   function showError(error){if(!closed)status.textContent=copy(error.code||'import_format');}
+  function ready(row){return !!row.value&&!row.error&&!row.imported&&!row.repeated&&!row.duplicate&&!!row.targetID&&!parsed?.needsReview;}
   function updateControls(){
+   selectReady.disabled=running||!!pending||!preview.some(row=>ready(row)&&!row.selected);
+   clearSelection.disabled=running||!!pending||!preview.some(row=>row.selected);
    controls.disabled=running||!!pending;results.inert=running||!!pending;commit.disabled=running||!(pending||preview.some(row=>row.selected));
    const close=container.querySelector('.dialog-head button');if(close)close.disabled=running;
   }
@@ -157,7 +169,12 @@ function importStatement() {
   function buildMapping(){
    const detected=parsed.detection;
    fields.header=select(mapping,'header',t('header_row'),parsed.rows.slice(0,20).map((r,i)=>[i,(i+1)+' · '+r.join(' / ').slice(0,100)]),detected.header);
-   const columns=()=>[[-1,copy('no_column')],...parsed.rows[Number(fields.header.value)].map((label,i)=>[i,(i+1)+' · '+label.slice(0,60)])];
+   fields.amountMode=select(mapping,'amountMode',copy('amount_mode'),[['signed',copy('amount_signed')],['split',copy('amount_split')],['typed',copy('amount_typed')]],
+    detected.credit>=0||detected.debit>=0?'split':detected.directionColumn>=0&&parsed.rows.slice(detected.header+1).some(row=>(row[detected.directionColumn]||'').trim())?'typed':'signed');
+   const columns=()=>[[-1,copy('no_column')],...parsed.rows[Number(fields.header.value)].map((label,i)=>{
+    const samples=parsed.rows.slice(Number(fields.header.value)+1,Number(fields.header.value)+4).map(row=>row[i]).filter(Boolean).slice(0,2);
+    return [i,(i+1)+' · '+label.slice(0,40)+(samples.length?' · '+samples.map(value=>value.slice(0,24)).join(' / '):'')];
+   })];
    for(const [key,label] of mappingKeys)fields[key]=select(mapping,key,label,columns(),detected[key]??-1);
    fields.header.addEventListener('change',()=>{
     for(const [key] of mappingKeys){
@@ -168,7 +185,20 @@ function importStatement() {
    fields.dateFormat=select(mapping,'dateFormat',t('date_format'),[['auto',copy('auto')],['iso','YYYY-MM-DD'],['dmy','DD.MM.YYYY / DD/MM/YYYY'],['mdy','MM/DD/YYYY'],['excel',t('excel_date')]],detected.dateFormat);
    fields.decimal=select(mapping,'decimal',t('decimal_separator'),[['auto',copy('auto')],['.','1,234.56'],[',','1.234,56']],detected.decimal);
    fields.direction=select(mapping,'direction',t('amount_direction'),[['signed','+ '+t('income')+' / − '+t('expense')],['income',t('income')],['expense',t('expense')]],'signed');
-   mapping.append(button(t('import_preview'),review,'secondary'));
+   // The mode determines which amount fields apply; hidden alternatives never
+   // override it. Shared recognition changes always rebuild the complete file.
+   function updateMapping(){
+    fields.direction.hidden=fields.amountMode.value!=='signed';mapping.querySelector('label[for="'+fields.direction.id+'"]').hidden=fields.direction.hidden;
+    for(const [key] of mappingKeys){
+     const field=fields[key],split=fields.amountMode.value==='split';
+     const inactive=(key==='amount'&&split)||(['debit','credit'].includes(key)&&!split)||(key==='directionColumn'&&fields.amountMode.value!=='typed');
+     field.hidden=inactive;mapping.querySelector('label[for="'+field.id+'"]').hidden=inactive;
+     for(const option of field.options)option.disabled=!ULADIMStatement.columnCompatible(parsed,Number(option.value),key,Number(fields.header.value));
+    }
+   }
+   updateMapping();
+   for(const field of Object.values(fields))field.addEventListener('change',()=>{updateMapping();review();});
+   mapping.append(E('p',copy('mapping_help'),'small'),button(copy('apply_mapping'),review,'secondary'));
   }
   async function review(){
    if(!parsed||running||pending)return;
@@ -233,6 +263,7 @@ function importStatement() {
    settings.defaultCurrency=defaultAccount()?.data.currency;
    preview=ULADIMStatement.preview(parsed,settings);
    await identify();page=0;setStage(1);draw();
+   if(preview.length&&preview.every(row=>row.error))advanced.open=true;
   }
   function rowStatus(row){
    if(row.saved)return copy('saved');
@@ -246,9 +277,12 @@ function importStatement() {
   }
   function summary(){
    totals.replaceChildren();
-   const counts={selected:0,skipped:0,review:0,saved:0};
+   const counts={selected:0,ready:0,duplicates:0,errors:0,skipped:0,review:0,saved:0};
    const byCurrency=new Map();
    for(const row of preview){
+    if(ready(row))counts.ready++;
+    if(row.duplicate||row.repeated)counts.duplicates++;
+    if(row.error||(!row.targetID&&row.value))counts.errors++;
     if(row.saved)counts.saved++;
     else if(row.selected){
      counts.selected++;
@@ -386,7 +420,7 @@ function importStatement() {
     receipt.append(button(historyLabel,()=>{
      modified=false;d.close();openTabSection('money','#finance-ledger');
     }),button(reviewLabel,()=>{setStage(1);draw();},'text-button'));
-    setStage(2);status.textContent=saved?copy('finished'):'';receipt.focus();
+    setStage(2);status.textContent=saved?copy(failed||preview.some(row=>row.error||(!row.targetID&&row.value))?'partially_finished':'finished'):'';receipt.focus();
    }catch(error){
     if(closed)return;
     if(error.code==='unauthorized'||error.code==='workspace_forbidden'){report(error);return;}
@@ -418,9 +452,14 @@ const STATEMENT_COPY={
  ru:{
   title:'Импортировать выписку',need_account:'Для импорта нужен счёт. Создайте его, чтобы связать операции с вашими финансами.',
   create_account:'Создать счёт',help:'CSV, TSV, TXT, JSON, OFX, QIF, PDF или XLSX · до 5 МБ. Выписка обрабатывается в браузере.',
+  select_ready:'Выбрать все готовые',clear_selection:'Снять выбор',duplicates:'дубликатов',errors:'с ошибками',
+  amount_mode:'Как задана сумма',amount_signed:'Одна сумма со знаком + / −',amount_split:'Отдельные столбцы дохода и расхода',amount_typed:'Сумма и тип операции',
+  mapping_help:'Изменения применяются ко всем строкам. В названиях столбцов показаны примеры из файла.',apply_mapping:'Проверить все строки',
+  import_direction_invalid:'Проверьте тип операции: доход или расход.',
   advanced:'Исправить распознавание',auto:'Автоматически',bank_id:'Идентификатор операции',direction_field:'Тип операции',reading:'Распознаём выписку…',
   saved:'сохранено',skipped:'пропущено',selected:'выбрано',needs_review:'требуют проверки',ready:'Готово',rows:'строк',
   include:'Включить',status:'Статус',edit_row:'Исправить строку',no_rows:'В выписке нет операций для проверки.',
+  partially_finished:'Сохранена только часть строк. Проверьте ошибки и пропущенные операции.',
   finished:'Импорт завершён. Сохранённые операции доступны в истории.',
   missing_currency_account:'Выберите или создайте счёт в валюте операции.',repeated_id:'Банковский идентификатор повторяется.',
   pdf_review:'Сверьте строку с PDF и отметьте её для импорта.',
@@ -452,9 +491,14 @@ const STATEMENT_COPY={
  en:{
   title:'Import a statement',need_account:'Create an account to link statement entries to your finances.',
   create_account:'Create account',help:'CSV, TSV, TXT, JSON, OFX, QIF, PDF or XLSX · up to 5 MB. Your browser processes the statement.',
+  select_ready:'Select all ready',clear_selection:'Clear selection',duplicates:'duplicates',errors:'with errors',
+  amount_mode:'Amount format',amount_signed:'One signed amount + / −',amount_split:'Separate income and expense columns',amount_typed:'Amount and transaction type',
+  mapping_help:'Changes apply to every row. Column choices include examples from the file.',apply_mapping:'Check all rows',
+  import_direction_invalid:'Check the transaction type: income or expense.',
   advanced:'Correct recognition',auto:'Automatic',bank_id:'Transaction ID',direction_field:'Transaction type',reading:'Reading statement…',
   saved:'saved',skipped:'skipped',selected:'selected',needs_review:'need review',ready:'Ready',rows:'rows',
   include:'Include',status:'Status',edit_row:'Correct row',no_rows:'There are no transactions to review in this statement.',
+  partially_finished:'Only part of the statement was saved. Review errors and skipped transactions.',
   finished:'Import finished. Saved transactions are available in history.',
   missing_currency_account:'Choose or create an account in the transaction currency.',repeated_id:'The bank transaction ID appears more than once.',
   pdf_review:'Compare this row with the PDF, then select it for import.',

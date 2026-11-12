@@ -144,7 +144,8 @@ def run(browser, backend, actor, workspace, origin):
         confirm = dialog.get_by_role('button', name='Импортировать выбранное', exact=True)
         expect(confirm).to_be_enabled()
         confirm.click()
-        expect(dialog.get_by_text('Импорт завершён.', exact=False)).to_be_visible(timeout=15000)
+        expect(dialog.locator('.statement-receipt')).to_be_visible(timeout=15000)
+        expect(dialog.locator('.statement-receipt')).to_contain_text('Сохранено операций · ' + str(len(expected)))
         actual = [(row['data']['currency'], row['data']['amount_minor']) for row in records() if row['id'] not in before]
         assert sorted(actual) == sorted(expected), (len(actual), len(expected), set(actual), set(expected))
 
@@ -154,6 +155,10 @@ def run(browser, backend, actor, workspace, origin):
     expect(dialog.locator('.statement-steps [aria-current=step]')).to_have_text('Проверка')
     expect(dialog.get_by_text('145 выбрано', exact=False)).to_be_visible()
     expect(dialog.locator('details[open]')).to_have_count(0)
+    dialog.get_by_role('button', name='Снять выбор', exact=True).click()
+    expect(dialog.get_by_text('0 выбрано', exact=False)).to_be_visible()
+    dialog.get_by_role('button', name='Выбрать все готовые', exact=True).click()
+    expect(dialog.get_by_text('145 выбрано', exact=False)).to_be_visible()
     page.screenshot(path=str(OUT / 'import-tablet.png'))
     for width,height,name in [(320,740,'compact'),(390,844,'phone'),(768,900,'foldable-open'),(1440,1000,'desktop')]:
         page.set_viewport_size({'width':width,'height':height})
@@ -171,6 +176,35 @@ def run(browser, backend, actor, workspace, origin):
     launch.click()
     upload('renamed.txt', statement.encode('cp1251'))
     expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    close()
+
+    launch.click()
+    ambiguous = 'Date;Amount;Description\n' + '\n'.join(
+        f'04/05/2026;-2.25;Shared date correction {i}' for i in range(1000))
+    upload('ambiguous-dates.csv', ambiguous)
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    if not dialog.locator('.statement-advanced').evaluate('(node) => node.open'):
+        dialog.get_by_text('Исправить распознавание', exact=True).click()
+    dialog.locator('select[name=dateFormat]').select_option('dmy')
+    expect(dialog.get_by_text('1000 выбрано', exact=False)).to_be_visible()
+    dialog.get_by_role('button', name='Снять выбор', exact=True).click()
+    dialog.get_by_role('button', name='Выбрать все готовые', exact=True).click()
+    expect(dialog.get_by_text('1000 выбрано', exact=False)).to_be_visible()
+    dialog.get_by_text('Исправить распознавание', exact=True).click()
+    page.screenshot(path=str(OUT / '1000-rows-common-correction.png'))
+    # An obviously textual column cannot be assigned to the amount.
+    expect(dialog.locator('select[name=amount] option[value="2"]')).to_be_disabled()
+    save([('RUB',225)] * 1000)
+    corrected = [r for r in records() if r['data']['label'].startswith('Shared date correction')]
+    assert len(corrected) == 1000 and all(r['data']['date'] == '2026-05-04' for r in corrected)
+    close()
+    launch.click()
+    upload('ambiguous-dates.csv', ambiguous)
+    if not dialog.locator('.statement-advanced').evaluate('(node) => node.open'):
+        dialog.get_by_text('Исправить распознавание', exact=True).click()
+    dialog.locator('select[name=dateFormat]').select_option('dmy')
+    expect(dialog.get_by_text('1000 пропущено', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Выбрать все готовые', exact=True)).to_be_disabled()
     close()
 
     samples = [
@@ -311,6 +345,18 @@ def run(browser, backend, actor, workspace, origin):
     save([('RUB', 103)])
     assert next(row['data']['kind'] for row in records() if row['data']['label'] == 'Ambiguous day') == 'expense'
     close()
+    launch.click()
+    upload('partially-invalid.csv', 'Date;Amount;Description\n2026-11-21;-7.23;Valid mixed row\nnot-a-date;-1.00;Broken date\n2026-11-21;not-money;Broken amount')
+    dialog.get_by_role('button', name='Снять выбор', exact=True).click()
+    dialog.get_by_role('button', name='Выбрать все готовые', exact=True).click()
+    expect(dialog.locator('tbody input[type=checkbox]:checked')).to_have_count(1)
+    dialog.get_by_role('button', name='Импортировать выбранное', exact=True).click()
+    expect(dialog.locator('.statement-receipt')).to_contain_text('Сохранено операций · 1')
+    expect(dialog.locator('.statement-receipt')).to_contain_text('2 пропущено')
+    expect(dialog.locator('.import-status')).to_contain_text('часть строк')
+    page.screenshot(path=str(OUT / 'partial-import-result.png'))
+    close()
+
     launch.click()
     upload('lost-reply.csv', 'Date;Amount;Currency;Description\n2026-11-21;-2.74;RUB;Lost reply')
     operation_ids = []
