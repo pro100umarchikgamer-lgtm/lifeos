@@ -330,6 +330,10 @@ void main() {
     await tester.pumpWidget(LifeOSApp(controller: controller));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationRail), findsOneWidget);
+    final summary = tester.getRect(find.byKey(const Key('home_financial_summary')));
+    final tasks = tester.getRect(find.text(controller.pack.t('my_tasks')));
+    expect(tasks.left, greaterThan(summary.right),
+      reason: 'Tablet Today uses the available width for the saved card sequence');
     expect(tester.takeException(), isNull);
     await expectLater(
       find.byType(MaterialApp),

@@ -365,6 +365,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= 720;
+    final wideHome = wide && _tab == 0 && !_profileOpen && !familyMode;
     final items = <Widget>[
       _header(),
       const SizedBox(height: 18),
@@ -389,9 +390,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       key: Key(_profileOpen ? 'profile_page' : _tabs[_tab]),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.fromLTRB(
-        width < 350 ? 14 : 18,
+        wideHome ? 24 : width < 350 ? 14 : 18,
         8,
-        width < 350 ? 14 : 18,
+        wideHome ? 24 : width < 350 ? 14 : 18,
         26,
       ),
       itemCount: items.length,
@@ -408,6 +409,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             children: [
               if (wide)
                 NavigationRail(
+                  minWidth: 96,
                   selectedIndex: _tab,
                   onDestinationSelected: _navigate,
                   labelType: NavigationRailLabelType.all,
@@ -423,7 +425,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               Expanded(
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 560),
+                    constraints: BoxConstraints(maxWidth: wideHome ? 1120 : 560),
                     child: AnimatedSwitcher(
                       duration: MediaQuery.disableAnimationsOf(context)
                           ? Duration.zero
@@ -469,8 +471,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   ],
                 ),
                 style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 23,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: -.8,
                 ),
               ),
@@ -811,9 +813,36 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
       const SizedBox(height: 12),
     ];
-    for (final row in config.where((r) => r['visible'] == 1)) {
-      content.addAll([card(row), const SizedBox(height: 12)]);
-    }
+    final visible = config.where((r) => r['visible'] == 1).toList();
+    content.add(LayoutBuilder(builder: (context, bounds) {
+      // Keep the saved sequence and visibility while using tablet space.
+      final columns = bounds.maxWidth >= 680 &&
+              MediaQuery.textScalerOf(context).scale(1) <= 1.3
+          ? 2
+          : 1;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var start = 0; start < visible.length; start += columns) ...[
+            if (start > 0) const SizedBox(height: 14),
+            if (columns == 1)
+              card(visible[start])
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: card(visible[start])),
+                  const SizedBox(width: 18),
+                  Expanded(
+                      child: start + 1 < visible.length
+                          ? card(visible[start + 1])
+                          : const SizedBox.shrink()),
+                ],
+              ),
+          ],
+        ],
+      );
+    }));
     return content;
   }
 
@@ -994,7 +1023,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     VoidCallback? onTap,
   }) => LayoutBuilder(
     builder: (context, bounds) {
-      const titleStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w800);
+      const titleStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w600);
       final actionStyle = TextStyle(
         fontSize: 13,
         color: Theme.of(context).colorScheme.primary,
@@ -1654,7 +1683,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget _pageTitle(String key) => Text(
     c.pack.t(key),
     style: Theme.of(context).textTheme.headlineSmall
-        ?.copyWith(fontWeight: FontWeight.w800),
+        ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -.5),
   );
 
   void _showSearch() {

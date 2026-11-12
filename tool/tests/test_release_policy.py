@@ -11,9 +11,10 @@ class ReleasePolicyTests(unittest.TestCase):
             self.assertFalse(permits_signed_build(branch, event))
 
     def test_requested_branch_requires_manual_dispatch(self):
-        branch = 'refs/heads/feature/lifeos-3-ux-recovery'
-        self.assertTrue(permits_signed_build(branch, 'workflow_dispatch'))
-        self.assertFalse(permits_signed_build(branch, 'push'))
+        for branch in ['refs/heads/feature/lifeos-3-ux-recovery', 'refs/heads/work/uladim-web-platform']:
+            self.assertTrue(permits_signed_build(branch, 'workflow_dispatch'))
+            for event in ['push', 'pull_request', 'workflow_run', 'schedule']:
+                self.assertFalse(permits_signed_build(branch, event))
 
     def test_uladim_requires_manual_dispatch_and_rejects_prs(self):
         branch = 'refs/heads/feature/uladim-brand'

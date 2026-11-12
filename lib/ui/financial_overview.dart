@@ -80,12 +80,14 @@ class _FinancialOverviewState extends State<FinancialOverview> {
     Widget metric(String title, BigInt value, Color color) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(t(title), style: Theme.of(context).textTheme.labelLarge),
+        Text(t(title), style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        )),
         const SizedBox(height: 3),
         Text(
           money(value),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: lifeAccent(context, color),
           ),
         ),
@@ -128,7 +130,7 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                 ),
                 key: const Key('insight_balance'),
                 style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
+                    ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -.6),
               ),
               if (!data.hasAccounts && !widget.compact)
                 Text(
