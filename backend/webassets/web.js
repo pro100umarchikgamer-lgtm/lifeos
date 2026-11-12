@@ -213,25 +213,101 @@ function metricCard(key,value){const labels={accounts:'Аккаунты',users:'
 function makeControlNavigation(session,container){container.replaceChildren();const select=el('select');select.setAttribute('aria-label','Раздел Control');const routes=[['dashboard.read','Обзор','dashboard'],['users.read','Пользователи','users'],['applications.manage','Заявки на тест','applications'],['staff.manage','Команда','staff'],['support.read','Поддержка','support'],['audit.read','Аудит','audit'],['flags.manage','Настройки интерфейса','flags']];for(const [permission,title,path]of routes)if(session.permissions.includes(permission)){const option=el('option',title);option.value=path;select.append(option);}if(!session.permissions.includes('dashboard.read')){const choose=el('option','Выберите раздел');choose.value='';choose.disabled=true;choose.selected=true;select.prepend(choose);}container.append(select);select.addEventListener('change',async()=>{try{const path=select.value;if(path==='dashboard'){await dashboard();return;}if(path==='users'){await staffUsers();return;}if(path==='applications'){await staffApplications();return;}if(path==='staff'){await staffTeam();return;}if(path==='support'){await support();return;}if(path==='flags'){await staffFlags();return;}heading('Журнал аудита');const result=await api('audit');for(const event of result.events){const card=panel(event.action,new Date(event.created_at*1000).toLocaleString());card.append(el('p',event.reason));const details=el('details');details.append(el('summary','Изменения'));details.append(el('pre',JSON.stringify({before:JSON.parse(event.before_value),after:JSON.parse(event.after_value)},null,2)));card.append(details);app.append(card);}}catch(e){notice(e.message);}});action('Выйти',async()=>{await api('logout',{});csrf='';login();},container);return container;}
 
 
-async function landing(config){
+const HOME_ICON_PATHS = {
+ today: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2m3 11 2 2 5-5',
+ tasks: 'm3 6 1 1 2-2M10 6h11m-18 6 1 1 2-2M10 12h11m-18 6 1 1 2-2M10 18h11',
+ calendar: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2M8 14h2M14 14h2',
+ notes: 'M5 3h14v18H5zM8 8h8M8 12h8M8 16h5',
+ money: 'M4 20V10m6 10V4m6 16v-8m5 8H2',
+ account: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-2a8 8 0 0 1 16 0v2'
+};
+
+function homeIcon(name) {
+ const namespace = 'http://www.w3.org/2000/svg';
+ const icon = document.createElementNS(namespace, 'svg');
+ for (const [key, value] of Object.entries({
+  viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7',
+  'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false'
+ })) icon.setAttribute(key, value);
+ const path = document.createElementNS(namespace, 'path');
+ path.setAttribute('d', HOME_ICON_PATHS[name]);
+ icon.append(path);
+ return icon;
+}
+
+function todayPreview() {
+ const preview = el('section', undefined, 'workspace-preview');
+ preview.setAttribute('aria-label', 'Пример интерфейса ULADIM');
+ const rail = el('div', undefined, 'preview-rail');
+ rail.setAttribute('aria-hidden', 'true');
+ rail.append(el('strong', 'ULADIM'));
+ const views = [
+  ['today', 'Сегодня'], ['tasks', 'Задачи'], ['calendar', 'Календарь'],
+  ['notes', 'Заметки'], ['money', 'Финансы'], ['account', 'Семья']
+ ];
+ for (const [icon, label] of views) {
+  rail.append(add(el('div', undefined, 'preview-view'), homeIcon(icon), el('span', label)));
+ }
+
+ const desk = el('div', undefined, 'preview-workspace');
+ const top = add(el('div', undefined, 'preview-top'),
+  add(el('div'), el('h2', 'Сегодня'), el('p', 'Четверг, 12 ноября')),
+  el('span', 'Пример интерфейса', 'preview-label'));
+
+ const tasks = el('div', undefined, 'preview-tasks');
+ const progress = el('span', '2 из 3');
+ progress.setAttribute('aria-label', 'Выполнено 2 из 3 задач');
+ tasks.append(add(el('div', undefined, 'preview-task-heading'), el('h3', 'Задачи на сегодня'), progress));
+ const list = el('ul', undefined, 'preview-task-list');
+ for (const [done, label] of [[true, 'Ответить на письма'], [true, 'Оплатить интернет'], [false, 'Подготовить план на неделю']]) {
+  const row = el('li', undefined, 'preview-task');
+  const mark = el('span', undefined, 'preview-check' + (done ? ' checked' : ''));
+  mark.setAttribute('role', 'img');
+  mark.setAttribute('aria-label', done ? 'Выполнено' : 'Открыто');
+  list.append(add(row, mark, el(done ? 's' : 'span', label)));
+ }
+ tasks.append(list);
+
+ const time = el('time', '18:30');
+ time.dateTime = '18:30';
+ const event = add(el('div', undefined, 'preview-event'), homeIcon('calendar'), time, el('strong', 'Встреча с семьёй'));
+ const finance = add(el('div', undefined, 'preview-finance'), el('h3', 'Финансы за ноябрь'));
+ const totals = el('dl', undefined, 'preview-totals');
+ for (const [label, amount] of [['Доход', '150 000 ₽'], ['Расход', '3 520 ₽']]) {
+  totals.append(add(el('div'), el('dt', label), el('dd', amount)));
+ }
+ finance.append(totals);
+ add(desk, top, tasks, event, finance);
+ return add(preview, rail, desk);
+}
+
+async function landing(config) {
+ document.body.classList.add('focus-home');
  app.replaceChildren();
  app.classList.add('landing');
- const hero=el('section',undefined,'product-hero');
- const copy=el('div',undefined,'hero-copy');
- add(copy,el('h1','Уладим день.\nОсвободим голову.'),el('p','Задачи, календарь, заметки и финансы для себя и семьи.','hero-description'));
- const actions=el('div',undefined,'hero-actions');
- add(actions,startLink(config),link('Возможности','/docs',true));
+ const hero = el('section', undefined, 'product-hero');
+ const copy = el('div', undefined, 'hero-copy');
+ const title = add(el('h1'), el('span', 'Уладим день.'), ' ', el('span', 'Освободим голову.'));
+ add(copy, title, el('p', 'Задачи, календарь, заметки и финансы для себя и семьи.', 'hero-description'));
+ const actions = el('div', undefined, 'hero-actions');
+ add(actions, startLink(config), link('Возможности', '/docs', true));
  copy.append(actions);
- if(!config.registration_open)copy.append(el('p','Регистрация по приглашениям.','hero-caption'));
- hero.append(copy);
- const preview=el('section',undefined,'workspace-preview');preview.setAttribute('aria-label','Иллюстрация ULADIM на примере данных');
- const rail=el('aside',undefined,'preview-rail');rail.append(el('strong','ULADIM'));for(const label of ['Сегодня','Задачи','Календарь','Заметки','Финансы'])rail.append(el('span',label));
- const desk=el('div',undefined,'preview-workspace');add(desk,el('span','ПРИМЕР ИНТЕРФЕЙСА','preview-label'),el('h2','Сегодня'),el('p','Важное — перед глазами.'));
- const metrics=el('div',undefined,'preview-metrics');for(const [n,label]of [['3','задачи'],['1','событие'],['2/3','выполнено']]){const stat=el('div');add(stat,el('strong',n),el('span',label));metrics.append(stat);}desk.append(metrics);
- const list=el('div',undefined,'preview-task-list');for(const [done,label]of [[true,'Подготовить план на неделю'],[true,'Записать идею для проекта'],[false,'Обсудить семейные планы']]){const row=el('div',undefined,'preview-task');const mark=el('span','','preview-check'+(done?' checked':''));mark.setAttribute('aria-hidden','true');add(row,mark,el('span',label));list.append(row);}desk.append(list);
- const flow=el('div',undefined,'preview-flow');flow.setAttribute('aria-label','Иллюстрация сравнения доходов и расходов');flow.append(el('strong','Деньги на виду'));const bars=el('div',undefined,'preview-columns');for(const [i,h]of [32,50,42,74,58,84,65].entries()){const pair=el('div');const income=el('i'),expense=el('i');income.style.height=h+'%';expense.style.height=(h*.55)+'%';add(pair,income,expense);bars.append(pair);}flow.append(bars,el('p','Доходы и расходы · отдельно по валютам'));desk.append(flow);add(preview,rail,desk);hero.append(preview);app.append(hero);
- const features=el('section',undefined,'product-features');
- for(const [title,body]of [['День — по вашему плану','Создавайте задачи, отмечайте сделанное и держите ближайшее перед глазами.'],['Мысли, которые не теряются','Записывайте идеи и возвращайтесь к нужной заметке без лишних шагов.'],['Финансы с понятной картиной','Ведите счета, доходы и расходы. Сравнивайте операции на диаграммах и выбирайте палитру. Валюты считаются отдельно.'],['Семья, в которой есть личное','Приглашайте близких в общее пространство. Родители управляют им на равных, доступ детей задаётся отдельно. Личные записи защищены правами.']]){const row=el('div',undefined,'feature-row');add(row,el('h2',title),el('p',body));features.append(row);}app.append(features);
+ if (!config.registration_open) copy.append(el('p', 'Регистрация по приглашениям.', 'hero-caption'));
+ app.append(add(hero, copy, todayPreview()));
+
+ const features = add(el('section', undefined, 'product-features'), el('h2', 'Что можно делать в ULADIM'));
+ const featureGrid = el('div', undefined, 'home-feature-grid');
+ const capabilities = [
+  ['calendar', 'Дела и календарь', 'Планируйте день, ведите задачи и не пропускайте важные события.'],
+  ['notes', 'Заметки', 'Храните идеи, планы и важную информацию в одном месте.'],
+  ['money', 'Финансы', 'Учитывайте доходы и расходы, ведите счета и бюджеты. Суммы видны отдельно по валютам.'],
+  ['account', 'Семейное пространство', 'Планируйте дела вместе с близкими и выбирайте, какими записями поделиться.']
+ ];
+ for (const [icon, name, description] of capabilities) {
+  const text = add(el('div'), el('h3', name), el('p', description));
+  featureGrid.append(add(el('div', undefined, 'feature-row'), homeIcon(icon), text));
+ }
+ app.append(add(features, featureGrid));
  const platforms=el('section',undefined,'product-platforms');
  add(platforms,el('h2','ULADIM на ваших устройствах'),applicationCards(false));
  app.append(platforms);

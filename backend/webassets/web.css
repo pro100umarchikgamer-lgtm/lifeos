@@ -222,3 +222,230 @@ body.product-site > footer:not([hidden]) {
   }
   body.product-site .plan-comparison th:first-child { width: 42%; padding-inline-start: 8px; }
 }
+
+/* Focus homepage. Keep public account pages and the workspace styles independent. */
+body.focus-home {
+  --ux-bg: #f7f6f0;
+  --ux-surface: #fdfcf9;
+  --ux-ink: #1b2822;
+  --ux-muted: #4d5c53;
+  --ux-border: #d3dbd2;
+  --ux-green: #105345;
+  --ux-soft: #e5eee3;
+  background: var(--ux-bg);
+  color: var(--ux-ink);
+}
+body.focus-home[data-theme="dark"] {
+  --ux-bg: #101b18;
+  --ux-surface: #1a2721;
+  --ux-ink: #edf5ee;
+  --ux-muted: #b4c6bb;
+  --ux-border: #405449;
+  --ux-green: #9dddc0;
+  --ux-soft: #254035;
+}
+@media (prefers-color-scheme: dark) {
+  body.focus-home[data-theme="system"] {
+    --ux-bg: #101b18;
+    --ux-surface: #1a2721;
+    --ux-ink: #edf5ee;
+    --ux-muted: #b4c6bb;
+    --ux-border: #405449;
+    --ux-green: #9dddc0;
+    --ux-soft: #254035;
+  }
+}
+body.product-site.focus-home > header.public-header {
+  max-width: 1176px;
+  width: calc(100% - 64px);
+  padding-inline: 0;
+  min-height: 74px;
+  border-bottom: 1px solid var(--ux-border);
+}
+body.product-site.focus-home .brand { font-size: clamp(23px, 2.9vw, 34px); font-weight: 800; }
+body.product-site.focus-home > header.public-header nav a[href="/account"],
+body.product-site.focus-home .public-header-controls > a { border-color: var(--ux-green); background: transparent; }
+body.product-site.focus-home #app.landing {
+  width: calc(100% - 64px);
+  max-width: 1176px;
+  padding: 0 0 52px;
+}
+body.product-site.focus-home #app.landing > .product-hero {
+  grid-template-columns: minmax(0, .84fr) minmax(0, 1.16fr);
+  gap: clamp(22px, 4vw, 56px);
+  padding: 38px 0 56px;
+}
+body.product-site.focus-home .hero-copy h1 {
+  margin: 0 0 20px;
+  font-size: clamp(34px, 4.35vw, 66px);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -.055em;
+  text-wrap: initial;
+}
+.focus-home .hero-copy h1 span { display: block; }
+body.product-site.focus-home .hero-copy .hero-description {
+  max-width: 440px;
+  margin: 0;
+  font-size: clamp(16px, 1.65vw, 23px);
+  line-height: 1.45;
+}
+body.product-site.focus-home .hero-copy .hero-actions { margin: 26px 0 0; gap: 12px; }
+body.product-site.focus-home .hero-copy .hero-actions .button {
+  flex: 0 1 auto;
+  padding-inline: clamp(13px, 2vw, 25px);
+  font-size: clamp(13px, 1.25vw, 17px);
+}
+body.product-site.focus-home .hero-copy .hero-actions .secondary {
+  background: transparent;
+  border-color: var(--ux-green);
+}
+body.product-site.focus-home .workspace-preview {
+  grid-template-columns: clamp(105px, 11vw, 154px) minmax(0, 1fr);
+  max-width: none;
+  transform: none;
+  border-radius: 16px;
+  box-shadow: 0 14px 32px #193e2e14;
+}
+.focus-home .workspace-preview .preview-rail {
+  padding: 16px 10px;
+  gap: 5px;
+  color: var(--ux-ink);
+  background: var(--ux-soft);
+  font-size: 12px;
+}
+.focus-home .workspace-preview .preview-rail strong { font-size: 20px; margin: 0 4px 14px; }
+.focus-home .preview-view { display: flex; align-items: center; gap: 7px; padding: 5px 7px; }
+.focus-home .preview-view:nth-child(2) {
+  background: color-mix(in srgb, var(--ux-green) 16%, var(--ux-soft));
+  color: var(--ux-ink);
+  border-radius: 7px;
+}
+.focus-home .workspace-preview .preview-rail .preview-view span { padding: 0; background: transparent; }
+.focus-home .preview-view svg, .focus-home .preview-event svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  color: var(--ux-green);
+}
+body.product-site.focus-home .preview-workspace { min-width: 0; padding: clamp(12px, 1.8vw, 22px); }
+.focus-home .preview-top, .focus-home .preview-task-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.focus-home .preview-top { margin-bottom: 16px; }
+.focus-home .preview-top h2 {
+  margin: 0;
+  font: 700 clamp(23px, 2.45vw, 34px)/1.04 Georgia, serif;
+  letter-spacing: -.035em;
+}
+.focus-home .preview-top p { margin: 3px 0 0; font-size: 13px; color: var(--ux-muted); }
+.focus-home .preview-top .preview-label {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  background: var(--ux-bg);
+  border: 1px solid var(--ux-border);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.focus-home .preview-tasks, .focus-home .preview-event, .focus-home .preview-finance {
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.focus-home .preview-tasks, .focus-home .preview-event { border: 1px solid var(--ux-border); }
+.focus-home .preview-task-heading h3, .focus-home .preview-finance h3 {
+  margin: 0;
+  font-size: clamp(15px, 1.5vw, 19px);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+.focus-home .preview-task-heading > span { flex-shrink: 0; font-size: 12px; }
+.focus-home .preview-workspace .preview-task-list { padding: 4px 0 0; margin: 0; list-style: none; }
+body.product-site.focus-home .preview-workspace .preview-task { font-size: 13px; padding: 5px 0; }
+.focus-home .preview-workspace .preview-task:last-child { border: 0; }
+.focus-home .preview-task s { color: var(--ux-muted); }
+.focus-home .preview-workspace .preview-check { border-radius: 4px; border-color: var(--ux-muted); }
+.focus-home .preview-workspace .preview-check.checked { border-color: var(--ux-green); }
+.focus-home .preview-event { display: flex; align-items: center; gap: 10px; margin-block: 10px; font-size: 13px; }
+.focus-home .preview-event time {
+  background: var(--ux-soft);
+  color: var(--ux-ink);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.focus-home .preview-finance { background: var(--ux-soft); }
+.focus-home .preview-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 8px 0 0; }
+.focus-home .preview-totals div + div { border-inline-start: 1px solid var(--ux-border); padding-inline-start: 14px; }
+.focus-home .preview-totals dt { color: var(--ux-muted); font-size: 12px; }
+.focus-home .preview-totals dd {
+  margin: 0;
+  font-size: clamp(17px, 1.8vw, 24px);
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+body.product-site.focus-home #app.landing > .product-features {
+  display: block;
+  border-top: 1px solid var(--ux-border);
+  padding-top: 28px;
+  margin-bottom: 42px;
+}
+.focus-home .product-features > h2 {
+  margin: 0 0 20px;
+  font: 700 clamp(25px, 3.3vw, 42px)/1.08 Georgia, serif;
+  letter-spacing: -.045em;
+}
+.focus-home .home-feature-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+body.product-site.focus-home .product-features .feature-row {
+  padding: 16px;
+  background: var(--ux-surface);
+  border: 1px solid var(--ux-border);
+  border-radius: 12px;
+}
+.focus-home .feature-row svg { width: 25px; height: 25px; color: var(--ux-green); }
+.focus-home .feature-row h3 { margin: 4px 0; font-size: 17px; line-height: 1.3; }
+.focus-home .feature-row p { margin: 0; line-height: 1.45; }
+
+@media (max-width: 1040px) {
+  body.product-site.focus-home .workspace-preview { grid-template-columns: minmax(0, 1fr); }
+  body.product-site.focus-home .preview-rail { display: none; }
+  .focus-home .home-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 759px) {
+  body.product-site.focus-home > header.public-header,
+  body.product-site.focus-home #app.landing:has(.product-hero) { width: calc(100% - 32px); padding-inline: 0; }
+  body.product-site.focus-home > header.public-header { min-height: 64px; }
+  body.product-site.focus-home #app.landing > .product-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 18px 0 26px;
+  }
+  body.product-site.focus-home .hero-copy h1 { font-size: clamp(32px, 9.4vw, 52px); margin-bottom: 12px; }
+  body.product-site.focus-home .hero-copy .hero-description { font-size: 16px; }
+  body.product-site.focus-home .hero-copy .hero-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    max-width: 440px;
+    margin-top: 16px;
+    gap: 8px;
+  }
+  body.product-site.focus-home .hero-copy .hero-actions .button {
+    text-align: center;
+    padding-inline: 8px;
+  }
+  body.product-site.focus-home .workspace-preview { max-width: 580px; }
+  .focus-home .preview-top { margin-bottom: 10px; }
+  .focus-home .preview-tasks, .focus-home .preview-event, .focus-home .preview-finance { padding: 9px 11px; }
+  body.product-site.focus-home #app.landing > .product-features { padding-top: 22px; }
+}
+@media (max-width: 460px) {
+  .focus-home .home-feature-grid { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  body.product-site.focus-home .product-features .feature-row { display: flex; align-items: flex-start; gap: 12px; }
+  .focus-home .feature-row svg { flex: 0 0 25px; }
+  .focus-home .feature-row h3 { margin-top: 0; }
+}
