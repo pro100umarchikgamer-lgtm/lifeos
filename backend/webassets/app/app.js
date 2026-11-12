@@ -695,6 +695,7 @@ const NOTE_DRAFT_COPY={
  'uz-Latn':['Qoralamani davom ettirish','Qoralama shu varaqda saqlanadi.','Brauzer qoralamani shu varaqda saqlay olmadi.'],
  'uz-Cyrl':['Қораламани давом эттириш','Қоралама шу варақда сақланади.','Браузер қораламани шу варақда сақлай олмади.']
 };
+const NOTE_SEARCH_COPY={ru:'Поиск заметок',en:'Search notes','uz-Latn':'Qaydlarni qidirish','uz-Cyrl':'Қайдларни қидириш'};
 const noteDraftPrefix=()=>state.session?.user_id?'uladim-note-draft:'+state.session.user_id+':':'';
 function noteDraftKey(record){
  const prefix=noteDraftPrefix();
@@ -730,7 +731,7 @@ function listNotes(m){
  title(m,'widget_notes',()=>editRecord('note'));
  m.classList.add('notes-page');
  const toolbar=E('div',undefined,'notes-toolbar');
- const search=input(toolbar,'search',t('search'),'search','',false);
+ const search=input(toolbar,'search',NOTE_SEARCH_COPY[state.lang]||NOTE_SEARCH_COPY.en,'search','',false);
  const library=E('div',undefined,'notes-library');
  const [resumeDraft]=NOTE_DRAFT_COPY[state.lang]||NOTE_DRAFT_COPY.en;
  if(readNoteDraft(noteDraftKey(null)))toolbar.append(button(resumeDraft,()=>editRecord('note'),'secondary'));
@@ -741,11 +742,13 @@ function listNotes(m){
   const rows=available.filter(r=>r.data.body.toLocaleLowerCase(state.lang).includes(needle)).sort((a,b)=>b.seq-a.seq);
   for(const r of rows){
    const c=E('article',undefined,'card note-card');
+   const content=E('div',undefined,'note-card-content');
    const firstLine=r.data.body.split('\n')[0];
    const preview=(firstLine.length>100?r.data.body.slice(100):r.data.body.slice(firstLine.length)).trimStart();
-   c.append(E('h2',firstLine.slice(0,100)||t('family_kind_note')));
-   if(preview)c.append(E('p',preview.slice(0,280),'note note-preview'));
-   c.append(button(readNoteDraft(noteDraftKey(r))?resumeDraft:t('edit'),()=>editRecord('note',r),'text-button'));
+   content.append(E('h2',firstLine.slice(0,100)||t('family_kind_note')));
+   if(preview)content.append(E('p',preview.slice(0,280),'note note-preview'));
+   content.append(button(readNoteDraft(noteDraftKey(r))?resumeDraft:t('edit'),()=>editRecord('note',r),'text-button'));
+   append(c,icon('notes'),content);
    library.append(c);
   }
   if(!rows.length)library.append(emptyPanel('notes',t(available.length?'web_no_results':'empty_notes')));
