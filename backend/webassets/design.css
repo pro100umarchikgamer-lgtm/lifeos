@@ -3425,7 +3425,7 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .financ
  body[data-design=clarity] #root:has(>main.login.focus-login) { display:grid;place-items:center;min-height:100svh;padding:32px;box-sizing:border-box; }
  body[data-design=clarity] #root main.login.focus-login:has(>.auth-form-panel) { width:min(1056px,100%);margin:0 auto; }
 }
-@media (min-width:760px) and (min-height:700px) {
+@media (min-width:1200px) and (min-height:700px) {
  body[data-design=clarity][data-reference-layout=b12] #root main.finance-page:has(.ledger) { display:flex;flex-direction:column;height:100dvh;min-height:0;padding-top:96px;padding-bottom:22px;overflow:hidden; }
  body[data-design=clarity][data-reference-layout=b12] #root main.finance-page:has(.ledger)>.intro { margin-bottom:16px;min-height:44px;flex-shrink:0; }
  body[data-design=clarity][data-reference-layout=b12] #root main.finance-page:has(.ledger)>.finance-navigation { margin-bottom:12px;flex-shrink:0; }
@@ -3473,6 +3473,10 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .financ
  body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-period { flex-wrap:wrap;gap:4px; }
  body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-today { margin-inline-start:auto; }
  body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card { min-height:180px; }
+}
+@media (max-width:359px) {
+ /* Give enlarged monetary text the full card width on narrow phones. */
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page button.finance-metric { display:flex;align-items:flex-start; }
 }
 @media (prefers-reduced-motion:reduce) {
  body[data-design=clarity][data-reference-layout=b12] #root .notes-page .note-card { transition:none; }
