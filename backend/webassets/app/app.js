@@ -1758,7 +1758,15 @@ async function notificationPage(content){
      const permission=await permissionResult;if(!active())return;
      if(permission!=='granted'){feedback.textContent=copy.permission;return;}
      const prepared=await call('notifications/prepare');if(!active())return;
-     subscription=await worker.registration.pushManager.getSubscription()||await worker.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:notificationKey(prepared.application_server_key)});
+     subscription=await worker.registration.pushManager.getSubscription();
+     if(subscription&&settings?.last_delivery?.error_code==='subscription_gone'){
+      // A provider can expire an endpoint before the browser removes it.
+      // Explicit reconnection must obtain a fresh subscription instead of
+      // registering the same dead endpoint again and repeating a 410 loop.
+      if(!await subscription.unsubscribe())throw new Error('notification_reconnect');
+      subscription=null;
+     }
+     subscription=subscription||await worker.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:notificationKey(prepared.application_server_key)});
      if(!active())return;
      settings=await call('notifications/subscribe',notificationSettings(subscription,{lead_minutes:Number(lead.value),priority:priority.value}));feedback.textContent='';
     });

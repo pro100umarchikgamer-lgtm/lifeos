@@ -17,12 +17,12 @@ OUT=Path('web_evidence/notifications')
 KEY='BOfjSvBlV87t2wZatd2QHZO4boIt-qSLdAoFW_t5U3DU6UcxDqEybIgsW7jLSwoKVNi-NnmJ1Aq2LxyXrM8F2Qc'
 SUBSCRIPTION=str(uuid.uuid4())
 FAKE_SUBSCRIPTION="""(() => {
- window.__permissionRequests=0;window.__unsubscribeCalls=0;const request=Notification.requestPermission.bind(Notification);
+ window.__permissionRequests=0;window.__unsubscribeCalls=0;window.__subscribeCalls=0;const request=Notification.requestPermission.bind(Notification);
  Notification.requestPermission=(...args)=>{window.__permissionRequests++;return request(...args);};
  let current=null;
  const make=()=>({endpoint:'https://push.invalid/synthetic',toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'synthetic',auth:'synthetic'}};},async unsubscribe(){window.__unsubscribeCalls++;current=null;return true;}});
  Object.defineProperty(PushManager.prototype,'getSubscription',{value:async()=>current});
- Object.defineProperty(PushManager.prototype,'subscribe',{value:async()=>{current=make();return current;}});
+ Object.defineProperty(PushManager.prototype,'subscribe',{value:async()=>{window.__subscribeCalls++;current=make();return current;}});
  window.__existingPushSubscription=()=>{current=make();};
 })();"""
 
@@ -111,6 +111,8 @@ def main():
   assert len([item for item in writes if item[0]=='/subscribe'])==before+1 and writes[-1][1]['lead_minutes']==30 and writes[-1][1]['priority']=='normal';assert page.evaluate('window.__permissionRequests')==0;checks.append('existing_optin_timezone_refresh_no_permission_prompt')
   open_tab(page,'Профиль');open_settings(page,'notifications');expect(page.get_by_text('Включены на этом устройстве',exact=True)).to_be_visible(timeout=20000);page.get_by_role('button',name='Выключить на устройстве',exact=True).click();expect(page.get_by_text('Выключены на этом устройстве',exact=True)).to_be_visible();assert page.evaluate('window.__unsubscribeCalls')==1 and not status['enabled'];checks.append('explicit_disable_server_and_browser')
   page.get_by_role('button',name='Включить уведомления',exact=True).click();expect(page.get_by_text('Включены на этом устройстве',exact=True)).to_be_visible()
+  before_subscriptions=page.evaluate('window.__subscribeCalls');before_unsubscribe=page.evaluate('window.__unsubscribeCalls');status['enabled']=False;status['last_delivery']={'id':str(uuid.uuid4()),'state':'failed','error_code':'subscription_gone'}
+  page.evaluate("openSettings('notifications')");expect(page.get_by_role('button',name='Включить уведомления',exact=True)).to_be_enabled(timeout=20000);page.get_by_role('button',name='Включить уведомления',exact=True).click();expect(page.get_by_text('Включены на этом устройстве',exact=True)).to_be_visible();assert page.evaluate('window.__subscribeCalls')==before_subscriptions+1 and page.evaluate('window.__unsubscribeCalls')==before_unsubscribe+1;checks.append('expired_provider_endpoint_reconnects_with_fresh_subscription')
   page.goto(origin+'/app?notification=calendar&workspace='+wid+'&day=2026-11-20');expect(page.get_by_role('heading',name='Календарь',exact=True)).to_be_visible();assert 'notification=' not in page.url;checks.append('authorized_calendar_notification_deep_link')
   open_tab(page,'Профиль');open_settings(page,'notifications');expect(page.get_by_role('button',name='Выключить на устройстве',exact=True)).to_be_visible(timeout=20000);page.get_by_role('button',name='Выключить на устройстве',exact=True).click();expect(page.get_by_text('Выключены на этом устройстве',exact=True)).to_be_visible();assert not status['enabled'];checks.append('disable_stale_server_optin_without_local_subscription')
   for width in [320,834,1440]:
