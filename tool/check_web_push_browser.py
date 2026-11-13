@@ -56,7 +56,7 @@ def synthetic_notification_api():
 def main():
  OUT.mkdir(parents=True,exist_ok=True);checks=[]
  with synthetic_notification_api() as (status,receipts,writes),fixture() as (origin,backend,actor,wid),sync_playwright() as p:
-  browser=p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM','/usr/bin/chromium'))
+  browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
   context=browser.new_context(viewport={'width':390,'height':844},permissions=['notifications'],timezone_id='Asia/Tashkent',locale='ru-RU')
   context.add_init_script(FAKE_SUBSCRIPTION)
   page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))

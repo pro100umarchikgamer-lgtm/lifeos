@@ -68,6 +68,7 @@ jobs:
         run: |
           python -m tool.check_welcome_browser
           python -m tool.check_session_experience
+          python -m tool.check_web_push_browser
           python -m tool.check_budget_input_browser
           python -m tool.check_currency_picker
           python -m tool.check_finance_views_browser

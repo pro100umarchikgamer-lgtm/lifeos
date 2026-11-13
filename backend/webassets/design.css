@@ -3307,3 +3307,28 @@ body[data-design=clarity][data-reference-layout=b12] #root .reference-member-rol
 @media(prefers-reduced-motion:reduce) {
  body[data-design=clarity] *,body.product-site * { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
 }
+
+/* Device notification settings use the same quiet, inline account layout. */
+body[data-design=clarity] .notification-panel { max-width:760px; }
+body[data-design=clarity] .notification-intro { max-width:54ch;color:var(--ux-muted);line-height:1.6; }
+body[data-design=clarity] .notification-status { margin-block:24px 18px;padding:14px 16px;border:1px solid var(--ux-border);border-radius:12px;background:var(--ux-soft);line-height:1.55;font-weight:550; }
+body[data-design=clarity] .notification-status[data-state=enabled] { color:var(--ux-green); }
+body[data-design=clarity] .notification-actions { display:flex;flex-wrap:wrap;align-items:center;gap:10px; }
+body[data-design=clarity] .notification-actions>button { min-height:44px; }
+body[data-design=clarity] .notification-feedback:empty,body[data-design=clarity] .notification-delivery:empty { display:none; }
+body[data-design=clarity] .notification-feedback { font-size:14px;line-height:1.6; }
+body[data-design=clarity] .notification-delivery { margin-block:24px;padding:18px;border:1px solid var(--ux-border);border-radius:12px; }
+body[data-design=clarity] .notification-delivery>h3 { margin:0 0 8px;font-size:14px; }
+body[data-design=clarity] .notification-delivery>p { margin:0;line-height:1.6;font-size:14px; }
+body[data-design=clarity] .notification-options { margin-block:24px 0;border-block-start:1px solid var(--ux-border);padding-block-start:18px; }
+body[data-design=clarity] .notification-options>summary { cursor:pointer;min-height:36px;font-size:14px;font-weight:550; }
+body[data-design=clarity] .notification-option-fields { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-block:14px; }
+body[data-design=clarity] .notification-option-fields>button { grid-column:1/-1;justify-self:start; }
+body[data-design=clarity] .notification-test-help { flex-basis:100%;margin:2px 0 8px; }
+body[data-design=clarity] .notification-privacy { padding-block-start:18px;margin-block-start:18px;border-block-start:1px solid var(--ux-border);line-height:1.7; }
+@media(max-width:459px) {
+ body[data-design=clarity] .notification-actions { align-items:stretch; }
+ body[data-design=clarity] .notification-actions>button { flex:1 1 100%; }
+ body[data-design=clarity] .notification-option-fields { grid-template-columns:minmax(0,1fr);gap:14px; }
+ body[data-design=clarity] .notification-status { padding:12px; }
+}
