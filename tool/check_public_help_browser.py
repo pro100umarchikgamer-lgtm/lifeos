@@ -63,7 +63,20 @@ def main():
             for path in ('/faq','/privacy','/terms','/support','/delete-account','/download'):
                 page.goto(origin+path);page.wait_for_selector(PAGES[path])
                 assert page.locator('h1').inner_text()!='Не удалось загрузить',path
+            # Publication never follows from one filled operator field alone.
+            page.unroute('**/account/api/config')
+            metadata={'published':True,'operatorName':'Synthetic fixture operator'}
+            page.route('**/account/api/config',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps({'public_legal':metadata})))
+            page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_be_visible()
+            metadata.update({key:'Synthetic fixture fact' for key in ('operatorCountry','processingRegion','minimumAgePolicy','legalBasis','securityRetention','backupRetention','deletionPolicy')})
+            metadata['supportEmail']='invalid-mailbox'
+            page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_be_visible()
+            metadata['supportEmail']='support@example.test'
+            page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_have_count(0)
+            assert 'будут окончательно указаны' not in page.locator('main').inner_text()
+            page.goto(origin+'/support');expect(page.locator('a[href="mailto:support@example.test"]')).to_be_visible()
             assert not errors,errors
+            results.append({'legal_metadata':'partial and invalid stay draft; complete synthetic facts publish without stale pending text; public support email shown'})
             results.append({'search':'match/empty/clear passed','keyboard':'native details Enter passed','context_anchors':len(ANCHORS),'config_outage':'six informational routes passed','page_errors':errors})
             browser.close()
     (OUT/'browser-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
