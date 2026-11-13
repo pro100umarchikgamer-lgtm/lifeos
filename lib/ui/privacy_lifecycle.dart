@@ -76,6 +76,7 @@ class _AccountPrivacyLifecycleState extends State<AccountPrivacyLifecycle> {
 
   Future<void> _run(Future<void> Function() action) async {
     if (busy || !_current) return;
+    final principal = widget.controller.capturePrincipal();
     setState(() {
       busy = true;
       error = null;
@@ -83,9 +84,11 @@ class _AccountPrivacyLifecycleState extends State<AccountPrivacyLifecycle> {
     try {
       await action();
     } on SyncFailure catch (failure) {
+      if (!_current) return;
       if (failure.code == 'account_unavailable') {
         final restricted = await widget.controller
-            .recheckUnavailablePrincipal(request: widget.request);
+            .recheckUnavailablePrincipal(
+                expectedPrincipal: principal, request: widget.request);
         if (!mounted) return;
         setState(() {
           cloudUnavailable = restricted;

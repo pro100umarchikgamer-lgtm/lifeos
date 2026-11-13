@@ -13,6 +13,14 @@ import 'record_projection.dart';
 import 'api.dart';
 import 'engine.dart';
 
+/// Identity and transport that originated an asynchronous account operation.
+class AccountPrincipal {
+  const AccountPrincipal._(this._api, this._user, this._generation);
+  final FamilyApi? _api;
+  final Object? _user;
+  final int _generation;
+}
+
 class FamilyController extends ChangeNotifier {
   FamilyController(this.store,
       {FlutterSecureStorage? secure,
@@ -159,12 +167,20 @@ class FamilyController extends ChangeNotifier {
     });
   }
 
+  AccountPrincipal capturePrincipal() =>
+      AccountPrincipal._(api, account?['user_id'], _generation);
+  bool isCurrentPrincipal(AccountPrincipal principal) =>
+      principal._generation == _generation &&
+      identical(principal._api, api) &&
+      principal._user == account?['user_id'];
+
   Future<void> run(Future<void> Function() action) async {
     if (busy || _clearingSession != null || _restrictionCheck != null) {
       error = "client_busy";
       publish();
       return;
     }
+    final principal = capturePrincipal();
     busy = true;
     error = null;
     publish();
@@ -173,7 +189,7 @@ class FamilyController extends ChangeNotifier {
     } on SyncFailure catch (e) {
       error = e.code;
       if (e.code == 'account_unavailable' && e.status == 403) {
-        await recheckUnavailablePrincipal();
+        await recheckUnavailablePrincipal(expectedPrincipal: principal);
       }
       if (e.code == 'workspace_forbidden' || e.code == 'profile_forbidden') {
         if (workspace != null && account != null) {
@@ -564,24 +580,26 @@ class FamilyController extends ChangeNotifier {
           await _clearSession();
         }
       });
-  Future<bool> recheckUnavailablePrincipal(
-          {Future<Json> Function(String path, {Json? body})? request}) =>
-      _restrictionCheck ??= _recheckUnavailablePrincipal(request)
-          .whenComplete(() => _restrictionCheck = null);
-  Future<bool> _recheckUnavailablePrincipal(
+  Future<bool> recheckUnavailablePrincipal({
+    required AccountPrincipal expectedPrincipal,
+    Future<Json> Function(String path, {Json? body})? request,
+  }) {
+    if (!isCurrentPrincipal(expectedPrincipal)) return Future.value(false);
+    return _restrictionCheck ??=
+        _recheckUnavailablePrincipal(expectedPrincipal, request)
+            .whenComplete(() => _restrictionCheck = null);
+  }
+  Future<bool> _recheckUnavailablePrincipal(AccountPrincipal principal,
       Future<Json> Function(String path, {Json? body})? request) async {
-    final client = api, user = account?['user_id'], generation = _generation;
-    final fetch = request ?? client?.request;
-    if (user == null || fetch == null) return false;
+    final fetch = request ?? principal._api?.request;
+    if (principal._user == null || fetch == null) return false;
     try {
       await fetch('/v1/me');
       return false;
     } on SyncFailure catch (failure) {
       if (failure.code != 'account_unavailable' ||
           failure.status != 403 ||
-          generation != _generation ||
-          !identical(client, api) ||
-          account?['user_id'] != user) {
+          !isCurrentPrincipal(principal)) {
         return false;
       }
       try {

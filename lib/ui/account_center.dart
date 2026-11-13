@@ -170,6 +170,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
 
   Future<void> run(Future<void> Function() action) async {
     if (busy || !_current) return;
+    final principal = widget.controller.capturePrincipal();
     setState(() {
       busy = true;
       error = null;
@@ -177,9 +178,11 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     try {
       await action();
     } on SyncFailure catch (failure) {
+      if (!_current) return;
       if (failure.code == 'account_unavailable') {
         final restricted = await widget.controller
-            .recheckUnavailablePrincipal(request: request);
+            .recheckUnavailablePrincipal(
+                expectedPrincipal: principal, request: request);
         if (mounted) {
           setState(() {
             principalUnavailable = restricted;
