@@ -119,8 +119,8 @@ class SecurityAuditTests(unittest.TestCase):
         with self.backend.connect() as db:
             db.execute('INSERT INTO staff(id,user_id,roles,mfa_secret,created_at) VALUES(?,?,?,?,?)',(sid,self.bob['id'],'["support"]',self.backend.cipher.encrypt(secret.encode()),self.now))
         self.admit_staff(self.cookies[1])
-        reads={'dashboard':'dashboard.read','users':'users.read','staff':'staff.manage','audit':'audit.read','support':'support.read','flags':'flags.manage','applications':'applications.manage','catalog':'plans.grant'}
-        writes={'user/recovery':'users.recover','applications/decide':'applications.manage','moderate':'users.moderate','grant':'plans.grant','revoke-grant':'plans.grant','override':'plans.grant','catalog':'plans.catalog','staff/invite':'staff.manage','staff/update':'staff.manage','support/reply':'support.reply','support/triage':'support.reply','flags/preview':'flags.manage','flags/commit':'flags.manage'}
+        reads={'record-recovery':'records.recover','dashboard':'dashboard.read','users':'users.read','staff':'staff.manage','audit':'audit.read','support':'support.read','flags':'flags.manage','applications':'applications.manage','catalog':'plans.grant'}
+        writes={'record-recovery/approve':'records.recover','user/recovery':'users.recover','applications/decide':'applications.manage','moderate':'users.moderate','grant':'plans.grant','revoke-grant':'plans.grant','override':'plans.grant','catalog':'plans.catalog','staff/invite':'staff.manage','staff/update':'staff.manage','support/reply':'support.reply','support/triage':'support.reply','flags/preview':'flags.manage','flags/commit':'flags.manage'}
         for role, permissions in ROLE_PERMISSIONS.items():
             with self.backend.connect() as db:
                 db.execute('UPDATE staff SET roles=?,last_counter=-1 WHERE id=?',(json.dumps([role]),sid))

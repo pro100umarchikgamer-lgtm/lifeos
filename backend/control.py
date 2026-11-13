@@ -15,11 +15,11 @@ from . import entitlements
 
 ROLE_RANK = {'owner': 100, 'admin': 80, 'billing_manager': 40, 'moderator': 30, 'support': 20, 'auditor': 10}
 ROLE_PERMISSIONS = {
-    'owner': {'announcements.manage', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
-    'admin': {'announcements.manage', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'owner': {'announcements.manage', 'records.recover', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'admin': {'announcements.manage', 'records.recover', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
     'billing_manager': {'users.read', 'plans.grant', 'audit.read'},
     'moderator': {'users.read', 'users.moderate', 'support.read', 'support.reply'},
-    'support': {'users.recover', 'users.read', 'support.read', 'support.reply'},
+    'support': {'records.recover', 'users.recover', 'users.read', 'support.read', 'support.reply'},
     'auditor': {'dashboard.read', 'audit.read'},
 }
 SAFE_FLAGS = {'compact_onboarding', 'chart_styles', 'support_entry'}

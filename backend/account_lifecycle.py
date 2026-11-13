@@ -194,6 +194,7 @@ class AccountLifecycle:
             for table in ('budget_inbox_sources', 'budget_inbox_notifications', 'inbox_settings', 'inbox_notifications', 'announcement_states', 'announcement_recipients', 'web_push_subscriptions', 'verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa', 'login_challenges', 'google_identities', 'account_credentials', 'oauth_challenges'):
                 db.execute('DELETE FROM '+table+' WHERE user_id=?', (uid,))
             db.execute('DELETE FROM grants WHERE user_id=?', (uid,))
+            db.execute('DELETE FROM record_recovery_requests WHERE user_id=?', (uid,))
             db.execute('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid,))
             db.execute('DELETE FROM support_tickets WHERE user_id=?', (uid,))
             db.execute('DELETE FROM invitations WHERE email=? AND used_by IS NULL', (user['email'],))

@@ -183,7 +183,7 @@ class Web:
         if not staff and action == 'google/unlink' and method == 'POST':
             return self.google.unlink(actor, body.get('password'), body.get('code')), headers + [self.cookie('', clear=True)]
         if action == 'session' and method == 'GET':
-            return ({'staff_id': actor.id, 'user_id': actor.user_id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token), 'control_available': self.admission.available(actor)}), headers
+            return ({'staff_id': actor.id, 'user_id': actor.user_id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token), 'control_available': self.admission.available(actor), 'record_recovery_available': bool(actor['verified'])}), headers
         if action == 'logout' and method == 'POST':
             if staff: self.control.logout(token)
             else:
@@ -275,6 +275,13 @@ class Web:
                 if action == 'announcements/publish': return inbox.transition(actor, b)
                 if action == 'announcements/cancel': return inbox.transition(actor, b, cancel=True)
             raise Failure('not_found', 404)
+
+        if action == 'record-recovery' and method == 'GET':
+            from .record_recovery import RecordRecovery
+            return RecordRecovery(self.backend).requests(actor, q.get('before', [None])[0], True)
+        if action == 'record-recovery/approve' and method == 'POST':
+            from .record_recovery import RecordRecovery
+            return RecordRecovery(self.backend).approve(actor, b)
         if method == 'GET':
             if action == 'applications':
                 from .early_access import EarlyAccess
@@ -323,6 +330,16 @@ class Web:
             if method == 'POST' and action in ('inbox/read', 'inbox/dismiss', 'inbox/presented'):
                 return inbox.mutate(actor, action.rsplit('/', 1)[-1], b)
             raise Failure('not_found', 404)
+
+        if action == 'trash' and method == 'GET':
+            from .record_recovery import RecordRecovery
+            return RecordRecovery(self.backend).trash(actor, q.get('workspace', [''])[0], q.get('before', [None])[0], q.get('record', [None])[0])
+        if action.startswith('recovery/'):
+            from .record_recovery import RecordRecovery
+            recovery = RecordRecovery(self.backend)
+            if action == 'recovery/requests' and method == 'GET': return recovery.requests(actor, q.get('before', [None])[0])
+            handlers = {'recovery/request': recovery.request, 'recovery/prepare': recovery.prepare, 'recovery/commit': recovery.commit, 'recovery/cancel': recovery.cancel}
+            if method == 'POST' and action in handlers: return handlers[action](actor, b)
         if action == 'notifications' and method == 'GET': return self.push.status(actor)
         if method == 'POST':
             if action == 'notifications/prepare': return self.push.prepare(actor)
@@ -379,6 +396,8 @@ class Web:
         relative = 'index.html' if path in ('/app', '/app/') else ('sw.js' if path == '/app/sw.js' else path[len('/app/assets/'):])
         allowed = {'index.html', 'app.js', 'domain.js', 'money.js', 'statement-formats.js', 'statement-pdf.js', 'statement-xlsx.js', 'personal-import.js', 'pdf-lib.mjs', 'pdf-worker.mjs', 'import.js', 'statement-worker.js', 'app.css', 'auth-texture.webp', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
         allowed.update({'inbox.js', 'inbox.css'})
+
+        allowed.update({'recovery.js', 'recovery.css'})
         require(relative in allowed and (root / relative).is_file(), 'not_found', 404)
         mime = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.webmanifest': 'application/manifest+json', '.json': 'application/json'}.get(Path(relative).suffix, mimetypes.guess_type(relative)[0] or 'application/octet-stream')
         result = dict(headers)

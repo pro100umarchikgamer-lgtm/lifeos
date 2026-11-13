@@ -379,13 +379,15 @@ class Backend(AccountSessions):
             except Failure as error: results.append({'id':op.get('id'),'status':'rejected','error':error.code})
         return {'results':results}
     def _record_operation(self,actor,wid,op):
-        require(isinstance(op,dict));action=op.get('action');require(action in ('record.put','record.delete','record.grant','request.fulfill','task.complete','task.review'))
+        require(isinstance(op,dict));action=op.get('action');require(action in ('record.restore','record.put','record.delete','record.grant','request.fulfill','task.complete','task.review'))
         identifier(op.get('id'))
         rid=identifier(op.get('record_id'))
         with self.transaction() as db:
             space=self._workspace(db,actor,wid)
             if space['kind']=='family':self.check_service(db,actor['id'],'family_write')
             row=db.execute('SELECT * FROM records WHERE id=?',(rid,)).fetchone()
+            if action=='record.restore':
+                require(row is not None and row['owner_id']==actor['id'],'not_found',404)
             if row:
                 require(row['workspace_id']==wid and self._readable(db,actor,space,row),'record_forbidden',403)
                 require(self._editable(db,actor,space,row),'record_forbidden',403)
@@ -394,7 +396,12 @@ class Backend(AccountSessions):
             expected=op.get('revision');require(type(expected) is int and expected>=0)
             if (row['revision'] if row else 0)!=expected:
                 return {'id':op['id'],'status':'conflict','record_id':rid,'server':self._data(db,row) if row else None}
-            if action in ('task.complete','task.review'):
+            if action=='record.restore':
+                from .record_recovery import RecordRecovery
+                RecordRecovery(self).restore_in(db,actor,space,row,op)
+                seq=self._audit(db,wid,actor,op['id'],action,rid)
+                db.execute('UPDATE records SET revision=revision+1,seq=? WHERE id=?',(seq,rid))
+            elif action in ('task.complete','task.review'):
                 require(row is not None and row['kind']=='task' and not row['deleted'],'record_missing')
                 task=self._data(db,row)['data'];assignees=task['assignees'];pid=op.get('profile_id')
                 require(pid in assignees,'invalid_participant');require(type(op.get('completed')) is bool)

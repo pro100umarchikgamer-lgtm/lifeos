@@ -342,3 +342,11 @@ class PostgresControlRecoveryTests(recoveryfixtures.ControlRecoveryTests):
     def setUp(self):
         self.fixture=PostgresControlWebTests(methodName='test_staff_cookie_is_not_a_customer_bearer_and_mfa_required')
         self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+
+
+import test_record_recovery as recordrecoveryfixtures
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresRecordRecoveryTests(recordrecoveryfixtures.RecordRecoveryTests):
+    def make_fixture(self):
+        return PostgresControlWebTests(methodName='test_staff_cookie_is_not_a_customer_bearer_and_mfa_required')
