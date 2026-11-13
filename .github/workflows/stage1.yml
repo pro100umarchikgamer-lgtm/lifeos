@@ -34,16 +34,68 @@ permissions:
   contents: read
   actions: read
 jobs:
+  release_mode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select retained publication only for exact release infrastructure changes
+        id: mode
+        env:
+          BUILD_APK: ${{ inputs.build_apk || false }}
+          UPGRADE_PROBE: ${{ inputs.upgrade_probe || false }}
+          FOCUSED: ${{ inputs.focused || false }}
+          REUSE_SIGNED_APK: ${{ inputs.reuse_signed_apk || false }}
+          FORCE_FULL_VALIDATION: ${{ inputs.force_full_validation || false }}
+        run: python3 -m tool.native_release_mode
+
+  publish_retained:
+    needs: release_mode
+    if: github.event_name == 'workflow_dispatch' && inputs.build_apk == true && github.repository == 'pro100umarchikgamer-lgtm/lifeos' && github.ref == 'refs/heads/work/uladim-web-platform' && needs.release_mode.outputs.mode == 'publish-retained'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check retained release gate and draft publication logic
+        run: python3 -m unittest tool.tests.test_retained_native_release -v
+      - name: Verify and publish the already built APK without rebuilding or app tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_APK: ${{ inputs.build_apk || false }}
+          UPGRADE_PROBE: ${{ inputs.upgrade_probe || false }}
+          FOCUSED: ${{ inputs.focused || false }}
+          REUSE_SIGNED_APK: ${{ inputs.reuse_signed_apk || false }}
+          FORCE_FULL_VALIDATION: ${{ inputs.force_full_validation || false }}
+        run: python3 -m tool.publish_retained_apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uladim-native-publication-receipt
+          path: native-release-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+
   production_backend:
-    if: inputs.upgrade_probe != true
+    needs: release_mode
+    if: needs.release_mode.outputs.mode == 'validate' && inputs.upgrade_probe != true
     uses: ./.github/workflows/backend-production.yml
   focused:
-    needs: production_backend
-    if: inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-control-release' || github.ref == 'refs/heads/feature/uladim-ux-recovery-launch' || github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true)
+    needs: [release_mode, production_backend]
+    if: needs.release_mode.outputs.mode == 'validate' && (inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-control-release' || github.ref == 'refs/heads/feature/uladim-ux-recovery-launch' || github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true))
     uses: ./.github/workflows/family-focused.yml
   checks:
-    needs: production_backend
-    if: inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-control-release' && github.ref != 'refs/heads/feature/uladim-ux-recovery-launch' && github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
+    needs: [release_mode, production_backend]
+    if: needs.release_mode.outputs.mode == 'validate' && inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-control-release' && github.ref != 'refs/heads/feature/uladim-ux-recovery-launch' && github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
     runs-on: ubuntu-latest
     timeout-minutes: 55
     services:
