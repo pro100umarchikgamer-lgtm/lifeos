@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 15,
+  "packVersion": 16,
   "locale": "de",
   "nativeName": "Deutsch",
   "strings": {
@@ -804,7 +804,8 @@
     "privacy_cloud_erasing": "Die Cloud-Löschung wird abgeschlossen. Dieses Konto kann Cloud-Daten nicht mehr ändern. Lokale Kopien bleiben auf dem Gerät.",
     "privacy_cloud_unavailable": "Dieses Cloud-Konto ist nicht verfügbar. Eine beantragte Löschung wird möglicherweise noch abgeschlossen. Persönliche Einträge auf dem Gerät bleiben erhalten.",
     "privacy_action_unavailable": "Die Aktion konnte nicht abgeschlossen werden. Dein aktuelles Konto und lokale Einträge bleiben erhalten. Prüfe den Empfänger oder versuche es erneut.",
-    "privacy_confirm_action": "Bestätigen"
+    "privacy_confirm_action": "Bestätigen",
+    "confirm": "Bestätigen"
   },
   "plurals": {
     "record_count": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 15,
+  "packVersion": 16,
   "locale": "az",
   "nativeName": "Azərbaycan dili",
   "strings": {
@@ -804,7 +804,8 @@
     "privacy_cloud_erasing": "Buludda silinmə tamamlanır. Hesab artıq bulud məlumatlarını dəyişə bilmir. Cihazdakı yerli nüsxələr qalır.",
     "privacy_cloud_unavailable": "Bu bulud hesabı əlçatan deyil. Silinmə istənilibsə, proses davam edə bilər. Cihazdakı şəxsi qeydlər qalır.",
     "privacy_action_unavailable": "Əməliyyat tamamlanmadı. Cari hesabınız və yerli qeydlər saxlanıb. Alıcını yoxlayın və ya yenidən cəhd edin.",
-    "privacy_confirm_action": "Təsdiqlə"
+    "privacy_confirm_action": "Təsdiqlə",
+    "confirm": "Təsdiqlə"
   },
   "plurals": {
     "record_count": {

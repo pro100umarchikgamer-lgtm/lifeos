@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 15,
+  "packVersion": 16,
   "locale": "hy",
   "nativeName": "Հայերեն",
   "strings": {
@@ -804,7 +804,8 @@
     "privacy_cloud_erasing": "Ամպային ջնջումն ավարտվում է։ Հաշիվն այլևս չի կարող փոխել ամպային տվյալները։ Սարքի տեղային պատճենները մնում են։",
     "privacy_cloud_unavailable": "Այս ամպային հաշիվը հասանելի չէ։ Պահանջված ջնջումը գուցե դեռ ավարտվում է։ Սարքի անձնական գրառումները մնում են։",
     "privacy_action_unavailable": "Գործողությունը չավարտվեց։ Ընթացիկ հաշիվն ու տեղային գրառումները պահպանվել են։ Ստուգեք ստացողին կամ կրկին փորձեք։",
-    "privacy_confirm_action": "Հաստատել"
+    "privacy_confirm_action": "Հաստատել",
+    "confirm": "Հաստատել"
   },
   "plurals": {
     "record_count": {

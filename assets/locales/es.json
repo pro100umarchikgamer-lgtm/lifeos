@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 15,
+  "packVersion": 16,
   "locale": "es",
   "nativeName": "Español",
   "strings": {
@@ -804,7 +804,8 @@
     "privacy_cloud_erasing": "El borrado en la nube está terminando. La cuenta ya no puede cambiar datos en la nube. Las copias locales permanecen.",
     "privacy_cloud_unavailable": "Esta cuenta en la nube no está disponible. Si solicitaste borrarla, el proceso puede seguir en curso. Los datos personales del dispositivo permanecen.",
     "privacy_action_unavailable": "No se pudo completar la acción. Tu cuenta actual y los datos locales se conservan. Revisa el destinatario o reintenta.",
-    "privacy_confirm_action": "Confirmar"
+    "privacy_confirm_action": "Confirmar",
+    "confirm": "Confirmar"
   },
   "plurals": {
     "record_count": {

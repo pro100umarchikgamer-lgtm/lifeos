@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 15,
+  "packVersion": 16,
   "locale": "uz-Latn",
   "nativeName": "O‘zbekcha",
   "strings": {
@@ -804,7 +804,8 @@
     "privacy_cloud_erasing": "Bulutdagi o‘chirish yakunlanmoqda. Hisob endi bulut ma’lumotlarini o‘zgartira olmaydi. Qurilmadagi mahalliy nusxalar qoladi.",
     "privacy_cloud_unavailable": "Bu bulut hisobi mavjud emas. O‘chirish so‘ralgan bo‘lsa, jarayon hali tugayotgan bo‘lishi mumkin. Qurilmadagi shaxsiy yozuvlar qoladi.",
     "privacy_action_unavailable": "Amal tugallanmadi. Joriy hisob va mahalliy yozuvlar saqlandi. Oluvchini tekshiring yoki qayta urining.",
-    "privacy_confirm_action": "Tasdiqlash"
+    "privacy_confirm_action": "Tasdiqlash",
+    "confirm": "Tasdiqlash"
   },
   "plurals": {
     "record_count": {

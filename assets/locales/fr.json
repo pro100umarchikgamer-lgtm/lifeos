@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 15,
+  "packVersion": 16,
   "locale": "fr",
   "nativeName": "Français",
   "strings": {
@@ -804,7 +804,8 @@
     "privacy_cloud_erasing": "La suppression cloud se termine. Ce compte ne peut plus modifier les données cloud. Les copies locales restent sur l’appareil.",
     "privacy_cloud_unavailable": "Ce compte cloud est indisponible. Une suppression demandée peut encore être en cours. Les données personnelles sur cet appareil restent.",
     "privacy_action_unavailable": "L’action n’a pas abouti. Votre compte actuel et vos données locales sont conservés. Vérifiez le destinataire ou réessayez.",
-    "privacy_confirm_action": "Confirmer"
+    "privacy_confirm_action": "Confirmer",
+    "confirm": "Confirmer"
   },
   "plurals": {
     "record_count": {
