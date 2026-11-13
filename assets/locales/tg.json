@@ -743,7 +743,10 @@
     "family_error_google_cancelled": "Майдонҳои воридкардаро санҷед.",
     "family_error_google_already_linked": "Майдонҳои воридкардаро санҷед.",
     "family_error_google_last_method": "Майдонҳои воридкардаро санҷед.",
-    "family_error_google_no_account": "Google дастнорас аст. Пайвастшавиро санҷед ё бо гузарвожа ворид шавед."
+    "family_error_google_no_account": "Google дастнорас аст. Пайвастшавиро санҷед ё бо гузарвожа ворид шавед.",
+    "family_error_service_unavailable": "Хизмат муваққатан дастнорас аст. Баъдтар такрор кунед.",
+    "account_login_methods_loading": "Роҳҳои воридшавӣ санҷида мешаванд…",
+    "account_google_disabled": "Воридшавӣ тавассути Google фаъол нест. Почта ва рамзро истифода баред."
   },
   "plurals": {
     "record_count": {

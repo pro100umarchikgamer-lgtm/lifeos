@@ -36,6 +36,8 @@ class FamilyController extends ChangeNotifier {
   String? workspace, error, pendingRegistrationEmail;
   bool busy = false;
   bool loginMfaRequired = false, googleAvailable = false;
+  bool loginMethodsLoading = false, loginMethodsLoaded = false;
+  String? loginMethodsError;
   String? _loginChallenge, _loginEndpoint, _loginEmail;
   bool _disposed = false;
   Timer? _retry;
@@ -232,14 +234,24 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> refreshLoginMethods() async {
-    if (accountOrigin.isEmpty) return;
+    if (accountOrigin.isEmpty || loginMethodsLoading) return;
     final candidate = _apiFactory(accountOrigin);
+    loginMethodsLoading = true;
+    loginMethodsError = null;
+    publish();
     try {
       final result = await candidate.request('/v1/auth/google/config');
+      if (result['google_enabled'] is! bool) {
+        throw const SyncFailure('invalid_sync_response');
+      }
       googleAvailable = result['google_enabled'] == true;
+      loginMethodsLoaded = true;
+    } on SyncFailure catch (error) {
+      loginMethodsError = error.code;
     } catch (_) {
-      googleAvailable = false;
+      loginMethodsError = 'client_error';
     } finally {
+      loginMethodsLoading = false;
       candidate.close();
       publish();
     }

@@ -416,7 +416,24 @@ class _FamilyPageState extends State<FamilyPage> {
                     ),
                   if (c.accountOrigin.isNotEmpty) ...[
                     if (!c.loginMfaRequired) ...[
-                      if (c.googleAvailable)
+                      if (c.loginMethodsLoading)
+                        Text(t('account_login_methods_loading'))
+                      else if (c.loginMethodsError != null) ...[
+                        Text(t('family_error_${c.loginMethodsError}')),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton.icon(
+                            key: const Key('retry_login_methods'),
+                            onPressed: c.busy ? null : c.refreshLoginMethods,
+                            icon: const Icon(Icons.refresh),
+                            label: Text(t('retry')),
+                          ),
+                        ),
+                      ] else if (c.loginMethodsLoaded && !c.googleAvailable)
+                        Text(t('account_google_disabled')),
+                      if (c.googleAvailable &&
+                          !c.loginMethodsLoading &&
+                          c.loginMethodsError == null)
                         OutlinedButton(
                           onPressed: c.busy
                               ? null

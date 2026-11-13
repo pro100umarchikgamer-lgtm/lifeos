@@ -743,7 +743,10 @@
     "family_error_google_cancelled": "Prüfen Sie Ihre Eingaben.",
     "family_error_google_already_linked": "Prüfen Sie Ihre Eingaben.",
     "family_error_google_last_method": "Prüfen Sie Ihre Eingaben.",
-    "family_error_google_no_account": "Google ist nicht verfügbar. Prüfe deine Verbindung oder nutze dein Passwort."
+    "family_error_google_no_account": "Google ist nicht verfügbar. Prüfe deine Verbindung oder nutze dein Passwort.",
+    "family_error_service_unavailable": "Der Dienst ist vorübergehend nicht verfügbar. Versuchen Sie es später erneut.",
+    "account_login_methods_loading": "Anmeldeoptionen werden geprüft…",
+    "account_google_disabled": "Die Anmeldung mit Google ist nicht aktiviert. Verwenden Sie E-Mail und Passwort."
   },
   "plurals": {
     "record_count": {

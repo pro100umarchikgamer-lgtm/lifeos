@@ -743,7 +743,10 @@
     "family_error_google_cancelled": "Check the fields you entered.",
     "family_error_google_already_linked": "Check the fields you entered.",
     "family_error_google_last_method": "Check the fields you entered.",
-    "family_error_google_no_account": "Google is unavailable. Check your connection or sign in with a password."
+    "family_error_google_no_account": "Google is unavailable. Check your connection or sign in with a password.",
+    "family_error_service_unavailable": "The service is temporarily unavailable. Try again later.",
+    "account_login_methods_loading": "Checking sign-in options…",
+    "account_google_disabled": "Google sign-in is not enabled. Use email and password."
   },
   "plurals": {
     "record_count": {

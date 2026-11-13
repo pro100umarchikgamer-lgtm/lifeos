@@ -743,7 +743,10 @@
     "family_error_google_cancelled": "Ստուգեք մուտքագրված դաշտերը։",
     "family_error_google_already_linked": "Ստուգեք մուտքագրված դաշտերը։",
     "family_error_google_last_method": "Ստուգեք մուտքագրված դաշտերը։",
-    "family_error_google_no_account": "Google-ը հասանելի չէ։ Ստուգեք կապը կամ օգտագործեք գաղտնաբառը։"
+    "family_error_google_no_account": "Google-ը հասանելի չէ։ Ստուգեք կապը կամ օգտագործեք գաղտնաբառը։",
+    "family_error_service_unavailable": "Ծառայությունը ժամանակավորապես անհասանելի է։ Փորձեք ավելի ուշ։",
+    "account_login_methods_loading": "Ստուգվում են մուտքի եղանակները…",
+    "account_google_disabled": "Google-ով մուտքը միացված չէ։ Օգտագործեք էլփոստն ու գաղտնաբառը։"
   },
   "plurals": {
     "record_count": {

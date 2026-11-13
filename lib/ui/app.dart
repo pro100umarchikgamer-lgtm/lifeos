@@ -1449,17 +1449,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final grid = c.preferences['modules_view'] == 'grid';
     final modules =
         <({IconData icon, String title, String body, VoidCallback open})>[
-      (
-        icon: Icons.account_balance_wallet_outlined,
-        title: c.pack.t('financial_foundation'),
-        body: c.pack.t('ux_modules_finance'),
-        open: () => Navigator.push<void>(
-              context,
-              MaterialPageRoute(
-                builder: (_) => FinanceFoundation(controller: c),
-              ),
-            ),
-      ),
       for (final table in personalModules)
         (
           icon: switch (table) {
