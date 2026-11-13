@@ -4,7 +4,7 @@ const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],fi
 let calendarMode='month';
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null,backgroundDirty=false;
 const sessionEvents=typeof BroadcastChannel==='function'?new BroadcastChannel('uladim-session'):null;
-sessionEvents?.addEventListener('message',event=>{if(event.data==='signed-out'){clearNoteDrafts();clearTaskActions();clearIdentity();login();}});
+sessionEvents?.addEventListener('message',event=>{if(event.data==='signed-out'){clearIdentity();login();}});
 const pendingDeletes=new Map();
 const quickTasks=new Map();
 const taskChanges=new Map();
@@ -221,10 +221,26 @@ function toast(message){const n=E('div',message,'toast');alerts.append(n);setTim
 function errorText(error){if(['server_error','service_unavailable'].includes(error.code))return t('web_server_error');if(error.code==='view_changed')return t('web_view_changed');if(error.code==='currency_mismatch')return t('web_currency_mismatch');if(error.code==='mfa_invalid')return t('web_mfa_hint');if(error.code==='conflict'||error.code==='revision_conflict')return t('web_conflict');if(error.code==='offline')return error.uncertain?t('web_uncertain'):t('web_online');if(['invalid_amount','invalid_currency','amount_precision'].includes(error.code))return t(error.code);if(error.code?.startsWith('import_'))return t(error.code);return packs[state.lang]?.strings['family_error_'+error.code]||t('family_error_invalid_input');}
 function report(error){if(['unauthorized','staff_unauthorized'].includes(error.code)){clearIdentity();login();}else if(['workspace_forbidden','service_restricted'].includes(error.code)){state.records=[];state.syncSpace=null;state.roster=null;state.space=null;render();}toast(errorText(error));}
 async function call(path,body){
- const epoch=privateEpoch;
+ const epoch=privateEpoch,account=state.session?.user_id;
+ const changed=()=>epoch!==privateEpoch||account!==state.session?.user_id;
+ const viewChanged=()=>Object.assign(new Error('view_changed'),{code:'view_changed',uncertain:body!==undefined});
  let response;try{response=await fetch('/account/api/'+path,{method:body===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:body===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:body===undefined?undefined:JSON.stringify(body)});}catch{throw Object.assign(new Error('offline'),{code:'offline',uncertain:body!==undefined});}
  let value;try{value=await response.json();}catch{throw Object.assign(new Error('server_error'),{code:'server_error',status:response.status,uncertain:body!==undefined});}
- if(epoch!==privateEpoch)throw Object.assign(new Error('view_changed'),{code:'view_changed',uncertain:body!==undefined});
+ if(changed())throw viewChanged();
+ if(!response.ok&&value.error==='account_unavailable'&&account){
+  // A mutation can reject an unavailable recipient. Only our own authenticated
+  // session can authorize discarding this browser's private state and drafts.
+  let selfUnavailable=path==='session';
+  if(!selfUnavailable){
+   try{
+    const own=await fetch('/account/api/session',{credentials:'same-origin',cache:'no-store'}),session=await own.json();
+    if(changed())throw viewChanged();
+    selfUnavailable=own.ok?session.user_id!==account:['account_unavailable','unauthorized'].includes(session.error);
+   }catch(error){if(changed()||error.code==='view_changed')throw viewChanged();}
+  }
+  if(changed())throw viewChanged();
+  if(selfUnavailable){clearIdentity();login();throw viewChanged();}
+ }
  if(!response.ok)throw Object.assign(new Error(value.error),{code:value.error,status:response.status,uncertain:body!==undefined&&response.status>=500});return value;
 }
 function button(text,run,cls='ghost'){const b=E('button',text,cls);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await run();}catch(error){report(error);}finally{b.disabled=false;}});return b;}
@@ -426,7 +442,7 @@ function settingsInline(title,build,trigger){
 }
 async function finishSignOut(){
  try{await call('logout',{});}catch(error){error.displayMessage={ru:'Не удалось подтвердить выход. Проверьте подключение и повторите.',en:'Could not confirm sign-out. Check your connection and retry.','uz-Latn':'Chiqish tasdiqlanmadi. Ulanishni tekshiring va takrorlang.','uz-Cyrl':'Чиқиш тасдиқланмади. Уланишни текширинг ва такрорланг.'}[state.lang]||'Could not confirm sign-out. Check your connection and retry.';throw error;}
- clearNoteDrafts();clearTaskActions();clearIdentity();sessionEvents?.postMessage('signed-out');login();
+ clearIdentity();sessionEvents?.postMessage('signed-out');login();
  const status=E('p',sessionCopy('done'),'signout-success');status.setAttribute('role','status');root.querySelector('.auth-form-panel')?.prepend(status);
 }
 function signoutPage(host){
@@ -437,7 +453,7 @@ function signoutPage(host){
  host.append(panel);
 }
 
-function clearIdentity(){privateDeletion?.clear();privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){clearNoteDrafts();clearTaskActions();privateDeletion?.clear();privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function moneyParts(value,currency,prefix=''){
  const full=prefix+money(value,currency);
