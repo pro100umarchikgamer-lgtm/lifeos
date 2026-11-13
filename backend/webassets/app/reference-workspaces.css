@@ -47,6 +47,7 @@ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calen
 body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row::before{display:none}
 body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row>.text{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:baseline;gap:10px}
 body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-time{font-size:10px;line-height:1.4;font-variant-numeric:tabular-nums;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-visibility{grid-column:2;color:var(--ux-muted);font-size:11px;line-height:1.4}
 body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3{position:relative;font-size:12px;line-height:1.5;font-weight:600;letter-spacing:0;margin:0;padding-left:12px;color:var(--ux-ink)}
 body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row h3::before{content:'';position:absolute;top:7px;left:0;width:5px;height:5px;border-radius:50%;background:var(--event-color,#8d74c8)}
 body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-events .event-row[data-visibility=shared] h3::before{background:var(--event-color,#cba17c)}

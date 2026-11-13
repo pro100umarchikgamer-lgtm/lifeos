@@ -71,6 +71,7 @@ function eventRow(o,agenda=false){
   const date=new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).format(new Date(o.day+'T12:00:00'));
   append(caption,title,E('p',date+' · '+when,'small'));
  }
+ if(currentSpace()?.kind==='family')caption.append(E('span',t('family_'+o.record.visibility),'calendar-event-visibility'));
  return append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));
 }
 const CALENDAR_COPY={
@@ -177,9 +178,7 @@ function calendar(m){
  }
  if(all.length&&calendarMode!=='day'){
   const legend=E('div',undefined,'calendar-legend');
-  for(const visibility of ['private','shared'])if(all.some(o=>o.record.visibility===visibility)){
-   const item=E('span',t('family_'+visibility));item.dataset.visibility=visibility;legend.append(item);
-  }
+  legend.append(E('span',t('web_event_color_help')));
   monthPanel.append(legend);
  }
  const agendaHead=E('div',undefined,'calendar-agenda-head');
@@ -226,6 +225,7 @@ for(const [locale,copy]of Object.entries({
  'uz-Latn':{web_new_email:'Yangi elektron pochta manzili',web_mfa_intro:'Kirishda paroldan keyin telefoningizdagi autentifikator ilovasidan, masalan Google Authenticator’dan kod kerak bo‘ladi.',web_mfa_enrollment_hint:'Joriy parol himoyani o‘zingiz sozlayotganingizni tasdiqlaydi. Keyin ilovani ulang va telefon yo‘qolsa kirish uchun tiklash kodlarini saqlang.'},
  'uz-Cyrl':{web_new_email:'Янги электрон почта манзили',web_mfa_intro:'Киришда паролдан кейин телефонингиздаги аутентификатор иловасидан, масалан Google Authenticator’дан код керак бўлади.',web_mfa_enrollment_hint:'Жорий парол ҳимояни ўзингиз созлаётганингизни тасдиқлайди. Кейин иловани уланг ва телефон йўқолса кириш учун тиклаш кодларини сақланг.'}
 }))Object.assign(WORKSPACE_COPY[locale],copy);
+for(const [locale,text]of Object.entries({ru:'Оттенки помогают различать события',en:'Colors help distinguish events','uz-Latn':'Tuslar tadbirlarni farqlashga yordam beradi','uz-Cyrl':'Туслар тадбирларни фарқлашга ёрдам беради'}))WORKSPACE_COPY[locale].web_event_color_help=text;
 const t=k=>WORKSPACE_COPY[state.lang]?.[k]||WORKSPACE_COPY.en[k]||CLARITY_COPY[state.lang]?.[k]||WEB_COPY[state.lang]?.[k]||WEB_COPY.en[k]||packs[state.lang]?.strings[k]||CLARITY_COPY.en[k]||packs.ru?.strings[k]||k;
 const E=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 function append(e,...children){e.append(...children);return e;}
