@@ -39,11 +39,11 @@ def main():
       if suffix in ('/presented','/dismiss'):item['presented_at']=now
       if suffix=='/dismiss':item['dismissed_at']=now
     route.fulfill(json={'updated':True});return
-   route.fulfill(json={'notifications':notices,'unread_count':sum(not n['read_at'] and not n['dismissed_at'] for n in notices),'next_before':None})
+   route.fulfill(json={'retention_days':90,'history_limit':1000,'announcement_retention_days_after_expiry':90,'notifications':notices,'unread_count':sum(not n['read_at'] and not n['dismissed_at'] for n in notices),'next_before':None})
   page.route('**/account/api/inbox**',inbox)
   page.goto(origin+'/app');expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible();assert not requests
   login(page,origin);bell=page.get_by_role('button',name='Уведомления, новых: 1',exact=True);expect(bell).to_be_visible();assert bell.bounding_box()['height']>=44
-  bell.click();expect(page.get_by_role('heading',name='Уведомления',exact=True)).to_be_visible();expect(page.locator('dialog')).to_have_count(0)
+  bell.click();expect(page.get_by_role('heading',name='Уведомления',exact=True)).to_be_visible();expect(page.locator('dialog')).to_have_count(0);expect(page.locator('.inbox-retention-hint')).to_contain_text('90');expect(page.locator('.inbox-retention-hint')).to_contain_text('1000')
   expect(page.get_by_text('Новости ULADIM',exact=True)).to_be_visible();page.screenshot(path=str(OUT/'phone-inbox-new.png'),full_page=True);checks.append('logged_out_no_inbox_calls_and_header_bell_opens_dedicated_page')
   page.get_by_role('button',name='Новости ULADIM',exact=True).click();expect(page.locator('.inbox-detail')).to_be_visible();expect(page.locator('.inbox-detail')).to_contain_text('Ваши планы всегда под рукой.')
   expect(page.get_by_role('button',name='Уведомления',exact=True)).to_be_visible();assert any(path=='/read' for path,_ in writes)
