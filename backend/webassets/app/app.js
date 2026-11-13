@@ -54,8 +54,14 @@ for(const [locale,labels] of Object.entries({
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function dateString(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
+function eventColor(record){
+ const colors=['#6b79b9','#a66e9b','#b28742','#448f86','#bd7180','#7f9656'];
+ let hash=0;for(const char of String(record.id||record.data.title||''))hash=(Math.imul(hash,31)+char.charCodeAt(0))>>>0;
+ return colors[hash%colors.length];
+}
 function eventRow(o,agenda=false){
  const row=E('div',undefined,'row event-row'),caption=E('div',undefined,'text');
+ row.style.setProperty('--event-color',eventColor(o.record));
  const title=E('h3',o.record.data.title),when=o.allDay?t('web_all_day'):o.time;
  if(agenda){
   const time=E(o.allDay?'span':'time',when,'calendar-event-time');
@@ -159,7 +165,7 @@ function calendar(m){
   if(key===today){b.classList.add('is-today');b.setAttribute('aria-current','date');}
   if(items.length){
    const dots=E('span',undefined,'calendar-event-dots');dots.setAttribute('aria-hidden','true');
-   for(const o of items.slice(0,3)){const dot=E('span');dot.dataset.visibility=o.record.visibility;dots.append(dot);}
+   for(const o of items.slice(0,3)){const dot=E('span');dot.dataset.visibility=o.record.visibility;dot.style.setProperty('--event-color',eventColor(o.record));dots.append(dot);}
    b.append(dots);
    const preview=E('span',items[0].record.data.title,'calendar-date-preview');preview.setAttribute('aria-hidden','true');b.append(preview);
   }
@@ -214,6 +220,12 @@ const WORKSPACE_COPY={
  'uz-Latn':{web_security_devices:'Himoya va qurilmalar',web_google_status_loading:'Google ulanishi tekshirilmoqda…',web_google_status_error:'Google holatini olib bo‘lmadi',web_password_change_hint:'Parolni almashtirgach, qayta kirishingiz kerak.',web_mfa_enable:'Ikki bosqichli himoyani sozlash'},
  'uz-Cyrl':{web_security_devices:'Ҳимоя ва қурилмалар',web_google_status_loading:'Google уланиши текширилмоқда…',web_google_status_error:'Google ҳолатини олиб бўлмади',web_password_change_hint:'Паролни алмаштиргач, қайта киришингиз керак.',web_mfa_enable:'Икки босқичли ҳимояни созлаш'}
 };
+for(const [locale,copy]of Object.entries({
+ ru:{web_new_email:'Новый адрес электронной почты',web_mfa_intro:'После пароля при входе потребуется код из приложения-аутентификатора на телефоне, например Google Authenticator.',web_mfa_enrollment_hint:'Пароль ниже подтверждает, что защиту настраиваете вы. Затем подключите приложение и сохраните резервные коды — они помогут войти при потере телефона.'},
+ en:{web_new_email:'New email address',web_mfa_intro:'After your password, sign-in will require a code from an authenticator app on your phone, such as Google Authenticator.',web_mfa_enrollment_hint:'Your current password confirms that you are setting up protection. Then connect your authenticator app and save the recovery codes so you can sign in if you lose your phone.'},
+ 'uz-Latn':{web_new_email:'Yangi elektron pochta manzili',web_mfa_intro:'Kirishda paroldan keyin telefoningizdagi autentifikator ilovasidan, masalan Google Authenticator’dan kod kerak bo‘ladi.',web_mfa_enrollment_hint:'Joriy parol himoyani o‘zingiz sozlayotganingizni tasdiqlaydi. Keyin ilovani ulang va telefon yo‘qolsa kirish uchun tiklash kodlarini saqlang.'},
+ 'uz-Cyrl':{web_new_email:'Янги электрон почта манзили',web_mfa_intro:'Киришда паролдан кейин телефонингиздаги аутентификатор иловасидан, масалан Google Authenticator’дан код керак бўлади.',web_mfa_enrollment_hint:'Жорий парол ҳимояни ўзингиз созлаётганингизни тасдиқлайди. Кейин иловани уланг ва телефон йўқолса кириш учун тиклаш кодларини сақланг.'}
+}))Object.assign(WORKSPACE_COPY[locale],copy);
 const t=k=>WORKSPACE_COPY[state.lang]?.[k]||WORKSPACE_COPY.en[k]||CLARITY_COPY[state.lang]?.[k]||WEB_COPY[state.lang]?.[k]||WEB_COPY.en[k]||packs[state.lang]?.strings[k]||CLARITY_COPY.en[k]||packs.ru?.strings[k]||k;
 const E=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 function append(e,...children){e.append(...children);return e;}
@@ -2222,7 +2234,7 @@ async function changePassword(trigger){
 async function changeEmail(trigger){
  if(await passwordSettingsHelp(trigger,t('account_email_change')))return;
  const label=t('account_email_change');
- settingsInline(label,d=>form(d,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+ settingsInline(label,d=>form(d,'',f=>({email:input(f,'email',t('web_new_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{
   const email=v.email.value;
   await call('email',{email,password:v.password.value});
   replaceDialog(d,E('h2',t('family_verify')),E('p',email,'account-email'));
@@ -2315,6 +2327,7 @@ async function customerMfa(trigger){
  const status=await call('mfa');
  if(!trigger?.isConnected)return;
  settingsInline(t('account_mfa'),d=>{
+  d.append(E('p',t('web_mfa_intro'),'settings-guidance'));
   if(status.enabled){
    const disable=form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password'),code:input(f,'code',t('family_code'))}),async v=>{
     await call('mfa/disable',{password:v.password.value,code:v.code.value});
@@ -2323,6 +2336,7 @@ async function customerMfa(trigger){
    disable.querySelector('button[type=submit]').classList.add('danger-action');
    return;
   }
+  d.append(E('p',t('web_mfa_enrollment_hint'),'small settings-guidance'));
   form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
    const r=await call('mfa/begin',{password:v.password.value});
    replaceDialog(d,E('h2',t('account_mfa')),E('p',t('account_mfa_setup')),E('pre',r.totp_secret));
