@@ -126,6 +126,20 @@ void main() {
         matching: find.byType(Scrollable),
       ).first;
       Future<void> reveal(double delta) async {
+        if (check.evaluate().isEmpty) {
+          // Completed tasks are deliberately folded in the compact task page.
+          final completed = find.byKey(
+            const PageStorageKey('completed_task_group'),
+          );
+          await tester.scrollUntilVisible(
+            completed, delta, scrollable: plansScroll, maxScrolls: 40,
+          );
+          await tester.pumpAndSettle();
+          if (check.evaluate().isEmpty) {
+            await tester.tap(completed);
+            await tester.pumpAndSettle();
+          }
+        }
         await tester.scrollUntilVisible(check, delta, scrollable: plansScroll, maxScrolls: 40);
         await tester.pumpAndSettle();
       }
