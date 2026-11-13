@@ -223,9 +223,9 @@ function report(error){if(['unauthorized','staff_unauthorized'].includes(error.c
 async function call(path,body){
  const epoch=privateEpoch;
  let response;try{response=await fetch('/account/api/'+path,{method:body===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:body===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:body===undefined?undefined:JSON.stringify(body)});}catch{throw Object.assign(new Error('offline'),{code:'offline',uncertain:body!==undefined});}
- let value;try{value=await response.json();}catch{throw Object.assign(new Error('server_error'),{code:'server_error',uncertain:body!==undefined});}
+ let value;try{value=await response.json();}catch{throw Object.assign(new Error('server_error'),{code:'server_error',status:response.status,uncertain:body!==undefined});}
  if(epoch!==privateEpoch)throw Object.assign(new Error('view_changed'),{code:'view_changed',uncertain:body!==undefined});
- if(!response.ok)throw Object.assign(new Error(value.error),{code:value.error,uncertain:body!==undefined&&response.status>=500});return value;
+ if(!response.ok)throw Object.assign(new Error(value.error),{code:value.error,status:response.status,uncertain:body!==undefined&&response.status>=500});return value;
 }
 function button(text,run,cls='ghost'){const b=E('button',text,cls);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await run();}catch(error){report(error);}finally{b.disabled=false;}});return b;}
 const ICON_PATHS={calendar:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','M8 14h2M14 14h2M8 18h2'],today:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','m8 15 2 2 5-5'],tasks:['m3 6 1 1 2-2M10 6h11m-18 6 1 1 2-2M10 12h11m-18 6 1 1 2-2M10 18h11'],notes:['M5 3h14v18H5zM8 8h8M8 12h8M8 16h5'],money:['M4 20V10m6 10V4m6 16v-8m5 8H2'],account:['M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-2a8 8 0 0 1 16 0v2'],close:['m6 6 12 12M6 18 18 6'],forward:['m9 6 6 6-6 6'],back:['m15 6-6 6 6 6'],more:['M5 12h.01M12 12h.01M19 12h.01'],add:['M12 5v14M5 12h14']};
@@ -437,7 +437,7 @@ function signoutPage(host){
  host.append(panel);
 }
 
-function clearIdentity(){redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function moneyParts(value,currency,prefix=''){
  const full=prefix+money(value,currency);
@@ -480,7 +480,7 @@ function updateSyncStatus(){
  node.dataset.status=index===1?'error':index===3?'offline':'read';
 }
 function refresh(){const epoch=privateEpoch;const run=async()=>{if(epoch!==privateEpoch)return;state.busy=true;state.syncState='loading';updateSyncStatus();try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();if(epoch===privateEpoch&&(!state.space||state.syncSpace===state.space)){state.lastRead=Date.now();state.syncState='read';}}catch(error){if(epoch===privateEpoch)state.syncState='error';throw error;}finally{if(epoch===privateEpoch){state.busy=false;updateSyncStatus();}}};const pending=refreshTail.then(run,run);refreshTail=pending.catch(()=>{});return pending;}
-async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();await consumeNotificationLink();render();refreshNotificationTimezone();}
+async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();await consumeNotificationLink();render();inboxCenter().refresh();refreshNotificationTimezone();}
 function login(){
  delete document.body.dataset.referenceLayout;
  root.replaceChildren();
@@ -605,23 +605,26 @@ function shell(){
  const identity=button('',profile,'reference-identity');identity.setAttribute('aria-label',t('profile'));append(identity,E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),E('span',state.session.email||t('profile')));footer.append(identity,button(t('family_logout'),()=>openSettings('signout'),'text-button reference-signout'));nav.append(footer,secondary);
  const compactMoney=makeItem('money',t('finances'),'money');compactMoney.classList.add('reference-compact-money');nav.append(compactMoney);
  const compactProfile=makeItem('account',t('profile'),'account');compactProfile.classList.add('reference-compact-profile');nav.append(compactProfile);
- const pageLabels={today:'today',tasks:'widget_tasks',calendar:'web_calendar',notes:'widget_notes',money:'finances',account:'profile'};
+ const pageLabels={inbox:'web_inbox',today:'today',tasks:'widget_tasks',calendar:'web_calendar',notes:'widget_notes',money:'finances',account:'profile'};
  const crumbs=E('div',undefined,'reference-breadcrumb');append(crumbs,E('span',currentSpace()?.name||referenceCopy(9)),icon('forward'),E('strong',t(pageLabels[state.tab]||'today')));
  const tools=E('div',undefined,'header-tools');
  const date=button(new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',year:'numeric'}),()=>{state.calendarDay=localDate();referenceNavigate('calendar');},'secondary reference-date');date.prepend(icon('calendar'));
  const toolLabels={ru:['Тема','Профиль'],en:['Theme','Profile'],'uz-Latn':['Mavzu','Profil'],'uz-Cyrl':['Мавзу','Профил']}[state.lang]||['Theme','Profile'];
  const theme=button('',()=>{const dark=state.theme==='dark'||(state.theme==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);state.theme=dark?'light':'dark';preferences();redrawFinance?.();},'icon header-theme');theme.append(icon('appearance'),E('span',toolLabels[0],'header-tool-label'));theme.setAttribute('aria-label',(SYNC_COPY[state.lang]||SYNC_COPY.en)[4]);
  const profileButton=button('',profile,'icon header-profile');profileButton.append(E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),E('span',toolLabels[1],'header-tool-label'));profileButton.setAttribute('aria-label',t('profile'));
- append(tools,date,theme,profileButton);append(header,crumbs,tools);
+ append(tools,date,theme,inboxCenter().bell(),profileButton);append(header,crumbs,tools);
  root.append(header,nav);
  if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
  const m=E('main');m.id='content';root.append(m);updateSyncStatus();
  let frame=0;
  const measure=()=>{frame=0;if(!nav.isConnected)return;document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');document.body.style.setProperty('--header-controls-width',tools.getBoundingClientRect().width+'px');};
- measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);navObserver.observe(tools);return m;
+ inboxCenter().updateBell();measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);navObserver.observe(tools);return m;
 }
+let privateInbox;
+function inboxCenter(){return privateInbox||(privateInbox=window.UladimInbox.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,navigate:referenceNavigate,safe:()=>state.tab==='today'&&!state.busy&&!editingView()&&![...quickTasks.values()].some(draft=>draft.title?.trim()||draft.operation||draft.busy),report}));}
+for(const [locale,label]of Object.entries({ru:'Уведомления',en:'Notifications','uz-Latn':'Bildirishnomalar','uz-Cyrl':'Билдиришномалар'}))WEB_COPY[locale].web_inbox=label;
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
-function render(){redrawFinance=null;if(!state.session){login();return;}const view=[state.tab,state.settingsTab||'',state.referenceSection||''].join('/'),previous=root.querySelector('main')?.dataset.view;const m=shell();m.dataset.view=view;if(previous!==view)m.classList.add('view-enter');backgroundDirty=false;if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
+function render(){redrawFinance=null;if(!state.session){login();return;}const view=[state.tab,state.settingsTab||'',state.referenceSection||''].join('/'),previous=root.querySelector('main')?.dataset.view;const m=shell();m.dataset.view=view;if(previous!==view)m.classList.add('view-enter');backgroundDirty=false;inboxCenter().stage();if(state.tab==='inbox'){inboxCenter().page(m);return;}if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='calendar')calendar(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);
 }
 function openTabSection(tab,selector){
@@ -1903,16 +1906,24 @@ async function account(m){
   const signout=card();signout.classList.add('reference-profile-signout');
   append(signout,append(E('div'),E('h2',copy[5]),E('p',copy[6])),logout);
   append(c,identity,options);append(content,c,signout);
+  if(state.session.control_available===true)content.append(button('ULADIM Control',openControl,'secondary'));
   if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));
  }
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['violet',referenceCopy(12)],['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
  if(section==='signout')signoutPage(content);
- if(section==='notifications')await notificationPage(content);
+ if(section==='notifications'){inboxCenter().settings(content);await notificationPage(content);}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);
  if(section==='devices')await devices(content).catch(error=>{if(error.code==='unauthorized'){report(error);return;}if(content.isConnected){content.replaceChildren(E('h2',t('account_devices')),E('p',errorText(error),'error'),button(t('retry'),()=>openSettings('devices'),'secondary'));}});
  if(section==='family'){familyPanel(content);familyPermissions(content);}
  try{if(section==='family')await incomingOwnership(content);if(section==='plan')await renderAccountPlan(content);if(section==='support')await support(content);}catch(e){report(e);}
+}
+async function openControl(){
+ if(state.session?.control_available!==true)return;
+ const access=await call('control/access',{});
+ const target=new URL(access.control_url);
+ if(target.pathname!=='/admit'||target.search||target.hash||target.username||target.password||!['https:','http:'].includes(target.protocol)||target.protocol==='http:'&&!['localhost','control.localhost','127.0.0.1'].includes(target.hostname)||! /^[A-Za-z0-9_-]{43}$/.test(access.ticket))throw {code:'server_error'};
+ const handoff=E('form');handoff.method='POST';handoff.action=target.href;handoff.hidden=true;const ticket=E('input');ticket.type='hidden';ticket.name='ticket';ticket.value=access.ticket;handoff.append(ticket);document.body.append(handoff);handoff.submit();handoff.remove();
 }
 function enrollStaff(){dialog('ULADIM Control',container=>{const owner=new URLSearchParams(location.search).get('setup')==='owner';const d=container;form(container,t('account_manage'),f=>({password:input(f,'password',t('family_password'),'password'),invitation:input(f,'invitation',t('family_invitation'))}),async v=>{const result=await call('staff/enrollment',{owner,password:v.password.value,invitation:v.invitation.value});replaceDialog(container,E('h2',t('account_mfa')),E('p',t('account_mfa_setup')),E('pre',result.totp_secret));form(container,'',f=>({code:input(f,'code',t('family_code'))}),async code=>{const r=await call('staff/confirm',{owner,enrollment:result.enrollment,code:code.code.value});replaceDialog(container,E('h2',t('account_mfa_recovery')),E('pre',r.recovery_codes.join('\n')),button(t('close'),()=>d.close()));});});});}
 let activeSupportThread=null;
@@ -1959,14 +1970,14 @@ async function backgroundRefresh(){
  await refresh();
  if(epoch!==privateEpoch||!state.session)return;
  if(before!==backgroundView())backgroundDirty=true;
- flushBackground();
+ flushBackground();inboxCenter().maybeRefresh();
 }
 window.addEventListener('online',()=>backgroundRefresh().catch(report));
 window.addEventListener('offline',()=>{updateSyncStatus();toast(t('web_online'));});
 window.addEventListener('pagehide',()=>{clearIdentity();root.replaceChildren();alerts.replaceChildren();});
 window.addEventListener('pageshow',e=>{if(e.persisted)start().catch(error=>{if(error.code==='unauthorized'){clearIdentity();login();}else report(error);});});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')backgroundRefresh().catch(report);});
-document.addEventListener('focusout',()=>requestAnimationFrame(flushBackground));
+document.addEventListener('focusout',()=>requestAnimationFrame(()=>{flushBackground();inboxCenter().stage();}));
 setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)backgroundRefresh().catch(report);},30000);
 (async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';applyTheme();const config=await call('config');state.googleEnabled=Boolean(config.google_enabled);try{if(new URLSearchParams(location.search).get('google')==='return')await googleReturn();else await start();}catch(error){if(error.code==='unauthorized'){login();if(new URLSearchParams(location.search).get('action')==='signup')await signup();}else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
 
