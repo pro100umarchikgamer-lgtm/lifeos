@@ -1,6 +1,6 @@
 'use strict';
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
-const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'violet',chart:'bar',generation:0,busy:false,googleEnabled:false};
+const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},financeReportFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'violet',chart:'bar',generation:0,busy:false,googleEnabled:false};
 let calendarMode='month';
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null,backgroundDirty=false;
 const sessionEvents=typeof BroadcastChannel==='function'?new BroadcastChannel('uladim-session'):null;
@@ -465,7 +465,7 @@ function signoutPage(host){
  host.append(panel);
 }
 
-function clearIdentity(){clearNoteDrafts();clearTaskActions();privateDeletion?.clear();privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){clearNoteDrafts();clearTaskActions();privateDeletion?.clear();privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},financeReportFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function moneyParts(value,currency,prefix=''){
  const full=prefix+money(value,currency);
@@ -1224,7 +1224,7 @@ function budgetEditorStart(period,at=localDate()){
  else if(period==='week')date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7);
  return date.toISOString().slice(0,10);
 }
-function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
+function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
  if(r?.deleted)return;
  if(kind==='transfer'&&r&&[r.data.from_id,r.data.to_id].some(id=>!records('account').some(a=>a.id===id))){
   dialog(t('family_kind_transfer'),container=>{
@@ -1310,7 +1310,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    const categoryLabel=fields.category.previousElementSibling;
    const categoryVisibility=()=>{fields.category.hidden=false;categoryLabel.hidden=false;};
    categoryVisibility();fields.direction.addEventListener('change',categoryVisibility);
-   const accounts=records('account'),selected=r?data.account_id:defaultTransactionAccount(accountKey,accounts)?.id;
+   const accounts=records('account'),selected=r?data.account_id:(accounts.find(a=>a.id===accountId)||defaultTransactionAccount(accountKey,accounts))?.id;
    fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...accounts.map(a=>[a.id,a.data.name+' · '+a.data.currency])],selected||'');
    const accountCurrency=()=>{
     const account=accounts.find(a=>a.id===fields.account.value);
@@ -1563,6 +1563,7 @@ function drawExpenseCategories(canvas,currency,groups){
  canvas.setAttribute('aria-label',t('expense')+': '+money(sum,currency)+(groups.length?'; '+groups.map(group=>group.label+': '+money(group.amount,currency)).join('; '):''));
 }
 function finance(m){
+ const epoch=privateEpoch,workspace=state.space;
  const copy={
   ru:{overview:'Обзор финансов',history:'Вся история',balance:'Баланс счетов',recent:'Последние операции',report:'Отчёт по счёту',back:'Все счета',open:'Открыть отчёт',separate:'Суммы показаны отдельно по валютам.',noAccount:'Счёт больше недоступен',period:'Период отчёта'},
   en:{overview:'Financial overview',history:'All time',balance:'Account balances',recent:'Recent transactions',report:'Account report',back:'All accounts',open:'Open report',separate:'Amounts are shown separately by currency.',noAccount:'Account is no longer available',period:'Report period'},
@@ -1572,13 +1573,19 @@ function finance(m){
  const categoriesTitle=({ru:'По категориям',en:'By category','uz-Latn':'Toifalar bo‘yicha','uz-Cyrl':'Тоифалар бўйича'})[state.lang]||'By category';
  const categoriesHint=({ru:'Нажмите категорию, чтобы увидеть операции.',en:'Choose a category to see its transactions.','uz-Latn':'Operatsiyalarni ko‘rish uchun toifani tanlang.','uz-Cyrl':'Операцияларни кўриш учун тоифани танланг.'})[state.lang]||'Choose a category to see its transactions.';
  const view=['accounts','budgets','ledger','analysis','report'].includes(state.referenceSection)?state.referenceSection:'overview';
- const accountRecords=records('account'),reportAccount=view==='report'?accountRecords.find(a=>a.id===state.financeFilters.account):null;
+ // Reports own their scope; visiting one must not replace deliberate overview filters.
+ const filterState=view==='report'?'financeReportFilters':'financeFilters',financeFilters=state[filterState];
+ const accountRecords=records('account'),reportAccount=view==='report'?accountRecords.find(a=>a.id===financeFilters.account):null;
  title(m,'finances');m.classList.add('finance-page');m.dataset.financeView=view;
  const heading=m.querySelector('.intro h1');heading.textContent=reportAccount?reportAccount.data.name:({overview:copy.overview,accounts:t('web_accounts'),budgets:t('web_finance_budgets'),ledger:t('web_finance_transactions'),analysis:t('web_analysis'),report:copy.report}[view]);
  const toolbar=E('div',undefined,'finance-toolbar');
  if(view==='accounts')append(toolbar,addButton(t('family_kind_account'),()=>editRecord('account')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'secondary'));
  else if(view==='budgets')toolbar.append(addButton(t('family_kind_budget'),()=>editRecord('budget')));
- else append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(statementCopy('title'),importStatement,'secondary finance-import-shortcut'));
+ else{
+  const add=addButton(t('web_add_operation'),()=>editRecord('transaction',null,{accountId:reportAccount?.id}));
+  add.disabled=view==='report'&&!reportAccount;
+  append(toolbar,add,button(statementCopy('title'),importStatement,'secondary finance-import-shortcut'));
+ }
  m.querySelector('.intro').append(toolbar);
  const sections=E('nav',undefined,'finance-navigation');sections.setAttribute('aria-label',t('finances'));
  for(const [id,label] of [['',copy.overview],['ledger',t('web_finance_transactions')],['accounts',t('web_accounts')],['budgets',t('web_finance_budgets')]]){
@@ -1596,10 +1603,10 @@ function finance(m){
  const metricGrid=E('div',undefined,'finance-metric-grid');append(summary,scope,metricGrid);
  const filterPanel=E('details',undefined,'finance-filter-panel');
  const filterLabel=E('summary',t('web_filters')),filters=E('div',undefined,'finance-filters');append(filterPanel,filterLabel,filters);
- const group=(name,label,type='search')=>{const wrap=E('div');filters.append(wrap);return input(wrap,name,label,type,state.financeFilters[name]||'',false);};
+ const group=(name,label,type='search')=>{const wrap=E('div');filters.append(wrap);return input(wrap,name,label,type,financeFilters[name]||'',false);};
  const search=group('finance-search',t('search')),from=group('finance-from',t('web_period_start'),'date'),to=group('finance-to',t('web_period_end'),'date');
  const filterWrap=E('div');filters.append(filterWrap);
- const accountFilter=select(filterWrap,'finance-account',t('web_accounts'),[['',t('web_all_accounts')],...accountRecords.map(a=>[a.id,a.data.name+' · '+a.data.currency])],state.financeFilters.account||'');
+ const accountFilter=select(filterWrap,'finance-account',t('web_accounts'),[['',t('web_all_accounts')],...accountRecords.map(a=>[a.id,a.data.name+' · '+a.data.currency])],financeFilters.account||'');
  if(view==='report'){accountFilter.value=reportAccount.id;accountFilter.disabled=true;}
  const rows=()=>records('transaction').filter(r=>(!accountFilter.value||r.data.account_id===accountFilter.value)&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(r.data.label+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
  const grid=E('div',undefined,'finance-grid finance-content');m.append(grid);
@@ -1612,7 +1619,7 @@ function finance(m){
  const accounts=card();accounts.classList.add('finance-accounts');accounts.id='finance-accounts';
  for(const a of accountRecords){
   const row=E('div',undefined,'account-balance');
-  const report=button('',()=>{state.financeFilters={...state.financeFilters,account:a.id};referenceNavigate('money','report');},'secondary finance-account-report');
+  const report=button('',()=>{state.financeReportFilters={...state.financeFilters,account:a.id};referenceNavigate('money','report');},'secondary finance-account-report');
   const name=append(E('span',undefined,'account-name'),icon('money'),E('strong',a.data.name,'text'));
   append(report,name,moneyElement(balance(a),a.data.currency,'finance-account-amount'),E('span',copy.open,'small finance-account-link'));
   append(row,report,iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));accounts.append(row);
@@ -1621,7 +1628,7 @@ function finance(m){
  const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');chart.id='finance-analysis';
  const chartControls=E('div',undefined,'chart-controls'),chartCurrency=E('div'),chartMode=E('div');chart.append(append(chartControls,chartCurrency,chartMode));
  const currencies=[...new Set([...records('transaction'),...accountRecords].map(r=>r.data.currency))];
- const currency=select(chartCurrency,'chart-currency',t('currency'),currencies.map(c=>[c,c]),reportAccount?.data.currency||currencies[0]);
+ const currency=select(chartCurrency,'chart-currency',t('currency'),currencies.map(c=>[c,c]),reportAccount?.data.currency||(currencies.includes(financeFilters.currency)?financeFilters.currency:currencies[0]));
  const mode=select(chartMode,'chart-mode',t('web_chart_type'),[['categories',categoriesTitle],['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.financeChartMode||'categories');
  const breakdownWrap=E('div',undefined,'finance-breakdown-control');
  const breakdownKind=select(breakdownWrap,'breakdown-kind',categoriesTitle,[['expense',t('expense')],['income',t('income')]],state.financeBreakdownKind||'expense');
@@ -1650,11 +1657,12 @@ function finance(m){
  }else if(view==='accounts')grid.append(accounts);
  else grid.append(budgets);
  function draw(){
-  state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};
+  if(epoch!==privateEpoch||workspace!==state.space||!m.isConnected)return;
   const selectedAccount=accountRecords.find(account=>account.id===accountFilter.value);
   if(selectedAccount)currency.value=selectedAccount.data.currency;
   currency.disabled=Boolean(selectedAccount)||!currencies.length;
-  const active=Object.values(state.financeFilters).filter(Boolean).length,filtered=rows();
+  state[filterState]={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value,currency:currency.value};
+  const active=[search.value,from.value,to.value,accountFilter.value].filter(Boolean).length,filtered=rows();
   filterLabel.textContent=t('web_filters')+(active?' · '+active:'');
   const activeScope=[from.value?t('web_period_start')+' '+displayDate(from.value):'',to.value?t('web_period_end')+' '+displayDate(to.value):'',accountFilter.value?accountFilter.selectedOptions[0]?.textContent:'',search.value?'“'+search.value+'”':''].filter(Boolean);
   scope.textContent=(activeScope.join(' · ')||copy.history)+' · '+copy.separate;filterLabel.title=activeScope.join(' · ');
@@ -1702,7 +1710,7 @@ function finance(m){
   const ledgerHeading=ledger.querySelector('h2');ledgerHeading.textContent=drilldown?t(breakdownKind.value)+(categoryFilter===null?'':' · '+new Map(transactionCategoryChoices()).get(categoryFilter)):view==='overview'?copy.recent:t('web_history');
   const allOperations=ledger.querySelector('.finance-ledger-all');if(allOperations)allOperations.hidden=drilldown;
   const accountsById=new Map(state.records.filter(account=>account.kind==='account'&&(!account.deleted||structuralAccountReference(account))).map(account=>[account.id,accountReference(account.id)]));ledgerRows.replaceChildren();
-  const filterKey=JSON.stringify(state.financeFilters);if(filterKey!==ledgerFilterKey){ledgerLimit=25;ledgerFilterKey=filterKey;}
+  const filterKey=JSON.stringify(state[filterState]);if(filterKey!==ledgerFilterKey){ledgerLimit=25;ledgerFilterKey=filterKey;}
   const displayed=entries.slice(0,view==='overview'&&!drilldown?5:ledgerLimit);
   for(const [index,entry]of displayed.entries()){
    const data=entry.data,isTransfer=entry.kind==='transfer',kind=isTransfer?'transfer':data.kind;
