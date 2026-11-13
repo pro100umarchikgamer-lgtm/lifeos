@@ -2026,6 +2026,12 @@ body[data-design=clarity] dialog.budget-editor .budget-original-start{overflow-w
 /* public-focus.css */
 /* Public ULADIM: a bright, calm product introduction and readable guidance.
    This layer changes presentation only; controls and factual copy remain intact. */
+/* Keep the initial HTML placeholder from moving the whole page before JS paints. */
+html[data-surface="site"] body.surface-loading > :is(header, main, footer) { visibility:hidden; }
+html[data-surface="site"] body.surface-loading::before,
+html[data-surface="site"] body.surface-loading::after { position:fixed;left:24px;pointer-events:none; }
+html[data-surface="site"] body.surface-loading::before { content:"ULADIM";top:24px;font-size:24px;font-weight:750;letter-spacing:-.04em; }
+html[data-surface="site"] body.surface-loading::after { content:"Загрузка…";top:108px;font-size:15px;color:var(--muted); }
 body.product-site {
   --public-canvas:#f7f8f4;
   --public-surface:#fff;

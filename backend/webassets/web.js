@@ -240,6 +240,7 @@ async function publicPage(config) {
    document.body.classList.add('product-site');
    publicNavigation('/','unavailable');
    await landing({entry:'unavailable'});
+   document.body.classList.remove('surface-loading');
   }
   authPacks=await (await fetch('/assets/locales.json',{cache:'no-store'})).json();
   if(!authPacks[authLanguage])authLanguage='ru';
@@ -251,6 +252,7 @@ async function publicPage(config) {
    await publicPage(config);
   }
  }catch(e){heading('Не удалось загрузить');notice(e.message);}
+ finally{document.body.classList.remove('surface-loading');}
 })();
 
 async function registration(){
