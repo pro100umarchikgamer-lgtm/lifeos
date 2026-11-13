@@ -118,11 +118,11 @@ void main() {
       await controller.load();
       await tester.pumpWidget(LifeOSApp(controller: controller));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('nav_plans')));
+      await tester.tap(find.byKey(const Key('nav_tasks')));
       await tester.pumpAndSettle();
       final check = find.byKey(Key('task_${ids.first}'));
       final plansScroll = find.descendant(
-        of: find.byKey(const Key('plans')),
+        of: find.byKey(const Key('tasks_page')),
         matching: find.byType(Scrollable),
       ).first;
       Future<void> reveal(double delta) async {

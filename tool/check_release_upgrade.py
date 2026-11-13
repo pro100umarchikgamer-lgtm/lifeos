@@ -13,33 +13,25 @@ OUT=Path('upgrade_evidence')
 def run(*args,timeout=30):
     return subprocess.check_output(args,timeout=timeout)
 def adb(*args,timeout=30):return run('adb','-s','emulator-5554',*args,timeout=timeout)
-def previous(baseline=112001):
-    if baseline == 134001:
-        source='6acbde34f499d7c740322687416abc3aa542f9ac'
-        target=Path(os.environ['RUNNER_TEMP'])/'uladim-baseline-134001'
-        target.mkdir(exist_ok=True)
-        subprocess.run(['gh','run','download','38984254821','--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+source,'--dir',str(target)],check=True,timeout=90)
-        original=target/'build/app/outputs/flutter-apk/app-release.apk'
-        assert hashlib.sha256(original.read_bytes()).hexdigest()=='a7f93159a138e464227fa2259d9c54c67063a280708e8dafbd95c27ec3ab8356', 'Retained APK134001 bytes changed'
-        identity=dict(line.split('=',1) for line in (target/'apk-identity.txt').read_text().splitlines())
-        assert identity['versionCode']=='134001' and identity['commit']==source
-        assert identity['applicationId']==APP and identity['certificateSHA256']==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip()
-        path=Path(os.environ['RUNNER_TEMP'])/'uladim-134001.apk'
-        import shutil
-        shutil.copyfile(original,path)
-        return path
-    assert baseline == 112001
-
-    source='f8632cdd5cf4dad40f0163a44183016d23121abd'
-    target=Path(os.environ['RUNNER_TEMP'])/'uladim-baseline-112001'
+RETAINED_RELEASES={
+    112001:('f8632cdd5cf4dad40f0163a44183016d23121abd','38883235405','0594d97502523901e9d8b7d6b0ceb5ec995f7379b66faabd886f8f75ea58908e'),
+    134001:('6acbde34f499d7c740322687416abc3aa542f9ac','38984254821','a7f93159a138e464227fa2259d9c54c67063a280708e8dafbd95c27ec3ab8356'),
+    303001:('dd2912af8b53d284494afa55c1cf39047bbe07fe','43329676603','e53e35e7c36e5ee9622af668f8db6073effcfeb774635fa0aeca90ce9c875142'),
+}
+def previous(baseline=112001,supplied=None):
+    source,run_id,digest=RETAINED_RELEASES[baseline]
+    target=Path(os.environ['RUNNER_TEMP'])/f'uladim-baseline-{baseline}'
     target.mkdir(exist_ok=True)
-    subprocess.run(['gh','run','download','38883235405','--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+source,'--dir',str(target)],check=True,timeout=90)
-    original=target/'build/app/outputs/flutter-apk/app-release.apk'
-    if hashlib.sha256(original.read_bytes()).hexdigest()!='0594d97502523901e9d8b7d6b0ceb5ec995f7379b66faabd886f8f75ea58908e':raise RuntimeError('Retained APK112001 checksum mismatch')
-    identity=dict(line.split('=',1) for line in (target/'apk-identity.txt').read_text().splitlines())
-    assert identity['versionCode']=='112001' and identity['commit']==source
-    assert identity['applicationId']==APP and identity['certificateSHA256']==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip()
-    path=Path(os.environ['RUNNER_TEMP'])/'uladim-112001.apk'
+    if supplied is None:
+        subprocess.run(['gh','run','download',run_id,'--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+source,'--dir',str(target)],check=True,timeout=90)
+        original=target/'build/app/outputs/flutter-apk/app-release.apk'
+        identity=dict(line.split('=',1) for line in (target/'apk-identity.txt').read_text().splitlines())
+        assert identity['versionCode']==str(baseline) and identity['commit']==source
+        assert identity['applicationId']==APP and identity['certificateSHA256']==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip()
+    else:original=Path(supplied)
+    # A local file must match the same independently verified signed bytes.
+    assert hashlib.sha256(original.read_bytes()).hexdigest()==digest,f'Retained APK{baseline} bytes changed'
+    path=Path(os.environ['RUNNER_TEMP'])/f'uladim-{baseline}.apk'
     import shutil
     shutil.copyfile(original,path)
     return path
@@ -75,7 +67,7 @@ def find(label=None,editable=False,reveal=False):
     raise RuntimeError('Release UI control not found: '+str(label or 'editable field'))
 def tap_node(node):
     x1,y1,x2,y2=bounds(node);adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(.4)
-def tap(label=None,editable=False):tap_node(find(label,editable))
+def tap(label=None,editable=False,reveal=False):tap_node(find(label,editable,reveal))
 def legacy_add_node(root,width,height):
     candidates=[]
     for node in root.iter('node'):
@@ -135,28 +127,92 @@ def device_timezone(zone):
         time.sleep(0.25)
         actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
     assert actual==zone, f'Emulator timezone mismatch: {actual} != {zone}'
+
+def verify_active_test_notification(report):
+    """Require a posted app notification in the active OS list, not history."""
+    match=re.search(r'^\s*Notification List:\s*$',report,re.M)
+    assert match, 'Android active notification list not found'
+    active=report[match.end():]
+    active=re.split(r'^\s*(?:Enqueued Notification List|Snoozed notifications|Historical notifications|Ranking Config):',active,1,flags=re.M)[0]
+    for block in re.split(r'(?=^[ \t]*NotificationRecord\()',active,flags=re.M):
+        header=block.splitlines()[0] if block.splitlines() else ''
+        if not re.search(r'\bpkg='+re.escape(APP)+r'(?:\s|$)',header):continue
+        if not re.search(r'\bid=1(?:\s|$)',header) or not re.search(r'\btag=test(?:\s|$)',header):continue
+        if not re.search(r"(?:channel=lifeos\.important(?:\s|\)|$)|mId='lifeos\.important')",block):continue
+        importance=re.search(r'\bimportance=(\d+)',header) or re.search(r'\bmImportance=(\d+)',block)
+        if importance and int(importance[1])>=4:return
+    raise AssertionError('Fresh app test notification missing from the active high-priority OS channel')
+
+def notification_evidence():
+    # The UI action invokes the real Kotlin bridge. Its posted result checks a
+    # fresh active notification, then dumpsys independently confirms OS state.
+    copy=json.loads(Path('assets/locales/en.json').read_text())['strings']
+    adb('shell','pm','grant',APP,'android.permission.POST_NOTIFICATIONS')
+    installed=adb('shell','dumpsys','package',APP).decode()
+    assert re.search(r'android\.permission\.POST_NOTIFICATIONS:\s*granted=true',installed), 'Notification runtime permission not granted'
+    start();tap('Profile');tap(copy['notifications'],reveal=True)
+    tap(copy['test_notification'],reveal=True)
+    find(copy['test_notification_posted'])
+    screenshot('notification-posted-result')
+    report=adb('shell','dumpsys','notification','--noredact').decode()
+    OUT.mkdir(exist_ok=True);(OUT/'notification-dumpsys.txt').write_text(report)
+    verify_active_test_notification(report)
+    adb('shell','cmd','statusbar','expand-notifications');time.sleep(.7)
+    screenshot('notification-shade');(OUT/'notification-shade.xml').write_bytes(ET.tostring(xml()))
+    adb('shell','cmd','statusbar','collapse')
+    return {'runtimePermissionGranted':True,'freshBridgeResult':'posted','activeOsNotification':True,'channel':'lifeos.important','importance':'high','physicalSoundOrBannerVerified':False}
+
+def capture_candidate_pages(theme):
+    # Populated Today/Tasks/Finances and empty Calendar/Notes are all real app
+    # screens over the retained SQLCipher records, not generated mockups.
+    for label in ['Today','Tasks','Calendar','Notes','Finances','Profile']:
+        start();tap(label);screenshot(label.lower()+'-'+theme)
+        tree=xml();(OUT/(label.lower()+'-'+theme+'.xml')).write_bytes(ET.tostring(tree))
+        if label=='Tasks':find(PROBE,reveal=True)
+        if label=='Finances':
+            verify_financial_summary(tree)
+            scroll();screenshot('categories-'+theme);scroll(False)
+
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--baseline',type=int,choices=[112001,134001],default=112001);parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
-    if args.download:print('Retained signed baseline verified:',args.baseline,previous(args.baseline));return
+    parser=argparse.ArgumentParser();parser.add_argument('--baseline',type=int,choices=RETAINED_RELEASES,default=112001);parser.add_argument('--baseline-file',type=Path);parser.add_argument('--through-version',type=int,choices=[303001]);parser.add_argument('--through-file',type=Path);parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
+    if args.download:
+        print('Retained signed baseline verified:',args.baseline,previous(args.baseline,args.baseline_file))
+        if args.through_version:print('Retained signed intermediate verified:',args.through_version,previous(args.through_version,args.through_file))
+        return
     assert args.candidate and args.candidate.is_file()
-    old=Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.baseline}.apk';assert old.is_file()
+    old=previous(args.baseline,args.baseline_file) if args.baseline_file else Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.baseline}.apk';assert old.is_file()
+    assert not args.through_file or args.through_version,'--through-file needs --through-version'
+    assert not args.through_version or (not args.probe and args.baseline<args.through_version),'Intermediate version must be newer than baseline'
     device_timezone('Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
     legacy_editor('Task');enter_text(PROBE);tap('Save');tap('Plans');find(PROBE,reveal=True)
     screenshot(str(args.baseline)+'-control-task')
     for kind,amount in [('Expense','12.50'),('Income','100.00')]:
         tap('Today');legacy_editor(kind);enter_text(amount);tap('Save')
+    if args.through_version:
+        intermediate=previous(args.through_version,args.through_file) if args.through_file else Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.through_version}.apk'
+        assert intermediate.is_file()
+        adb('install','-r',str(intermediate),timeout=90);assert uid()==owner,'Package identity changed in intermediate upgrade'
+        installed=adb('shell','dumpsys','package',APP).decode();assert int(re.search(r'versionCode=(\d+)',installed)[1])==args.through_version
+        start();tap('Plans');find(PROBE,reveal=True);screenshot('intermediate-'+str(args.through_version)+'-control-task')
+        tap('Finances');verify_financial_summary(xml())
     adb('install','-r',str(args.candidate),timeout=90)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
-    assert version==args.baseline if args.probe else version>args.baseline
+    assert version==args.baseline if args.probe else version>max(args.baseline,args.through_version or 0)
+    modern=not args.probe and version>303001
+    tasks='Tasks' if modern else 'Plans'
     if not args.probe:device_timezone('Etc/UTC')
-    start();tap('Plans');find(PROBE,reveal=True);screenshot('upgraded-control-task')
-    start();tap('Plans');find(PROBE,reveal=True)
+    start();tap(tasks);find(PROBE,reveal=True);screenshot('upgraded-control-task')
+    start();tap(tasks);find(PROBE,reveal=True)
     evidence={'previousVersionCode':args.baseline,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
+    if args.through_version:evidence['intermediateVersionCode']=args.through_version;evidence['intermediateTaskAndFinancialDataRetained']=True
     if not args.probe:
         for theme in ['light','dark']:
             adb('shell','cmd','uimode','night','no' if theme=='light' else 'yes');time.sleep(.7)
+            if modern:
+                capture_candidate_pages(theme)
+                continue
             tap('Today');screenshot('today-'+theme)
             tap('Finances');find('Finances');screenshot('finances-'+theme);
             tree=xml();(OUT/('finances-'+theme+'.xml')).write_bytes(ET.tostring(tree))
@@ -164,6 +220,7 @@ def main():
             scroll();screenshot('categories-'+theme);scroll(False)
             tap('Today');tap('Profile');tap('Account and family');tap('Create account');screenshot('registration-'+theme)
             adb('shell','input','keyevent','4')
+        if modern:evidence['notificationDelivery']=notification_evidence();evidence['nativeNavigationScreenshots']=['Today','Tasks','Calendar','Notes','Finances','Profile']
         evidence['screenshots']='real Android 35 release app; synthetic data only'
         evidence['financialAmountsRetained']={'incomeMinor':10000,'expenseMinor':1250,'differenceMinor':8750,'currency':'USD'}
     OUT.mkdir(exist_ok=True);(OUT/'upgrade-result.json').write_text(json.dumps(evidence,indent=2)+'\n');print(json.dumps(evidence))

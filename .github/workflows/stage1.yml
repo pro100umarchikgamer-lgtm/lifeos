@@ -144,8 +144,8 @@ jobs:
         if: steps.validation.outputs.full == 'true'
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin --no-daemon
-      - name: Enable KVM for encrypted storage integration tests
-        if: steps.validation.outputs.full == 'true'
+      - name: Enable KVM for Android integration and signed upgrade
+        if: steps.validation.outputs.full == 'true' || steps.validation.outputs.build == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -166,7 +166,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-integration-diagnostics-${{ github.run_number }}
-          path: web_evidence/android-*
+          path: |
+            web_evidence/android-*
+            web_evidence/native-*
           if-no-files-found: warn
           retention-days: 14
       - name: Save evidence after all mandatory validation succeeds
@@ -189,13 +191,14 @@ jobs:
         env:
           LIFEOS_TEST_KEYSTORE_BASE64: ${{ secrets.LIFEOS_TEST_KEYSTORE_BASE64 }}
           LIFEOS_API_ORIGIN: https://api.getuladim.space
+          LIFEOS_MIN_VERSION_CODE: 303001
         run: bash tool/ci_signing.sh
       - name: Download retained signed release for update verification
         if: steps.validation.outputs.build == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tool/check_release_upgrade.py --download --baseline 134001
-      - name: Install over signed 134001 and retain encrypted user data
+        run: python3 tool/check_release_upgrade.py --download --baseline 134001 --through-version 303001
+      - name: Upgrade signed 134001 through 303001 and verify OS notifications
         if: steps.validation.outputs.build == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 12
@@ -206,7 +209,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim
-          script: python3 tool/check_release_upgrade.py --baseline 134001 --candidate build/app/outputs/flutter-apk/app-release.apk
+          script: python3 tool/check_release_upgrade.py --baseline 134001 --through-version 303001 --candidate build/app/outputs/flutter-apk/app-release.apk
       - name: Save Android upgrade evidence
         if: always() && steps.validation.outputs.build == 'true'
         uses: actions/upload-artifact@v4
