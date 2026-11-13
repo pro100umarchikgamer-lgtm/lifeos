@@ -56,6 +56,13 @@
     }
     @app_document path /app /app/
     header @app_document >Referrer-Policy strict-origin
+    # BEGIN ULADIM VERIFIED ANDROID RELEASE
+    handle /download/release.json {
+        header Content-Type application/json
+        header Cache-Control no-store
+        respond "Release metadata is not activated." 503
+    }
+    # END ULADIM VERIFIED ANDROID RELEASE
     @private path /metrics /health/* /control/*
     handle @private {
         respond 404
