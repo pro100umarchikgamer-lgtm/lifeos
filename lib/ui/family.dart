@@ -80,7 +80,11 @@ class _FamilyPageState extends State<FamilyPage> {
     super.dispose();
   }
 
+  bool _stillIn(AccountPrincipal principal, String? workspace) =>
+      mounted && c.isCurrentPrincipal(principal) && c.workspace == workspace;
+
   Future<String?> ask(String label, {bool secret = false}) async {
+    final principal = c.capturePrincipal(), workspace = c.workspace;
     final value = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => AccountInputPage(
@@ -91,6 +95,7 @@ class _FamilyPageState extends State<FamilyPage> {
         ),
       ),
     );
+    if (!_stillIn(principal, workspace)) return null;
     return secret ? value : value?.trim();
   }
 
@@ -98,8 +103,12 @@ class _FamilyPageState extends State<FamilyPage> {
         await c.family(action, values);
       });
   Future<void> invite() async {
+    final principal = c.capturePrincipal(), workspace = c.workspace;
     final mail = await ask(t('family_invite_email'));
-    if (mail == null || mail.isEmpty || !mounted) return;
+    if (mail == null || mail.isEmpty || !mounted ||
+        !_stillIn(principal, workspace)) {
+      return;
+    }
     String role = 'adult';
     String? profile;
     final choice = await showDialog<String>(
@@ -115,7 +124,7 @@ class _FamilyPageState extends State<FamilyPage> {
         ],
       ),
     );
-    if (choice == null || !mounted) return;
+    if (choice == null || !mounted || !_stillIn(principal, workspace)) return;
     role = choice;
     if (role == 'child') {
       final profiles =
@@ -133,8 +142,9 @@ class _FamilyPageState extends State<FamilyPage> {
           ],
         ),
       );
-      if (profile == null) return;
+      if (profile == null || !_stillIn(principal, workspace)) return;
     }
+    if (!_stillIn(principal, workspace)) return;
     Json? result;
     await c.run(() async {
       result = await c.family('invite.create', {
@@ -143,7 +153,7 @@ class _FamilyPageState extends State<FamilyPage> {
         'profile_id': profile,
       });
     });
-    if (result != null && mounted) {
+    if (result != null && mounted && _stillIn(principal, workspace)) {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -163,6 +173,7 @@ class _FamilyPageState extends State<FamilyPage> {
   }
 
   Future<void> child([Json? profile]) async {
+    final principal = c.capturePrincipal(), workspace = c.workspace;
     final name = TextEditingController(text: profile?['name'] as String? ?? '');
     final permissions = (profile?['permissions'] as List? ?? ['view_shared'])
         .cast<String>()
@@ -261,7 +272,7 @@ class _FamilyPageState extends State<FamilyPage> {
         ),
       ),
     );
-    if (save == true) {
+    if (save == true && _stillIn(principal, workspace)) {
       await command('child.save', {
         'profile_id': profile?['id'] ?? FamilyController.uuid.v4(),
         'name': name.text.trim(),
@@ -273,6 +284,7 @@ class _FamilyPageState extends State<FamilyPage> {
   }
 
   Future<void> confirm(String label, Future<void> Function() action) async {
+    final principal = c.capturePrincipal(), workspace = c.workspace;
     final yes = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -289,7 +301,7 @@ class _FamilyPageState extends State<FamilyPage> {
         ],
       ),
     );
-    if (yes == true) await action();
+    if (yes == true && _stillIn(principal, workspace)) await action();
   }
 
   Future<void> edit([Json? record]) async {
@@ -686,12 +698,18 @@ class _FamilyPageState extends State<FamilyPage> {
                     ),
                     button('family_logout', signOutPage, icon: Icons.logout),
                     button('family_password_change', () async {
+                      final principal = c.capturePrincipal(), workspace = c.workspace;
                       final old =
                           await ask(t('family_old_password'), secret: true);
-                      if (old == null || !mounted) return;
+                      if (old == null || !mounted ||
+                          !_stillIn(principal, workspace)) {
+                        return;
+                      }
                       final next =
                           await ask(t('family_new_password'), secret: true);
-                      if (next != null) await c.password(old, next);
+                      if (next != null && _stillIn(principal, workspace)) {
+                        await c.password(old, next);
+                      }
                     }),
                   ]),
                   if (!c.verified) ...[
@@ -717,8 +735,9 @@ class _FamilyPageState extends State<FamilyPage> {
                     const SizedBox(height: 12),
                     button('family_sync', () => c.refresh(), icon: Icons.sync),
                     button('family_create', () async {
+                      final principal = c.capturePrincipal(), workspace = c.workspace;
                       final name = await ask(t('family_name'));
-                      if (name != null) {
+                      if (name != null && _stillIn(principal, workspace)) {
                         await command('workspace.create', {
                           'name': name,
                           'kind': 'family',
@@ -727,8 +746,11 @@ class _FamilyPageState extends State<FamilyPage> {
                       }
                     }),
                     button('family_accept', () async {
+                      final principal = c.capturePrincipal(), workspace = c.workspace;
                       final value = await ask(t('family_invitation'));
-                      if (value != null) await c.accept(value);
+                      if (value != null && _stillIn(principal, workspace)) {
+                        await c.accept(value);
+                      }
                     }),
                     for (final space in c.spaces)
                       ListTile(

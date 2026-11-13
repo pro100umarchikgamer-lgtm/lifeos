@@ -237,4 +237,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(await store.pending(c.scope,'family'),isEmpty,reason:'Old Alice dialog must not write under Bob principal');
   });
+  testWidgets('old family close confirmation cannot dissolve newly selected family', (tester) async {
+    final catalog=await tester.runAsync(PackCatalog.load);
+    final writes=<(String,Json)>[];
+    final alice=LoginApi('https://example.test',(path,body) async => {'google_enabled':false})..token='alice';
+    final bob=LoginApi('https://example.test',(path,body) async {
+      if(body!=null){writes.add((path,body));return {};}
+      throw const SyncFailure('offline');
+    })..token='bob';
+    final c=FamilyController(MemorySyncStore())..api=alice..account={'user_id':'alice','verified':true,'email':'alice@example.test'}..workspace='alice-family'..roster={'space':{'role':'parent','creator_id':'alice','revision':1},'members':[],'profiles':[]};
+    addTearDown(c.dispose);addTearDown(alice.close);
+    await tester.pumpWidget(MaterialApp(home:FamilyPage(controller:c,pack:catalog!.packs['en']!)));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text(catalog.packs['en']!.t('family_dissolve')),300);
+    await tester.ensureVisible(find.text(catalog.packs['en']!.t('family_dissolve')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(catalog.packs['en']!.t('family_dissolve')));
+    await tester.pumpAndSettle();
+    c.api=bob;c.account={'user_id':'bob','verified':true,'email':'bob@example.test'};c.workspace='bob-family';c.roster={'space':{'role':'parent','creator_id':'bob','revision':5},'members':[],'profiles':[]};c.publish();
+    await tester.pump();
+    await tester.tap(find.text(catalog.packs['en']!.t('confirm')));
+    await tester.pumpAndSettle();
+    expect(writes,isEmpty,reason:'Old Alice closure consent must not apply to Bob family');
+  });
 }
