@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lifeos/ui/account_center.dart';
+import 'package:lifeos/ui/family.dart';
 import 'package:lifeos/ui/privacy_lifecycle.dart';
 import 'privacy_lifecycle_ui_test.dart' show status;
 import 'package:lifeos/localization/language_pack.dart';
@@ -216,5 +217,24 @@ void main() {
     expect(bob.token, 'bob');
     expect(oldMeCalls, 0,
         reason: 'The old widget must stop before consulting its old transport');
+  });
+  testWidgets('Alice delete confirmation cannot enqueue a write under Bob after switch', (tester) async {
+    final catalog = await tester.runAsync(PackCatalog.load);
+    final store=MemorySyncStore();
+    final alice=LoginApi('https://example.test',(path,body) async => {})..token='alice';
+    final bob=LoginApi('https://example.test',(path,body) async => throw const SyncFailure('offline'))..token='bob';
+    final record=<String,dynamic>{'id':'shared','workspace_id':'family','owner_id':'alice','kind':'note','revision':1,'deleted':0,'visibility':'shared','audience':[],'editable':true,'data':{'body':'Shared note'}};
+    final c=FamilyController(store)..api=alice..account={'user_id':'alice','verified':true}..workspace='family'..records=[record]..roster={'space':{'role':'parent'},'profiles':[]};
+    addTearDown(c.dispose);addTearDown(alice.close);
+    await tester.pumpWidget(MaterialApp(home:FamilyRecordEditor(controller:c,pack:catalog!.packs['en']!,record:record)));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(catalog.packs['en']!.t('delete')));
+    await tester.tap(find.text(catalog.packs['en']!.t('delete')));
+    await tester.pumpAndSettle();
+    c.api=bob;c.account={'user_id':'bob','verified':true};c.publish();
+    await tester.pump();
+    await tester.tap(find.text(catalog.packs['en']!.t('confirm')));
+    await tester.pumpAndSettle();
+    expect(await store.pending(c.scope,'family'),isEmpty,reason:'Old Alice dialog must not write under Bob principal');
   });
 }

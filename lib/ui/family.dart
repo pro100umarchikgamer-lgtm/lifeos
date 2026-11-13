@@ -963,9 +963,11 @@ class FamilyRecordEditor extends StatefulWidget {
 
 class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   late final String _scopeAtOpen;
+  late final AccountPrincipal _principalAtOpen;
   String get _scopeNow =>
       '${c.account?['user_id']}|${c.accountOrigin}|${c.workspace}';
   bool get _unavailable =>
+      !c.isCurrentPrincipal(_principalAtOpen) ||
       _scopeAtOpen != _scopeNow ||
       widget.record != null &&
           ((widget.record!['deleted'] ?? 0) == 1 ||
@@ -1025,9 +1027,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       widget.record == null ||
       widget.record!['owner_id'] == c.account?['user_id'];
   bool get completionOnly => role == 'child' && !own;
+  Json? get _currentRecord => c.records
+      .where((row) => row['id'] == widget.record?['id']).firstOrNull;
+  bool get _canAct => mounted && canEdit && !c.busy;
   bool get canEdit =>
       !_unavailable &&
       widget.record?['editable'] != false &&
+      _currentRecord?['editable'] != false &&
       (widget.record == null || !c.transferUsesErasedAccount(widget.record!));
   List<Json> get accounts => c.records
       .where((r) => r['kind'] == 'account' && isActiveSyncRecord(r))
@@ -1051,6 +1057,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   @override
   void initState() {
     super.initState();
+    _principalAtOpen = c.capturePrincipal();
     _scopeAtOpen = _scopeNow;
     c.addListener(changed);
     kind = widget.initialKind ?? kind;
@@ -1289,6 +1296,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   }
 
   Future<void> save() async {
+    if (saving || !_canAct) return;
     setState(() => saving = true);
     try {
       if (completionOnly && kind == 'task') {
@@ -1308,17 +1316,18 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         'audience': audience.toList(),
         'data': data(),
       });
-      if (mounted && (c.error == null || c.error == 'offline')) {
+      if (mounted && _canAct && (c.error == null || c.error == 'offline')) {
         Navigator.pop(context);
       }
     } catch (_) {
-      if (mounted) setState(() => error = 'invalid_input');
+      if (mounted && !_unavailable) setState(() => error = 'invalid_input');
     } finally {
       if (mounted) setState(() => saving = false);
     }
   }
 
   Future<void> action(String name, Json extra) async {
+    if (!_canAct || widget.record == null) return;
     final r = widget.record!;
     await c.enqueue({
       'id': FamilyController.uuid.v4(),
@@ -1327,12 +1336,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       'revision': r['revision'],
       ...extra,
     });
-    if (mounted && (c.error == null || c.error == 'offline')) {
+    if (mounted && _canAct && (c.error == null || c.error == 'offline')) {
       Navigator.pop(context);
     }
   }
 
   Future<void> delete() async {
+    if (!_canAct) return;
     final yes = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1349,10 +1359,11 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (yes == true) await action('record.delete', {});
+    if (yes == true && _canAct) await action('record.delete', {});
   }
 
   Future<void> grant(bool revoke) async {
+    if (!_canAct || !own || visibility != 'private') return;
     final members = (c.roster?['members'] as List? ?? [])
         .map(object)
         .where((m) => m['user_id'] != c.account!['user_id'])
@@ -1372,7 +1383,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (target != null && mounted) {
+    if (target != null && mounted && _canAct && own && visibility == 'private') {
       final edit = revoke
           ? false
           : await showDialog<bool>(
@@ -1391,7 +1402,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 ],
               ),
             );
-      if (edit == null) return;
+      if (edit == null || !_canAct || !own || visibility != 'private') return;
       await action('record.grant', {
         'user_id': target,
         'can_edit': edit,
@@ -1401,6 +1412,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   }
 
   Future<void> fulfill() async {
+    if (!_canAct || !c.parent) return;
     final transfers = c.records
         .where((r) =>
             r['kind'] == 'transfer' &&
@@ -1422,7 +1434,10 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (target != null) {
+    if (target != null && _canAct && c.parent &&
+        c.records.any((r) => r['id'] == target &&
+            r['kind'] == 'transfer' && isActiveSyncRecord(r) &&
+            !c.transferUsesErasedAccount(r))) {
       await action('request.fulfill', {'movement_id': target});
     }
   }

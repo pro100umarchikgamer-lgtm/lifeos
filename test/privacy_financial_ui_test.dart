@@ -6,6 +6,8 @@ import 'package:lifeos/sync/controller.dart';
 import 'package:lifeos/sync/api.dart';
 import 'support/sync_memory.dart';
 import 'privacy_financial_projection_test.dart' show row;
+import 'google_login_test.dart' show LoginApi;
+import 'package:lifeos/sync/contracts.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -110,6 +112,47 @@ void main() {
     expect(find.text('Hidden owner name'), findsNothing);
     expect(find.byType(TextField), findsNothing);
     expect(old['data'], isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('a pending delete cannot change a transfer after its account is erased',
+      (tester) async {
+    final store = MemorySyncStore();
+    final c = FamilyController(store)
+      ..api = LoginApi('https://example.test',
+          (path, body) async => throw const SyncFailure('offline'))
+      ..account = {'user_id': 'alice', 'verified': true}
+      ..workspace = 'family'
+      ..roster = {'space': {'role': 'parent'}};
+    addTearDown(c.dispose);
+    final transfer = row('transfer', 'transfer', {
+      'from_id': 'deleted', 'to_id': 'live', 'sent_minor': 1250,
+      'received_minor': 1900, 'date': '2026-11-13'
+    });
+    c.records = [
+      row('deleted', 'account', {'name': 'USD', 'currency': 'USD',
+        'opening_minor': 0}),
+      row('live', 'account', {'name': 'JPY', 'currency': 'JPY',
+        'opening_minor': 1000}),
+      transfer,
+    ];
+    await tester.pumpWidget(MaterialApp(home: FamilyRecordEditor(
+        controller: c, pack: catalog.packs['en']!, record: transfer)));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(catalog.packs['en']!.t('delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(catalog.packs['en']!.t('delete')));
+    await tester.pumpAndSettle();
+    c.records.removeWhere((r) => r['id'] == 'deleted');
+    c.referenceCurrencies = {'deleted': 'USD'};
+    c.erasedRecordIds = {'deleted'};
+    c.publish();
+    await tester.pump();
+    await tester.tap(find.text(catalog.packs['en']!.t('confirm')));
+    await tester.pumpAndSettle();
+    expect(await store.pending(c.scope, 'family'), isEmpty);
+    expect(find.byType(TextField), findsNothing);
+    expect(transfer['data']['sent_minor'], 1250);
+    expect(transfer['data']['received_minor'], 1900);
     expect(tester.takeException(), isNull);
   });
 }
