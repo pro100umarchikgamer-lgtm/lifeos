@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from tool import native_release_mode as mode
@@ -13,6 +14,18 @@ from tool import publish_retained_apk as publisher
 
 ROOT = Path(__file__).resolve().parents[2]
 DECLARATION = json.loads((ROOT / mode.DECLARATION).read_text())
+
+
+class TransportTests(unittest.TestCase):
+    @patch('tool.publish_retained_apk.subprocess.check_output', return_value=b'{}')
+    def test_repository_endpoint_uses_canonical_path(self, request):
+        publisher.GitHub().request('')
+        self.assertEqual(request.call_args.args[0][4], 'repos/' + mode.REPOSITORY)
+
+    @patch('tool.publish_retained_apk.subprocess.check_output', return_value=b'{}')
+    def test_resource_endpoint_keeps_its_path_separator(self, request):
+        publisher.GitHub().request('actions/runs/123')
+        self.assertEqual(request.call_args.args[0][4], 'repos/' + mode.REPOSITORY + '/actions/runs/123')
 
 
 class ModeTests(unittest.TestCase):

@@ -35,7 +35,8 @@ class NoUploadRedirect(HTTPRedirectHandler):
 class GitHub:
     """gh handles authenticated artifact redirects without exposing credentials."""
     def request(self, path, method='GET', payload=None):
-        args = ['gh', 'api', '--method', method, f'repos/{REPOSITORY}/{path}',
+        endpoint = f'repos/{REPOSITORY}' + ('/' + path if path else '')
+        args = ['gh', 'api', '--method', method, endpoint,
                 '-H', 'X-GitHub-Api-Version: 2022-11-28']
         data = None
         if payload is not None:
