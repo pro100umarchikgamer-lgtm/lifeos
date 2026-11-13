@@ -175,13 +175,11 @@ void main() {
       expect(find.byKey(const Key('create_task_header')), findsOneWidget);
       await shot('tasks');
       await nav('calendar');
-      expect(find.byType(CalendarGrid), findsNothing);
+      expect(find.byType(CalendarGrid), findsOneWidget);
       expect(find.text('Встреча и планы на день 0'), findsOneWidget);
       await shot('calendar');
       await tester
           .ensureVisible(find.byKey(const Key('calendar_month_toggle')));
-      await tester.tap(find.byKey(const Key('calendar_month_toggle')));
-      await tester.pumpAndSettle();
       expect(find.byType(CalendarGrid), findsOneWidget);
       await shot('month');
       await nav('notes');

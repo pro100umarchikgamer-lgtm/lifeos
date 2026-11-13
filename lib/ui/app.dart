@@ -20,6 +20,7 @@ import 'module_calendar_route.dart';
 import 'family.dart';
 import 'family_dashboard.dart';
 import 'global_search.dart';
+import 'notification_center.dart';
 
 class LifeOSApp extends StatefulWidget {
   const LifeOSApp({super.key, required this.controller, this.builder});
@@ -31,10 +32,39 @@ class LifeOSApp extends StatefulWidget {
 
 class _LifeOSAppState extends State<LifeOSApp> {
   final notices = LifeNotices();
-  late final navigationObserver = NoticeNavigationObserver(notices);
+  final navigatorKey = GlobalKey<NavigatorState>();
+  late final navigationObserver =
+      NoticeNavigationObserver(notices, onChanged: _checkAnnouncements);
+  bool _startupAnnouncementShown = false;
+  @override
+  void initState() {
+    super.initState();
+    controller.inbox.addListener(_inboxChanged);
+  }
+
+  void _inboxChanged() => WidgetsBinding.instance
+      .addPostFrameCallback((_) => _checkAnnouncements());
+  void _checkAnnouncements() {
+    if (!mounted ||
+        _startupAnnouncementShown ||
+        !navigationObserver.homeVisible) {
+      return;
+    }
+    final message = controller.inbox.announcements
+        .where((m) => m.presentation == 'fullscreen')
+        .firstOrNull;
+    if (message == null || message.presentation != 'fullscreen') return;
+    _startupAnnouncementShown = true;
+    navigatorKey.currentState?.push<void>(MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => NotificationDetailPage(
+            controller: controller, message: message, announcement: true)));
+  }
+
   AppController get controller => widget.controller;
   @override
   void dispose() {
+    controller.inbox.removeListener(_inboxChanged);
     notices.dispose();
     super.dispose();
   }
@@ -45,6 +75,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
         builder: (context, _) {
           return MaterialApp(
             title: 'ULADIM',
+            navigatorKey: navigatorKey,
             debugShowCheckedModeBanner: false,
             scaffoldMessengerKey: notices.messengerKey,
             navigatorObservers: [navigationObserver],
@@ -158,6 +189,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _resume() async {
+    c.inbox.refresh();
     if (!c.native.supported) return;
     try {
       await c.refresh(forceReminders: true);
@@ -527,6 +559,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               Divider(
                   height: 1,
                   color: Theme.of(context).colorScheme.outlineVariant),
+              AnnouncementBanner(controller: c),
               Expanded(
                   child: Center(
                       child: ConstrainedBox(
@@ -614,8 +647,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             size: 18, color: colors.onSurfaceVariant),
       ]),
     );
-    final compact = MediaQuery.textScalerOf(context).scale(1) <= 1.3 ||
-        MediaQuery.sizeOf(context).width >= 600;
+    final width = MediaQuery.sizeOf(context).width;
+    final singleRow =
+        width >= 720 && MediaQuery.textScalerOf(context).scale(1) <= 1.3;
+    final actions = [
+      NotificationBell(controller: c),
+      if (_destination == 0) _addButton()
+    ];
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Row(children: [
         Expanded(child: workspace),
@@ -624,13 +662,41 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             tooltip: c.pack.t('search'),
             onPressed: _showSearch,
             icon: const Icon(Icons.search_rounded)),
-        if (_destination == 0 && compact) ...[
-          const SizedBox(width: 4),
-          _addButton(),
-        ],
+        if (singleRow) ...actions,
       ]),
-      if (_destination == 0 && !compact)
-        Align(alignment: Alignment.centerRight, child: _addButton()),
+      if (!singleRow)
+        LayoutBuilder(builder: (context, box) {
+          double textWidth(String text) => (TextPainter(
+                text: TextSpan(
+                    text: text,
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout())
+                  .width;
+          final required = textWidth(c.pack.t('inbox_title')) +
+              60 +
+              (_destination == 0 ? textWidth(c.pack.t('add')) + 80 : 0);
+          if (required > box.maxWidth) {
+            return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                      alignment: Alignment.centerLeft,
+                      child: NotificationBell(controller: c)),
+                  if (_destination == 0)
+                    Align(
+                        alignment: Alignment.centerRight, child: _addButton()),
+                ]);
+          }
+          return Row(children: [
+            NotificationBell(controller: c),
+            if (_destination == 0) ...[const Spacer(), _addButton()]
+          ]);
+        }),
     ]);
   }
 
@@ -638,8 +704,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         key: const Key('add_button'),
         onPressed: _chooseAdd,
         style: FilledButton.styleFrom(
-          minimumSize: const Size(44, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: const Size(112, 50),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          textStyle: Theme.of(context)
+              .textTheme
+              .labelLarge
+              ?.copyWith(fontWeight: FontWeight.w700),
+          elevation: 1,
         ),
         icon: const Icon(Icons.add_rounded, size: 20),
         label: Text(c.pack.t('add')),

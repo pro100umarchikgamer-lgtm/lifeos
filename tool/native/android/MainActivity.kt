@@ -46,6 +46,14 @@ class MainActivity : FlutterActivity() {
                     }
                     "reconcile" -> { ReminderRuntime.reconcile(this, JSONArray(call.argument<List<Any>>("entries"))); result.success(null) }
                     "pendingActions" -> result.success(convert(ReminderRuntime.read(this).getJSONArray("actions")))
+                    "reminderHistory" -> result.success(convert(ReminderRuntime.read(this).optJSONArray("history") ?: JSONArray()))
+                    "ackReminderHistory" -> { ReminderRuntime.acknowledgeHistory(this, (call.arguments as List<*>).map { it as String }.toSet()); result.success(null) }
+                    "openExternalLink" -> {
+                        val uri = Uri.parse(call.arguments as String)
+                        require(uri.scheme in listOf("https", "http") && !uri.host.isNullOrBlank() && uri.userInfo == null)
+                        startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
+                        result.success(null)
+                    }
                     "ackActions" -> { ReminderRuntime.acknowledge(this, (call.arguments as List<*>).map { it as String }.toSet()); result.success(null) }
                     "launchTarget" -> { result.success(launchId); launchId = null }
                     "requestNotifications" -> {

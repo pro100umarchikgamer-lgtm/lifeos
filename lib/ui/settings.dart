@@ -43,6 +43,19 @@ class _PersonalSettingsState extends State<PersonalSettings> {
     }
   }
 
+  Future<void> legalLink(String path) async {
+    final origin = c.family?.accountOrigin ??
+        const String.fromEnvironment('LIFEOS_API_ORIGIN',
+            defaultValue: 'https://api.getuladim.space');
+    try {
+      await c.native.openExternalLink(
+          Uri.parse(origin.isEmpty ? 'https://api.getuladim.space' : origin)
+              .resolve(path));
+    } catch (_) {
+      message('inbox_link_failed');
+    }
+  }
+
   Future<void> preference(String key, String value) async {
     try {
       await c.preference(key, value);
@@ -294,60 +307,6 @@ class _PersonalSettingsState extends State<PersonalSettings> {
     }
   }
 
-  Future<void> zone() async {
-    String query = '';
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, set) {
-          final zones = tz.timeZoneDatabase.locations.keys
-              .where((z) => z.toLowerCase().contains(query.toLowerCase()))
-              .toList()
-            ..sort();
-          return AlertDialog(
-            title: Text(c.pack.t('timezone')),
-            content: SizedBox(
-              width: 360,
-              height: 400,
-              child: Column(
-                children: [
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: c.pack.t('search_options'),
-                    ),
-                    onChanged: (v) => set(() => query = v),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        ListTile(
-                          title: Text(c.pack.t('device_timezone')),
-                          onTap: () => Navigator.pop(context, 'device'),
-                        ),
-                        for (final z in zones)
-                          ListTile(
-                            title: Text(z),
-                            onTap: () => Navigator.pop(context, z),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(c.pack.t('cancel')),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    if (selected != null) await preference('timezone', selected);
-  }
-
   Future<void> notificationDetails() => Navigator.push<void>(
         context,
         MaterialPageRoute(
@@ -559,15 +518,22 @@ class _PersonalSettingsState extends State<PersonalSettings> {
               const SizedBox(height: 16),
               select('week_start', '${c.weekStart}',
                   {'1': c.pack.t('monday'), '7': c.pack.t('sunday')}),
-              SettingsGroup(children: [
-                SettingsRow(
-                    icon: Icons.public_outlined,
-                    title: c.pack.t('timezone'),
-                    subtitle: c.timezone == 'device'
-                        ? '${c.pack.t('device_timezone')} · ${c.deviceZone}'
-                        : c.timezone,
-                    onTap: busy ? null : zone)
-              ]),
+              const SizedBox(height: 12),
+              LifeSelect<String>(
+                key: const Key('timezone_select'),
+                label: c.pack.t('timezone'),
+                value: c.timezone,
+                choices: {
+                  'device': '${c.pack.t('device_timezone')} · ${c.deviceZone}',
+                  for (final name
+                      in tz.timeZoneDatabase.locations.keys.toList()..sort())
+                    name: name,
+                },
+                searchLabel: c.pack.t('search_options'),
+                dialog: true,
+                onChanged:
+                    busy ? null : (value) => preference('timezone', value),
+              ),
             ]),
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               SettingsGroup(children: [
@@ -627,6 +593,18 @@ class _PersonalSettingsState extends State<PersonalSettings> {
               Text(c.pack.t('backup_privacy')),
               const SizedBox(height: 24),
               SettingsGroup(children: [
+                SettingsRow(
+                    key: const Key('legal_privacy'),
+                    title: c.pack.t('legal_privacy'),
+                    icon: Icons.privacy_tip_outlined,
+                    trailing: const Icon(Icons.open_in_new_rounded, size: 20),
+                    onTap: () => legalLink('/privacy')),
+                SettingsRow(
+                    key: const Key('legal_terms'),
+                    title: c.pack.t('legal_terms'),
+                    icon: Icons.description_outlined,
+                    trailing: const Icon(Icons.open_in_new_rounded, size: 20),
+                    onTap: () => legalLink('/terms')),
                 SettingsRow(
                     title: c.pack.t('backup_manage'),
                     icon: Icons.lock_outline,

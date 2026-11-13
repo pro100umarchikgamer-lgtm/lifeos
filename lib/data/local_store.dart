@@ -1,4 +1,5 @@
 import '../domain/timezones.dart';
+import '../notifications/notification_center.dart';
 import '../sync/contracts.dart';
 import '../domain/offline_validation.dart';
 import '../domain/statement_import.dart';
@@ -30,13 +31,22 @@ part 'personal_modules_store.dart';
 part 'history_validation.dart';
 part 'sync_store.dart';
 
-class LocalStore implements OfflineStore {
+class LocalStore implements OfflineStore, NotificationCache {
   LocalStore._(this._db, this.ownerId, this.workspaceId);
   final sql.Database _db;
   String ownerId;
   String workspaceId;
   static const _uuid = Uuid();
   static const schemaVersion = 11;
+
+  @override
+  String get localNotificationScope => 'notification:personal:$ownerId';
+  @override
+  Future<Json?> readNotificationCache(String scope) =>
+      syncMetadata(scope, 'notification_center_v1');
+  @override
+  Future<void> writeNotificationCache(String scope, Json value) =>
+      syncSaveMetadata(scope, 'notification_center_v1', value);
 
   static Future<LocalStore> open({String name = 'lifeos'}) async {
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(name)) {

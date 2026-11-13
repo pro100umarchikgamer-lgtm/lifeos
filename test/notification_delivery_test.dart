@@ -92,8 +92,7 @@ void main() {
       }
       return null;
     });
-    final c = AppController(
-        NotificationSettingsStore(), catalog, 'ru',
+    final c = AppController(NotificationSettingsStore(), catalog, 'ru',
         platform: native);
     await c.load();
     addTearDown(c.dispose);
@@ -137,6 +136,34 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     expect(find.text(c.pack.t('test_notification_posted')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('public privacy and terms open without an account',
+      (tester) async {
+    final opened = <String>[];
+    messenger.setMockMethodCallHandler(NativeBridge.channel, (call) async {
+      if (call.method == 'openExternalLink') {
+        opened.add(call.arguments as String);
+      }
+      return null;
+    });
+    final c = AppController(NotificationSettingsStore(), catalog, 'ru',
+        platform: native);
+    await c.load();
+    addTearDown(c.dispose);
+    expect(c.family, isNull);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: ListView(
+                children: [PersonalSettings(controller: c, section: 2)]))));
+    await tester.tap(find.byKey(const Key('legal_privacy')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('legal_terms')));
+    await tester.pumpAndSettle();
+    expect(opened, [
+      'https://api.getuladim.space/privacy',
+      'https://api.getuladim.space/terms'
+    ]);
     expect(tester.takeException(), isNull);
   });
 }

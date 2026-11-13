@@ -32,52 +32,7 @@ class LifeSelect<T> extends StatelessWidget {
               : () async {
                   FocusScope.of(context).unfocus();
                   final T? selected;
-                  if (choices.length <= 8 &&
-                      !dialog &&
-                      searchLabel == null &&
-                      queryChoices == null) {
-                    final box = context.findRenderObject() as RenderBox;
-                    final overlay = Navigator.of(context)
-                        .overlay!
-                        .context
-                        .findRenderObject() as RenderBox;
-                    final origin = box.localToGlobal(
-                      Offset.zero,
-                      ancestor: overlay,
-                    );
-                    selected = await showMenu<T>(
-                      context: context,
-                      position: RelativeRect.fromRect(
-                        origin & box.size,
-                        Offset.zero & overlay.size,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 180,
-                        maxWidth: 320,
-                        maxHeight: 360,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      items: [
-                        for (final e in choices.entries)
-                          PopupMenuItem<T>(
-                            key: ValueKey('choice_${e.key}'),
-                            value: e.key,
-                            child: Row(children: [
-                              Expanded(child: Text(e.value)),
-                              if (e.key == value) ...[
-                                const SizedBox(width: 12),
-                                Icon(Icons.check_rounded,
-                                    size: 20,
-                                    color:
-                                        Theme.of(context).colorScheme.primary),
-                              ],
-                            ]),
-                          ),
-                      ],
-                    );
-                  } else {
+                  {
                     final picker = _ChoiceDialog<T>(
                       label: label,
                       value: value,
@@ -250,19 +205,24 @@ class _ChoiceDialogState<T> extends State<_ChoiceDialog<T>> {
                         final e = entries[i], selected = e.key == widget.value;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 2),
-                          child: ListTile(
-                            key: ValueKey('choice_${e.key}'),
-                            minTileHeight: 52,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            selected: selected,
-                            selectedTileColor: colors.primaryContainer,
-                            title: Text(e.value),
-                            trailing: selected
-                                ? const Icon(Icons.check_rounded, size: 20)
-                                : null,
-                            onTap: () => Navigator.pop(context, e.key),
-                          ),
+                          child: Material(
+                              color: selected
+                                  ? colors.primaryContainer
+                                  : colors.surface.withValues(alpha: 0),
+                              borderRadius: BorderRadius.circular(12),
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                key: ValueKey('choice_${e.key}'),
+                                minTileHeight: 52,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                selected: selected,
+                                title: Text(e.value),
+                                trailing: selected
+                                    ? const Icon(Icons.check_rounded, size: 20)
+                                    : null,
+                                onTap: () => Navigator.pop(context, e.key),
+                              )),
                         );
                       },
                     ),

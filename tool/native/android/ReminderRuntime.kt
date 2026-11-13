@@ -192,7 +192,8 @@ object ReminderRuntime {
             for (i in 0 until snoozes.length()) if (snoozes.getJSONObject(i).getLong("epoch") != epoch) remaining.put(snoozes.getJSONObject(i))
             e.put("snoozes", remaining); write(c, state)
         }
-        show(c, e, epoch)
+        val posted = show(c, e, epoch)
+        recordHistory(c, e, epoch, if (posted) "delivered" else "blocked")
         if (e.getJSONObject("schedule").getString("mode") == "alarm" && (canSound(c) || canVibrate(c))) {
             try {
                 val service = Intent(c, AlarmService::class.java).putExtra("entry", e.toString()).putExtra("epoch", epoch)
@@ -276,7 +277,29 @@ object ReminderRuntime {
         write(c, state) // Do not dismiss an alert until its durable action has been written.
         notifications(c).cancel(id, 1)
         if (AlarmService.activeId == id && AlarmService.activeEpoch == epoch) c.stopService(Intent(c, AlarmService::class.java))
+        recordHistory(c, e, epoch, status)
         recovery(c)
+    }
+    /** Durable handoff to the SQLCipher inbox; content never leaves this device. */
+    @Synchronized private fun recordHistory(c: Context, e: JSONObject, epoch: Long, status: String) {
+        val state = read(c)
+        val history = state.optJSONArray("history") ?: JSONArray()
+        val id = "reminder:${e.getString("id")}:${e.getInt("revision")}:$epoch"
+        val remaining = JSONArray()
+        for (i in 0 until history.length()) if (history.getJSONObject(i).getString("id") != id) remaining.put(history.getJSONObject(i))
+        remaining.put(JSONObject().put("id", id).put("event_id", UUID.randomUUID().toString()).put("entry_id", e.getString("id"))
+            .put("kind", "reminder").put("title", e.optString("historyTitle", e.getString("title")))
+            .put("body", e.getString("message")).put("created_at", epoch / 1000).put("status", status))
+        state.put("history", remaining)
+        write(c, state)
+    }
+    @Synchronized fun acknowledgeHistory(c: Context, ids: Set<String>) {
+        val state = read(c)
+        val history = state.optJSONArray("history") ?: JSONArray()
+        val remaining = JSONArray()
+        for (i in 0 until history.length()) if (!ids.contains(history.getJSONObject(i).optString("event_id", history.getJSONObject(i).getString("id")))) remaining.put(history.getJSONObject(i))
+        state.put("history", remaining)
+        write(c, state)
     }
     @Synchronized fun acknowledge(c: Context, ids: Set<String>) {
         val state = read(c)

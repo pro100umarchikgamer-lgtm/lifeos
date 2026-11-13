@@ -22,7 +22,7 @@ class CalendarPanel extends StatefulWidget {
 class _CalendarPanelState extends State<CalendarPanel> {
   late DateTime day;
   late DateTime month;
-  bool monthExpanded = false;
+  bool monthExpanded = true;
   @override
   void initState() {
     super.initState();
@@ -256,7 +256,6 @@ class _CalendarPanelState extends State<CalendarPanel> {
                         }),
                         onDay: (v) => setState(() {
                           day = v;
-                          monthExpanded = false;
                         }),
                       )
                     else

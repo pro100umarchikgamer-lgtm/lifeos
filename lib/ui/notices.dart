@@ -14,51 +14,99 @@ class LifeNotices {
     messengerKey.currentState?.removeCurrentSnackBar();
   }
 
-  void show(String message, {String? undoLabel, Future<void> Function()? undo,
-    String Function(Object)? errorLabel}) {
+  void show(String message,
+      {String? undoLabel,
+      Future<void> Function()? undo,
+      String Function(Object)? errorLabel}) {
     clear();
     final messenger = messengerKey.currentState;
     if (messenger == null) return;
     final generation = _generation;
-    messenger.showSnackBar(SnackBar(content: Text(message),
-      duration: const Duration(milliseconds: 3500),
-      behavior: SnackBarBehavior.floating,
-      actionOverflowThreshold: 1,
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      action: undo == null ? null : SnackBarAction(label: undoLabel!, onPressed: () async {
-        clear();
-        final operationGeneration = _generation;
-        try { await undo(); }
-        catch (error) {
-          if (_generation == operationGeneration && errorLabel != null) show(errorLabel(error));
-        }
-      })));
+    messenger.showSnackBar(SnackBar(
+        content: Text(message),
+        duration: const Duration(milliseconds: 3500),
+        behavior: SnackBarBehavior.floating,
+        actionOverflowThreshold: 1,
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        action: undo == null
+            ? null
+            : SnackBarAction(
+                label: undoLabel!,
+                onPressed: () async {
+                  clear();
+                  final operationGeneration = _generation;
+                  try {
+                    await undo();
+                  } catch (error) {
+                    if (_generation == operationGeneration &&
+                        errorLabel != null) {
+                      show(errorLabel(error));
+                    }
+                  }
+                })));
     // SnackBarAction can keep an accessible snackbar alive beyond its duration.
     _deadline = Timer(const Duration(milliseconds: 3500), () {
       if (_generation == generation) clear();
     });
   }
 
-  void dispose() { _deadline?.cancel(); }
+  void dispose() {
+    _deadline?.cancel();
+  }
 }
 
 class LifeNoticeScope extends InheritedWidget {
-  const LifeNoticeScope({super.key, required this.notices, required super.child});
+  const LifeNoticeScope(
+      {super.key, required this.notices, required super.child});
   final LifeNotices notices;
-  static LifeNotices of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<LifeNoticeScope>()!.notices;
+  static LifeNotices of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LifeNoticeScope>()!.notices;
   @override
-  bool updateShouldNotify(LifeNoticeScope oldWidget) => oldWidget.notices != notices;
+  bool updateShouldNotify(LifeNoticeScope oldWidget) =>
+      oldWidget.notices != notices;
 }
 
 class NoticeNavigationObserver extends NavigatorObserver {
-  NoticeNavigationObserver(this.notices);
+  NoticeNavigationObserver(this.notices, {this.onChanged});
   final LifeNotices notices;
+  final VoidCallback? onChanged;
+  final _routes = <Route<dynamic>>[];
+  bool get homeVisible => _routes.length == 1 && _routes.last.isCurrent;
+  void _changed() {
+    notices.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) => onChanged?.call());
+  }
+
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => notices.clear();
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routes.add(route);
+    _changed();
+  }
+
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => notices.clear();
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routes.remove(route);
+    _changed();
+  }
+
   @override
-  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => notices.clear();
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routes.remove(route);
+    _changed();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    final index = oldRoute == null ? -1 : _routes.indexOf(oldRoute);
+    if (index >= 0) {
+      if (newRoute == null) {
+        _routes.removeAt(index);
+      } else {
+        _routes[index] = newRoute;
+      }
+    }
+    _changed();
+  }
 }

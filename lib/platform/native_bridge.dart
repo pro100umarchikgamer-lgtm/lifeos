@@ -44,6 +44,28 @@ class NativeBridge {
             Map<String, Object?>.from(raw as Map)
         ]
       : [];
+  Future<List<Map<String, dynamic>>> reminderHistory() async => supported
+      ? [
+          for (final raw
+              in await channel.invokeListMethod<Object?>('reminderHistory') ??
+                  [])
+            Map<String, dynamic>.from(raw as Map)
+        ]
+      : [];
+  Future<void> acknowledgeReminderHistory(List<String> ids) async {
+    if (supported) await channel.invokeMethod<void>('ackReminderHistory', ids);
+  }
+
+  Future<void> openExternalLink(Uri uri) async {
+    if (!supported ||
+        !['https', 'http'].contains(uri.scheme) ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty) {
+      throw PlatformException(code: 'link_unavailable');
+    }
+    await channel.invokeMethod<void>('openExternalLink', uri.toString());
+  }
+
   Future<void> acknowledge(List<String> ids) async {
     if (supported) await channel.invokeMethod<void>('ackActions', ids);
   }

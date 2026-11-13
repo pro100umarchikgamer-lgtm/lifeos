@@ -66,8 +66,11 @@ Future<void> openNativeSections(WidgetTester tester) async {
   await openNativeProfile(tester);
   final target = find.byKey(const Key('nav_modules'));
   await tester.scrollUntilVisible(target, 240,
-    scrollable: find.descendant(of: find.byKey(const Key('profile_page')),
-      matching: find.byType(Scrollable)).first);
+      scrollable: find
+          .descendant(
+              of: find.byKey(const Key('profile_page')),
+              matching: find.byType(Scrollable))
+          .first);
   await tester.tap(target);
   await tester.pumpAndSettle();
 }
@@ -303,8 +306,6 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('nav_calendar')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('calendar_month_toggle')));
-      await tester.pumpAndSettle();
       final first = dateOnly(
         DateTime(DateTime.now().year, DateTime.now().month),
       );
@@ -384,9 +385,8 @@ void main() {
       expect(store.actions.single, isA<DeleteRecord>());
       final bar = find.byType(SnackBar);
       expect(bar, findsOneWidget);
-      final surface = find
-          .descendant(of: bar, matching: find.byType(Material))
-          .first;
+      final surface =
+          find.descendant(of: bar, matching: find.byType(Material)).first;
       expect(
         tester.getRect(surface).bottom,
         lessThan(tester.getRect(find.byKey(const Key('nav_today'))).top),
