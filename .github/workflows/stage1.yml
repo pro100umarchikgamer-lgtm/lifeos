@@ -85,6 +85,39 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  publish_signed:
+    needs: [release_mode, production_backend, checks]
+    if: github.event_name == 'workflow_dispatch' && inputs.build_apk == true && inputs.focused != true && inputs.upgrade_probe != true && inputs.reuse_signed_apk != true && github.repository == 'pro100umarchikgamer-lgtm/lifeos' && github.ref == 'refs/heads/work/uladim-web-platform' && needs.release_mode.outputs.mode == 'validate' && needs.production_backend.result == 'success' && needs.checks.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify automatic and retained publication guards
+        run: python3 -m unittest tool.tests.test_current_native_release tool.tests.test_retained_native_release -v
+      - name: Publish this run's verified signed APK after all mandatory checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m tool.publish_current_apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uladim-native-publication-receipt
+          path: |
+            native-release-declaration.json
+            native-release-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+
   production_backend:
     needs: release_mode
     if: needs.release_mode.outputs.mode == 'validate' && inputs.upgrade_probe != true
@@ -246,7 +279,7 @@ jobs:
         env:
           LIFEOS_TEST_KEYSTORE_BASE64: ${{ secrets.LIFEOS_TEST_KEYSTORE_BASE64 }}
           LIFEOS_API_ORIGIN: https://api.getuladim.space
-          LIFEOS_MIN_VERSION_CODE: 303001
+          LIFEOS_MIN_VERSION_CODE: 312001
         run: bash tool/ci_signing.sh
       - name: Download retained signed release for update verification
         if: steps.validation.outputs.build == 'true'
