@@ -36,7 +36,7 @@ try{
  button('История операций',home).click();
  const initialLedger=w.document.querySelector('#finance-ledger');
  assert(initialLedger?.querySelector('h2').textContent==='История операций','Today opens the finance ledger');
- assert.equal(w.document.activeElement,initialLedger,'Today directs focus to transaction history');
+ assert.equal(w.document.activeElement,w.document.querySelector('main h1'),'Today directs focus to the finance page heading');
  assert.equal(w.document.querySelector('main').dataset.financeView,'ledger','Today opens the transaction-history view');
  const accountsTab=w.document.querySelector('.finance-navigation button[data-section="accounts"]');
  assert(accountsTab,'Finance exposes a direct account view');

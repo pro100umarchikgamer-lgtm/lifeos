@@ -1683,7 +1683,7 @@ for(const [locale,copy]of Object.entries(NOTIFICATION_COPY))WORKSPACE_COPY[local
 function notificationSupport(){
  const ios=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
  if(ios&&!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches)return 'install';
- return isSecureContext&&'Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window?'supported':'unavailable';
+ return window.isSecureContext===true&&'Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window?'supported':'unavailable';
 }
 function notificationTimeout(promise,ms){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('notification_timeout')),ms);promise.then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});});}
 async function notificationWorker(){
