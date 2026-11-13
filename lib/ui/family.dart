@@ -7,6 +7,8 @@ import '../sync/contracts.dart';
 import 'design.dart';
 import 'selection.dart';
 import 'account_center.dart';
+import 'settings_surfaces.dart';
+import 'preference_choices.dart';
 
 class FamilyPage extends StatefulWidget {
   const FamilyPage({super.key, required this.controller, required this.pack});
@@ -77,32 +79,17 @@ class _FamilyPageState extends State<FamilyPage> {
   }
 
   Future<String?> ask(String label, {bool secret = false}) async {
-    final field = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(label),
-        content: TextField(
-          controller: field,
-          obscureText: secret,
-          autofocus: true,
+    final value = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => AccountInputPage(
+          title: label,
+          confirm: t('save'),
+          cancel: t('cancel'),
+          secret: secret,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(t('cancel')),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, secret ? field.text : field.text.trim()),
-            child: Text(t('save')),
-          ),
-        ],
       ),
     );
-    // Dialog exit animation may still hold the controller for one frame.
-    Future<void>.delayed(const Duration(seconds: 1), field.dispose);
-    return result;
+    return secret ? value : value?.trim();
   }
 
   Future<void> command(String action, Json values) => c.run(() async {
@@ -317,12 +304,67 @@ class _FamilyPageState extends State<FamilyPage> {
     );
   }
 
-  Widget button(String label, VoidCallback action, {IconData? icon}) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: OutlinedButton.icon(
-          onPressed: c.busy ? null : action,
-          icon: Icon(icon ?? Icons.chevron_right),
-          label: Text(t(label)),
+  Widget button(String label, VoidCallback action, {IconData? icon}) =>
+      SettingsRow(
+        title: t(switch (label) {
+          'family_password_change' => 'account_password_title',
+          'family_create' => 'family_create_short',
+          'family_accept' => 'family_accept_short',
+          'family_sync' => 'refresh',
+          _ => label,
+        }),
+        icon: icon ??
+            switch (label) {
+              'family_password_change' => Icons.key_outlined,
+              'family_create' => Icons.add_home_outlined,
+              'family_accept' => Icons.mail_outline,
+              'family_dissolve' => Icons.delete_outline,
+              'family_leave' => Icons.logout,
+              'family_verify' => Icons.mark_email_read_outlined,
+              'family_record_add' => Icons.add,
+              _ => Icons.people_outline,
+            },
+        onTap: c.busy ? null : action,
+      );
+
+  Future<void> signOutPage() => Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (pageContext) => Scaffold(
+            appBar: AppBar(title: Text(t('family_logout'))),
+            body: SafeArea(
+              child: ListView(
+                padding: settingsPagePadding(pageContext),
+                children: [
+                  Text(
+                    c.account?['email'] as String? ?? t('family_account'),
+                    style: Theme.of(pageContext).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(t('account_sign_out_hint')),
+                  const SizedBox(height: 24),
+                  ListenableBuilder(
+                    listenable: c,
+                    builder: (context, child) => FilledButton.icon(
+                      onPressed: c.busy
+                          ? null
+                          : () async {
+                              await c.signOut();
+                              if (pageContext.mounted && c.account == null) {
+                                Navigator.pop(pageContext);
+                              }
+                            },
+                      icon: const Icon(Icons.logout),
+                      label: Text(t('family_logout')),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(pageContext),
+                    child: Text(t('cancel')),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       );
   @override
@@ -336,12 +378,7 @@ class _FamilyPageState extends State<FamilyPage> {
           ),
           body: SafeArea(
             child: ListView(
-              padding: EdgeInsets.symmetric(
-                horizontal: MediaQuery.sizeOf(context).width > 720
-                    ? (MediaQuery.sizeOf(context).width - 640) / 2
-                    : 20,
-                vertical: 20,
-              ),
+              padding: settingsPagePadding(context),
               children: [
                 if (c.busy) const LinearProgressIndicator(),
                 if (c.error != null)
@@ -354,194 +391,134 @@ class _FamilyPageState extends State<FamilyPage> {
                     ),
                   ),
                 if (c.account == null) ...[
-                  LifeCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  Text(
+                    t(
+                      c.accountOrigin.isEmpty
+                          ? 'ux3_cloud_unavailable'
+                          : 'family_login',
+                    ),
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    t(
+                      c.accountOrigin.isEmpty
+                          ? 'account_local_hint'
+                          : 'account_sign_in_hint',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (c.accountOrigin.isEmpty)
+                    FilledButton.icon(
+                      onPressed: () => Navigator.maybePop(context),
+                      icon: const Icon(Icons.phone_android_outlined),
+                      label: Text(t('ux3_continue_local')),
+                    ),
+                  if (c.accountOrigin.isNotEmpty) ...[
+                    if (!c.loginMfaRequired) ...[
+                      if (c.googleAvailable)
+                        OutlinedButton(
+                          onPressed: c.busy
+                              ? null
+                              : () async {
+                                  password.clear();
+                                  passwordAgain.clear();
+                                  code.clear();
+                                  setState(() => register = false);
+                                  await c.signInGoogle(c.accountOrigin);
+                                },
+                          child: Text(t('account_google_sign_in')),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
                           children: [
-                            const Icon(Icons.shield_outlined),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                t('ux3_account_title'),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                              ),
+                            ChoiceChip(
+                              label: Text(t('family_login')),
+                              selected: !register,
+                              onSelected: c.busy
+                                  ? null
+                                  : (_) => setState(() => register = false),
+                            ),
+                            ChoiceChip(
+                              label: Text(t('family_register')),
+                              selected: register,
+                              onSelected: c.busy
+                                  ? null
+                                  : (_) => setState(() => register = true),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(t('ux3_account_body')),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (c.accountOrigin.isEmpty)
-                    LifeCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            t('ux3_cloud_unavailable'),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(t('ux3_cloud_unavailable_body')),
-                        ],
                       ),
-                    ),
-                  const SizedBox(height: 12),
-                  Text(
-                    t('family_optional'),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: () => Navigator.maybePop(context),
-                    icon: const Icon(Icons.phone_android),
-                    label: Text(t('ux3_continue_local')),
-                  ),
-                  if (!c.loginMfaRequired) ...[
-                    if (c.googleAvailable)
-                      OutlinedButton(
-                        onPressed: c.busy
-                            ? null
-                            : () async {
-                                password.clear();
-                                passwordAgain.clear();
-                                code.clear();
-                                setState(() => register = false);
-                                await c.signInGoogle(c.accountOrigin);
-                              },
-                        child: Text(t('account_google_sign_in')),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(t('family_login')),
-                            selected: !register,
-                            onSelected: c.busy
-                                ? null
-                                : (_) => setState(() => register = false),
-                          ),
-                          ChoiceChip(
-                            label: Text(t('family_register')),
-                            selected: register,
-                            onSelected: c.busy
-                                ? null
-                                : (_) => setState(() => register = true),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(t('family_email')),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: email,
-                      onChanged: (_) => setState(() {}),
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      textInputAction: TextInputAction.next,
-                      autocorrect: false,
-                      decoration: const InputDecoration(),
-                    ),
-                    if (!(register &&
-                        c.pendingRegistrationEmail == email.text.trim())) ...[
-                      const SizedBox(height: 12),
-                      Text(t('family_password')),
+                      Text(t('family_email')),
                       const SizedBox(height: 6),
                       TextField(
-                        controller: password,
-                        obscureText: !showPassword,
+                        controller: email,
+                        onChanged: (_) => setState(() {}),
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        textInputAction: TextInputAction.next,
                         autocorrect: false,
-                        enableSuggestions: false,
-                        autofillHints: [
-                          register
-                              ? AutofillHints.newPassword
-                              : AutofillHints.password,
-                        ],
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            tooltip: t(
-                              showPassword
-                                  ? 'ux3_hide_password'
-                                  : 'ux3_show_password',
-                            ),
-                            onPressed: () =>
-                                setState(() => showPassword = !showPassword),
-                            icon: Icon(
-                              showPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+                        decoration: const InputDecoration(),
+                      ),
+                      if (!(register &&
+                          c.pendingRegistrationEmail == email.text.trim())) ...[
+                        const SizedBox(height: 12),
+                        Text(t(register
+                            ? 'family_password'
+                            : 'account_password_title')),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: password,
+                          obscureText: !showPassword,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          autofillHints: [
+                            register
+                                ? AutofillHints.newPassword
+                                : AutofillHints.password,
+                          ],
+                          decoration: InputDecoration(
+                            suffixIcon: IconButton(
+                              tooltip: t(
+                                showPassword
+                                    ? 'ux3_hide_password'
+                                    : 'ux3_show_password',
+                              ),
+                              onPressed: () =>
+                                  setState(() => showPassword = !showPassword),
+                              icon: Icon(
+                                showPassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      if (register) ...[
-                        const SizedBox(height: 12),
-                        Text(t('repeat_password')),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: passwordAgain,
-                          obscureText: true,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          decoration: const InputDecoration(),
-                        ),
+                        if (register) ...[
+                          const SizedBox(height: 12),
+                          Text(t('repeat_password')),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: passwordAgain,
+                            obscureText: true,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            decoration: const InputDecoration(),
+                          ),
+                        ],
                       ],
+                      if (formError != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(t(formError!)),
+                        ),
                     ],
-                    if (formError != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(t(formError!)),
-                      ),
-                    ExpansionTile(
-                      title: Text(t('family_recovery')),
-                      children: [
-                        Text(t('family_recovery_hint')),
-                        TextField(
-                          controller: code,
-                          decoration:
-                              InputDecoration(labelText: t('family_code')),
-                        ),
-                        TextButton(
-                          onPressed: c.busy || c.accountOrigin.isEmpty
-                              ? null
-                              : () =>
-                                  c.recover(c.accountOrigin, email.text.trim()),
-                          child: Text(t('family_recovery_send')),
-                        ),
-                        TextButton(
-                          onPressed: c.busy || c.accountOrigin.isEmpty
-                              ? null
-                              : () async {
-                                  await c.resetPassword(
-                                    c.accountOrigin,
-                                    email.text.trim(),
-                                    code.text.trim(),
-                                    password.text,
-                                  );
-                                  if (c.error == null) {
-                                    password.clear();
-                                    code.clear();
-                                  }
-                                },
-                          child: Text(t('family_recovery_reset')),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (!register && c.loginMfaRequired) ...[
-                    Text(t('account_mfa')),
-                    TextButton(
+                    if (!register && c.loginMfaRequired) ...[
+                      Text(t('account_mfa')),
+                      TextButton(
                         onPressed: c.busy
                             ? null
                             : () {
@@ -549,94 +526,151 @@ class _FamilyPageState extends State<FamilyPage> {
                                 code.clear();
                                 setState(() {});
                               },
-                        child: Text(t('cancel'))),
-                    TextField(
+                        child: Text(t('cancel')),
+                      ),
+                      TextField(
                         controller: code,
                         decoration:
                             InputDecoration(labelText: t('family_code')),
-                        textInputAction: TextInputAction.done),
-                    const SizedBox(height: 12),
-                  ],
-                  if (register &&
-                      c.pendingRegistrationEmail == email.text.trim()) ...[
-                    Text(t('family_verify_hint')),
-                    TextField(
+                        textInputAction: TextInputAction.done,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (register &&
+                        c.pendingRegistrationEmail == email.text.trim()) ...[
+                      Text(t('family_verify_hint')),
+                      TextField(
                         controller: code,
                         autofocus: true,
                         decoration:
                             InputDecoration(labelText: t('family_code')),
-                        textInputAction: TextInputAction.done),
-                    const SizedBox(height: 12),
-                  ],
-                  FilledButton(
-                    onPressed: c.busy || c.accountOrigin.isEmpty
-                        ? null
-                        : () async {
-                            if (register &&
-                                c.pendingRegistrationEmail !=
-                                    email.text.trim() &&
-                                (password.text.length < 7 ||
-                                    password.text.length > 256)) {
-                              setState(
-                                () =>
-                                    formError = 'family_error_password_length',
+                        textInputAction: TextInputAction.done,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      onPressed: c.busy || c.accountOrigin.isEmpty
+                          ? null
+                          : () async {
+                              if (register &&
+                                  c.pendingRegistrationEmail !=
+                                      email.text.trim() &&
+                                  (password.text.length < 7 ||
+                                      password.text.length > 256)) {
+                                setState(
+                                  () => formError =
+                                      'family_error_password_length',
+                                );
+                                return;
+                              }
+                              if (register &&
+                                  c.pendingRegistrationEmail !=
+                                      email.text.trim() &&
+                                  password.text != passwordAgain.text) {
+                                setState(() => formError = 'password_mismatch');
+                                return;
+                              }
+                              setState(() => formError = null);
+                              await c.signIn(
+                                c.accountOrigin,
+                                email.text.trim(),
+                                password.text,
+                                register: register,
+                                mfaCode: !register && c.loginMfaRequired
+                                    ? code.text.trim()
+                                    : null,
+                                verificationCode: register &&
+                                        c.pendingRegistrationEmail ==
+                                            email.text.trim()
+                                    ? code.text.trim()
+                                    : null,
                               );
-                              return;
-                            }
-                            if (register &&
-                                c.pendingRegistrationEmail !=
-                                    email.text.trim() &&
-                                password.text != passwordAgain.text) {
-                              setState(() => formError = 'password_mismatch');
-                              return;
-                            }
-                            setState(() => formError = null);
-                            await c.signIn(
-                              c.accountOrigin,
-                              email.text.trim(),
-                              password.text,
-                              register: register,
-                              mfaCode: !register && c.loginMfaRequired
-                                  ? code.text.trim()
-                                  : null,
-                              verificationCode: register &&
-                                      c.pendingRegistrationEmail ==
-                                          email.text.trim()
-                                  ? code.text.trim()
-                                  : null,
-                            );
-                            password.clear();
-                            passwordAgain.clear();
-                            code.clear();
-                          },
-                    child: Text(t(register
-                        ? (c.pendingRegistrationEmail == email.text.trim()
-                            ? 'family_verify'
-                            : 'family_register')
-                        : 'family_login')),
-                  ),
+                              password.clear();
+                              passwordAgain.clear();
+                              code.clear();
+                            },
+                      child: Text(
+                        t(
+                          register
+                              ? (c.pendingRegistrationEmail == email.text.trim()
+                                  ? 'family_verify'
+                                  : 'family_register')
+                              : 'family_login',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (!c.loginMfaRequired)
+                      ExpansionTile(
+                        title: Text(t('family_recovery')),
+                        children: [
+                          Text(t('family_recovery_hint')),
+                          TextField(
+                            controller: code,
+                            decoration: InputDecoration(
+                              labelText: t('family_code'),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: c.busy || c.accountOrigin.isEmpty
+                                ? null
+                                : () => c.recover(
+                                    c.accountOrigin, email.text.trim()),
+                            child: Text(t('family_recovery_send')),
+                          ),
+                          TextButton(
+                            onPressed: c.busy || c.accountOrigin.isEmpty
+                                ? null
+                                : () async {
+                                    await c.resetPassword(
+                                      c.accountOrigin,
+                                      email.text.trim(),
+                                      code.text.trim(),
+                                      password.text,
+                                    );
+                                    if (c.error == null) {
+                                      password.clear();
+                                      code.clear();
+                                    }
+                                  },
+                            child: Text(t('family_recovery_reset')),
+                          ),
+                        ],
+                      ),
+                    TextButton.icon(
+                      onPressed: () => Navigator.maybePop(context),
+                      icon: const Icon(Icons.phone_android_outlined, size: 18),
+                      label: Text(t('ux3_continue_local')),
+                    ),
+                  ],
                 ] else ...[
                   Text(
                     c.account!['email'] as String? ?? t('family_account'),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  button(
+                  const SizedBox(height: 16),
+                  SettingsGroup(children: [
+                    button(
                       'account_manage',
-                      () => Navigator.of(context).push<void>(MaterialPageRoute(
-                            builder: (_) =>
-                                AccountCenter(controller: c, pack: widget.pack),
-                          )),
-                      icon: Icons.manage_accounts_outlined),
-                  button('family_logout', () => c.signOut(),
-                      icon: Icons.logout),
-                  button('family_password_change', () async {
-                    final old =
-                        await ask(t('family_old_password'), secret: true);
-                    if (old == null || !mounted) return;
-                    final next =
-                        await ask(t('family_new_password'), secret: true);
-                    if (next != null) await c.password(old, next);
-                  }),
+                      () => Navigator.of(context).push<void>(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AccountCenter(controller: c, pack: widget.pack),
+                        ),
+                      ),
+                      icon: Icons.manage_accounts_outlined,
+                    ),
+                    button('family_logout', signOutPage, icon: Icons.logout),
+                    button('family_password_change', () async {
+                      final old =
+                          await ask(t('family_old_password'), secret: true);
+                      if (old == null || !mounted) return;
+                      final next =
+                          await ask(t('family_new_password'), secret: true);
+                      if (next != null) await c.password(old, next);
+                    }),
+                  ]),
                   if (!c.verified) ...[
                     Text(t('family_verify_hint')),
                     TextField(
@@ -650,16 +684,14 @@ class _FamilyPageState extends State<FamilyPage> {
                       icon: Icons.mark_email_unread_outlined,
                     ),
                   ] else ...[
-                    LifeHero(
-                      icon: Icons.people_outline,
-                      title: t('ux3_family_title'),
-                      body: t(
-                        c.spaces.isEmpty
-                            ? 'ux3_family_steps'
-                            : 'ux3_family_manage_body',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
+                    Text(t('family_spaces_title'),
+                        style: Theme.of(context).textTheme.titleMedium),
+                    if (c.spaces.isEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(t('ux3_family_steps')),
+                    ],
+                    const SizedBox(height: 12),
                     button('family_sync', () => c.refresh(), icon: Icons.sync),
                     button('family_create', () async {
                       final name = await ask(t('family_name'));
@@ -732,9 +764,13 @@ class _FamilyPageState extends State<FamilyPage> {
                                 }),
                               ),
                             ),
-                      const Divider(),
-                      Text(t('family_sync_hint')),
-                      Text('${t('family_pending')}: ${c.pending.length}'),
+                      ExpansionTile(
+                          title: Text(t('details')),
+                          tilePadding: EdgeInsets.zero,
+                          children: [
+                            Text(t('family_sync_hint')),
+                            Text('${t('family_pending')}: ${c.pending.length}'),
+                          ]),
                       if (c.parent) ...[
                         button(
                           'family_invite',
@@ -916,8 +952,8 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       assignment = 'any';
   String account = '', from = '', to = '';
   final title = TextEditingController(),
-      amount = TextEditingController(text: '0'),
-      received = TextEditingController(text: '0'),
+      amount = TextEditingController(),
+      received = TextEditingController(),
       currency = TextEditingController(text: 'RUB'),
       date = TextEditingController(text: dateOnly(DateTime.now())),
       end = TextEditingController(),
@@ -949,6 +985,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
     bool zero = false,
   }) {
     final text = field.text.trim();
+    if (zero && text.isEmpty) return 0;
     if (zero && RegExp(r'^0([.,]0+)?$').hasMatch(text)) return 0;
     final negative = signed && text.startsWith('-');
     return Currency.fromCode(code).parse(negative ? text.substring(1) : text) *
@@ -1383,7 +1420,10 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                       signed: true,
                     )
                   : TextInputType.text,
-              decoration: const InputDecoration(),
+              decoration: InputDecoration(
+                  hintText: ['amount', 'family_received'].contains(label)
+                      ? '0'
+                      : null),
             ),
           ],
         ),
@@ -1438,7 +1478,22 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 'request',
                 'budget',
               ].contains(kind)) ...[
-                field(currency, 'currency'),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: LifeSelect<String>(
+                    label: t('currency'),
+                    value: currency.text,
+                    choices: currencyChoices(
+                      widget.pack,
+                      current: currency.text,
+                    ),
+                    queryChoices: (query) =>
+                        currencyQueryChoice(widget.pack, query),
+                    searchLabel: t('search_options'),
+                    dialog: true,
+                    onChanged: (v) => setState(() => currency.text = v),
+                  ),
+                ),
                 field(amount, 'amount'),
               ],
               if (['transaction', 'budget', 'transfer'].contains(kind))
@@ -1481,14 +1536,25 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                     },
                     (v) => period = v),
                 if (period == 'custom') dateControl(end, 'family_end'),
-                select(
-                    'family_rollover',
-                    rollover,
-                    {
-                      for (final p in ['none', 'positive', 'negative', 'both'])
-                        p: t('family_roll_$p'),
-                    },
-                    (v) => rollover = v),
+                ExpansionTile(
+                  title: Text(t('details')),
+                  tilePadding: EdgeInsets.zero,
+                  children: [
+                    select(
+                        'family_rollover',
+                        rollover,
+                        {
+                          for (final p in [
+                            'none',
+                            'positive',
+                            'negative',
+                            'both'
+                          ])
+                            p: t('family_roll_$p'),
+                        },
+                        (v) => rollover = v),
+                  ],
+                ),
               ],
               if (kind == 'event') ...[
                 dateControl(start, 'family_date', timestamp: true),

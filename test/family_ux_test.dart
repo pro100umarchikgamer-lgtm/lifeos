@@ -61,40 +61,19 @@ void main() {
         findsNothing,
       );
       expect(find.text(pack.t('ux3_cloud_unavailable')), findsOneWidget);
-      final create = find.widgetWithText(ChoiceChip, pack.t('family_register'));
-      await tester.scrollUntilVisible(
-        create,
-        160,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(create);
-      await tester.pumpAndSettle();
-      await tester.tap(create);
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text(pack.t('repeat_password')),
-        160,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      expect(find.text(pack.t('repeat_password')), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.byType(FilledButton),
-        160,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull,
-      );
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.text(pack.t('ux3_continue_local')), findsOneWidget);
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+          isNotNull);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       family.dispose();
     },
   );
-  test('detect safe headers and require manual adjustment for ambiguous slash dates', () {
+  test(
+      'detect safe headers and require manual adjustment for ambiguous slash dates',
+      () {
     final detected = StatementDetection.detect(
       StatementTable.checked([
         ['Назначение', 'Сумма', 'Дата', 'Валюта'],
@@ -125,7 +104,9 @@ void main() {
       isNull,
     );
   });
-  test('family budgets count assigned spending and retain negative rollover exactly', () {
+  test(
+      'family budgets count assigned spending and retain negative rollover exactly',
+      () {
     final rows = <Map<String, dynamic>>[
       {
         'id': 'transaction',

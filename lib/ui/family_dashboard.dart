@@ -4,14 +4,16 @@ import '../app_controller.dart';
 import '../domain/models.dart';
 import '../domain/family_finance.dart';
 import '../sync/contracts.dart';
-import 'design.dart';
+import 'settings_surfaces.dart';
 import 'family.dart';
 import 'money_format.dart';
 
 class FamilyDashboard extends StatelessWidget {
-  const FamilyDashboard({super.key, required this.controller, this.tab = 0});
+  const FamilyDashboard(
+      {super.key, required this.controller, this.tab = 0, this.visibleKinds});
   final AppController controller;
   final int tab;
+  final Set<String>? visibleKinds;
   @override
   Widget build(BuildContext context) {
     final c = controller, f = c.family!;
@@ -19,23 +21,50 @@ class FamilyDashboard extends StatelessWidget {
     return ListenableBuilder(
       listenable: f,
       builder: (context, _) {
-        final rows = f.records,
-            spaces = f.spaces.where((s) => s['id'] == f.workspace);
-        final name =
-            spaces.firstOrNull?['name'] as String? ?? t('family_account');
-        final kinds = switch (tab) {
-          1 => {'task', 'event'},
-          2 => {'account', 'transaction', 'transfer', 'budget', 'request'},
-          3 => {'note', 'shopping'},
-          _ => {'account', 'budget', 'task', 'event', 'shopping', 'request'},
-        };
+        final rows = f.records;
+        final title = visibleKinds == null
+            ? t(switch (tab) {
+                1 => 'plans',
+                2 => 'finances',
+                3 => 'modules',
+                _ => 'today',
+              })
+            : t(visibleKinds!.length == 1
+                ? switch (visibleKinds!.single) {
+                    'task' => 'nav_tasks',
+                    'event' => 'nav_calendar',
+                    'note' => 'nav_notes',
+                    _ => 'family_kind_${visibleKinds!.single}',
+                  }
+                : visibleKinds!.length > 5
+                    ? 'all_sections'
+                    : 'finances');
+        final kinds = visibleKinds ??
+            switch (tab) {
+              1 => {'task', 'event'},
+              2 => {'account', 'transaction', 'transfer', 'budget', 'request'},
+              3 => {'note', 'shopping'},
+              _ => {
+                  'account',
+                  'budget',
+                  'task',
+                  'event',
+                  'shopping',
+                  'request'
+                },
+            };
         Future<void> open([Json? record]) => Navigator.push<void>(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                FamilyRecordEditor(controller: f, pack: c.pack, record: record),
-          ),
-        );
+              context,
+              MaterialPageRoute(
+                builder: (_) => FamilyRecordEditor(
+                    controller: f,
+                    pack: c.pack,
+                    record: record,
+                    initialKind: visibleKinds?.length == 1
+                        ? visibleKinds!.single
+                        : null),
+              ),
+            );
         String detail(Json r) {
           if (r['kind'] == 'account') {
             return formatMoney(
@@ -60,7 +89,11 @@ class FamilyDashboard extends StatelessWidget {
             return '${(r['data']['items'] as List).where((i) => object(i)['completed'] == true).length}/${(r['data']['items'] as List).length}';
           }
           if (r['kind'] == 'event') {
-            return r['data']['schedule']['localStart'] as String;
+            final value = DateTime.tryParse(
+                r['data']['schedule']['localStart'] as String);
+            return value == null
+                ? t('family_kind_event')
+                : MaterialLocalizations.of(context).formatMediumDate(value);
           }
           return t('family_kind_${r['kind']}');
         }
@@ -72,7 +105,7 @@ class FamilyDashboard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    name,
+                    title,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ),
@@ -108,43 +141,41 @@ class FamilyDashboard extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 12),
-            if (f.creatableKinds.isNotEmpty)
+            if (f.creatableKinds.intersection(kinds).isNotEmpty)
               FilledButton.icon(
                 onPressed: f.busy ? null : () => open(),
                 icon: const Icon(Icons.add),
                 label: Text(t('family_record_add')),
               ),
             const SizedBox(height: 12),
-            for (final r in rows.where((r) => kinds.contains(r['kind'])))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: LifeCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      r['visibility'] == 'private'
-                          ? Icons.lock_outline
-                          : Icons.people_outline,
-                    ),
-                    title: Text(
-                      (r['data']['title'] ??
-                              r['data']['name'] ??
-                              r['data']['body'] ??
-                              r['data']['label'] ??
-                              t('family_kind_${r['kind']}'))
-                          .toString(),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${t('family_kind_${r['kind']}')} · ${detail(r)}',
-                    ),
+            if (rows.any((r) => kinds.contains(r['kind'])))
+              SettingsGroup(children: [
+                for (final r in rows.where((r) => kinds.contains(r['kind'])))
+                  SettingsRow(
+                    icon: switch (r['kind']) {
+                      'account' => Icons.account_balance_wallet_outlined,
+                      'budget' => Icons.savings_outlined,
+                      'task' => Icons.check_circle_outline,
+                      'event' => Icons.event_outlined,
+                      'shopping' => Icons.shopping_bag_outlined,
+                      'note' => Icons.description_outlined,
+                      _ => Icons.receipt_long_outlined,
+                    },
+                    title: (r['data']['title'] ??
+                            r['data']['name'] ??
+                            r['data']['body'] ??
+                            r['data']['label'] ??
+                            t('family_kind_${r['kind']}'))
+                        .toString(),
+                    subtitle: '${t('family_kind_${r['kind']}')} · ${detail(r)}',
                     onTap: f.busy ? null : () => open(r),
                   ),
-                ),
-              ),
-            if (!rows.any((r) => kinds.contains(r['kind'])))
-              LifeCard(child: Text(t('offline_empty'))),
+              ])
+            else
+              Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(t('offline_empty'))),
+            const SizedBox(height: 12),
             TextButton.icon(
               onPressed: () => Navigator.push<void>(
                 context,
