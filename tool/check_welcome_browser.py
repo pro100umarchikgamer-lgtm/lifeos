@@ -54,6 +54,23 @@ def main():
         try:
             with sync_playwright() as p:
                 browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
+                # Public content must not jump into place after network setup.
+                context=browser.new_context(viewport={'width':390,'height':844},service_workers='block')
+                page=context.new_page();pending_config=[]
+                config=page.request.get(site+'/account/api/config').json()
+                page.route('**/account/api/config',lambda route:pending_config.append(route))
+                page.goto(site+'/',wait_until='domcontentloaded')
+                expect(page.locator('.product-hero')).to_be_visible()
+                expect(page.locator('.hero-actions > a')).to_have_text('Открыть ULADIM')
+                assert not page.locator('a[href*="action=signup"]').count()
+                before=page.locator('main').bounding_box()
+                assert len(pending_config)==1
+                pending_config[0].fulfill(json=config)
+                expect(page.locator('.hero-actions > a')).to_have_text('Создать аккаунт')
+                after=page.locator('main').bounding_box()
+                assert all(abs(before[key]-after[key])<=1 for key in ('x','y','width','height')),(before,after)
+                checks.append({'case':'delayed-configuration','publicContentVisible':True,'layoutStable':True,'prematureSignupLinks':0})
+                context.close()
                 for width,theme in [(320,'light'),(390,'light'),(820,'light'),(1440,'light'),(390,'dark')]:
                     context=browser.new_context(viewport={'width':width,'height':900},color_scheme=theme,service_workers='block')
                     page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))

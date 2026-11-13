@@ -125,9 +125,17 @@ async function dashboard(){const session=await api('session');csrf=session.csrf;
 function publicNavigation(path,entry='guest') {
  const header=document.querySelector('body > header');
  const nav=header.querySelector('nav');
- const signIn=nav.querySelector('a[href="/account"]');
- if(entry!=='guest'){signIn.textContent=entry==='signed-in'?'Моё пространство':'Открыть ULADIM';signIn.href='/app';}
+ const signIn=nav.querySelector('.public-signin')||nav.querySelector('a[href="/account"]');
+ signIn.textContent=entry==='guest'?'Войти':entry==='signed-in'?'Моё пространство':'Открыть ULADIM';
+ signIn.href=entry==='guest'?'/account':'/app';
  signIn.classList.add('public-signin');
+ const compactEntry=entry==='guest'?'Войти':'Открыть';
+ const existingControls=header.querySelector('.public-header-controls');
+ if(existingControls){
+  const mobileSignIn=existingControls.querySelector('a');
+  mobileSignIn.textContent=compactEntry;mobileSignIn.href=signIn.href;
+  return;
+ }
  const apps=el('a','Приложения');
  apps.href='/download';
  nav.insertBefore(apps,signIn);
@@ -138,6 +146,7 @@ function publicNavigation(path,entry='guest') {
 
  const controls=el('div',undefined,'public-header-controls');
  const mobileSignIn=signIn.cloneNode(true);
+ mobileSignIn.textContent=compactEntry;
  const toggle=el('button','Меню','public-menu-toggle');
  toggle.type='button';
  toggle.setAttribute('aria-controls',nav.id);
@@ -225,6 +234,13 @@ async function publicPage(config) {
 (async()=>{
  if(!staff&&location.pathname==='/'&&isInstalledLaunch()){location.replace('/app');return;}
  try {
+  if(!staff&&location.pathname==='/'){
+   // Initialize shared icon definitions, then paint before any network wait.
+   await Promise.resolve();
+   document.body.classList.add('product-site');
+   publicNavigation('/','unavailable');
+   await landing({entry:'unavailable'});
+  }
   authPacks=await (await fetch('/assets/locales.json',{cache:'no-store'})).json();
   if(!authPacks[authLanguage])authLanguage='ru';
   if(staff) {
