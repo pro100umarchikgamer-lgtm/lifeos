@@ -69,6 +69,8 @@ def main():
     logging.basicConfig(level=logging.INFO)
     config=Settings.load()
     backend=PostgresBackend(config.database_url,Fernet(config.email_queue_key.encode()),pool_size=2)
+    from .web_push import WebPush
+    push=WebPush(backend,config.site_origin)
     try:
         while True:
             with backend.connect() as db:
@@ -77,7 +79,15 @@ def main():
             AccountLifecycle(backend).process_one_deletion()
             from pathlib import Path
             Path('/tmp/lifeos-mail.heartbeat').touch()
-            if not deliver_one(backend,config):time.sleep(2)
+            mail_work=deliver_one(backend,config)
+            try:
+                push_work=push.tick()
+            except Exception as error:
+                # Independent queues: a provider/notification problem must not
+                # stop verification and recovery email. Never log payloads.
+                log.warning('push_tick_failed class=%s',type(error).__name__)
+                push_work=False
+            if not mail_work and not push_work:time.sleep(2)
     finally:backend.close()
 
 if __name__=='__main__':main()

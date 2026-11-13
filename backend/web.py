@@ -26,6 +26,8 @@ class Web:
         self.support = Support(backend, self.control)
         self.site = getattr(settings, 'site_origin', 'https://getuladim.space')
         self.staff = getattr(settings, 'control_origin', 'https://control.getuladim.space')
+        from .web_push import WebPush
+        self.push = WebPush(backend, self.site)
 
     def handles(self, env):
         return env.get('HTTP_HOST', '') in (urlsplit(self.site).netloc, urlsplit(self.staff).netloc)
@@ -131,6 +133,10 @@ class Web:
             return {'verified': True, 'sign_in_required': True}, headers
         if not staff and action == 'plans' and method == 'GET':
             with self.backend.connect() as db: return entitlements.catalog(db), headers
+        if not staff and action == 'notifications/receipt' and method == 'POST':
+            # Exact same-origin POST above, authenticated by one expiring,
+            # delivery-bound random token. The service worker has no CSRF token.
+            return self.push.receipt(body), headers
         token = self.token(env, staff)
         actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:500]) if staff else self.account(token, env.get('HTTP_USER_AGENT', '')[:500])
         if method == 'POST': require(hmac.compare_digest(env.get('HTTP_X_CSRF_TOKEN', ''), self.csrf(token)), 'csrf_invalid', 403)
@@ -258,6 +264,12 @@ class Web:
         lifecycle = AccountLifecycle(self.backend)
         from .customer_mfa import CustomerMFA
         mfa=CustomerMFA(self.backend)
+        if action == 'notifications' and method == 'GET': return self.push.status(actor)
+        if method == 'POST':
+            if action == 'notifications/prepare': return self.push.prepare(actor)
+            if action == 'notifications/subscribe': return self.push.subscribe(actor, b)
+            if action == 'notifications/unsubscribe': return self.push.unsubscribe(actor)
+            if action == 'notifications/test': return self.push.test(actor)
         if method == 'GET':
             if action == 'spaces': return {'spaces': self.backend.spaces(actor)}
             if action == 'roster': return self.backend.roster(actor, q.get('workspace', [''])[0])
