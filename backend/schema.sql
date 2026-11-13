@@ -190,3 +190,10 @@ CREATE TABLE IF NOT EXISTS control_admissions (
 );
 CREATE INDEX IF NOT EXISTS control_handoffs_expiry ON control_handoffs(expires_at);
 CREATE INDEX IF NOT EXISTS control_admissions_expiry ON control_admissions(expires_at);
+
+-- Dedup metadata outlives capped visible history through the budget period.
+CREATE TABLE IF NOT EXISTS budget_inbox_sources (
+ user_id TEXT NOT NULL REFERENCES users(id), source_key TEXT NOT NULL,
+ expires_at BIGINT NOT NULL, PRIMARY KEY(user_id,source_key)
+);
+CREATE INDEX IF NOT EXISTS budget_inbox_source_expiry ON budget_inbox_sources(user_id,expires_at);

@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet
 from backend.postgres import PostgresBackend
 from backend.tests.test_inbox import InboxScenarios
 from backend.tests.test_budget_inbox import BudgetInboxScenarios
+from backend.tests import test_inbox_retention as retention_tests
 
 DSN = os.environ.get('LIFEOS_TEST_DATABASE_URL', '')
 
@@ -56,3 +57,16 @@ class BudgetInboxPostgresTests(BudgetInboxScenarios, InboxPostgresTests):
         self.backend.migrate()
         self.assertEqual(self.customer()[1]['notifications'][0]['id'], item['id'])
         self.assertEqual(self.settings()[1]['budget_enabled'], False)
+
+
+class InboxRetentionPostgresTests(retention_tests.InboxRetentionTests, InboxPostgresTests):
+    setUp = InboxPostgresTests.setUp
+
+    def test_retention_migration_is_repeatable_and_keeps_existing_history(self):
+        item = self.publish(self.draft())
+        with self.backend.transaction() as db:
+            db.execute('DROP TABLE budget_inbox_sources')
+            db.execute("DELETE FROM schema_migrations WHERE version='017_inbox_retention.sql'")
+        self.backend.migrate()
+        self.backend.migrate()
+        self.assertEqual(self.customer()[1]['notifications'][0]['id'], item['id'])

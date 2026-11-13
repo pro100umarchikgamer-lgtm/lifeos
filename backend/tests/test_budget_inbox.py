@@ -147,7 +147,7 @@ class BudgetInboxScenarios(InboxScenarios):
             db.execute("INSERT INTO deletion_jobs VALUES(?,?,?,?,'pending',NULL)", (uid(), self.first['id'], self.now, self.now))
         self.assertTrue(AccountLifecycle(self.backend).process_one_deletion())
         with self.backend.connect() as db:
-            for table in ('budget_inbox_notifications', 'inbox_settings'):
+            for table in ('budget_inbox_sources', 'budget_inbox_notifications', 'inbox_settings'):
                 self.assertEqual(db.execute('SELECT COUNT(*) AS n FROM ' + table + ' WHERE user_id=?', (self.first['id'],)).fetchone()['n'], 0)
 
 

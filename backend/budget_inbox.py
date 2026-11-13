@@ -13,6 +13,7 @@ from .service import Failure, canonical, require
 
 MAX_BUDGETS = 100
 MAX_EXPENSES = 5000
+MAX_SOURCES = 5000
 DEFAULTS = {'budget_enabled': False, 'budget_thresholds': [50, 80, 100], 'timezone': 'UTC'}
 
 
@@ -165,11 +166,23 @@ class BudgetInbox:
                 if metrics['available'] > 0 and metrics['spent'] * 100 < threshold * metrics['available']:
                     continue
                 source = row['id'] + ':' + metrics['start'] + ':' + metrics['end'] + ':' + str(threshold)
-                pending.append((str(uuid.uuid4()), actor['id'], source, 'Бюджеты',
-                    'Достигнут порог расходов бюджета: ' + str(threshold) + '%.', '/app?tab=money', now, now, now + 90 * 86400))
+                source_expiry = int(dt.datetime.combine(dt.date.fromisoformat(metrics['end']) + dt.timedelta(days=2), dt.time.min, tzinfo=dt.timezone.utc).timestamp())
+                values = (str(uuid.uuid4()), actor['id'], source, 'Бюджеты',
+                    'Достигнут порог расходов бюджета: ' + str(threshold) + '%.', '/app?tab=money', now, now, now + 90 * 86400)
+                pending.append((values, source_expiry))
         # Generic text contains no budget names, transaction details, currencies,
         # categories, amounts or record/workspace ids. History stays safe after
         # access changes; every new calculation rechecks original authority.
-        for values in pending:
+        sources = db.execute('SELECT source_key FROM budget_inbox_sources WHERE user_id=? LIMIT ?', (actor['id'], MAX_SOURCES + 1)).fetchall()
+        known = {row['source_key'] for row in sources}
+        pending = [(values, expiry) for values, expiry in pending if values[2] not in known]
+        if len(sources) + len(pending) > MAX_SOURCES:
+            return {'state': 'skipped_limit'}
+        for values, expiry in pending:
+            db.execute('INSERT INTO budget_inbox_sources VALUES(?,?,?) ON CONFLICT(user_id,source_key) DO NOTHING', (actor['id'], values[2], expiry))
+        # A refresh can cross many thresholds at once. Store source tombstones
+        # for all of them, and at most one full history page-cap of generic text.
+        from .inbox_retention import HISTORY_LIMIT
+        for values, expiry in pending[-HISTORY_LIMIT:]:
             db.execute('INSERT INTO budget_inbox_notifications(id,user_id,source_key,title,body,link,created_at,starts_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,source_key) DO NOTHING', values)
         return {'state': 'evaluated'}

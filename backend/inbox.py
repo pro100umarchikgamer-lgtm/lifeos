@@ -5,6 +5,7 @@ from urllib.parse import unquote, urlsplit
 
 from .control import Control
 from .service import Failure, identifier, require, text
+from . import inbox_retention as retention
 
 DAY = 86400
 PUBLIC_FIELDS = ('id', 'kind', 'title', 'body', 'presentation', 'created_at',
@@ -46,7 +47,7 @@ class Inbox:
         return """SELECT n.id,n.kind,n.title,n.body,'inbox' AS presentation,
             n.created_at,n.starts_at,n.expires_at,n.link,n.read_at,n.dismissed_at,n.presented_at,
             CASE WHEN n.expires_at>? THEN 1 ELSE 0 END AS active
-            FROM inbox_notifications n WHERE n.user_id=? AND n.starts_at<=?
+            FROM inbox_notifications n WHERE n.user_id=? AND n.starts_at<=? AND n.created_at>=?
             UNION ALL
             SELECT a.id,'announcement' AS kind,a.title,a.body,a.presentation,
             a.published_at AS created_at,a.starts_at,a.expires_at,a.link,
@@ -55,15 +56,22 @@ class Inbox:
             CASE WHEN a.state='published' AND a.expires_at>? THEN 1 ELSE 0 END AS active
             FROM announcements a JOIN announcement_recipients r ON r.announcement_id=a.id
             LEFT JOIN announcement_states s ON s.announcement_id=a.id AND s.user_id=r.user_id
-            WHERE r.user_id=? AND a.published_at>0 AND a.state IN ('published','cancelled') AND a.starts_at<=?
+            WHERE r.user_id=? AND a.published_at>0 AND a.state IN ('published','cancelled') AND a.starts_at<=? AND a.expires_at>=?
             UNION ALL
             SELECT n.id,'budget' AS kind,n.title,n.body,'inbox' AS presentation,
             n.created_at,n.starts_at,n.expires_at,n.link,n.read_at,n.dismissed_at,n.presented_at,
             CASE WHEN n.expires_at>? THEN 1 ELSE 0 END AS active
-            FROM budget_inbox_notifications n WHERE n.user_id=? AND n.starts_at<=?"""
+            FROM budget_inbox_notifications n WHERE n.user_id=? AND n.starts_at<=? AND n.created_at>=?"""
 
     def _params(self, actor, now):
-        return (now, actor['id'], now, now, actor['id'], now, now, actor['id'], now)
+        cutoff = now - retention.HISTORY_DAYS * DAY
+        return (now, actor['id'], now, cutoff, now, actor['id'], now, cutoff, now, actor['id'], now, cutoff)
+
+    def _retained(self):
+        # Active announcements always remain eligible for startup presentation.
+        # The cap applies to the remaining visible history; pagination and count
+        # use this same set so hidden rows cannot inflate the unread badge.
+        return 'WITH visible AS (' + self._union() + "), retained AS (SELECT * FROM visible WHERE kind='announcement' AND active=1 UNION ALL SELECT * FROM (SELECT * FROM visible WHERE NOT(kind='announcement' AND active=1) ORDER BY created_at DESC,id DESC LIMIT " + str(retention.HISTORY_LIMIT) + ') h) '
 
     def list(self, actor, before=None, limit=50):
         require(type(limit) is int and 1 <= limit <= 100, 'inbox_cursor_invalid')
@@ -77,17 +85,22 @@ class Inbox:
         now = int(self.backend.clock())
         with self.backend.transaction() as db:
             self._account(db, actor)
+            retention.sweep_user(db, actor['id'], now)
+            retention.sweep_announcements(db, now)
             from .budget_inbox import BudgetInbox
             evaluation = BudgetInbox(self.backend).evaluate(db, actor, now)
-            union, params = self._union(), self._params(actor, now)
-            rows = db.execute('SELECT * FROM (' + union + ') n WHERE created_at<? OR (created_at=? AND id<?) ORDER BY created_at DESC,id DESC LIMIT ?',
+            retention.sweep_user(db, actor['id'], now)
+            retained, params = self._retained(), self._params(actor, now)
+            rows = db.execute(retained + 'SELECT * FROM retained WHERE created_at<? OR (created_at=? AND id<?) ORDER BY created_at DESC,id DESC LIMIT ?',
                 params + (stamp, stamp, last_id, limit + 1)).fetchall()
-            unread = db.execute('SELECT COUNT(*) AS n FROM (' + union + ') n WHERE active=1 AND read_at=0 AND dismissed_at=0', params).fetchone()['n']
+            unread = db.execute(retained + 'SELECT COUNT(*) AS n FROM retained WHERE active=1 AND read_at=0 AND dismissed_at=0', params).fetchone()['n']
         page = rows[:limit]
         return {'notifications': [dict({field: row[field] for field in PUBLIC_FIELDS}, active=bool(row['active'])) for row in page],
             'unread_count': unread,
             'next_before': str(page[-1]['created_at']) + ':' + page[-1]['id'] if len(rows) > limit else None,
-            'budget_evaluation': evaluation}
+            'budget_evaluation': evaluation, 'retention_days': retention.HISTORY_DAYS,
+            'history_limit': retention.HISTORY_LIMIT,
+            'announcement_retention_days_after_expiry': retention.HISTORY_DAYS}
 
     def settings(self, actor, body=None):
         from .budget_inbox import BudgetInbox
@@ -139,6 +152,7 @@ class Inbox:
             (str(uuid.uuid4()), sub['user_id'], source, kind, 'ULADIM',
              'Напоминание о событии календаря' if event else 'Проверка уведомлений поставлена в очередь',
              link, now, now, now + 90 * DAY))
+        retention.sweep_user(db, sub['user_id'], now)
 
     def _eligible(self, db, now, user_ids=None):
         sql = "SELECT u.id FROM users u LEFT JOIN account_state s ON s.user_id=u.id WHERE u.verified=1 AND COALESCE(s.deleted_at,0)=0"
