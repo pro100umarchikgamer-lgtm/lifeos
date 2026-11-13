@@ -162,72 +162,76 @@ def main():
     parser.add_argument('--output', type=Path, default=Path('web_evidence/clarity-review'))
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    with fixture() as (origin, backend, actor, wid), sync_playwright() as p:
-        prepare_devices(backend, actor)
+    with sync_playwright() as p:
         browser = p.chromium.launch(**({'executable_path': os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
         for name, width, height in VIEWPORTS:
-            context = browser.new_context(
-                viewport={'width': width, 'height': height}, locale='ru-RU',
-                timezone_id='Europe/Moscow', color_scheme='light', reduced_motion='reduce',
-            )
-            page = context.new_page()
-            errors = []
-            page.on('pageerror', lambda error: errors.append(str(error)))
-            login(page, origin)
-            if not args.baseline:
-                side = page.locator('.today-side')
-                if side.evaluate("element => getComputedStyle(element).display") == 'contents':
-                    side = page.locator('.today-grid')
-                content_width = side.evaluate("""element => {
-                    const style = getComputedStyle(element);
-                    return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-                }""")
-                for panel in page.locator('.today-side .card').all():
-                    assert 0 < panel.bounding_box()['width'] <= content_width + 1, name
-            capture(page, args.output, name, 'today')
-            open_tab(page, 'Финансы')
-            if not args.baseline:
-                open_finance_section(page, 'ledger')
-                expect(page.locator('main')).to_have_attribute('data-finance-view', 'ledger')
-            expect(page.locator('.ledger')).to_contain_text('Продукты на неделю')
-            if not args.baseline:
-                first = page.locator('.ledger-row').first.bounding_box()
-                nav = page.locator('.nav').bounding_box()
-                # The dedicated ledger has its own summary. Its first record must
-                # still fit above the phone's fixed bottom navigation, unscrolled.
-                visible_bottom = nav['y'] if nav and nav['width'] >= width * .8 and nav['y'] > 0 else height
-                assert first['y'] + first['height'] <= visible_bottom, (name, first, visible_bottom)
-                for control in page.locator('.nav button:visible, .finance-toolbar button:visible').all():
-                    box = control.bounding_box()
-                    assert min(box['width'], box['height']) >= 44, (name, box)
-            capture(page, args.output, name, 'finance')
-            open_tab(page, 'Профиль')
-            if args.baseline:
-                if width < 760:
-                    page.locator('[name=settings-section]').select_option('appearance')
+            # Each independent viewport gets its own real server and rate-limit
+            # counters, including cold assets and service-worker precaching.
+            with fixture() as (origin, backend, actor, wid):
+                prepare_devices(backend, actor)
+                context = browser.new_context(
+                    viewport={'width': width, 'height': height}, locale='ru-RU',
+                    timezone_id='Europe/Moscow', color_scheme='light', reduced_motion='reduce',
+                )
+                page = context.new_page()
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                login(page, origin)
+                if not args.baseline:
+                    side = page.locator('.today-side')
+                    if side.evaluate("element => getComputedStyle(element).display") == 'contents':
+                        side = page.locator('.today-grid')
+                    content_width = side.evaluate("""element => {
+                        const style = getComputedStyle(element);
+                        return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                    }""")
+                    for panel in page.locator('.today-side .card').all():
+                        assert 0 < panel.bounding_box()['width'] <= content_width + 1, name
+                capture(page, args.output, name, 'today')
+                open_tab(page, 'Финансы')
+                if not args.baseline:
+                    open_finance_section(page, 'ledger')
+                    expect(page.locator('main')).to_have_attribute('data-finance-view', 'ledger')
+                expect(page.locator('.ledger')).to_contain_text('Продукты на неделю')
+                if not args.baseline:
+                    first = page.locator('.ledger-row').first.bounding_box()
+                    nav = page.locator('.nav').bounding_box()
+                    # The dedicated ledger has its own summary. Its first record must
+                    # still fit above the phone's fixed bottom navigation, unscrolled.
+                    visible_bottom = nav['y'] if nav and nav['width'] >= width * .8 and nav['y'] > 0 else height
+                    assert first['y'] + first['height'] <= visible_bottom, (name, first, visible_bottom)
+                    for control in page.locator('.nav button:visible, .finance-toolbar button:visible').all():
+                        box = control.bounding_box()
+                        assert min(box['width'], box['height']) >= 44, (name, box)
+                capture(page, args.output, name, 'finance')
+                open_tab(page, 'Профиль')
+                if args.baseline:
+                    if width < 760:
+                        page.locator('[name=settings-section]').select_option('appearance')
+                    else:
+                        page.locator('.settings-navigation button').nth(1).click()
                 else:
-                    page.locator('.settings-navigation button').nth(1).click()
-            else:
-                open_settings(page, 'appearance')
-            capture(page, args.output, name, 'settings')
-            if args.baseline:
-                if width < 760:
-                    page.locator('[name=settings-section]').select_option('security')
-                else:
-                    page.locator('.settings-navigation button').nth(2).click()
-            check_account(page, args.baseline)
-            capture(page, args.output, name, 'account')
-            if args.baseline:
-                page.get_by_role('dialog').get_by_role('button', name='Закрыть', exact=True).click()
-            page.locator('.settings-content').get_by_role('button', name='Устройства и сессии', exact=True).click()
-            expect(page.locator('.devices-panel')).to_be_visible()
-            capture(page, args.output, name, 'devices')
-            if not args.baseline and name == 'desktop':
-                check_revocation(page, backend, actor)
-            assert not errors, errors
-            context.close()
+                    open_settings(page, 'appearance')
+                capture(page, args.output, name, 'settings')
+                if args.baseline:
+                    if width < 760:
+                        page.locator('[name=settings-section]').select_option('security')
+                    else:
+                        page.locator('.settings-navigation button').nth(2).click()
+                check_account(page, args.baseline)
+                capture(page, args.output, name, 'account')
+                if args.baseline:
+                    page.get_by_role('dialog').get_by_role('button', name='Закрыть', exact=True).click()
+                page.locator('.settings-content').get_by_role('button', name='Устройства и сессии', exact=True).click()
+                expect(page.locator('.devices-panel')).to_be_visible()
+                capture(page, args.output, name, 'devices')
+                if not args.baseline and name == 'desktop':
+                    check_revocation(page, backend, actor)
+                assert not errors, errors
+                context.close()
         if not args.baseline:
-            check_review_findings(browser, origin, backend, actor, wid)
+            with fixture() as (origin, backend, actor, wid):
+                check_review_findings(browser, origin, backend, actor, wid)
         browser.close()
     print('Clarity review captured at 4 sizes. Device revocation checked.' if not args.baseline
           else 'Clarity baseline captured at 4 sizes.')
