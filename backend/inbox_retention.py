@@ -9,23 +9,37 @@ AUDIENCE_BATCH = 100
 SOURCE_BATCH = 100
 
 
-def backfill_budget_sources(db, user_id, now):
+def backfill_budget_sources(db, user_id, now, selected_ids):
     # Preserve dedup when upgrading a pre-retention build: deleting a 91-day
     # annual alert must not turn the same crossing into a new unread message.
     from .budget_inbox import MAX_SOURCES
-    count = db.execute('SELECT COUNT(*) AS n FROM budget_inbox_sources WHERE user_id=?', (user_id,)).fetchone()['n']
-    capacity = max(0, MAX_SOURCES - count)
-    if not capacity:
-        return
-    rows = db.execute('SELECT n.source_key FROM budget_inbox_notifications n LEFT JOIN budget_inbox_sources s ON s.user_id=n.user_id AND s.source_key=n.source_key WHERE n.user_id=? AND s.source_key IS NULL ORDER BY n.created_at,n.id LIMIT ?', (user_id, min(USER_BATCH, capacity))).fetchall()
+    sources = db.execute('SELECT source_key FROM budget_inbox_sources WHERE user_id=? LIMIT ?', (user_id, MAX_SOURCES + 1)).fetchall()
+    known = {row['source_key'] for row in sources}
+    capacity = max(0, MAX_SOURCES - len(sources))
+    protected = set()
+    rows = []
+    for start in range(0, len(selected_ids), 500):
+        page = selected_ids[start:start + 500]
+        rows.extend(db.execute('SELECT id,source_key FROM budget_inbox_notifications WHERE user_id=? AND id IN (' + ','.join('?' for _ in page) + ')', (user_id, *page)).fetchall())
     for row in rows:
+        if row['source_key'] in known:
+            continue
         try:
             end = dt.date.fromisoformat(row['source_key'].split(':')[2])
             expiry = int(dt.datetime.combine(end + dt.timedelta(days=2), dt.time.min, tzinfo=dt.timezone.utc).timestamp())
         except (ValueError, IndexError):
             continue
         if expiry > now:
-            db.execute('INSERT INTO budget_inbox_sources VALUES(?,?,?) ON CONFLICT(user_id,source_key) DO NOTHING', (user_id, row['source_key'], expiry))
+            if capacity:
+                db.execute('INSERT INTO budget_inbox_sources VALUES(?,?,?) ON CONFLICT(user_id,source_key) DO NOTHING', (user_id, row['source_key'], expiry))
+                known.add(row['source_key'])
+                capacity -= 1
+            else:
+                # A legacy overflow stays logically hidden, but keep this
+                # source-bearing row until it can be safely tombstoned/pruned.
+                db.execute("UPDATE budget_inbox_notifications SET title='',body='',link='' WHERE user_id=? AND id=?", (user_id, row['id']))
+                protected.add(row['id'])
+    return protected
 
 
 def generated_sql():
@@ -33,24 +47,26 @@ def generated_sql():
         UNION ALL SELECT id,created_at,'budget_inbox_notifications' AS source_table FROM budget_inbox_notifications WHERE user_id=?"""
 
 
-def delete_generated(db, user_id, rows):
+def delete_generated(db, user_id, now, rows):
     for table in ('inbox_notifications', 'budget_inbox_notifications'):
         ids = [row['id'] for row in rows if row['source_table'] == table]
+        if table == 'budget_inbox_notifications' and ids:
+            protected = backfill_budget_sources(db, user_id, now, ids)
+            ids = [nid for nid in ids if nid not in protected]
         for start in range(0, len(ids), 500):
             page = ids[start:start + 500]
             db.execute('DELETE FROM ' + table + ' WHERE user_id=? AND id IN (' + ','.join('?' for _ in page) + ')', (user_id, *page))
 
 
 def sweep_user(db, user_id, now):
-    backfill_budget_sources(db, user_id, now)
     cutoff = now - HISTORY_DAYS * 86400
     params = (user_id, user_id)
     rows = db.execute('SELECT * FROM (' + generated_sql() + ') n WHERE created_at<? ORDER BY created_at,id LIMIT ?', params + (cutoff, USER_BATCH)).fetchall()
-    delete_generated(db, user_id, rows)
+    delete_generated(db, user_id, now, rows)
     remaining = USER_BATCH - len(rows)
     if remaining:
         excess = db.execute('SELECT * FROM (' + generated_sql() + ') n ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?', params + (remaining, HISTORY_LIMIT)).fetchall()
-        delete_generated(db, user_id, excess)
+        delete_generated(db, user_id, now, excess)
     expired = db.execute('SELECT source_key FROM budget_inbox_sources WHERE user_id=? AND expires_at<=? ORDER BY expires_at,source_key LIMIT ?', (user_id, now, SOURCE_BATCH)).fetchall()
     if expired:
         db.execute('DELETE FROM budget_inbox_sources WHERE user_id=? AND source_key IN (' + ','.join('?' for _ in expired) + ')', (user_id, *(row['source_key'] for row in expired)))

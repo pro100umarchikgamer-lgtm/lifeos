@@ -74,6 +74,23 @@ class InboxRetentionTests(budget_tests.BudgetInboxTests):
         self.now += 91 * 86400
         self.assertEqual(self.customer()[1]['notifications'], [])
 
+    def test_legacy_cap_backfills_exact_deleted_current_budget_sources(self):
+        from backend import inbox_retention
+        wid = self.workspace()
+        self.budget(wid, period='year', start_on='2026-01-01')
+        self.expense(wid, 1000, date='2026-01-02')
+        self.settings({'budget_enabled': True})
+        self.assertEqual(len(self.customer()[1]['notifications']), 3)
+        with self.backend.transaction() as db:
+            db.execute('DELETE FROM budget_inbox_sources')
+            db.execute('UPDATE budget_inbox_notifications SET created_at=?,read_at=?', (self.now - 20 * 86400, self.now))
+            for number in range(7):
+                stamp = self.now - (21 if number < 3 else 19) * 86400
+                db.execute("INSERT INTO budget_inbox_notifications(id,user_id,source_key,title,body,link,created_at,starts_at,expires_at,read_at) VALUES(?,?,?,'Budget','Old alert','/app',?,?,?,?)",
+                    (uid(), self.first['id'], uid() + ':2026-01-01:2026-12-31:50', stamp, stamp, self.now + 86400, self.now))
+        with patch.object(inbox_retention, 'HISTORY_LIMIT', 3), patch.object(inbox_retention, 'USER_BATCH', 3):
+            self.assertEqual(self.customer()[1]['unread_count'], 0)
+
     def test_budget_source_cap_is_explicit_without_partial_notifications(self):
         wid = self.workspace()
         self.budget(wid)
