@@ -27,7 +27,7 @@ def main():
     results=[]
     with fixture() as (origin,*_):
         with sync_playwright() as playwright:
-            browser=playwright.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
+            browser=playwright.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}),headless=True,args=['--no-sandbox'])
             context=browser.new_context(viewport={'width':390,'height':844})
             page=context.new_page();errors=[];external=[];page.on('pageerror',lambda error:errors.append(str(error)))
             page.on('request',lambda request:external.append(request.url) if not request.url.startswith(origin+'/') else None)
