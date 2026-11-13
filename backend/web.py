@@ -277,6 +277,7 @@ class Web:
         if action.startswith('inbox'):
             from .inbox import Inbox
             inbox = Inbox(self.backend)
+            if action == 'inbox/settings' and method in ('GET', 'POST'): return inbox.settings(actor, b if method == 'POST' else None)
             if action == 'inbox' and method == 'GET': return inbox.list(actor, q.get('before', [None])[0], int(q.get('limit', ['50'])[0]))
             if method == 'POST' and action in ('inbox/read', 'inbox/dismiss', 'inbox/presented'):
                 return inbox.mutate(actor, action.rsplit('/', 1)[-1], b)

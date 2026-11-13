@@ -8,6 +8,7 @@ from psycopg import sql
 from cryptography.fernet import Fernet
 from backend.postgres import PostgresBackend
 from backend.tests.test_inbox import InboxScenarios
+from backend.tests.test_budget_inbox import BudgetInboxScenarios
 
 DSN = os.environ.get('LIFEOS_TEST_DATABASE_URL', '')
 
@@ -42,3 +43,16 @@ class InboxPostgresTests(InboxScenarios, unittest.TestCase):
         with self.backend.connect() as db:
             self.assertEqual(db.execute('SELECT email FROM users WHERE id=?', (self.first['id'],)).fetchone()['email'], self.first['email'])
             self.assertEqual(db.execute("SELECT COUNT(*) AS n FROM schema_migrations WHERE version='014_inbox.sql'").fetchone()['n'], 1)
+
+
+class BudgetInboxPostgresTests(BudgetInboxScenarios, InboxPostgresTests):
+    def test_budget_migration_is_additive_repeatable_and_preserves_history(self):
+        item = self.publish(self.draft())
+        with self.backend.transaction() as db:
+            db.execute('DROP TABLE budget_inbox_notifications')
+            db.execute('DROP TABLE inbox_settings')
+            db.execute("DELETE FROM schema_migrations WHERE version='016_budget_inbox.sql'")
+        self.backend.migrate()
+        self.backend.migrate()
+        self.assertEqual(self.customer()[1]['notifications'][0]['id'], item['id'])
+        self.assertEqual(self.settings()[1]['budget_enabled'], False)

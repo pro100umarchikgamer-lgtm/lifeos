@@ -191,7 +191,7 @@ class AccountLifecycle:
                 seq = self.backend._audit(db, record['workspace_id'], {'id': uid}, str(uuid.uuid4()), 'record.delete', rid)
                 db.execute('UPDATE records SET deleted=1,revision=revision+1,seq=? WHERE id=?', (seq, rid))
             self.backend.revoke_all_in(db, uid)
-            for table in ('inbox_notifications', 'announcement_states', 'announcement_recipients', 'web_push_subscriptions', 'verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa', 'login_challenges', 'google_identities', 'account_credentials', 'oauth_challenges'):
+            for table in ('budget_inbox_notifications', 'inbox_settings', 'inbox_notifications', 'announcement_states', 'announcement_recipients', 'web_push_subscriptions', 'verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa', 'login_challenges', 'google_identities', 'account_credentials', 'oauth_challenges'):
                 db.execute('DELETE FROM '+table+' WHERE user_id=?', (uid,))
             db.execute('DELETE FROM grants WHERE user_id=?', (uid,))
             db.execute('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid,))

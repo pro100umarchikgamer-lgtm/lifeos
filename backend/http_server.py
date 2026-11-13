@@ -40,7 +40,9 @@ def dispatch(backend,method,path,body,auth):
         elif route.startswith('/v1/account/inbox'):
             from .inbox import Inbox
             inbox = Inbox(backend)
-            if route == '/v1/account/inbox' and method == 'GET':
+            if route == '/v1/account/inbox/settings' and method in ('GET', 'POST'):
+                result = inbox.settings(actor, body if method == 'POST' else None)
+            elif route == '/v1/account/inbox' and method == 'GET':
                 result = inbox.list(actor, query.get('before', [None])[0], int(query.get('limit', ['50'])[0]))
             elif route in ('/v1/account/inbox/read', '/v1/account/inbox/dismiss', '/v1/account/inbox/presented') and method == 'POST':
                 result = inbox.mutate(actor, route.rsplit('/', 1)[-1], body)

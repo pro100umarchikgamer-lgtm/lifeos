@@ -55,10 +55,15 @@ class Inbox:
             CASE WHEN a.state='published' AND a.expires_at>? THEN 1 ELSE 0 END AS active
             FROM announcements a JOIN announcement_recipients r ON r.announcement_id=a.id
             LEFT JOIN announcement_states s ON s.announcement_id=a.id AND s.user_id=r.user_id
-            WHERE r.user_id=? AND a.published_at>0 AND a.state IN ('published','cancelled') AND a.starts_at<=?"""
+            WHERE r.user_id=? AND a.published_at>0 AND a.state IN ('published','cancelled') AND a.starts_at<=?
+            UNION ALL
+            SELECT n.id,'budget' AS kind,n.title,n.body,'inbox' AS presentation,
+            n.created_at,n.starts_at,n.expires_at,n.link,n.read_at,n.dismissed_at,n.presented_at,
+            CASE WHEN n.expires_at>? THEN 1 ELSE 0 END AS active
+            FROM budget_inbox_notifications n WHERE n.user_id=? AND n.starts_at<=?"""
 
     def _params(self, actor, now):
-        return (now, actor['id'], now, now, actor['id'], now)
+        return (now, actor['id'], now, now, actor['id'], now, now, actor['id'], now)
 
     def list(self, actor, before=None, limit=50):
         require(type(limit) is int and 1 <= limit <= 100, 'inbox_cursor_invalid')
@@ -70,8 +75,10 @@ class Inbox:
             stamp, last_id = int(parts[0]), identifier(parts[1])
             require(0 <= stamp <= 9223372036854775807, 'inbox_cursor_invalid')
         now = int(self.backend.clock())
-        with self.backend.connect() as db:
+        with self.backend.transaction() as db:
             self._account(db, actor)
+            from .budget_inbox import BudgetInbox
+            evaluation = BudgetInbox(self.backend).evaluate(db, actor, now)
             union, params = self._union(), self._params(actor, now)
             rows = db.execute('SELECT * FROM (' + union + ') n WHERE created_at<? OR (created_at=? AND id<?) ORDER BY created_at DESC,id DESC LIMIT ?',
                 params + (stamp, stamp, last_id, limit + 1)).fetchall()
@@ -79,7 +86,14 @@ class Inbox:
         page = rows[:limit]
         return {'notifications': [dict({field: row[field] for field in PUBLIC_FIELDS}, active=bool(row['active'])) for row in page],
             'unread_count': unread,
-            'next_before': str(page[-1]['created_at']) + ':' + page[-1]['id'] if len(rows) > limit else None}
+            'next_before': str(page[-1]['created_at']) + ':' + page[-1]['id'] if len(rows) > limit else None,
+            'budget_evaluation': evaluation}
+
+    def settings(self, actor, body=None):
+        from .budget_inbox import BudgetInbox
+        with self.backend.transaction() as db:
+            self._account(db, actor)
+            return BudgetInbox(self.backend).settings(db, actor['id'], body)
 
     def mutate(self, actor, action, body):
         require(action in ('read', 'dismiss', 'presented'), 'not_found', 404)
@@ -91,6 +105,7 @@ class Inbox:
             self._account(db, actor)
             if all_read:
                 db.execute('UPDATE inbox_notifications SET read_at=? WHERE user_id=? AND starts_at<=? AND read_at=0', (now, actor['id'], now))
+                db.execute('UPDATE budget_inbox_notifications SET read_at=? WHERE user_id=? AND starts_at<=? AND read_at=0', (now, actor['id'], now))
                 db.execute("""INSERT INTO announcement_states(announcement_id,user_id,read_at)
                     SELECT a.id,r.user_id,? FROM announcements a JOIN announcement_recipients r ON r.announcement_id=a.id
                     WHERE r.user_id=? AND a.published_at>0 AND a.state IN ('published','cancelled') AND a.starts_at<=?
@@ -105,7 +120,7 @@ class Inbox:
                 db.execute('INSERT INTO announcement_states(announcement_id,user_id) VALUES(?,?) ON CONFLICT(announcement_id,user_id) DO NOTHING', (nid, actor['id']))
                 table, clause = 'announcement_states', 'announcement_id=? AND user_id=?'
             else:
-                table, clause = 'inbox_notifications', 'id=? AND user_id=?'
+                table, clause = ('budget_inbox_notifications' if row['kind'] == 'budget' else 'inbox_notifications'), 'id=? AND user_id=?'
             updates = ','.join(field + '=CASE WHEN ' + field + '=0 THEN ? ELSE ' + field + ' END' for field in fields)
             db.execute('UPDATE ' + table + ' SET ' + updates + ' WHERE ' + clause, tuple(now for _ in fields) + (nid, actor['id']))
         return {'updated': True}
