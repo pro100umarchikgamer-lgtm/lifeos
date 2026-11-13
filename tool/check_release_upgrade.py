@@ -8,6 +8,9 @@ import xml.etree.ElementTree as ET
 APP='app.lifeos.lifeos'
 OLD_ZIP='97d151438db0ef3515096c9df30755a075d85993a4fea270bf07518703ca4d0f'
 PROBE='ULADIM_upgrade_probe_112001'
+ACCEPTED_PROBE='ULADIM_direct_312001_upgrade'
+ACCEPTED_VERSION=312001
+ACCEPTED_SHA256='66d123cef79f85b7b2665bdcad0e6309db4a694e9a5076ed871450154c762872'
 OUT=Path('upgrade_evidence')
 
 def run(*args,timeout=30):
@@ -17,6 +20,7 @@ RETAINED_RELEASES={
     112001:('f8632cdd5cf4dad40f0163a44183016d23121abd','38883235405','0594d97502523901e9d8b7d6b0ceb5ec995f7379b66faabd886f8f75ea58908e'),
     134001:('6acbde34f499d7c740322687416abc3aa542f9ac','38984254821','a7f93159a138e464227fa2259d9c54c67063a280708e8dafbd95c27ec3ab8356'),
     303001:('dd2912af8b53d284494afa55c1cf39047bbe07fe','43329676603','e53e35e7c36e5ee9622af668f8db6073effcfeb774635fa0aeca90ce9c875142'),
+    ACCEPTED_VERSION:('84b0bdf2c6d54132691d22323553496f6b3b1d43','43367262708',ACCEPTED_SHA256),
 }
 def previous(baseline=112001,supplied=None):
     source,run_id,digest=RETAINED_RELEASES[baseline]
@@ -173,19 +177,55 @@ def capture_candidate_pages(theme):
             verify_financial_summary(tree)
             scroll();screenshot('categories-'+theme);scroll(False)
 
+def arguments(argv=None):
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--baseline',type=int,choices=RETAINED_RELEASES,default=112001)
+    parser.add_argument('--baseline-file',type=Path)
+    parser.add_argument('--through-version',type=int,choices=[303001])
+    parser.add_argument('--through-file',type=Path)
+    parser.add_argument('--accepted-version',type=int,choices=[ACCEPTED_VERSION])
+    parser.add_argument('--accepted-file',type=Path)
+    parser.add_argument('--download',action='store_true')
+    parser.add_argument('--probe',action='store_true')
+    parser.add_argument('--candidate',type=Path)
+    args=parser.parse_args(argv)
+    assert not args.through_file or args.through_version,'--through-file needs --through-version'
+    assert not args.accepted_file or args.accepted_version,'--accepted-file needs --accepted-version'
+    assert not args.through_version or (not args.probe and args.baseline<args.through_version),'Intermediate version must be newer than baseline'
+    assert not args.accepted_version or (not args.probe and args.accepted_version>max(args.baseline,args.through_version or 0)),'Accepted baseline must be the final pre-candidate upgrade'
+    return args
+
+def accepted_baseline(path,owner):
+    # This is the actual accepted APK, installed in place with the retained DB.
+    assert hashlib.sha256(Path(path).read_bytes()).hexdigest()==ACCEPTED_SHA256,'Accepted312 APK bytes changed'
+    adb('install','-r',str(path),timeout=90)
+    assert uid()==owner,'Package identity changed before accepted312 stage'
+    installed=adb('shell','dumpsys','package',APP)
+    assert int(re.search(rb'versionCode=(\d+)',installed)[1])==ACCEPTED_VERSION,'Accepted312 version not installed'
+    OUT.mkdir(exist_ok=True);(OUT/'accepted-312001-package.txt').write_bytes(installed)
+    start();tap('Tasks');find(PROBE,reveal=True)
+    screenshot('accepted-312001-control-task');(OUT/'accepted-312001-control-task.xml').write_bytes(ET.tostring(xml()))
+    start();tap('Finances');verify_financial_summary(xml())
+    screenshot('accepted-312001-finances');(OUT/'accepted-312001-finances.xml').write_bytes(ET.tostring(xml()))
+    # Create data using accepted312's own redesigned UI, not only the older seeder.
+    start();legacy_editor('Task');enter_text(ACCEPTED_PROBE);tap('Save')
+    start();tap('Tasks');find(ACCEPTED_PROBE,reveal=True)
+    screenshot('accepted-312001-created-task');(OUT/'accepted-312001-created-task.xml').write_bytes(ET.tostring(xml()))
+    return {'acceptedBaselineVersionCode':ACCEPTED_VERSION,'acceptedBaselineApkSha256':ACCEPTED_SHA256,
+            'acceptedBaselineTaskAndFinancialDataRetained':True,'directUpgradeFromVersionCode':ACCEPTED_VERSION}
+
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--baseline',type=int,choices=RETAINED_RELEASES,default=112001);parser.add_argument('--baseline-file',type=Path);parser.add_argument('--through-version',type=int,choices=[303001]);parser.add_argument('--through-file',type=Path);parser.add_argument('--download',action='store_true');parser.add_argument('--probe',action='store_true');parser.add_argument('--candidate',type=Path);args=parser.parse_args()
+    args=arguments()
     if args.download:
         print('Retained signed baseline verified:',args.baseline,previous(args.baseline,args.baseline_file))
         if args.through_version:print('Retained signed intermediate verified:',args.through_version,previous(args.through_version,args.through_file))
+        if args.accepted_version:print('Accepted signed pre-candidate baseline verified:',args.accepted_version,previous(args.accepted_version,args.accepted_file))
         return
     assert args.candidate and args.candidate.is_file()
     old=previous(args.baseline,args.baseline_file) if args.baseline_file else Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.baseline}.apk';assert old.is_file()
-    assert not args.through_file or args.through_version,'--through-file needs --through-version'
-    assert not args.through_version or (not args.probe and args.baseline<args.through_version),'Intermediate version must be newer than baseline'
     device_timezone('Europe/Moscow')
     adb('install','-r',str(old),timeout=90);owner=uid();start()
-    legacy_editor('Task');enter_text(PROBE);tap('Save');tap('Plans');find(PROBE,reveal=True)
+    legacy_editor('Task');enter_text(PROBE);tap('Save');tap('Tasks' if args.baseline>=ACCEPTED_VERSION else 'Plans');find(PROBE,reveal=True)
     screenshot(str(args.baseline)+'-control-task')
     for kind,amount in [('Expense','12.50'),('Income','100.00')]:
         tap('Today');legacy_editor(kind);enter_text(amount);tap('Save')
@@ -196,16 +236,30 @@ def main():
         installed=adb('shell','dumpsys','package',APP).decode();assert int(re.search(r'versionCode=(\d+)',installed)[1])==args.through_version
         start();tap('Plans');find(PROBE,reveal=True);screenshot('intermediate-'+str(args.through_version)+'-control-task')
         tap('Finances');verify_financial_summary(xml())
-    adb('install','-r',str(args.candidate),timeout=90)
+    accepted={}
+    if args.accepted_version:
+        path=previous(args.accepted_version,args.accepted_file) if args.accepted_file else Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.accepted_version}.apk'
+        assert path.is_file()
+        accepted=accepted_baseline(path,owner)
+    result=adb('install','-r',str(args.candidate),timeout=90)
+    if args.accepted_version:(OUT/'direct-312001-to-candidate-install.txt').write_bytes(result)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
-    assert version==args.baseline if args.probe else version>max(args.baseline,args.through_version or 0)
+    assert version==args.baseline if args.probe else version>max(args.baseline,args.through_version or 0,args.accepted_version or 0)
     modern=not args.probe and version>303001
     tasks='Tasks' if modern else 'Plans'
     if not args.probe:device_timezone('Etc/UTC')
     start();tap(tasks);find(PROBE,reveal=True);screenshot('upgraded-control-task')
     start();tap(tasks);find(PROBE,reveal=True)
+    if args.accepted_version:
+        start();tap('Tasks');find(ACCEPTED_PROBE,reveal=True)
+        screenshot('upgraded-312001-created-task');(OUT/'upgraded-312001-created-task.xml').write_bytes(ET.tostring(xml()))
+        start();tap('Tasks');find(ACCEPTED_PROBE,reveal=True)
+        (OUT/'direct-upgrade-package.txt').write_text(installed)
+        accepted['acceptedBaselineCreatedTaskRetainedAfterRestart']=True
+        accepted['upgradeVersionChain']=[args.baseline,*([args.through_version] if args.through_version else []),args.accepted_version,version]
     evidence={'previousVersionCode':args.baseline,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
+    evidence.update(accepted)
     if args.through_version:evidence['intermediateVersionCode']=args.through_version;evidence['intermediateTaskAndFinancialDataRetained']=True
     if not args.probe:
         for theme in ['light','dark']:
