@@ -41,58 +41,54 @@ class _LifeOSAppState extends State<LifeOSApp> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller.presentation,
-    builder: (context, _) {
-      return MaterialApp(
-        title: 'ULADIM',
-        debugShowCheckedModeBanner: false,
-        scaffoldMessengerKey: notices.messengerKey,
-        navigatorObservers: [navigationObserver],
-        builder: (context, child) => LifeNoticeScope(
-          notices: notices,
-          child: widget.builder?.call(context, child) ?? child!,
-        ),
-        themeAnimationDuration:
-            WidgetsBinding
-                .instance
-                .platformDispatcher
-                .accessibilityFeatures
-                .disableAnimations
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
-        locale: controller.pack.locale,
-        supportedLocales: {
-          for (final p in controller.catalog.packs.values) p.locale,
-          Locale(controller.region),
-        }.toList(),
-        localizationsDelegates: [
-          MaterialFallbackDelegate(formatLocale: controller.region),
-          const WidgetsFallbackDelegate(),
-          const CupertinoFallbackDelegate(),
-        ],
-        theme: lifeTheme(
-          Brightness.light,
-          appearance: controller.appearance,
-          wallpaperSeed: controller.wallpaperSeed == null
-              ? null
-              : Color(controller.wallpaperSeed!),
-        ),
-        darkTheme: lifeTheme(
-          Brightness.dark,
-          appearance: controller.appearance,
-          wallpaperSeed: controller.wallpaperSeed == null
-              ? null
-              : Color(controller.wallpaperSeed!),
-        ),
-        themeMode: switch (controller.theme) {
-          'light' => ThemeMode.light,
-          'dark' => ThemeMode.dark,
-          _ => ThemeMode.system,
+        listenable: controller.presentation,
+        builder: (context, _) {
+          return MaterialApp(
+            title: 'ULADIM',
+            debugShowCheckedModeBanner: false,
+            scaffoldMessengerKey: notices.messengerKey,
+            navigatorObservers: [navigationObserver],
+            builder: (context, child) => LifeNoticeScope(
+              notices: notices,
+              child: widget.builder?.call(context, child) ?? child!,
+            ),
+            themeAnimationDuration: WidgetsBinding.instance.platformDispatcher
+                    .accessibilityFeatures.disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 180),
+            locale: controller.pack.locale,
+            supportedLocales: {
+              for (final p in controller.catalog.packs.values) p.locale,
+              Locale(controller.region),
+            }.toList(),
+            localizationsDelegates: [
+              MaterialFallbackDelegate(formatLocale: controller.region),
+              const WidgetsFallbackDelegate(),
+              const CupertinoFallbackDelegate(),
+            ],
+            theme: lifeTheme(
+              Brightness.light,
+              appearance: controller.appearance,
+              wallpaperSeed: controller.wallpaperSeed == null
+                  ? null
+                  : Color(controller.wallpaperSeed!),
+            ),
+            darkTheme: lifeTheme(
+              Brightness.dark,
+              appearance: controller.appearance,
+              wallpaperSeed: controller.wallpaperSeed == null
+                  ? null
+                  : Color(controller.wallpaperSeed!),
+            ),
+            themeMode: switch (controller.theme) {
+              'light' => ThemeMode.light,
+              'dark' => ThemeMode.dark,
+              _ => ThemeMode.system,
+            },
+            home: HomeShell(controller: controller),
+          );
         },
-        home: HomeShell(controller: controller),
       );
-    },
-  );
 }
 
 class HomeShell extends StatefulWidget {
@@ -109,6 +105,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   bool _calendarOpen = false;
   bool _modulesOpen = false;
   String _moduleQuery = '';
+  int _financeVisible = 25;
+  String _financePageKey = '';
   DateTimeRange _period = DateTimeRange(
     start: DateTime(DateTime.now().year, DateTime.now().month),
     end: DateTime(DateTime.now().year, DateTime.now().month + 1, 0),
@@ -116,18 +114,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   FinancialPeriod get financialPeriod =>
       FinancialPeriod(_period.start, _period.end);
   String get summaryCurrency {
-    final codes =
-        financialPeriod
-            .records(c.records)
-            .map((r) => r.currency!.code)
-            .followedBy(
-              (c.offline[OfflineTable.accounts] ?? []).map(
-                (a) => a['currency'] as String,
-              ),
-            )
-            .toSet()
-            .toList()
-          ..sort();
+    final codes = financialPeriod
+        .records(c.records)
+        .map((r) => r.currency!.code)
+        .followedBy(
+          (c.offline[OfflineTable.accounts] ?? []).map(
+            (a) => a['currency'] as String,
+          ),
+        )
+        .toSet()
+        .toList()
+      ..sort();
     return _summaryCurrency ??
         (codes.contains(c.currency)
             ? c.currency
@@ -438,8 +435,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             )),
         if (familyMode)
           FamilyDashboard(controller: c, visibleKinds: const {
-            'note', 'task', 'account', 'transaction', 'transfer', 'budget',
-            'event', 'shopping', 'request',
+            'note',
+            'task',
+            'account',
+            'transaction',
+            'transfer',
+            'budget',
+            'event',
+            'shopping',
+            'request',
           })
         else
           ..._modules(),
@@ -459,13 +463,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               }),
             )),
       ] else if (familyMode)
-        FamilyDashboard(controller: c, tab: _tab, visibleKinds: switch (_destination) {
-          1 => const {'task'},
-          2 => const {'event'},
-          3 => const {'note'},
-          4 => const {'account', 'transaction', 'transfer', 'budget', 'request'},
-          _ => null,
-        })
+        FamilyDashboard(
+            controller: c,
+            tab: _tab,
+            visibleKinds: switch (_destination) {
+              1 => const {'task'},
+              2 => const {'event'},
+              3 => const {'note'},
+              4 => const {
+                  'account',
+                  'transaction',
+                  'transfer',
+                  'budget',
+                  'request'
+                },
+              _ => null,
+            })
       else if (_calendarOpen)
         CalendarPanel(controller: c)
       else if (_notesOpen)
@@ -573,24 +586,32 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget _header() {
     final colors = Theme.of(context).colorScheme;
     final name = familyMode
-        ? (c.family!.spaces.where((s) => s['id'] == c.family!.workspace)
-            .firstOrNull?['name'] as String? ?? c.pack.t('family_account'))
+        ? (c.family!.spaces
+                .where((s) => s['id'] == c.family!.workspace)
+                .firstOrNull?['name'] as String? ??
+            c.pack.t('family_account'))
         : c.pack.t(MediaQuery.sizeOf(context).width < 600
-            ? 'workspace_personal_short' : 'personal_space');
+            ? 'workspace_personal_short'
+            : 'personal_space');
     final workspace = TextButton(
       key: const Key('workspace_switcher'),
       onPressed: _workspace,
       style: TextButton.styleFrom(
-        alignment: Alignment.centerLeft, foregroundColor: colors.onSurface,
-        padding: const EdgeInsets.symmetric(horizontal: 8)),
+          alignment: Alignment.centerLeft,
+          foregroundColor: colors.onSurface,
+          padding: const EdgeInsets.symmetric(horizontal: 8)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(familyMode ? Icons.people_outline : Icons.person_outline,
-          size: 20, color: colors.primary),
+            size: 20, color: colors.primary),
         const SizedBox(width: 8),
-        Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge)),
+        Flexible(
+            child: Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelLarge)),
         const SizedBox(width: 4),
-        Icon(Icons.expand_more_rounded, size: 18, color: colors.onSurfaceVariant),
+        Icon(Icons.expand_more_rounded,
+            size: 18, color: colors.onSurfaceVariant),
       ]),
     );
     final compact = MediaQuery.textScalerOf(context).scale(1) <= 1.3 ||
@@ -598,10 +619,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Row(children: [
         Expanded(child: workspace),
-        IconButton(key: const Key('search_button'), tooltip: c.pack.t('search'),
-          onPressed: _showSearch, icon: const Icon(Icons.search_rounded)),
+        IconButton(
+            key: const Key('search_button'),
+            tooltip: c.pack.t('search'),
+            onPressed: _showSearch,
+            icon: const Icon(Icons.search_rounded)),
         if (_destination == 0 && compact) ...[
-          const SizedBox(width: 4), _addButton(),
+          const SizedBox(width: 4),
+          _addButton(),
         ],
       ]),
       if (_destination == 0 && !compact)
@@ -639,8 +664,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       p.dispose();
     }
     final enlarged = scaler.scale(1) > 1.2;
-    final itemWidth = enlarged && requiredWidth > width / 6
-        ? requiredWidth : width / 6;
+    final itemWidth =
+        enlarged && requiredWidth > width / 6 ? requiredWidth : width / 6;
     final height = (labelHeight + 42).clamp(64.0, 112.0);
     final children = <Widget>[
       for (var i = 0; i < _tabs.length; i++)
@@ -688,11 +713,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: FittedBox(fit: BoxFit.scaleDown, child: Text(c.pack.t(_tabs[index]),
-                maxLines: 1,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: color,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500))),
+            child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(c.pack.t(_tabs[index]),
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: color,
+                        fontWeight:
+                            active ? FontWeight.w700 : FontWeight.w500))),
           ),
         ]),
       ),
@@ -716,8 +744,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         now,
         c.deviceZone,
       );
-      final done =
-          due != null &&
+      final done = due != null &&
           c.occurrences.any(
             (s) =>
                 s.entryId == entry.id &&
@@ -743,7 +770,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       return 3;
     }
 
-    tasks.removeWhere((task) => _taskDone(task) && dates[task.id] == null);
+    // Today shows actionable occurrences. A completed repeating occurrence
+    // belongs in completed tasks until its next occurrence becomes current.
+    tasks.removeWhere(_taskDone);
     tasks.sort((a, b) {
       final order = priority(a).compareTo(priority(b));
       if (order != 0) {
@@ -823,305 +852,188 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       const SizedBox(height: 12),
     ];
     final visible = config.where((r) => r['visible'] == 1).toList();
-    content.add(LayoutBuilder(builder: (context, bounds) {
-      // Keep the saved sequence and visibility while using tablet space.
-      final columns = bounds.maxWidth >= 680 &&
-              MediaQuery.textScalerOf(context).scale(1) <= 1.3
-          ? 2
-          : 1;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var start = 0; start < visible.length; start += columns) ...[
-            if (start > 0) const SizedBox(height: 14),
-            if (columns == 1)
-              card(visible[start])
-            else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: card(visible[start])),
-                  const SizedBox(width: 18),
-                  Expanded(
-                      child: start + 1 < visible.length
-                          ? card(visible[start + 1])
-                          : const SizedBox.shrink()),
-                ],
-              ),
-          ],
-        ],
-      );
-    }));
-    return content;
-  }
-
-  Widget _financeSummary() => FinancialOverview(
-    key: const Key('home_financial_summary'),
-    controller: c,
-    period: financialPeriod,
-    currency: summaryCurrency,
-    compact: _tab == 0,
-    onCurrency: (v) => setState(() => _summaryCurrency = v),
-    onPeriod: () async {
-      final result = await selectFinancialPeriod(context, c, _period);
-      if (result != null && mounted) setState(() => _period = result);
-    },
-    onRecord: (r) => _showRecord(r.id),
-    onAdd: _add,
-  );
-
-  Widget _actionGrid({required bool detailed, BuildContext? sheetContext}) =>
+    content.add(
       LayoutBuilder(
-        builder: (context, constraints) {
-          final columns =
-              !detailed &&
-                  constraints.maxWidth >= 500 &&
-                  MediaQuery.textScalerOf(context).scale(1) <= 1.2
-              ? 4
-              : MediaQuery.textScalerOf(context).scale(1) > 1.3 ? 1 : 2;
-          final kinds = EntryKind.values
-              .where(
-                (kind) =>
-                    !familyMode ||
-                    c.family!.roster?['space']?['role'] != 'child' ||
-                    kind != EntryKind.income &&
-                        c.family!.creatableKinds.contains(
-                          kind == EntryKind.expense ? 'transaction' : kind.name,
-                        ),
-              )
-              .toList();
+        builder: (context, bounds) {
+          // Keep the saved sequence and visibility while using tablet space.
+          final columns = bounds.maxWidth >= 680 &&
+                  MediaQuery.textScalerOf(context).scale(1) <= 1.3
+              ? 2
+              : 1;
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (var start = 0; start < kinds.length; start += columns) ...[
-                if (start > 0) const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (
-                      var i = start;
-                      i < start + columns && i < kinds.length;
-                      i++
-                    ) ...[
-                      if (i > start) const SizedBox(width: 10),
+              for (var start = 0; start < visible.length; start += columns) ...[
+                if (start > 0) const SizedBox(height: 14),
+                if (columns == 1)
+                  card(visible[start])
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: card(visible[start])),
+                      const SizedBox(width: 18),
                       Expanded(
-                        child: _actionTile(
-                          kinds[i],
-                          detailed: detailed,
-                          onTap: sheetContext == null
-                              ? null
-                              : () {
-                                  Navigator.pop(sheetContext);
-                                  _add(kinds[i]);
-                                },
-                        ),
+                        child: start + 1 < visible.length
+                            ? card(visible[start + 1])
+                            : const SizedBox.shrink(),
                       ),
                     ],
-                  ],
-                ),
+                  ),
               ],
             ],
           );
         },
-      );
-
-  Widget _actionTile(
-    EntryKind kind, {
-    required bool detailed,
-    VoidCallback? onTap,
-  }) {
-    final colors = _kindColors(kind);
-    final theme = Theme.of(context);
-    final foreground = lifeAccent(context, colors.foreground);
-    final background = theme.brightness == Brightness.dark
-        ? Color.alphaBlend(
-            foreground.withValues(alpha: .12),
-            theme.colorScheme.surface,
-          )
-        : colors.background;
-    final radius = BorderRadius.circular(
-      theme.extension<LifeSurfaces>()?.radius ?? 20,
-    );
-    return Material(
-      color: background,
-      shape: RoundedRectangleBorder(
-        borderRadius: radius,
-        side: BorderSide(color: foreground.withValues(alpha: .12)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        key: Key('quick_${kind.name}'),
-        onTap: onTap ?? () => _add(kind),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 84),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Icon(_kindIcon(kind), color: foreground, size: 26),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        c.pack.t(kind.name),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (detailed) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          c.pack.t('example_${kind.name}'),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
+    return content;
   }
 
+  Widget _financeSummary() => FinancialOverview(
+        key: const Key('home_financial_summary'),
+        controller: c,
+        period: financialPeriod,
+        currency: summaryCurrency,
+        compact: _tab == 0,
+        onCurrency: (v) => setState(() => _summaryCurrency = v),
+        onPeriod: () async {
+          final result = await selectFinancialPeriod(context, c, _period);
+          if (result != null && mounted) setState(() => _period = result);
+        },
+        onRecord: (r) => _showRecord(r.id),
+        onAdd: _add,
+      );
+
   Widget _tasksCard(List<Record> tasks) => LifeCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle(
-          'my_tasks',
-          action: 'all_tasks',
-          onTap: () => _navigate(1),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(
+              'my_tasks',
+              action: 'all_tasks',
+              onTap: () => _navigate(1),
+            ),
+            const SizedBox(height: 6),
+            if (tasks.isEmpty) _cardEmpty('empty_tasks', EntryKind.task),
+            for (final task in tasks) _taskRow(task),
+          ],
         ),
-        const SizedBox(height: 6),
-        if (tasks.isEmpty) _cardEmpty('empty_tasks', EntryKind.task),
-        for (final task in tasks) _taskRow(task),
-      ],
-    ),
-  );
+      );
 
   Widget _notesCard(List<Record> notes) => LifeCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle(
-          'recent_notes',
-          action: 'all_notes',
-          onTap: () => _entriesPage(EntryKind.note),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(
+              'recent_notes',
+              action: 'all_notes',
+              onTap: () => _entriesPage(EntryKind.note),
+            ),
+            const SizedBox(height: 6),
+            if (notes.isEmpty) _cardEmpty('empty_notes', EntryKind.note),
+            for (final note in notes) _noteRow(note),
+          ],
         ),
-        const SizedBox(height: 6),
-        if (notes.isEmpty) _cardEmpty('empty_notes', EntryKind.note),
-        for (final note in notes) _noteRow(note),
-      ],
-    ),
-  );
+      );
 
   Widget _sectionTitle(
     String key, {
     String? action,
     VoidCallback? onTap,
-  }) => LayoutBuilder(
-    builder: (context, bounds) {
-      const titleStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w600);
-      final actionStyle = TextStyle(
-        fontSize: 13,
-        color: Theme.of(context).colorScheme.primary,
-      );
-      final title = Text(c.pack.t(key), style: titleStyle);
-      if (action == null) return title;
-      double textWidth(String text, TextStyle style) {
-        final painter = TextPainter(
-          text: TextSpan(
-            text: text,
-            style: DefaultTextStyle.of(context).style.merge(style),
-          ),
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
-        )..layout();
-        final width = painter.width;
-        painter.dispose();
-        return width;
-      }
+  }) =>
+      LayoutBuilder(
+        builder: (context, bounds) {
+          const titleStyle =
+              TextStyle(fontSize: 15, fontWeight: FontWeight.w600);
+          final actionStyle = TextStyle(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.primary,
+          );
+          final title = Text(c.pack.t(key), style: titleStyle);
+          if (action == null) return title;
+          double textWidth(String text, TextStyle style) {
+            final painter = TextPainter(
+              text: TextSpan(
+                text: text,
+                style: DefaultTextStyle.of(context).style.merge(style),
+              ),
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context),
+            )..layout();
+            final width = painter.width;
+            painter.dispose();
+            return width;
+          }
 
-      final actionLabel = c.pack.t(action);
-      final stacked =
-          textWidth(c.pack.t(key), titleStyle) +
-              textWidth(actionLabel, actionStyle) +
-              23 >
-          bounds.maxWidth;
-      final actionButton = Semantics(
-        button: true,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: 48,
-              maxWidth: bounds.maxWidth,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(child: Text(actionLabel, style: actionStyle)),
-                Icon(
-                  Icons.chevron_right,
-                  size: 15,
-                  color: Theme.of(context).colorScheme.primary,
+          final actionLabel = c.pack.t(action);
+          final stacked = textWidth(c.pack.t(key), titleStyle) +
+                  textWidth(actionLabel, actionStyle) +
+                  23 >
+              bounds.maxWidth;
+          final actionButton = Semantics(
+            button: true,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: 48,
+                  maxWidth: bounds.maxWidth,
                 ),
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(child: Text(actionLabel, style: actionStyle)),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+          return stacked
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    title,
+                    Align(
+                        alignment: Alignment.centerRight, child: actionButton),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: title),
+                    const SizedBox(width: 8),
+                    actionButton,
+                  ],
+                );
+        },
       );
-      return stacked
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                title,
-                Align(alignment: Alignment.centerRight, child: actionButton),
-              ],
-            )
-          : Row(
-              children: [
-                Expanded(child: title),
-                const SizedBox(width: 8),
-                actionButton,
-              ],
-            );
-    },
-  );
 
   Widget _cardEmpty(String key, EntryKind kind) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 7),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(
-            c.pack.t(key),
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                c.pack.t(key),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
-          ),
+            IconButton(
+              tooltip: c.pack.t('create_${kind.name}'),
+              onPressed: () => _add(kind),
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+          ],
         ),
-        IconButton(
-          tooltip: c.pack.t('create_${kind.name}'),
-          onPressed: () => _add(kind),
-          icon: const Icon(Icons.add_circle_outline),
-        ),
-      ],
-    ),
-  );
+      );
 
   bool _taskDone(Record task) {
     if (task.completed) return true;
@@ -1158,10 +1070,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           s.epoch == due.at.millisecondsSinceEpoch &&
           s.status == OccurrenceStatus.completed,
     )) {
-      return c.calendarEngine.next(entry, c.now, c.deviceZone, c.occurrences) ==
-              null
-          ? 'completed'
-          : 'task_upcoming';
+      return 'completed';
     }
     if (due.at.isBefore(c.now)) return 'task_overdue';
     return c.civilDate(due.at) == c.civilDate(c.now)
@@ -1170,77 +1079,83 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _taskRow(Record task) => Container(
-    constraints: const BoxConstraints(minHeight: 48),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(
-          color: Theme.of(context).dividerColor.withValues(alpha: .35),
-        ),
-      ),
-    ),
-    child: Row(
-      children: [
-        SizedBox(
-          width: 48,
-          child: Checkbox(
-            key: Key('task_${task.id}'),
-            value: _taskDone(task),
-            visualDensity: VisualDensity.standard,
-            onChanged: c.pendingTasks.contains(task.id)
-                ? null
-                : (value) => _complete(task, value!),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Expanded(
-          child: InkWell(
-            onTap: () => _showRecord(task.id),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.text,
-                    style: TextStyle(
-                      fontSize: 15,
-                      decoration: _taskDone(task)
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
-                  ),
-                  if (_taskStatus(task) case final String status)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        c.pack.t(status),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: status == 'task_overdue'
-                              ? lifeAccent(context, LifePalette.red)
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  if (c.scheduleFor(task) case final CalendarEntry entry)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Text(
-                        _scheduleLabel(entry),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+        constraints: const BoxConstraints(minHeight: 48),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor.withValues(alpha: .35),
             ),
           ),
         ),
-      ],
-    ),
-  );
+        child: Row(
+          children: [
+            SizedBox(
+              width: 48,
+              child: Checkbox(
+                key: Key('task_${task.id}'),
+                value: _taskDone(task),
+                visualDensity: VisualDensity.standard,
+                onChanged: c.pendingTasks.contains(task.id)
+                    ? null
+                    : (value) => _complete(task, value!),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: InkWell(
+                onTap: () => _showRecord(task.id),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          decoration: _taskDone(task)
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      if (_taskStatus(task) case final String status)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            c.pack.t(status),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: status == 'task_overdue'
+                                  ? lifeAccent(context, LifePalette.red)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      if (c.scheduleFor(task) case final CalendarEntry entry)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: Text(
+                            _scheduleLabel(entry),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
   String _scheduleLabel(CalendarEntry entry) {
     final date = DateTime.parse(entry.schedule.localStart);
@@ -1249,65 +1164,65 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _noteRow(Record note) => InkWell(
-    onTap: () => _showNote(note),
-    borderRadius: BorderRadius.circular(12),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 19,
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            child: Icon(
-              Icons.description_outlined,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _firstLine(note.text),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+        onTap: () => _showNote(note),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.description_outlined,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  size: 21,
                 ),
-                if (note.text.contains('\n')) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    note.text.substring(note.text.indexOf('\n') + 1).trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _firstLine(note.text),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                Text(
-                  MaterialLocalizations.of(context)
-                      .formatMediumDate(note.createdAt.toLocal()),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                    if (note.text.contains('\n')) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        note.text.substring(note.text.indexOf('\n') + 1).trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      MaterialLocalizations.of(context)
+                          .formatMediumDate(note.createdAt.toLocal()),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   String _firstLine(String value) => value.split('\n').first;
 
@@ -1322,191 +1237,259 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _showNote(Record note) => _showRecord(note.id);
 
   List<Widget> _entries(EntryKind kind) {
-    final records = c.records.where((r) => r.kind == kind).toList();
-    final open = records.where((r) => !_taskDone(r)).toList();
-    final completed = records.where(_taskDone).toList();
+    final records = c.records.where((r) => r.kind == kind).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final open = kind == EntryKind.task
+        ? records.where((r) => !_taskDone(r)).toList()
+        : <Record>[];
+    final completed =
+        kind == EntryKind.task ? records.where(_taskDone).toList() : <Record>[];
+    Widget group(List<Record> rows) => LifeCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [for (final row in rows) _taskRow(row)],
+          ),
+        );
     return [
-      _pageTitle(kind == EntryKind.task ? 'my_tasks' : 'recent_notes'),
-      const SizedBox(height: 14),
+      Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
+        children: [
+          _pageTitle(kind == EntryKind.task ? 'nav_tasks' : 'nav_notes'),
+          FilledButton.icon(
+            key: Key('create_${kind.name}_header'),
+            onPressed: () => _add(kind),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(c.pack.t('create_${kind.name}')),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
       if (records.isEmpty)
         LifeCard(
-          child: _cardEmpty(
-            kind == EntryKind.task ? 'empty_tasks' : 'empty_notes',
-            kind,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              c.pack.t(kind == EntryKind.task ? 'empty_tasks' : 'empty_notes'),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ),
         ),
-      if (kind == EntryKind.task && open.isNotEmpty) ...[
-        _sectionTitle('open_tasks'),
-        const SizedBox(height: 8),
-        for (final record in open)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: LifeCard(child: _taskRow(record)),
-          ),
-      ],
+      if (kind == EntryKind.task && open.isNotEmpty) group(open),
       if (kind == EntryKind.task && completed.isNotEmpty) ...[
         const SizedBox(height: 12),
-        _sectionTitle('completed_tasks'),
-        const SizedBox(height: 8),
-        for (final record in completed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: LifeCard(child: _taskRow(record)),
+        LifeCard(
+          child: ExpansionTile(
+            key: const PageStorageKey('completed_task_group'),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            shape: const Border(),
+            collapsedShape: const Border(),
+            title: Text(c.pack.t('completed_tasks')),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${completed.length}',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.expand_more),
+              ],
+            ),
+            children: [for (final row in completed) _taskRow(row)],
           ),
+        ),
       ],
-      if (kind == EntryKind.note)
-        for (final record in records)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: LifeCard(child: _noteRow(record)),
+      if (kind == EntryKind.note && records.isNotEmpty)
+        LifeCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < records.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _noteRow(records[i]),
+              ],
+            ],
           ),
-      const SizedBox(height: 14),
-      FilledButton.icon(
-        onPressed: () => _add(kind),
-        icon: const Icon(Icons.add),
-        label: Text(c.pack.t('create_${kind.name}')),
-      ),
+        ),
     ];
   }
 
   List<Widget> _finance() {
-    final records = financialPeriod.records(
-      c.records,
-      currency: summaryCurrency,
-    )..sort((a, b) => b.date!.compareTo(a.date!));
+    final records =
+        financialPeriod.records(c.records, currency: summaryCurrency)
+          ..sort((a, b) {
+            final day = b.date!.compareTo(a.date!);
+            if (day != 0) return day;
+            final time = b.createdAt.compareTo(a.createdAt);
+            return time != 0 ? time : b.id.compareTo(a.id);
+          });
+    final pageKey =
+        '${financialPeriod.start}|${financialPeriod.end}|$summaryCurrency';
+    if (_financePageKey != pageKey) {
+      _financePageKey = pageKey;
+      _financeVisible = 25;
+    }
+    final visible = records.take(_financeVisible).toList();
     return [
-      Row(
-        children: [
-          Expanded(child: _pageTitle('finances')),
-          IconButton(
+      _pageTitle('finances'),
+      const SizedBox(height: 8),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(
             key: const Key('finance_accounts'),
-            tooltip: c.pack.t('financial_foundation'),
-            icon: const Icon(Icons.account_balance_wallet_outlined),
+            icon: const Icon(Icons.account_balance_wallet_outlined, size: 20),
+            label: Text(c.pack.t('financial_foundation')),
             onPressed: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => FinanceFoundation(controller: c)))),
+      ),
+      const SizedBox(height: 12),
+      _financeSummary(),
+      if (records.isNotEmpty) ...[
+        const SizedBox(height: 24),
+        Text(c.pack.count('record_count', records.length),
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        LifeCard(
+            child: Column(children: [
+          for (var i = 0; i < visible.length; i++) ...[
+            if (i > 0) const Divider(height: 1),
+            InkWell(
+              onTap: () => _showRecord(visible[i].id),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: LayoutBuilder(builder: (context, bounds) {
+                    final r = visible[i];
+                    final value = formatMoney(r.currency!, r.amountMinor!,
+                        locale: c.region);
+                    final amount = FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(value,
+                            key: Key('finance_amount_${r.id}'),
+                            maxLines: 1,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                    color: lifeAccent(context,
+                                        _kindColors(r.kind).foreground),
+                                    fontWeight: FontWeight.w600)));
+                    final title = Text(
+                        r.text.isEmpty ? c.pack.t(r.kind.name) : r.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis);
+                    final date = Text(
+                        MaterialLocalizations.of(context)
+                            .formatMediumDate(DateTime.parse(r.date!)),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant));
+                    final stacked = bounds.maxWidth < 360 ||
+                        MediaQuery.textScalerOf(context).scale(1) > 1.3 ||
+                        value.length > 17;
+                    return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(
+                                  r.kind == EntryKind.expense
+                                      ? Icons.north_east
+                                      : Icons.south_west,
+                                  size: 18,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                if (stacked) ...[
+                                  title,
+                                  const SizedBox(height: 6),
+                                  amount
+                                ] else
+                                  Row(children: [
+                                    Expanded(child: title),
+                                    const SizedBox(width: 16),
+                                    Flexible(child: amount)
+                                  ]),
+                                const SizedBox(height: 4),
+                                date,
+                              ])),
+                        ]);
+                  })),
+            ),
+          ],
+        ])),
+        if (records.length > visible.length) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+              key: const Key('finance_load_more'),
+              onPressed: () => setState(() => _financeVisible += 25),
+              icon: const Icon(Icons.expand_more),
+              label: Text(
+                  '${c.pack.t('load_more')} · ${visible.length} / ${records.length}')),
+        ],
+      ],
+    ];
+  }
+
+  List<Widget> _modules() {
+    final grid = c.preferences['modules_view'] == 'grid';
+    final modules =
+        <({IconData icon, String title, String body, VoidCallback open})>[
+      (
+        icon: Icons.account_balance_wallet_outlined,
+        title: c.pack.t('financial_foundation'),
+        body: c.pack.t('ux_modules_finance'),
+        open: () => Navigator.push<void>(
               context,
               MaterialPageRoute(
                 builder: (_) => FinanceFoundation(controller: c),
               ),
             ),
-          ),
-        ],
       ),
-      const SizedBox(height: 12),
-      _financeSummary(),
-      const SizedBox(height: 12),
-      if (records.isEmpty) LifeCard(child: Text(c.pack.t('empty_money'))),
-      for (final record in records)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: InkWell(
-            onTap: () => _showRecord(record.id),
-            child: LifeCard(
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: _kindColors(record.kind).background,
-                    child: Icon(
-                      _kindIcon(record.kind),
-                      color: _kindColors(record.kind).foreground,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          record.text.isEmpty
-                              ? c.pack.t(record.kind.name)
-                              : record.text,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          record.date == null
-                              ? ''
-                              : MaterialLocalizations.of(context)
-                                    .formatMediumDate(
-                                      DateTime.parse(record.date!),
-                                    ),
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      formatMoney(
-                        record.currency!,
-                        record.amountMinor!,
-                        locale: c.region,
-                      ),
-                      key: Key('finance_amount_${record.id}'),
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: lifeAccent(context, _kindColors(record.kind).foreground),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+      for (final table in personalModules)
+        (
+          icon: switch (table) {
+            OfflineTable.projects => Icons.flag_outlined,
+            OfflineTable.habits => Icons.check_circle_outline,
+            OfflineTable.subjects => Icons.school_outlined,
+            OfflineTable.checklists => Icons.shopping_basket_outlined,
+            _ => Icons.favorite_outline,
+          },
+          title: c.pack.t('module_${table.name}'),
+          body: c.pack.t('ux_modules_${table.name}'),
+          open: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      PersonalModulesPage(controller: c, table: table),
+                ),
               ),
-            ),
-          ),
         ),
-    ];
-  }
-
-  List<Widget> _modules() {
-    final grid = c.preferences['modules_view'] != 'list';
-    final modules =
-        <({IconData icon, String title, String body, VoidCallback open})>[
-              (
-                icon: Icons.account_balance_wallet_outlined,
-                title: c.pack.t('financial_foundation'),
-                body: c.pack.t('ux_modules_finance'),
-                open: () => Navigator.push<void>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FinanceFoundation(controller: c),
-                  ),
-                ),
-              ),
-              for (final table in personalModules)
-                (
-                  icon: switch (table) {
-                    OfflineTable.projects => Icons.flag_outlined,
-                    OfflineTable.habits => Icons.check_circle_outline,
-                    OfflineTable.subjects => Icons.school_outlined,
-                    OfflineTable.checklists => Icons.shopping_basket_outlined,
-                    _ => Icons.favorite_outline,
-                  },
-                  title: c.pack.t('module_${table.name}'),
-                  body: c.pack.t('ux_modules_${table.name}'),
-                  open: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          PersonalModulesPage(controller: c, table: table),
-                    ),
-                  ),
-                ),
-              (
-                icon: Icons.notes_outlined,
-                title: c.pack.t('recent_notes'),
-                body: c.pack.t('notes_module_hint'),
-                open: () => _entriesPage(EntryKind.note),
-              ),
-            ]
+      (
+        icon: Icons.notes_outlined,
+        title: c.pack.t('recent_notes'),
+        body: c.pack.t('notes_module_hint'),
+        open: () => _entriesPage(EntryKind.note),
+      ),
+    ]
             .where(
               (m) => '${m.title} ${m.body}'.toLowerCase().contains(
-                _moduleQuery.toLowerCase(),
-              ),
+                    _moduleQuery.toLowerCase(),
+                  ),
             )
             .toList();
     final theme = Theme.of(context);
@@ -1599,8 +1582,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (grid)
         LayoutBuilder(
           builder: (context, box) {
-            final columns =
-                box.maxWidth >= 280 &&
+            final columns = box.maxWidth >= 280 &&
                     MediaQuery.textScalerOf(context).scale(1) <= 1.3
                 ? 2
                 : 1;
@@ -1608,12 +1590,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             double height = 48;
             for (final m in modules) {
               double textHeight(String text, TextStyle? style) => (TextPainter(
-                text: TextSpan(text: text, style: style),
-                textDirection: Directionality.of(context),
-                textScaler: MediaQuery.textScalerOf(context),
-              )..layout(maxWidth: width - 28)).height;
-              final measured =
-                  28 +
+                    text: TextSpan(text: text, style: style),
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
+                  )..layout(maxWidth: width - 28))
+                      .height;
+              final measured = 28 +
                   26 +
                   10 +
                   6 +
@@ -1664,38 +1646,35 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   List<Widget> _profile() => [
-    _pageTitle('profile'),
-    const SizedBox(height: 6),
-    Text(
-      c.pack.t('ux3_profile_body'),
-      style: Theme.of(context).textTheme.bodyMedium
-          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-    ),
-    const SizedBox(height: 14),
-    if (c.family != null) ...[
-      LifeCard(
-        child: ListTile(
-          leading: const Icon(Icons.people_outline),
-          title: Text(c.pack.t('family_account')),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push<void>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FamilyPage(controller: c.family!, pack: c.pack),
+        _pageTitle('profile'),
+        const SizedBox(height: 16),
+        if (c.family != null) ...[
+          LifeCard(
+            child: ListTile(
+              leading: const Icon(Icons.people_outline),
+              title: Text(c.pack.t('family_account')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      FamilyPage(controller: c.family!, pack: c.pack),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-      const SizedBox(height: 12),
-    ],
-    PersonalSettings(controller: c),
-  ];
+          const SizedBox(height: 12),
+        ],
+        PersonalSettings(controller: c),
+      ];
 
   Widget _pageTitle(String key) => Text(
-    c.pack.t(key),
-    style: Theme.of(context).textTheme.headlineSmall
-        ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -.5),
-  );
+        c.pack.t(key),
+        style: Theme.of(context)
+            .textTheme
+            .headlineSmall
+            ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -.5),
+      );
 
   void _showSearch() {
     Navigator.push<void>(
@@ -1707,16 +1686,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   KindColors _kindColors(EntryKind kind) => switch (kind) {
-    EntryKind.expense => const KindColors(LifePalette.red, LifePalette.rose),
-    EntryKind.income => const KindColors(LifePalette.green, LifePalette.mint),
-    EntryKind.task => const KindColors(LifePalette.blue, LifePalette.ice),
-    EntryKind.note => const KindColors(LifePalette.orange, LifePalette.cream),
-  };
-
-  IconData _kindIcon(EntryKind kind) => switch (kind) {
-    EntryKind.expense => Icons.remove_circle_rounded,
-    EntryKind.income => Icons.add_circle_rounded,
-    EntryKind.task => Icons.check_box_rounded,
-    EntryKind.note => Icons.notes_rounded,
-  };
+        EntryKind.expense =>
+          const KindColors(LifePalette.red, LifePalette.rose),
+        EntryKind.income =>
+          const KindColors(LifePalette.green, LifePalette.mint),
+        EntryKind.task => const KindColors(LifePalette.blue, LifePalette.ice),
+        EntryKind.note =>
+          const KindColors(LifePalette.orange, LifePalette.cream),
+      };
 }

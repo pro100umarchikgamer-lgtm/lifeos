@@ -23,7 +23,7 @@ Future<void> capture(WidgetTester tester, String name) async {
   await tester.runAsync(() async {
     final picture = await boundary.toImage(pixelRatio: 1);
     final bytes = await picture.toByteData(format: ui.ImageByteFormat.png);
-    final directory = Directory('/workspace/work/evidence/native-shell');
+    final directory = Directory('web_evidence/native-shell');
     await directory.create(recursive: true);
     await File('${directory.path}/$name.png')
         .writeAsBytes(bytes!.buffer.asUint8List());
@@ -44,14 +44,6 @@ void main() {
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf')))
         .load();
     catalog = await PackCatalog.load();
-    // The root integrates the same four keys across all packs independently.
-    catalog.packs['ru']!.strings.addAll({
-      'nav_tasks': 'Задачи',
-      'nav_calendar': 'Календарь',
-      'nav_notes': 'Заметки',
-      'all_sections': 'Все разделы',
-      'workspace_personal_short': 'Личное',
-    });
   });
   for (final scenario in [
     (390.0, 'light', true),

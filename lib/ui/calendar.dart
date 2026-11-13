@@ -8,12 +8,13 @@ import 'selection.dart';
 
 class CalendarGrid extends StatelessWidget {
   const CalendarGrid({super.key, required this.month, required this.selected, required this.onDay,
-    required this.onMonth, this.weekStart = 1, this.marked = const {}, this.range});
+    required this.onMonth, this.weekStart = 1, this.marked = const {}, this.range, this.showMonthHeader = true});
   final DateTime month, selected;
   final ValueChanged<DateTime> onDay, onMonth;
   final int weekStart;
   final Set<String> marked;
   final DateTimeRange? range;
+  final bool showMonthHeader;
   @override
   Widget build(BuildContext context) {
     final first = DateTime(month.year, month.month);
@@ -22,7 +23,7 @@ class CalendarGrid extends StatelessWidget {
     final labels = DateFormat.E(Localizations.localeOf(context).toLanguageTag());
     final color = Theme.of(context).colorScheme.primary;
     return Column(children: [
-      Row(children: [
+      if (showMonthHeader) Row(children: [
         IconButton(tooltip: MaterialLocalizations.of(context).previousMonthTooltip,
           onPressed: month.year == 1900 && month.month == 1 ? null : () => onMonth(DateTime(month.year, month.month - 1)), icon: const Icon(Icons.chevron_left)),
         Expanded(child: TextButton(onPressed: () async {
