@@ -34,19 +34,29 @@ import hashlib, json, re, subprocess, sys
 from pathlib import Path
 
 # Baseline: the published 5617fff release. Root fills each candidate digest only
-# after reviewing the final seven-file change. No wildcard or version-only bypass.
+# after reviewing the final fifteen-file change. No wildcard or version-only bypass.
 # None permits an absent old file, not any previous content. These approvals
-# authorize one additive category column and safe moderation-state presentation;
-# authentication, existing record permissions and every other backend file must
-# remain byte-for-byte identical to the running image.
+# authorize the additive category column, safe moderation-state presentation,
+# and opt-in encrypted calendar Web Push with its routes, queue, worker tick,
+# deletion/import compatibility and focused tests. Existing authentication and
+# record permissions are unchanged; every other backend file must remain
+# byte-for-byte identical to the running image.
 REVIEWED_BACKEND_CHANGES = {
+    'backend/account_lifecycle.py': ('1488ffd56c74fc9cab6af68e09bb9bc1e1d037764369cfb8928c3b8ca089f318', 'c673e844a424c6801ed0d87ea7fec29cf43404010e1ec40ec4cdf0e5e50775b0'),
     'backend/control.py': ('65eff55f14f3bd4bcfbe6e0110902f58cc24590d6c7011cbda7cb0da9a1bc939', 'd3d25e8bc5726a110c88e8612aca6994b1545c1037316bc45cd6d83d5d433bfc'),
-    'backend/service.py': ('67b2f9d04141677ebcdfb73e9efafaf1828ca84400eaaaa6af71bd3cc13bfac7', '00cbd0837313c19a804bef67f6f15f0be9565d9af31c527d0ebc5bfa284dfb86'),
-    'backend/schema.sql': ('0f066ca4569f9c616052efec30b1167bd2ac2796ad07e9fde3a0f4852a928bb8', '2adae60e9307da8935d5c655bd3819991a2a4c3a9ea5a622f12909a03c234d7c'),
+    'backend/import_sqlite.py': ('a7543d156826fee05f9a21c6d15c58c0bb1a3d02f9b9b247a5f49af59c273a93', 'aadecaadabd8047d5f00e6d34cc92c47d12b982ba40f4417027c2c7020790d05'),
+    'backend/mail.py': ('90f8dd3d15c78e9c2170b578b5237714d7670d92bd5dd4f154887d58d811263d', '12986e2d76296e5161d0f0fb68e217cb9314bceb1a1099c735a1d7da7dee246f'),
     'backend/migrations/012_transaction_categories.sql': (None, '8cb3c22388baa1039603e98148f67463110126817db1d1512d58c56d43be7119'),
+    'backend/migrations/013_web_push.sql': (None, '96259d626cc4a1d013c4513acd14c678c39ed5e70216863df4126b121535431e'),
+    'backend/schema.sql': ('0f066ca4569f9c616052efec30b1167bd2ac2796ad07e9fde3a0f4852a928bb8', 'ed5841dad2ff4faf1b7bc484559ea44d151be760c27219a9c2ce4141a8a98a7d'),
+    'backend/service.py': ('67b2f9d04141677ebcdfb73e9efafaf1828ca84400eaaaa6af71bd3cc13bfac7', '00cbd0837313c19a804bef67f6f15f0be9565d9af31c527d0ebc5bfa284dfb86'),
     'backend/tests/test_control.py': ('d5d765d370ff6192bbbaa44ca9d3167e835882f3eb2ce051f9ed5d45044be9c2', '918a9011f9dfad53349c9c34bc7717d3935dd6d59139e1fa6d52fd52ceea04ad'),
     'backend/tests/test_postgres.py': ('4ab3b36d21d2115e07d6a6bb9022d141f4c2d8514a43a5404dd3cca57ab7024b', 'de2500b1e7370b01182ddc4cffb2825dd6ec415ec76da384f43d966ff25f8c54'),
     'backend/tests/test_transaction_categories.py': (None, '9201f02e8219899a05d68947391f36898ded67a269b33d0a70857459bcba58f9'),
+    'backend/tests/test_web_push.py': (None, '029a42c1e8e305e461f0180c350a61baeff29c8c83694301821909df829c3e83'),
+    'backend/tests/test_web_push_postgres.py': (None, 'dfcdb0ec69ae1993ab1945059ae4a312da884360569d884625ce1142197356cd'),
+    'backend/web.py': ('50e458d6e7e3ae05cd509a2e1879a9be1d3025ae242c5458883fc4582f9a38e1', '526d60946ae8d9470761b8b88f2e970d7eb7a9d6b9a938567402d087526cc10a'),
+    'backend/web_push.py': (None, '60fc17bbc6ae3aff5e3349ce2c2ba533282795eb71711c525ebfb70e56830a8f'),
 }
 
 def reviewed_backend_changes(live, source):
@@ -75,17 +85,6 @@ source = {str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest()
 changed, reviewed = reviewed_backend_changes(live, source)
 if reviewed:
     print('REVIEWED_BACKEND_ADDITIONS ' + ', '.join(reviewed))
-# This release adds one image to the existing static asset allowlist. Require
-# byte-for-byte equality after removing exactly that literal; no API change can
-# pass this exception.
-if 'backend/web.py' in changed:
-    candidate = (root / 'backend/web.py').read_bytes()
-    running = subprocess.check_output(['docker','exec','lifeos-api-1','cat','/app/backend/web.py'])
-    addition = b"'app.css', 'auth-texture.webp', 'manifest.webmanifest'"
-    original = b"'app.css', 'manifest.webmanifest'"
-    if candidate.count(addition) == 1 and candidate.replace(addition, original) == running:
-        changed.discard('backend/web.py')
-        print('STATIC_ASSET_ALLOWLIST_ADDITION auth-texture.webp')
 if changed:
     raise SystemExit('Stopped: running backend differs from candidate: ' + ', '.join(sorted(changed)))
 print('BACKEND_REVIEWED_DELTAS_ONLY' if reviewed else 'BACKEND_AND_SCHEMA_UNCHANGED')
