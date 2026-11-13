@@ -803,7 +803,8 @@
     "privacy_currency_unavailable": "Valuta non disponibile. Importo registrato in unità minime:",
     "privacy_cloud_erasing": "L’eliminazione cloud è in fase di completamento. L’account non può più modificare dati cloud. Le copie locali restano sul dispositivo.",
     "privacy_cloud_unavailable": "Questo account cloud non è disponibile. Un’eliminazione richiesta potrebbe essere ancora in corso. I dati personali sul dispositivo restano.",
-    "privacy_action_unavailable": "Impossibile completare l’azione. L’account attuale e i dati locali sono conservati. Controlla il destinatario o riprova."
+    "privacy_action_unavailable": "Impossibile completare l’azione. L’account attuale e i dati locali sono conservati. Controlla il destinatario o riprova.",
+    "privacy_confirm_action": "Conferma"
   },
   "plurals": {
     "record_count": {

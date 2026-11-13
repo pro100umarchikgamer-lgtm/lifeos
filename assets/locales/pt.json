@@ -803,7 +803,8 @@
     "privacy_currency_unavailable": "Moeda indisponível. Montante registado em unidades mínimas:",
     "privacy_cloud_erasing": "A eliminação na nuvem está a terminar. A conta já não pode alterar dados na nuvem. As cópias locais permanecem no dispositivo.",
     "privacy_cloud_unavailable": "Esta conta na nuvem não está disponível. Uma eliminação pedida pode ainda estar em curso. Os dados pessoais no dispositivo permanecem.",
-    "privacy_action_unavailable": "Não foi possível concluir a ação. A conta atual e os dados locais foram mantidos. Verifique o destinatário ou tente novamente."
+    "privacy_action_unavailable": "Não foi possível concluir a ação. A conta atual e os dados locais foram mantidos. Verifique o destinatário ou tente novamente.",
+    "privacy_confirm_action": "Confirmar"
   },
   "plurals": {
     "record_count": {

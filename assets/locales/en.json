@@ -803,7 +803,8 @@
     "privacy_currency_unavailable": "Currency unavailable. Recorded amount in minor units:",
     "privacy_cloud_erasing": "Cloud deletion is being completed. This account can no longer change cloud data. Local copies on this device remain.",
     "privacy_cloud_unavailable": "This cloud account is unavailable. If deletion was requested, it may still be completing. Personal records on this device remain.",
-    "privacy_action_unavailable": "This action could not be completed. Your current account and local records have been kept. Check the recipient or try again."
+    "privacy_action_unavailable": "This action could not be completed. Your current account and local records have been kept. Check the recipient or try again.",
+    "privacy_confirm_action": "Confirm"
   },
   "plurals": {
     "record_count": {

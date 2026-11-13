@@ -122,7 +122,7 @@ class _AccountPrivacyLifecycleState extends State<AccountPrivacyLifecycle> {
       Navigator.of(context).push<String>(MaterialPageRoute(
           builder: (_) => AccountInputPage(
                 title: t(mfa ? 'family_code' : 'family_old_password'),
-                confirm: t('confirm'),
+                confirm: t('privacy_confirm_action'),
                 cancel: t('cancel'),
                 secret: true,
                 description: mfa ? t('privacy_mfa_hint') : null,
@@ -390,7 +390,7 @@ class _LifecycleConfirmationState extends State<_LifecycleConfirmation> {
                   widget.phrase != null && field.text.trim() != widget.phrase
                       ? null
                       : () => Navigator.pop(context, true),
-              child: Text(widget.pack.t('confirm'))),
+              child: Text(widget.pack.t('privacy_confirm_action'))),
           const SizedBox(height: 12),
           TextButton(
               onPressed: () => Navigator.pop(context, false),

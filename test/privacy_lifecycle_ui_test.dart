@@ -83,7 +83,8 @@ void main() {
     expect(find.text(catalog.packs['en']!.t('family_password')), findsNothing);
     await tester.enterText(find.byType(TextField), '123456');
     await tester.pump();
-    await tester.tap(find.text(catalog.packs['en']!.t('confirm')));
+    await tester
+        .tap(find.text(catalog.packs['en']!.t('privacy_confirm_action')));
     await tester.pumpAndSettle();
     expect(mutations.single.$1, '/v1/account/lifecycle/deletion');
     expect(mutations.single.$2, {

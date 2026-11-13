@@ -803,7 +803,8 @@
     "privacy_currency_unavailable": "Valyuta əlçatan deyil. Ən kiçik vahidlərlə saxlanmış məbləğ:",
     "privacy_cloud_erasing": "Buludda silinmə tamamlanır. Hesab artıq bulud məlumatlarını dəyişə bilmir. Cihazdakı yerli nüsxələr qalır.",
     "privacy_cloud_unavailable": "Bu bulud hesabı əlçatan deyil. Silinmə istənilibsə, proses davam edə bilər. Cihazdakı şəxsi qeydlər qalır.",
-    "privacy_action_unavailable": "Əməliyyat tamamlanmadı. Cari hesabınız və yerli qeydlər saxlanıb. Alıcını yoxlayın və ya yenidən cəhd edin."
+    "privacy_action_unavailable": "Əməliyyat tamamlanmadı. Cari hesabınız və yerli qeydlər saxlanıb. Alıcını yoxlayın və ya yenidən cəhd edin.",
+    "privacy_confirm_action": "Təsdiqlə"
   },
   "plurals": {
     "record_count": {
