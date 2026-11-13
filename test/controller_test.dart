@@ -42,6 +42,8 @@ class FakeNative extends NativeBridge {
   @override
   Future<Map<String, Object?>> diagnostics({Map<String,String>? labels}) async => {'zone':'UTC','enabled':true,'exact':true};
   @override
+  Future<List<Map<String, dynamic>>> reminderHistory() async => [];
+  @override
   Future<List<Map<String, Object?>>> pendingActions() async => pending;
   @override
   Future<void> acknowledge(List<String> ids) async { acknowledgements += ids.length; pending = []; }
