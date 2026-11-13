@@ -72,6 +72,7 @@ jobs:
           python -m tool.check_budget_input_browser
           python -m tool.check_currency_picker
           python -m tool.check_finance_views_browser
+          python -m tool.check_finance_context_browser
           python -m tool.check_mobile_today_browser
           python -m tool.check_transaction_categories
           python tool/test_publish_feedback_guard.py
