@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as timezone;
 import 'package:lifeos/app_controller.dart';
 import 'package:lifeos/localization/language_pack.dart';
+import 'package:lifeos/sync/api.dart';
+import 'package:lifeos/sync/contracts.dart';
 import 'package:lifeos/sync/controller.dart';
 import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/family.dart';
@@ -16,9 +18,23 @@ import 'support/sync_memory.dart';
 import 'visual_snapshot_test.dart' show SnapshotStore;
 import 'widget_test.dart' show openNativeSections;
 
+// Cloud registration uses the production API contract without network access.
+class _RegistrationVisualApi extends FamilyApi {
+  _RegistrationVisualApi(super.endpoint);
+  @override
+  Future<Json> request(String path, {Json? body}) async {
+    expect(path, '/v1/auth/google/config');
+    return {'google_enabled': false};
+  }
+}
+
 // Synthetic identities and records; this fixture never contacts a server.
-FamilyController familyFixture({bool child = false}) {
-  final f = FamilyController(MemorySyncStore());
+FamilyController familyFixture({bool child = false, bool configured = false}) {
+  final f = FamilyController(MemorySyncStore(),
+      apiFactory: configured ? _RegistrationVisualApi.new : null);
+  if (configured) {
+    f.api = _RegistrationVisualApi('https://api.example.test');
+  }
   f.account = {
     'user_id': child ? 'child-user' : 'parent-user',
     'verified': true,
@@ -126,7 +142,8 @@ void main() {
           addTearDown(tester.view.resetDevicePixelRatio);
           final c = AppController(SnapshotStore([], theme), catalog, 'ru');
           await c.load();
-          c.family = familyFixture(child: screen.startsWith('child'));
+          c.family = familyFixture(
+              child: screen.startsWith('child'), configured: screen == 'register');
           if (['login', 'register'].contains(screen)) c.family!.account = null;
           if (['family', 'child'].contains(screen)) {
             c.preferences['active_scope'] = 'family';
