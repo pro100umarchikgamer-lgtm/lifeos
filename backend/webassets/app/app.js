@@ -437,7 +437,7 @@ function signoutPage(host){
  host.append(panel);
 }
 
-function clearIdentity(){privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){privateDeletion?.clear();privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function moneyParts(value,currency,prefix=''){
  const full=prefix+money(value,currency);
@@ -510,7 +510,7 @@ function updateSyncStatus(){
  node.dataset.status=index===1?'error':index===3?'offline':'read';
 }
 function refresh(){const epoch=privateEpoch;const run=async()=>{if(epoch!==privateEpoch)return;state.busy=true;state.syncState='loading';updateSyncStatus();try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();if(epoch===privateEpoch&&(!state.space||state.syncSpace===state.space)){state.lastRead=Date.now();state.syncState='read';}}catch(error){if(epoch===privateEpoch)state.syncState='error';throw error;}finally{if(epoch===privateEpoch){state.busy=false;updateSyncStatus();}}};const pending=refreshTail.then(run,run);refreshTail=pending.catch(()=>{});return pending;}
-async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();await consumeNotificationLink();render();inboxCenter().refresh();refreshNotificationTimezone();}
+async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();await consumeNotificationLink();const url=new URL(location.href),section=url.searchParams.get('settings');if(['security','deletion'].includes(section)){state.tab='account';state.settingsTab=section;url.searchParams.delete('settings');history.replaceState(null,'',url.pathname+url.search+url.hash);}render();inboxCenter().refresh();refreshNotificationTimezone();}
 function login(){
  delete document.body.dataset.referenceLayout;
  root.replaceChildren();
@@ -567,9 +567,10 @@ async function beginGoogle(invitation){
  location.assign(result.authorization_url);
 }
 async function googleReturn(){
- history.replaceState(null,'','/app');
+ const deletionIntent=window.UladimDeletion?.takeIntent();history.replaceState(null,'','/app');
  const result=await call('google/complete',{});
- if(result.error){login();const message=E('p',errorText({code:result.error}));message.setAttribute('role','alert');root.querySelector('main').append(message);return;}
+ if(result.error){try{state.tab='account';state.settingsTab=deletionIntent?'deletion':'security';await start();if(deletionIntent&&deletionCenter())deletionCenter().setMessage(result.error);else toast(errorText({code:result.error}));}catch(error){if(error.code==='unauthorized'){clearIdentity();login();}else report(error);}return;}
+ if(result.reauth_token){state.tab='account';state.settingsTab='deletion';await start();deletionCenter()?.setProof(result.reauth_token,result.expires_in);return;}
  if(result.mfa_required){mfaStep(result.challenge);return;}
  if(result.linked){state.tab='account';state.settingsTab='security';}
  await start();if(result.linked)toast(t('account_done'));
@@ -662,7 +663,9 @@ function shell(){
  const measure=()=>{frame=0;if(!nav.isConnected)return;document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');document.body.style.setProperty('--header-controls-width',tools.getBoundingClientRect().width+'px');};
  inboxCenter().updateBell();measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);navObserver.observe(tools);return m;
 }
-let privateInbox,privateRecovery;
+let privateInbox,privateRecovery,privateDeletion;
+function deletionCenter(){return privateDeletion||(privateDeletion=window.UladimDeletion?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,report,refresh,navigate:openSettings,recover}));}
+for(const [locale,label]of Object.entries({ru:'Удаление аккаунта',en:'Delete account','uz-Latn':'Hisobni o‘chirish','uz-Cyrl':'Ҳисобни ўчириш'}))WEB_COPY[locale].web_account_deletion=label;
 function recoveryCenter(){return privateRecovery||(privateRecovery=window.UladimRecovery?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,report,refresh,money}));}
 for(const [locale,label]of Object.entries({ru:'Корзина и восстановление',en:'Trash and recovery','uz-Latn':'Savat va tiklash','uz-Cyrl':'Сават ва тиклаш'}))WEB_COPY[locale].web_recovery=label;
 function inboxCenter(){return privateInbox||(privateInbox=window.UladimInbox.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,navigate:referenceNavigate,help:host=>contextHelp(host,'notifications'),safe:()=>state.tab==='today'&&!state.busy&&!editingView()&&![...quickTasks.values()].some(draft=>draft.title?.trim()||draft.operation||draft.busy),report}));}
@@ -1935,7 +1938,7 @@ async function renderAccountPlan(content){
 }
 async function account(m){
  const section=state.settingsTab||'profile';
- const pageTitle={recovery:'web_recovery',notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
+ const pageTitle={deletion:'web_account_deletion',recovery:'web_recovery',notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
  title(m,pageTitle[section]||'account_manage');m.classList.add('settings-page');
  m.dataset.settingsDetail=String(Boolean(state.settingsTab));
  const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
@@ -1981,6 +1984,7 @@ async function account(m){
  if(section==='signout')signoutPage(content);
  if(section==='notifications'){inboxCenter().settings(content);await notificationPage(content);}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
+ if(section==='deletion'){if(deletionCenter())deletionCenter().page(content);else content.append(E('p',t('web_server_error')));}
  if(section==='recovery'){if(state.session.record_recovery_available===true&&recoveryCenter())recoveryCenter().page(content);else content.append(E('p',t('web_server_error')));}
  if(section==='security')privacy(content);
  if(section==='devices')await devices(content).catch(error=>{if(error.code==='unauthorized'){report(error);return;}if(content.isConnected){content.replaceChildren(E('h2',t('account_devices')),E('p',errorText(error),'error'),button(t('retry'),()=>openSettings('devices'),'secondary'));}});
@@ -2209,42 +2213,11 @@ async function incomingOwnership(content){
  section.append(E('h2',t('web_family_transfer')));
  for(const transfer of transfers){
   const label=t('account_accept_transfer')+' · '+transfer.name;
-  section.append(settingsRow(label,()=>dialog(label,d=>{
-   form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
-    try{await call('accept-transfer',{transfer_id:transfer.id,password:v.password.value});}finally{v.password.value='';}
-    d.close();await refresh();render();
-   },t('account_accept_transfer'));
-  })));
+  section.append(settingsRow(label,()=>openSettings('deletion')));
  }
  content.prepend(section);
 }
-async function deletion(){
- const status=await call('deletion');
- dialog(t('account_delete'),d=>{
-  d.append(E('p',t('account_delete_notice')));
-  if(status.ownership_transfer_required.length){
-   for(const family of status.ownership_transfer_required){
-    if(family.pending_until){
-     d.append(E('p',family.name+' · '+t('web_transfer_pending')+' '+new Date(family.pending_until*1000).toLocaleString(state.lang),'small'));
-     continue;
-    }
-    if(family.eligible_parent_id)form(d,t('account_transfer')+' · '+family.name,f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
-     try{await call('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:v.password.value});}finally{v.password.value='';}
-     d.close();await deletion();
-    },t('account_transfer'));
-   }
-  }else if(status.request?.state==='pending'){
-   form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
-    await call('cancel-deletion',{password:v.password.value});d.close();await deletion();
-   },t('account_cancel_delete'));
-  }else{
-   const request=form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password'),confirmation:input(f,'confirmation',t('web_confirm_delete'))}),async v=>{
-    await call('deletion',{password:v.password.value,confirmation:v.confirmation.value});d.close();await deletion();
-   },t('account_delete'));
-   request.querySelector('button[type=submit]').classList.add('danger-action');
-  }
- });
-}
+function deletion(){openSettings('deletion');}
 async function googleMethods(trigger){
  const status=await call('google'),mfa=await call('mfa');
  if(!trigger?.isConnected)return;
