@@ -255,7 +255,8 @@ class Control:
         require(until is None or (type(until) is int and now < until <= now + 10 * 366 * 86400))
         text(reason, 500)
         with self.backend.transaction() as db:
-            require(feature in entitlements.catalog(db)['features'] and feature != 'personal_core', 'protected_feature', 403)
+            require(feature in entitlements.catalog(db)['features'] and feature not in entitlements.FREE_FEATURES, 'protected_feature', 403)
+            require(feature not in entitlements.DISABLED_FEATURES, 'feature_unavailable', 409)
             prior = db.execute('SELECT enabled,valid_until FROM entitlement_overrides WHERE user_id=? AND feature=?', (uid, feature)).fetchone()
             db.execute('INSERT INTO entitlement_overrides VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,feature) DO UPDATE SET enabled=excluded.enabled,valid_until=excluded.valid_until,reason=excluded.reason,actor_id=excluded.actor_id', (uid, feature, int(enabled), until, scrub(reason), actor.id))
             self.audit(db, actor, uid, 'entitlement.override', dict(prior) if prior else {}, {'feature': feature, 'enabled': enabled, 'valid_until': until}, reason)

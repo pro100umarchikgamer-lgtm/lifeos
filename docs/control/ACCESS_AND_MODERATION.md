@@ -5,24 +5,29 @@ billing or moderation service, and it does not introduce a paywall.
 
 ## Current access
 
-`backend/plans.json` is the default catalog. A newer version in `plan_catalog`
-takes precedence. The three existing levels are Free, Plus and Premium.
-`entitlements.resolve()` combines valid server grants and verified provider
-records, applies safe feature overrides and service holds, and keeps personal
-core functionality available. Every current feature is in every default tier;
-`sales_enabled` remains false and prices remain null.
+`backend/plans.json` is the bundled version-2 free-preview catalog. A saved
+catalog in the current schema takes precedence only at the same or a newer
+revision. Legacy schema revisions are safely projected forward. Free preserves
+all current personal, family, import and planning tools. Plus is a preview of
+the import/planning tier and has the same actual access during this phase.
+Premium is reserved for future AI and is technically unavailable. Sales remain
+disabled, offers are empty and prices are unset.
 
-Public plans and the account access page now explain the intended focus of
-each level and display **«Пока всё доступно бесплатно»**. The descriptions are
-positioning for the future; they do not promise additional unimplemented
-features or change current entitlements. Neither page contains a purchase
-button, payment form, invented price or automatic subscription enrollment.
+The central resolver ignores legacy Premium grants and purchases when deciding
+access and always reports AI disabled. Premium grants, reconciliation, catalog
+activation and AI overrides are blocked on the server. Current Free features
+cannot be removed through a catalog change or generic feature override. Existing
+account/service moderation stays separate. No account or user record is deleted
+by a change in entitlement.
 
-To activate paid offers later, the owner must separately approve the catalog,
-prices and legal terms, configure a real provider adapter and credentials, and
-verify authoritative provider events, account binding, cancellation and refund
-handling. The existing adapter/reconciliation interface is a foundation, not
-an active payment integration. Manual/promo access is not a purchase.
+Public plans and native Access explain current free availability and future AI
+without purchase actions or invented prices. The native client also refuses to
+show Premium as active, and does not claim cached access is verified after an
+offline error. See [SUBSCRIPTION_FOUNDATION.md](SUBSCRIPTION_FOUNDATION.md) for
+the catalog/API contract, tested lifecycle and the exact external activation
+requirements. Provider adapters, merchant configuration and successful store
+sandbox evidence are not part of this free release. Manual/promo access is not
+a purchase.
 
 ## Moderation and complaints
 
@@ -56,7 +61,7 @@ ordinary customers as an authorization shortcut.
 ## Focused acceptance
 
 - Plan pages describe Free/Plus/Premium, show current free availability, and
-  offer no enabled purchase action. Existing resolver behavior is unchanged.
+  offer no purchase action. Premium/AI remains disabled on both server and client.
 - A complaint persists with its category and replies render within settings.
 - Staff filters and triage use the existing server endpoints. Unauthorized
   callers are rejected by the server.

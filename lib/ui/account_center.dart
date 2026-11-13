@@ -6,6 +6,7 @@ import '../sync/contracts.dart';
 import '../sync/controller.dart';
 import 'design.dart';
 import 'settings_surfaces.dart';
+import 'subscription_access.dart';
 import '../platform/native_bridge.dart';
 
 import 'package:flutter/services.dart';
@@ -650,35 +651,18 @@ class _AccountSectionState extends State<_AccountSectionPage> {
                 TextButton(
                     onPressed: busy ? null : load, child: Text(t('retry'))),
               ],
-              if (data != null)
+              if (data != null || widget.section == _AccountSection.access)
                 ...switch (widget.section) {
                   _AccountSection.access => [
-                      Text(
-                        t('plans_available_free'),
-                        style: Theme.of(context).textTheme.titleLarge,
+                      SubscriptionAccess(
+                        pack: widget.pack,
+                        access: data ?? const {},
+                        verified: error == null && !busy,
                       ),
-                      const SizedBox(height: 24),
-                      SettingsGroup(
-                        children: [
-                          for (final tier in ['Free', 'Plus', 'Premium'])
-                            SettingsRow(
-                              title: tier,
-                              subtitle:
-                                  t('plan_${tier.toLowerCase()}_description'),
-                              icon: tier == data!['tier']
-                                  ? Icons.check_circle_outline
-                                  : Icons.workspace_premium_outlined,
-                              trailing: tier == data!['tier']
-                                  ? Icon(
-                                      Icons.check,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                    )
-                                  : null,
-                            ),
-                        ],
-                      ),
-                      if (data!['valid_until'] != null)
+                      if (error == null &&
+                          !busy &&
+                          data?['tier'] == 'Plus' &&
+                          data?['valid_until'] != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 16),
                           child: Text(date(data!['valid_until'])),

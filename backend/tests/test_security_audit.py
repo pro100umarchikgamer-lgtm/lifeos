@@ -10,7 +10,7 @@ from cryptography.fernet import Fernet
 from backend.config import Settings
 from backend.control import Control, ROLE_PERMISSIONS, totp
 from backend.production import Application
-from backend.service import Backend
+from backend.service import Backend, Failure
 from backend.support import Support
 
 EVIDENCE = []
@@ -202,10 +202,14 @@ class SecurityAuditTests(unittest.TestCase):
         from backend.entitlements import grant
         status,_,result=self.request('/account/api/entitlements?tier=Premium',identity=self.cookies[1])
         self.check('client cannot select Premium',(status,result['tier']),(200,'Free'))
-        for tier in ('Plus','Premium'):
+        for tier in ('Plus',):
             with self.backend.connect() as db:
                 grant(db,self.bob['id'],tier,'manual',self.now+86400,'Fixture grant','audit-operator',self.now)
             self.check('server-issued '+tier,self.request('/account/api/entitlements',identity=self.cookies[1])[2]['tier'],tier)
+        with self.assertRaises(Failure):
+            with self.backend.connect() as db:
+                grant(db,self.bob['id'],'Premium','manual',self.now+86400,'Future AI forbidden','audit-operator',self.now)
+        self.check('Premium AI cannot be enabled',self.request('/account/api/entitlements',identity=self.cookies[1])[2]['features']['ai_assistant'],False)
         self.check('customer cannot grant own plan',self.request('/account/api/grant',{'tier':'Premium'},identity=self.cookies[1])[0],404)
         wid=str(uuid.uuid4())
         def family(action,**values):
