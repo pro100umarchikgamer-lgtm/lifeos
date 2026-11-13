@@ -87,9 +87,14 @@ jobs:
           python -m tool.check_notification_connection_browser
           python -m tool.check_context_help_browser
           python -m tool.check_public_help_browser
+          python -m tool.check_download_release_browser
           python -m tool.check_account_deletion_browser
           python -m tool.check_account_deletion_live_browser
+          python -m tool.check_account_deletion_google_browser
+          python -m tool.check_google_only_security_browser
+          python -m tool.check_optional_modules_browser
           python -m tool.check_erased_finance_browser
+          python -m tool.check_privacy_erased_browser
       - name: Focus settings, refresh status and delayed workspace switching
         run: |
           python -m tool.check_focus_completion
