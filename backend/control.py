@@ -15,8 +15,8 @@ from . import entitlements
 
 ROLE_RANK = {'owner': 100, 'admin': 80, 'billing_manager': 40, 'moderator': 30, 'support': 20, 'auditor': 10}
 ROLE_PERMISSIONS = {
-    'owner': {'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
-    'admin': {'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'owner': {'announcements.manage', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'admin': {'announcements.manage', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
     'billing_manager': {'users.read', 'plans.grant', 'audit.read'},
     'moderator': {'users.read', 'users.moderate', 'support.read', 'support.reply'},
     'support': {'users.read', 'support.read', 'support.reply'},

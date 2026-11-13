@@ -67,6 +67,28 @@ class PushScenarios:
         with self.backend.connect() as db:
             self.assertEqual(db.execute('SELECT state FROM web_push_deliveries').fetchone()['state'],'cancelled')
 
+    def test_reminder_inbox_is_per_account_deduplicated_across_devices(self):
+        from backend.inbox import Inbox
+        self.subscribe()
+        second_device = uid()
+        with self.backend.transaction() as db:
+            db.execute('INSERT INTO devices VALUES(?,?,?,?,?,?,0)', (second_device,self.user,uid(),'Second browser',self.now,self.now))
+            db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)', (token_hash('y'*43),self.user,second_device,self.now,self.now,self.now+86400,token_hash('fixture')))
+        second = {**self.actor, 'device_id': second_device}
+        self.push.subscribe(second, {'subscription': {**self.subscription, 'endpoint': self.subscription['endpoint'] + '-second'}, 'timezone': 'UTC'})
+        event = self.event('2026-11-13T10:15:00')
+        self.push.scan()
+        self.push.scan()
+        inbox = Inbox(self.backend)
+        items = inbox.list(self.actor)
+        self.assertEqual(len(items['notifications']), 1)
+        self.assertEqual(items['notifications'][0]['kind'], 'reminder')
+        self.assertNotIn('Never in push payload', json.dumps(items))
+        with self.backend.connect() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) AS n FROM web_push_deliveries WHERE event_id=?', (event,)).fetchone()['n'], 2)
+        inbox.mutate(self.actor, 'read', {'id': items['notifications'][0]['id']})
+        self.assertEqual(inbox.list(second)['unread_count'], 0)
+
     def test_real_encryption_provider_ack_and_token_bound_display_receipt(self):
         self.subscribe(); queued=self.push.test(self.actor)
         with self.assertRaises(Failure): self.push.test(self.actor)

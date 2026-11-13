@@ -150,7 +150,7 @@ class Web:
         if not staff and action == 'google/unlink' and method == 'POST':
             return self.google.unlink(actor, body.get('password'), body.get('code')), headers + [self.cookie('', clear=True)]
         if action == 'session' and method == 'GET':
-            return ({'staff_id': actor.id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token)}), headers
+            return ({'staff_id': actor.id, 'user_id': actor.user_id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token)}), headers
         if action == 'logout' and method == 'POST':
             if staff: self.control.logout(token)
             else:
@@ -225,6 +225,16 @@ class Web:
 
     def staff_action(self, actor, action, method, b, q):
         c = self.control
+        if action.startswith('announcements'):
+            from .inbox import Inbox
+            inbox = Inbox(self.backend)
+            if action == 'announcements' and method == 'GET': return inbox.announcements(actor)
+            if method == 'POST':
+                if action == 'announcements': return inbox.compose(actor, b)
+                if action == 'announcements/preview': return inbox.compose(actor, b, preview=True)
+                if action == 'announcements/publish': return inbox.transition(actor, b)
+                if action == 'announcements/cancel': return inbox.transition(actor, b, cancel=True)
+            raise Failure('not_found', 404)
         if method == 'GET':
             if action == 'applications':
                 from .early_access import EarlyAccess
@@ -264,6 +274,13 @@ class Web:
         lifecycle = AccountLifecycle(self.backend)
         from .customer_mfa import CustomerMFA
         mfa=CustomerMFA(self.backend)
+        if action.startswith('inbox'):
+            from .inbox import Inbox
+            inbox = Inbox(self.backend)
+            if action == 'inbox' and method == 'GET': return inbox.list(actor, q.get('before', [None])[0], int(q.get('limit', ['50'])[0]))
+            if method == 'POST' and action in ('inbox/read', 'inbox/dismiss', 'inbox/presented'):
+                return inbox.mutate(actor, action.rsplit('/', 1)[-1], b)
+            raise Failure('not_found', 404)
         if action == 'notifications' and method == 'GET': return self.push.status(actor)
         if method == 'POST':
             if action == 'notifications/prepare': return self.push.prepare(actor)
@@ -319,6 +336,7 @@ class Web:
         root = ASSETS / 'app'
         relative = 'index.html' if path in ('/app', '/app/') else ('sw.js' if path == '/app/sw.js' else path[len('/app/assets/'):])
         allowed = {'index.html', 'app.js', 'domain.js', 'money.js', 'statement-formats.js', 'statement-pdf.js', 'statement-xlsx.js', 'personal-import.js', 'pdf-lib.mjs', 'pdf-worker.mjs', 'import.js', 'statement-worker.js', 'app.css', 'auth-texture.webp', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
+        allowed.update({'inbox.js', 'inbox.css'})
         require(relative in allowed and (root / relative).is_file(), 'not_found', 404)
         mime = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.webmanifest': 'application/manifest+json', '.json': 'application/json'}.get(Path(relative).suffix, mimetypes.guess_type(relative)[0] or 'application/octet-stream')
         result = dict(headers)

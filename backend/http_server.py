@@ -37,6 +37,14 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/account/features' and method=='GET':
             from .control import Control
             result={'flags':Control(backend).flags(actor['id'])}
+        elif route.startswith('/v1/account/inbox'):
+            from .inbox import Inbox
+            inbox = Inbox(backend)
+            if route == '/v1/account/inbox' and method == 'GET':
+                result = inbox.list(actor, query.get('before', [None])[0], int(query.get('limit', ['50'])[0]))
+            elif route in ('/v1/account/inbox/read', '/v1/account/inbox/dismiss', '/v1/account/inbox/presented') and method == 'POST':
+                result = inbox.mutate(actor, route.rsplit('/', 1)[-1], body)
+            else: raise Failure('not_found', 404)
         elif route=='/v1/account/entitlements' and method=='GET':
             from .entitlements import resolve
             with backend.connect() as db:result=resolve(db,actor['id'],int(backend.clock()))

@@ -241,6 +241,8 @@ class WebPush:
             db.execute("UPDATE web_push_deliveries SET event_revision=?,created_at=?,state='queued',attempts=0,next_attempt=?,leased_until=0,expires_at=?,payload=?,receipt_hash=?,error_code=NULL WHERE id=?", (event['revision'], now, now, expiry, encrypted, token_hash(receipt), did))
         else:
             db.execute("INSERT INTO web_push_deliveries(id,subscription_id,event_id,event_revision,occurrence_at,created_at,state,attempts,next_attempt,leased_until,expires_at,payload,receipt_hash) VALUES(?,?,?,?,?,?,'queued',0,?,0,?,?,?) ON CONFLICT(subscription_id,event_id,occurrence_at) DO NOTHING", (did, sub['id'], event['id'] if event else None, event['revision'] if event else None, occurrence, now, now, expiry, encrypted, token_hash(receipt)))
+        from .inbox import Inbox
+        Inbox(self.backend).append_delivery(db, sub, now, did, event, occurrence, day)
         return {'delivery_id':did, 'state':'queued'}
 
     def test(self, actor):
