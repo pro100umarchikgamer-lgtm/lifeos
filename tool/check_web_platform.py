@@ -207,7 +207,11 @@ def main():
                             })''')
                             assert contrasts and min(contrasts)>=4.5,(theme,width,'calendar date contrast',min(contrasts))
                         if tab=='account':
-                            expect(page.locator('.settings-navigation')).to_be_visible()
+                            if width<760:
+                                expect(page.locator('.settings-navigation')).to_be_hidden()
+                                expect(page.locator('.reference-profile-options button:visible')).to_have_count(7)
+                            else:
+                                expect(page.locator('.settings-navigation')).to_be_visible()
                             open_settings(page,'profile')
                             expect(page.locator('.profile-summary .account-email')).to_have_text('web@example.test')
                             for option in ('Оформление','Аккаунт и приватность','Устройства и сессии'):

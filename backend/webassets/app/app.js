@@ -435,6 +435,17 @@ function signoutPage(host){
 
 function clearIdentity(){redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
+function moneyParts(value,currency,prefix=''){
+ const full=prefix+money(value,currency);
+ return {full,number:full.slice(0,-currency.length-1),currency};
+}
+function setMoneyElement(node,value,currency,prefix=''){
+ const parts=moneyParts(value,currency,prefix);node.classList.add('money-display');node.setAttribute('aria-label',parts.full);
+ node.replaceChildren(E('span',parts.number,'money-number'),document.createTextNode(' '),E('span',parts.currency,'money-currency'));return node;
+}
+function moneyElement(value,currency,cls='',prefix='',tag='strong'){
+ return setMoneyElement(E(tag,undefined,cls),value,currency,prefix);
+}
 function displayDate(date){return new Date(date+'T12:00:00').toLocaleDateString(state.lang,{year:'numeric',month:'short',day:'numeric'});}
 function minor(value,signed=false,currency='RUB'){return ULADIMMoney.parse(value,currency,signed);}
 function decimalInput(value,currency){return ULADIMMoney.decimal(value,currency);}
@@ -551,7 +562,6 @@ function referenceNavigate(tab,section=''){
  state.referenceSection=section;state.tab=tab;
  if(tab==='account')state.settingsTab=section;
  render();window.scrollTo(0,0);
- if(tab==='money'&&section){root.querySelector('#finance-'+section)?.scrollIntoView({block:'start'});}
  const heading=root.querySelector('main h1');if(heading){heading.tabIndex=-1;heading.dataset.focusTarget='true';heading.focus({preventScroll:true});}
 }
 function shell(){
@@ -603,8 +613,8 @@ function shell(){
  if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
  const m=E('main');m.id='content';root.append(m);updateSyncStatus();
  let frame=0;
- const measure=()=>{frame=0;if(!nav.isConnected)return;document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');};
- measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);return m;
+ const measure=()=>{frame=0;if(!nav.isConnected)return;document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');document.body.style.setProperty('--header-controls-width',tools.getBoundingClientRect().width+'px');};
+ measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);navObserver.observe(tools);return m;
 }
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
 function render(){redrawFinance=null;if(!state.session){login();return;}const view=[state.tab,state.settingsTab||'',state.referenceSection||''].join('/'),previous=root.querySelector('main')?.dataset.view;const m=shell();m.dataset.view=view;if(previous!==view)m.classList.add('view-enter');backgroundDirty=false;if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
@@ -614,6 +624,11 @@ function openTabSection(tab,selector){
  state.referenceSection=tab==='money'?({'#finance-ledger':'ledger','#finance-accounts':'accounts','#finance-budgets':'budgets','#finance-analysis':'analysis'}[selector]||''):'';
  state.tab=tab;
  render();
+ if(tab==='money'){
+  window.scrollTo(0,0);
+  const heading=root.querySelector('main h1');if(heading){heading.tabIndex=-1;heading.dataset.focusTarget='true';heading.focus({preventScroll:true});}
+  return;
+ }
  const section=root.querySelector(selector);
  if(!section)return;
  section.tabIndex=-1;section.dataset.focusTarget='true';
@@ -781,7 +796,7 @@ function today(m){
   const accounts=records('account').filter(r=>r.data.currency===currency);
   if(!accounts.length)continue;
   const sum=accounts.reduce((total,account)=>total+balance(account),0n);
-  const line=E('div');append(line,E('span',referenceCopy(13),'small'),E('strong',money(sum,currency)));balanceBlock.append(line);
+  const line=E('div');append(line,E('span',referenceCopy(13),'small'),moneyElement(sum,currency));balanceBlock.append(line);
  }
  if(!balanceBlock.children.length)balanceBlock.append(E('p',t('empty_money'),'empty'));
  const financeCanvas=E('canvas',undefined,'reference-finance-chart');financeCanvas.width=720;financeCanvas.height=320;
@@ -790,7 +805,7 @@ function today(m){
   finance.append(financeCanvas);
   redrawFinance=()=>drawChart(financeCanvas,reportCurrency,monthly,'smooth');requestAnimationFrame(redrawFinance);
   const totals=financeTotals(monthly,reportCurrency),legend=E('div',undefined,'reference-finance-legend');
-  append(legend,E('span',t('income')+' · '+money(totals.income,reportCurrency),'income'),E('span',t('expense')+' · '+money(totals.expense,reportCurrency),'expense'));finance.append(legend);
+  for(const kind of ['income','expense']){const line=E('span',undefined,kind);append(line,document.createTextNode(t(kind)+' · '),moneyElement(totals[kind],reportCurrency,'','','span'));legend.append(line);}finance.append(legend);
  }else finance.append(E('p',t('empty_money'),'empty'));
 
  finance.append(button(t('web_add_operation'),()=>editRecord('transaction'),'text-button today-add-operation'));
@@ -840,7 +855,7 @@ function today(m){
  for(const r of records('transaction').sort((a,b)=>b.data.date.localeCompare(a.data.date)||b.seq-a.seq).slice(0,4)){
   const row=button('',()=>editRecord('transaction',r),'reference-transaction');
   const copy=E('span',undefined,'reference-transaction-copy');append(copy,E('strong',r.data.label||t(r.data.kind)),E('small',r.data.date));
-  append(row,icon('money'),copy,E('strong',(r.data.kind==='income'?'+':'−')+money(BigInt(r.data.amount_minor),r.data.currency),r.data.kind));latest.append(row);
+  append(row,icon('money'),copy,moneyElement(BigInt(r.data.amount_minor),r.data.currency,r.data.kind,r.data.kind==='income'?'+':'−'));latest.append(row);
  }
  if(!records('transaction').length)latest.append(E('p',t('empty_money'),'empty'));
  latest.append(button(t('web_all_operations'),()=>openTabSection('money','#finance-ledger'),'text-button'));primary.append(latest);
@@ -1344,7 +1359,7 @@ function summaries(container){
   const row=E('div',undefined,'today-money-row');
   for(const [kind,amount] of [['income',income],['expense',expense],['total',income-expense]]){
    const cell=E('div',undefined,kind);
-   append(cell,E('span',t(kind==='total'?'web_today_net':kind),'small'),E('strong',money(amount,currency)));
+   append(cell,E('span',t(kind==='total'?'web_today_net':kind),'small'),moneyElement(amount,currency));
    row.append(cell);
   }
   container.append(row);
@@ -1388,7 +1403,7 @@ function renderFinanceBudgets(m){
   const progress=E('progress');progress.max=10000;progress.value=0;progress.setAttribute('aria-label',copy.spent);row.append(progress);
   const metrics=E('dl',undefined,'budget-metrics'),spent=E('dd','—'),available=E('dd','—');
   append(metrics,append(E('div'),E('dt',copy.spent),spent),append(E('div'),E('dt',copy.available),available));row.append(metrics);
-  const conditions=E('p',copy.limit+': '+money(data.limit_minor,data.currency)+' · '+t('family_'+data.period),'small finance-budget-conditions');
+  const conditions=E('p',undefined,'small finance-budget-conditions');append(conditions,document.createTextNode(copy.limit+': '),moneyElement(data.limit_minor,data.currency,'','','span'),document.createTextNode(' · '+t('family_'+data.period)));
   if(data.rollover!=='none')conditions.append(E('span',' · '+copy.carry+': '+t('family_roll_'+data.rollover)));
   if(localDate()<data.start_on)conditions.append(E('span',' · '+copy.future+' '+displayDate(data.start_on)));
   row.append(conditions);budgets.append(row);views.set(r.id,{remaining,spent,available,progress,balanceLine});
@@ -1402,10 +1417,10 @@ function renderFinanceBudgets(m){
   if(epoch!==privateEpoch||!m.isConnected)return;
   for(const r of budgetRecords){
    const view=views.get(r.id),remaining=BigInt(result.remaining[r.id]),limit=BigInt(r.data.limit_minor),spent=limit-BigInt(result.remaining[r.id+':current-period']),allowance=remaining+spent;
-   view.remaining.textContent=money(remaining,r.data.currency);view.spent.textContent=money(spent,r.data.currency);view.available.textContent=money(allowance,r.data.currency);
+   setMoneyElement(view.remaining,remaining,r.data.currency);setMoneyElement(view.spent,spent,r.data.currency);setMoneyElement(view.available,allowance,r.data.currency);
    view.balanceLine.classList.toggle('expense',remaining<0n);
    view.balanceLine.firstChild.textContent=remaining<0n?copy.over:copy.remaining;
-   if(remaining<0n)view.remaining.textContent=money(-remaining,r.data.currency);
+   if(remaining<0n)setMoneyElement(view.remaining,-remaining,r.data.currency);
    view.progress.value=allowance>0n?Number((spent>allowance?allowance:spent)*10000n/allowance):spent>0n?10000:0;
    view.progress.setAttribute('aria-valuetext',copy.spent+': '+money(spent,r.data.currency)+'; '+copy.remaining+': '+money(remaining,r.data.currency));
   }
@@ -1436,7 +1451,7 @@ function drawExpenseCategories(canvas,currency,groups){
  }
  const scale=720/Math.max(canvas.clientWidth||720,240);
  ctx.textAlign='center';ctx.fillStyle=style.getPropertyValue('--ux-muted')||style.getPropertyValue('--muted');ctx.font=(12*scale)+'px system-ui';ctx.fillText(t('expense'),360,146,170);
- ctx.fillStyle=style.getPropertyValue('--ux-ink')||style.getPropertyValue('--ink');ctx.font='600 '+(20*scale)+'px system-ui';ctx.fillText(money(sum,currency),360,177,174);ctx.textAlign='left';
+ const parts=moneyParts(sum,currency);ctx.fillStyle=style.getPropertyValue('--ux-ink')||style.getPropertyValue('--ink');ctx.font='600 '+(20*scale)+'px system-ui';ctx.fillText(parts.number,360,170,174);ctx.font=(12*scale)+'px system-ui';ctx.fillText(parts.currency,360,195,174);ctx.textAlign='left';
  canvas.setAttribute('aria-label',t('expense')+': '+money(sum,currency)+(groups.length?'; '+groups.map(group=>group.label+': '+money(group.amount,currency)).join('; '):''));
 }
 function finance(m){
@@ -1491,7 +1506,7 @@ function finance(m){
   const row=E('div',undefined,'account-balance');
   const report=button('',()=>{state.financeFilters={...state.financeFilters,account:a.id};referenceNavigate('money','report');},'secondary finance-account-report');
   const name=append(E('span',undefined,'account-name'),icon('money'),E('strong',a.data.name,'text'));
-  append(report,name,E('strong',money(balance(a),a.data.currency),'finance-account-amount'),E('span',copy.open,'small finance-account-link'));
+  append(report,name,moneyElement(balance(a),a.data.currency,'finance-account-amount'),E('span',copy.open,'small finance-account-link'));
   append(row,report,iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));accounts.append(row);
  }
  if(!accountRecords.length)accounts.append(emptyPanel('money',t('empty_money')));
@@ -1528,7 +1543,7 @@ function finance(m){
   for(const [kind,label] of [['balance',copy.balance],['income',t('income')],['expense',t('expense')]]){
    const tile=E('div',undefined,'card finance-metric '+kind);tile.append(E('span',label,'small'));
    const values=kind==='balance'?[...balanceByCurrency.entries()]:currencies.filter(code=>!accountFilter.value||accountRecords.find(a=>a.id===accountFilter.value)?.data.currency===code).map(code=>[code,financeTotals(filtered,code)[kind]]);
-   for(const [code,amount]of values)tile.append(E('strong',money(amount,code)));
+   for(const [code,amount]of values)tile.append(moneyElement(amount,code));
    if(!values.length)tile.append(E('strong','—'));
    metricGrid.append(tile);
   }
@@ -1541,12 +1556,12 @@ function finance(m){
     swatch.style.backgroundColor=group.color;swatch.setAttribute('aria-hidden','true');
     append(label,swatch,E('span',group.label));
     const percent=sum?new Intl.NumberFormat(state.lang,{style:'percent',maximumFractionDigits:1}).format(Number(group.amount*1000000n/sum)/1000000):'0%';
-    append(item,label,E('strong',money(group.amount,currency.value)),E('small',percent));legend.append(item);
+    append(item,label,moneyElement(group.amount,currency.value),E('small',percent));legend.append(item);
    }
    if(!groups.length)legend.append(emptyPanel('money',t('empty_money')));
    if(chart.isConnected)drawExpenseCategories(canvas,currency.value,groups);
   }else if(currency.value){
-   for(const kind of ['income','expense']){const item=E('div',undefined,'chart-legend-row '+kind);append(item,E('span',t(kind)),E('strong',money(values[kind],currency.value)));legend.append(item);}
+   for(const kind of ['income','expense']){const item=E('div',undefined,'chart-legend-row '+kind);append(item,E('span',t(kind)),moneyElement(values[kind],currency.value));legend.append(item);}
   }else legend.append(emptyPanel('money',t('empty_money')));
   state.financeChartMode=mode.value;if(!categories){state.chart=mode.value;preferences();}
   canvas.hidden=mode.value==='compact'||!currency.value;if(chart.isConnected&&!categories)drawChart(canvas,currency.value,filtered,mode.value);
@@ -1562,7 +1577,9 @@ function finance(m){
    append(text,E('h3',label),E('p',[displayDate(data.date),account].filter(Boolean).join(' · '),'small'));
    const receiving=isTransfer&&accountFilter.value===data.to_id,transferCurrency=accountsById.get(receiving?data.to_id:data.from_id)?.currency;
    const amount=isTransfer?(transferCurrency?money(receiving?data.received_minor:data.sent_minor,transferCurrency):''):(kind==='expense'?'− ':'+ ')+money(data.amount_minor,data.currency);
-   append(row,text,E('strong',amount,kind),iconButton('more',t('edit')+' · '+label,()=>editRecord(entry.kind,entry)));
+   const amountCode=isTransfer?transferCurrency:data.currency;
+   const amountNode=amountCode?moneyElement(isTransfer?(receiving?data.received_minor:data.sent_minor):data.amount_minor,amountCode,kind,isTransfer?'':kind==='expense'?'− ':'+ '):E('strong',amount,kind);
+   append(row,text,amountNode,iconButton('more',t('edit')+' · '+label,()=>editRecord(entry.kind,entry)));
    ledgerRows.append(row);
   }
   const paginationCopy={ru:['Показано','из','Показать ещё'],en:['Showing','of','Show more'],'uz-Latn':['Ko‘rsatilgan','jami','Yana ko‘rsatish'],'uz-Cyrl':['Кўрсатилган','жами','Яна кўрсатиш']}[state.lang]||['Showing','of','Show more'];
@@ -1717,8 +1734,8 @@ async function account(m){
   const identity=append(E('div',undefined,'reference-profile-identity'),E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),append(E('dl',undefined,'profile-identity'),E('dt',t('family_email')),email));
   const verified=E('span',copy[state.session.verified?3:4],'reference-profile-verified');verified.dataset.verified=String(Boolean(state.session.verified));identity.append(verified);
   const options=E('div',undefined,'reference-profile-options');
-  for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar']]){
-   const action=settingsRow(t(label),()=>openSettings(key),'reference-profile-option');action.prepend(icon(symbol));options.append(action);
+  for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar'],['family','family_account','account'],['personal-import','web_personal_import','notes'],['plan','account_access','money'],['support','account_support','notes']]){
+   const action=settingsRow(t(label),()=>openSettings(key),'reference-profile-option'+(['appearance','security','devices'].includes(key)?'':' reference-profile-extra'));action.dataset.settingsSection=key;action.prepend(icon(symbol));options.append(action);
   }
   const logout=button(t('family_logout'),()=>openSettings('signout'),'text-button profile-logout');
   logout.append(icon('forward'));

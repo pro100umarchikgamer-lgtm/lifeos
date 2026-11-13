@@ -20,7 +20,13 @@ def open_settings(page, section):
     back = page.locator('.settings-back')
     if back.is_visible():
         back.click()
-    page.locator(f'.settings-navigation button[data-section="{section}"]').click()
+    if section == 'profile' and page.locator('.reference-profile-page').is_visible():
+        return
+    navigation = page.locator(f'.settings-navigation button[data-section="{section}"]')
+    if navigation.is_visible():
+        navigation.click()
+    else:
+        page.locator(f'.reference-profile-options button[data-settings-section="{section}"]').click()
 
 
 def open_finance_section(page, section):

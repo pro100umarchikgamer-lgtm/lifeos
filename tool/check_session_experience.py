@@ -29,6 +29,24 @@ def main():
         page.on('pageerror', lambda e: errors.append(str(e)))
         login(page, origin)
         open_tab(page, 'Профиль')
+        # The identity must remain readable and the workspace selector must
+        # never cover the header controls when narrow layouts are populated.
+        for width in (320,390,834,1440):
+            page.set_viewport_size({'width':width,'height':900})
+            identity=page.locator('.profile-identity')
+            assert identity.bounding_box()['width']>=150,(width,identity.bounding_box())
+            assert identity.locator('dt').evaluate('(e)=>e.getBoundingClientRect().height<=parseFloat(getComputedStyle(e).lineHeight)*2+1'),(width,'vertical identity label')
+            assert identity.locator('dd').evaluate('(e)=>e.getBoundingClientRect().height<=parseFloat(getComputedStyle(e).lineHeight)*2+1'),(width,'vertical email')
+            if width<760:
+                expect(page.locator('.settings-navigation')).to_be_hidden()
+                expect(page.locator('.reference-profile-options button:visible')).to_have_count(7)
+                workspace_box=page.locator('.reference-workspace').bounding_box()
+                theme_box=page.locator('.header-theme').bounding_box()
+                assert workspace_box['x']+workspace_box['width']<=theme_box['x']-3,(width,'workspace covers theme')
+                assert page.locator('.header-theme').evaluate('(e)=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}'),(width,'theme control obscured')
+            page.screenshot(path=str(out/f'profile-{width}.png'),full_page=True)
+        page.set_viewport_size({'width':390,'height':844})
+        checks.append('identity stays readable, header controls unobscured, and seven mobile settings destinations are explicit')
         open_settings(page, 'devices')
         row = page.locator('.device-row').filter(has_text='Другой телефон')
         row.get_by_role('button', name='Отозвать доступ', exact=True).click()
@@ -50,6 +68,16 @@ def main():
         checks.append('inline revoke: cancel and wrong password leave session active; valid password revokes selected device')
 
         open_settings(page, 'security')
+        google_status=page.locator('#google-status')
+        expect(google_status).to_contain_text('Google не подключён')
+        contrast=google_status.evaluate('''e=>{
+            const rgb=s=>s.match(/[\\d.]+/g).map(Number);
+            const lum=c=>c.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
+            const fg=rgb(getComputedStyle(e).color);let bg=[255,255,255];
+            for(let p=e;p;p=p.parentElement){const c=rgb(getComputedStyle(p).backgroundColor);if(c.length<4||c[3]>0){bg=c;break;}}
+            const a=lum(fg),b=lum(bg);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+        }''')
+        assert contrast>=4.5,('Google status contrast',contrast)
         page.get_by_role('button', name='Google', exact=True).click()
         expect(page.locator('dialog[open]')).to_have_count(0)
         expect(page.locator('.settings-inline-panel')).to_contain_text('Google')

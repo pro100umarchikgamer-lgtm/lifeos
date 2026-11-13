@@ -368,3 +368,38 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger
  /* A pending task retry stays visible even when it falls beyond the short preview. */
  body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks>.today-task-secondary:has(.task-change-status:not([hidden])){display:grid}
 }
+
+/* Keep every monetary number whole. Only its currency may start a new line. */
+body[data-design=clarity][data-reference-layout=b12] #root .money-display{display:inline-flex;flex-wrap:wrap;align-items:baseline;justify-content:var(--money-align,flex-start);column-gap:.28em;row-gap:0;min-width:0;max-width:100%;white-space:normal;word-break:normal;overflow-wrap:normal;font-variant-numeric:tabular-nums}
+body[data-design=clarity][data-reference-layout=b12] #root .money-display>.money-number{display:inline-block;flex:0 0 auto;white-space:nowrap;word-break:normal;overflow-wrap:normal;line-height:inherit;font:inherit;letter-spacing:inherit}
+body[data-design=clarity][data-reference-layout=b12] #root .money-display>.money-currency{display:inline-block;flex:0 0 auto;white-space:nowrap;word-break:normal;overflow-wrap:normal;font-size:max(11px,.8em);font-weight:550;line-height:inherit}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric{container-type:inline-size}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>.money-display{font-size:clamp(15px,6cqi,24px);line-height:1.4}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-content>.card.finance-accounts{padding:0!important}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-balance{container-type:inline-size}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-balance>.finance-account-report{grid-column:1/-1;grid-row:1;width:100%}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-balance>.icon{grid-column:2;grid-row:1;z-index:1}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-account-report .account-name{padding-inline-end:40px;box-sizing:border-box;width:100%}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-account-amount.money-display{font-size:clamp(15px,5.8cqi,24px);line-height:1.4}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>.money-display{max-width:100%;--money-align:flex-end}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-legend{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-row>.money-display{grid-column:1/-1}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-row>small{grid-column:1/-1;padding-inline-start:15px}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-balance{container-type:inline-size}
+body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-balance .money-display{font-size:clamp(15px,6cqi,24px);line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-card{container-type:inline-size}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-remaining>.money-display{font-size:clamp(16px,6cqi,26px)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-card .budget-metrics{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+@media(min-width:760px) and (max-width:1199px){
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric-grid{grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);align-items:center;gap:8px 18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>span{grid-column:1;grid-row:1/-1}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>.money-display{grid-column:2;font-size:20px;--money-align:flex-end}
+}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>.money-display{--money-align:flex-end}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>.money-display{--money-align:flex-start}
+}
+@media(max-width:359px){
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>.money-display{--money-align:flex-start}
+}

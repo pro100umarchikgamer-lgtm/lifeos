@@ -19,6 +19,20 @@ from tool.web_browser_navigation import open_tab, open_finance_section
 OUT=Path(os.environ.get('ULADIM_FINANCE_VIEWS_EVIDENCE','web_evidence/finance-views'))
 
 
+def assert_money_lines(page,label):
+    failures=page.locator('main .money-number:visible').evaluate_all("""items=>items.map(e=>{
+        const range=document.createRange();range.selectNodeContents(e);
+        const rect=e.getBoundingClientRect(),parent=e.parentElement.getBoundingClientRect();
+        return {text:e.textContent,lines:range.getClientRects().length,
+                contained:rect.left>=parent.left-1&&rect.right<=parent.right+1,
+                exact:e.parentElement.textContent===e.parentElement.getAttribute('aria-label')};
+    }).filter(value=>value.lines!==1||!value.contained||!value.exact)""")
+    if failures:
+        page.screenshot(path=str(OUT/('money-failure-'+label+'.png')),full_page=True)
+        raise AssertionError((label,failures))
+    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(label,'overflow')
+
+
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory() as folder:
@@ -81,6 +95,8 @@ def main():
                 expect(page.get_by_role('dialog').locator('input[type=file]')).to_be_visible()
                 page.get_by_role('dialog').get_by_role('button',name='Закрыть',exact=True).click()
                 open_finance_section(page,'accounts')
+                assert page.evaluate('scrollY')==0,'Independent finance view must start at the top, not jump to an old anchor'
+                assert page.locator('main h1').bounding_box()['y']>=page.locator('#root>header').bounding_box()['height']
                 page.locator('.finance-toolbar').get_by_role('button',name='Счёт',exact=True).click()
                 expect(page.get_by_role('dialog').get_by_label('Название',exact=True)).to_be_visible()
                 page.get_by_role('dialog').get_by_role('button',name='Закрыть',exact=True).click()
@@ -127,6 +143,37 @@ def main():
                             assert not controls,(width,theme,view,controls)
                             if width in [375,1440]:page.screenshot(path=str(OUT/(str(width)+'-'+theme+'-'+(view or 'overview')+'.png')),full_page=True)
                 checks.append('independent finance destinations fit 320/375/820/1440 pixels in both themes')
+                # A real negative UZS balance reproduces the review's split-decimal
+                # case; a narrow tablet used to split the same figures in metrics.
+                uzs=str(uuid.uuid4())
+                result=backend.batch(actor,workspace,[
+                    record('account',{'name':'Семейный счёт для поездок и повседневных покупок','currency':'UZS','opening_minor':849202038000-755960221000},uzs),
+                    record('transaction',{'kind':'expense','amount_minor':849202038000,'currency':'UZS','date':'2026-11-13','label':'Поездка и бронирование семейного отдыха','account_id':uzs,'category':'leisure'}),
+                ])
+                assert all(item['status']=='accepted' for item in result['results']),result
+                page.evaluate("async()=>{state.financeFilters={};await refresh();render();}")
+                for width in [320,834]:
+                    page.set_viewport_size({'width':width,'height':1000})
+                    for theme in ['light','dark']:
+                        page.evaluate("theme=>{state.theme=theme;preferences();}",theme)
+                        open_finance_section(page,'')
+                        expect(page.locator('.finance-metric.balance .money-display[aria-label$=" UZS"] .money-number')).to_have_text('-7 559 602 210,00')
+                        expect(page.locator('.finance-metric.expense .money-display[aria-label$=" UZS"] .money-number')).to_have_text('8 492 020 380,00')
+                        page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+                        assert_money_lines(page,str(width)+'-'+theme+'-overview')
+                        page.screenshot(path=str(OUT/('money-'+str(width)+'-'+theme+'-overview.png')),full_page=True)
+                        open_finance_section(page,'accounts')
+                        expect(page.locator('.finance-account-amount[aria-label$=" UZS"] .money-number')).to_have_text('-7 559 602 210,00')
+                        page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+                        assert_money_lines(page,str(width)+'-'+theme+'-accounts')
+                        page.screenshot(path=str(OUT/('money-'+str(width)+'-'+theme+'-accounts.png')),full_page=True)
+                page.set_viewport_size({'width':320,'height':1000})
+                open_tab(page,'Финансы');page.locator('select[name=chart-currency]').select_option('UZS')
+                expect(page.locator('.chart-category-row .money-display')).to_contain_text('8 492 020 380,00 UZS')
+                assert_money_lines(page,'320-category-legend')
+                open_finance_section(page,'ledger');assert_money_lines(page,'320-ledger')
+                open_tab(page,'Сегодня');assert_money_lines(page,'320-today-balances')
+                checks.append('large debit numbers and decimals stay on one line; only currency may wrap in 320px accounts and 834px metrics, both themes, legends, ledger and Today')
                 assert not errors,errors
                 context.close();browser.close()
         finally:server.shutdown()
