@@ -385,6 +385,10 @@ class Web:
         result.update({'Content-Type': mime, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow',
                        'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
         result['Content-Security-Policy'] = result['Content-Security-Policy'].replace("form-action 'self'", "form-action 'self' " + self.staff)
+        # Cross-origin same-site form handoff must carry the exact site Origin.
+        # no-referrer serializes that Origin as null in Chromium; retain origin
+        # only, never a path/query, for the app document.
+        if relative == 'index.html': result['Referrer-Policy'] = 'strict-origin'
         if relative == 'sw.js': result['Service-Worker-Allowed'] = '/app'
         return (root / relative).read_bytes(), list(result.items())
 

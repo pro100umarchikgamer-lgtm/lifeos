@@ -54,6 +54,8 @@
         Referrer-Policy no-referrer
         -Server
     }
+    @app_document path /app /app/
+    header @app_document >Referrer-Policy strict-origin
     @private path /metrics /health/* /control/*
     handle @private {
         respond 404

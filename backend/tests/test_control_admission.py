@@ -158,3 +158,10 @@ class ControlAdmissionTests(unittest.TestCase):
         status,headers,_=self.request('/account/api/confirm-signup',{'email':email,'code':self.mail[email]},cookie=self.parent[0][0])
         self.assertEqual(status,200); self.assertNotIn('Set-Cookie',dict(headers))
         self.assertEqual(self.request('/',staff=True,cookie=admission)[0],200)
+
+    def test_app_handoff_preserves_origin_without_referrer_path_and_null_is_rejected(self):
+        _,headers,_=self.request('/app')
+        self.assertEqual(dict(headers)['Referrer-Policy'],'strict-origin')
+        ticket=self.issue()
+        self.assertEqual(self.request('/admit',{'ticket':ticket['ticket']},staff=True,form=True,origin='null')[0],404)
+        self.assertEqual(self.request('/admit',{'ticket':ticket['ticket']},staff=True,form=True,origin='https://getuladim.space')[0],303)
