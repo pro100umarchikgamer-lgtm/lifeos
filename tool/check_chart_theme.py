@@ -11,6 +11,7 @@ def main():
             login(page,origin);open_tab(page,'Финансы')
             # The overview defaults to real expense categories; select the
             # existing income/expense bars to verify their exact theme colours.
+            page.locator('.finance-chart-options > summary').click()
             page.locator('[name=chart-mode]').select_option('bar')
             page.wait_for_function('''()=>{const c=document.querySelector('canvas');if(!c)return false;
                 const pixel=c.getContext('2d').getImageData(30,70,1,1).data;
