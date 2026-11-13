@@ -34,15 +34,20 @@ def check_account(page, baseline):
         page.get_by_role('button', name='Аккаунт и приватность', exact=True).last.click()
         return
     open_settings(page, 'security')
-    for key in ('family_password_change', 'account_email_change', 'account_delete'):
+    for key in ('family_password_change', 'account_email_change'):
         label = page.evaluate('key => t(key)', key)
         page.locator('.settings-content').get_by_role('button', name=label, exact=True).click()
-        panel = page.get_by_role('dialog') if key == 'account_delete' else page.locator('.settings-inline-panel')
+        panel = page.locator('.settings-inline-panel')
         expect(panel.get_by_role('button', name=label, exact=True)).to_be_visible()
         expect(panel.get_by_role('button', name='Сохранить', exact=True)).to_have_count(0)
-        if key != 'account_delete':
-            expect(page.locator('dialog[open]')).to_have_count(0)
-        panel.get_by_role('button', name='Закрыть' if key == 'account_delete' else 'Отменить', exact=True).click()
+        expect(page.locator('dialog[open]')).to_have_count(0)
+        panel.get_by_role('button', name='Отменить', exact=True).click()
+    page.locator('.settings-content').get_by_role('button', name=page.evaluate("t('account_delete')"), exact=True).click()
+    expect(page.get_by_role('heading', name='Удаление аккаунта', level=1, exact=True)).to_be_visible()
+    expect(page.get_by_role('button', name='Продолжить удаление', exact=True)).to_be_visible()
+    expect(page.locator('dialog[open]')).to_have_count(0)
+    open_tab(page, 'Профиль')
+    open_settings(page, 'security')
 
 
 def check_revocation(page, backend, actor):
@@ -135,10 +140,15 @@ def check_review_findings(browser, origin, backend, actor, wid):
         open_tab(page, 'Профиль')
         open_settings(page, 'family')
         page.locator('.settings-content .settings-row').filter(has_text='Ownership fixture').click()
-        dialog = page.get_by_role('dialog')
-        dialog.get_by_label('Текущий пароль', exact=True).fill(PASSWORD)
+        expect(page.get_by_role('heading', name='Удаление аккаунта', level=1, exact=True)).to_be_visible()
+        expect(page.locator('dialog[open]')).to_have_count(0)
+        page.get_by_role('button', name='Принять управление', exact=True).click()
+        review = page.locator('.account-deletion-review')
+        review.get_by_label('Текущий пароль', exact=True).fill(PASSWORD)
+        expect(review.get_by_role('button', name='Подтвердить принятие', exact=True)).to_be_disabled()
+        review.get_by_label('Понимаю последствия передачи управления', exact=True).check()
         with page.expect_response(lambda response: response.url.endswith('/accept-transfer')) as response:
-            dialog.locator('button[type=submit]').click()
+            review.get_by_role('button', name='Подтвердить принятие', exact=True).click()
         assert response.value.status == 200
         assert lifecycle.deletion_status(recipient)['incoming_transfers'] == []
         assert lifecycle.deletion_status(actor)['ownership_transfer_required'] == []

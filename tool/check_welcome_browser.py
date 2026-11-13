@@ -128,7 +128,7 @@ def main():
                 expect(page.locator('.hero-actions > a')).to_have_text('Открыть ULADIM')
                 expect(page.locator('.hero-actions > a')).to_have_attribute('href','/app')
                 assert page.locator('a[href*="action=signup"]').count()==0
-                assert page.locator('.product-hero').evaluate("node=>getComputedStyle(node).animationName")=='none'
+                expect(page.locator('.product-hero')).to_have_css('animation-name','none')
                 checks.append({'case':'session-service-unavailable','signupLinks':0,'reducedMotion':True})
                 context.close();browser.close()
         finally:
