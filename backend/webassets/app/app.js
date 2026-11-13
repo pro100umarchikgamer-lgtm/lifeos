@@ -668,7 +668,9 @@ function deletionCenter(){return privateDeletion||(privateDeletion=window.Uladim
 for(const [locale,label]of Object.entries({ru:'Удаление аккаунта',en:'Delete account','uz-Latn':'Hisobni o‘chirish','uz-Cyrl':'Ҳисобни ўчириш'}))WEB_COPY[locale].web_account_deletion=label;
 function recoveryCenter(){return privateRecovery||(privateRecovery=window.UladimRecovery?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,report,refresh,money}));}
 for(const [locale,label]of Object.entries({ru:'Корзина и восстановление',en:'Trash and recovery','uz-Latn':'Savat va tiklash','uz-Cyrl':'Сават ва тиклаш'}))WEB_COPY[locale].web_recovery=label;
-function inboxCenter(){return privateInbox||(privateInbox=window.UladimInbox.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,navigate:referenceNavigate,help:host=>contextHelp(host,'notifications'),safe:()=>state.tab==='today'&&!state.busy&&!editingView()&&![...quickTasks.values()].some(draft=>draft.title?.trim()||draft.operation||draft.busy),report}));}
+function inboxCenter(){return privateInbox||(privateInbox=window.UladimInbox?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,navigate:referenceNavigate,help:host=>contextHelp(host,'notifications'),safe:()=>state.tab==='today'&&!state.busy&&!editingView()&&![...quickTasks.values()].some(draft=>draft.title?.trim()||draft.operation||draft.busy),report})||unavailableInbox());}
+function unavailableInbox(){const noop=()=>{};return {clear:noop,refresh:noop,settings:noop,stage:noop,maybeRefresh:noop,updateBell:noop,bell:()=>{const control=iconButton('bell',t('web_inbox'),()=>referenceNavigate('inbox'));control.classList.add('header-inbox');return control;},page:host=>{title(host,'web_inbox');append(host,E('p',({ru:'История уведомлений пока недоступна.',en:'Notification history is not available yet.','uz-Latn':'Bildirishnomalar tarixi hozircha mavjud emas.','uz-Cyrl':'Билдиришномалар тарихи ҳозирча мавжуд эмас.'})[state.lang]||'Notification history is not available yet.'),button(t('retry'),()=>location.reload(),'secondary'));contextHelp(host,'notifications');},snapshot:()=>({notifications:[],unread_count:0})};}
+
 for(const [locale,label]of Object.entries({ru:'Уведомления',en:'Notifications','uz-Latn':'Bildirishnomalar','uz-Cyrl':'Билдиришномалар'}))WEB_COPY[locale].web_inbox=label;
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
 function render(){redrawFinance=null;if(!state.session){login();return;}const view=[state.tab,state.settingsTab||'',state.referenceSection||''].join('/'),previous=root.querySelector('main')?.dataset.view;const m=shell();m.dataset.view=view;if(previous!==view)m.classList.add('view-enter');backgroundDirty=false;inboxCenter().stage();if(state.tab==='inbox'){inboxCenter().page(m);return;}if(state.tab==='account'){account(m);workspaceContextHelp(m);return;}if(!state.space){onboarding(m);return;}
@@ -1985,8 +1987,8 @@ async function account(m){
  if(section==='signout')signoutPage(content);
  if(section==='notifications'){inboxCenter().settings(content);await notificationPage(content);}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
- if(section==='deletion'){if(deletionCenter())deletionCenter().page(content);else content.append(E('p',t('web_server_error')));}
- if(section==='recovery'){if(state.session.record_recovery_available===true&&recoveryCenter())recoveryCenter().page(content);else content.append(E('p',t('web_server_error')));}
+ if(section==='deletion'){if(deletionCenter())deletionCenter().page(content);else append(content,E('p',t('web_server_error')),button(t('retry'),()=>location.reload(),'secondary'));}
+ if(section==='recovery'){if(state.session.record_recovery_available===true&&recoveryCenter())recoveryCenter().page(content);else append(content,E('p',t('web_server_error')),button(t('retry'),()=>location.reload(),'secondary'));}
  if(section==='security')privacy(content);
  if(section==='devices')await devices(content).catch(error=>{if(error.code==='unauthorized'){report(error);return;}if(content.isConnected){content.replaceChildren(E('h2',t('account_devices')),E('p',errorText(error),'error'),button(t('retry'),()=>openSettings('devices'),'secondary'));}});
  if(section==='family'){familyPanel(content);familyPermissions(content);}
@@ -2184,7 +2186,13 @@ function privacy(m){
   if(googleStatus.isConnected)googleStatus.textContent=t('web_google_status_error');
  });
 }
-function changePassword(trigger){
+async function passwordSettingsHelp(trigger,label){
+ const epoch=privateEpoch,methods=await call('google');if(epoch!==privateEpoch||trigger&&!trigger.isConnected)return true;if(methods.has_password!==false)return false;
+ const copy={ru:['Вы входите через Google. Для этого действия сначала настройте пароль по почте. Дополнительная защита сохранится.','Настроить пароль по почте'],en:['You sign in with Google. Set up a password by email before this action. Your second factor will remain.','Set up a password by email'],'uz-Latn':['Google orqali kirasiz. Bu amal uchun avval pochta orqali parol o‘rnating. Qo‘shimcha himoya saqlanadi.','Pochta orqali parol o‘rnatish'],'uz-Cyrl':['Google орқали кирасиз. Бу амал учун аввал почта орқали парол ўрнатинг. Қўшимча ҳимоя сақланади.','Почта орқали парол ўрнатиш']}[state.lang]||['You sign in with Google. Set up a password by email before this action. Your second factor will remain.','Set up a password by email'];
+ settingsInline(label,panel=>append(panel,E('p',copy[0]),button(copy[1],recover,'secondary')),trigger);return true;
+}
+async function changePassword(trigger){
+ if(await passwordSettingsHelp(trigger,t('family_password_change')))return;
  const label=t('family_password_change');
  settingsInline(label,d=>{
   d.append(E('p',t('web_password_change_hint'),'small'));
@@ -2195,7 +2203,8 @@ function changePassword(trigger){
   },label);
  },trigger);
 }
-function changeEmail(trigger){
+async function changeEmail(trigger){
+ if(await passwordSettingsHelp(trigger,t('account_email_change')))return;
  const label=t('account_email_change');
  settingsInline(label,d=>form(d,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{
   const email=v.email.value;
@@ -2266,7 +2275,8 @@ async function devices(host){
   group('web_active_sessions',active);
   if(revoked.length)group('web_revoked_sessions',revoked);
 }
-function confirmDeviceRevoke(device,list,trigger){
+async function confirmDeviceRevoke(device,list,trigger){
+ if(await passwordSettingsHelp(trigger,t('account_revoke')))return;
  const row=trigger?.closest('.device-row');if(!row)return;
  row.querySelector('.device-revoke-inline')?.remove();
  const d=E('div',undefined,'device-revoke-inline');row.append(d);
@@ -2285,6 +2295,7 @@ function confirmDeviceRevoke(device,list,trigger){
   d.querySelector('input').focus({preventScroll:true});
 }
 async function customerMfa(trigger){
+ if(await passwordSettingsHelp(trigger,t('account_mfa')))return;
  const status=await call('mfa');
  if(!trigger?.isConnected)return;
  settingsInline(t('account_mfa'),d=>{
