@@ -5,6 +5,7 @@ import tempfile
 import unittest
 import uuid
 from pathlib import Path
+from urllib.parse import urlencode
 from cryptography.fernet import Fernet
 from backend.config import Settings
 from backend.control import Control, ROLE_PERMISSIONS, totp
@@ -45,18 +46,25 @@ class SecurityAuditTests(unittest.TestCase):
             wid = str(uuid.uuid4()); self.spaces.append(wid)
             self.backend.family(actor, {'id':str(uuid.uuid4()), 'workspace_id':wid,'action':'workspace.create','kind':'personal','name':'Audit fixture'})
 
-    def request(self, path, body=None, *, identity=None, staff=False, method=None, origin=None, extra=None):
+    def request(self, path, body=None, *, identity=None, staff=False, method=None, origin=None, extra=None, form=False):
         path, _, query = path.partition('?')
         host = 'control.getuladim.space' if staff else 'getuladim.space'
-        data = json.dumps(body).encode() if body is not None else b''
+        data = (urlencode(body).encode() if form else json.dumps(body).encode()) if body is not None else b''
         cookie, csrf = identity or ('','')
-        env = {'HTTP_HOST':host,'REQUEST_METHOD':method or ('POST' if body is not None else 'GET'), 'PATH_INFO':path,'QUERY_STRING':query,'REMOTE_ADDR':'172.30.30.2','HTTP_X_FORWARDED_PROTO':'https','HTTP_USER_AGENT':'audit-fixture','HTTP_ORIGIN':origin or 'https://'+host,'HTTP_COOKIE':cookie,'HTTP_X_CSRF_TOKEN':csrf,'CONTENT_TYPE':'application/json','CONTENT_LENGTH':str(len(data)),'wsgi.input':io.BytesIO(data)}
+        if staff and getattr(self,'admission',''):cookie=(cookie+'; '+self.admission).strip('; ')
+        env = {'HTTP_HOST':host,'REQUEST_METHOD':method or ('POST' if body is not None else 'GET'), 'PATH_INFO':path,'QUERY_STRING':query,'REMOTE_ADDR':'172.30.30.2','HTTP_X_FORWARDED_PROTO':'https','HTTP_USER_AGENT':'audit-fixture','HTTP_ORIGIN':origin or 'https://'+host,'HTTP_COOKIE':cookie,'HTTP_X_CSRF_TOKEN':csrf,'CONTENT_TYPE':'application/x-www-form-urlencoded' if form else 'application/json','CONTENT_LENGTH':str(len(data)),'wsgi.input':io.BytesIO(data)}
         env.update(extra or {})
         response=[]
         raw=b''.join(self.app(env, lambda s,h:response.append((int(s.split()[0]),dict(h)))))
         status, headers=response[0]
-        value=json.loads(raw) if headers['Content-Type'].startswith('application/json') else raw
+        value=json.loads(raw) if raw and headers['Content-Type'].startswith('application/json') else raw
         return status, headers, value
+
+    def admit_staff(self, identity):
+        status,_,handoff=self.request('/account/api/control/access',{},identity=identity)
+        self.assertEqual(status,200,handoff)
+        status,headers,_=self.request('/admit',{'ticket':handoff['ticket']},staff=True,form=True,origin='https://getuladim.space')
+        self.assertEqual(status,303); self.admission=headers['Set-Cookie'].split(';')[0]
 
     def check(self, name, actual, expected):
         engine='PostgreSQL' if hasattr(self.backend,'pool') else 'SQLite'
@@ -94,12 +102,13 @@ class SecurityAuditTests(unittest.TestCase):
             self.check('method '+method,self.request('/account/api/session',identity=self.cookies[1],method=method)[0],405)
         for cookie in ('__Host-uladim_account='+'x'*43, '__Host-uladim_control='+'x'*43):
             self.check('forged '+cookie.split('=')[0],self.request('/account/api/session',identity=(cookie,''))[0],401)
-        self.check('client role ignored',self.request('/control/api/users',identity=self.cookies[1],staff=True,extra={'HTTP_X_ROLE':'owner'})[0],401)
+        self.check('client role ignored',self.request('/control/api/users',identity=self.cookies[1],staff=True,extra={'HTTP_X_ROLE':'owner'})[0],404)
         self.check('public origin cannot reach Control',self.request('/control/api/users',identity=self.cookies[1])[0],404)
 
     def test_staff_http_permission_matrix_and_mfa(self):
         control=Control(self.backend)
         enrollment=control.bootstrap(self.alice['email'])
+        self.admit_staff(self.cookies[0])
         status, headers, pending = self.request('/control/api/login',{'email':self.alice['email'],'password':self.password},staff=True)
         self.check('password step returns only pending MFA',status,200)
         self.check('password without staff MFA has no cookie','Set-Cookie' in headers,False)
@@ -109,8 +118,9 @@ class SecurityAuditTests(unittest.TestCase):
         sid=str(uuid.uuid4())
         with self.backend.connect() as db:
             db.execute('INSERT INTO staff(id,user_id,roles,mfa_secret,created_at) VALUES(?,?,?,?,?)',(sid,self.bob['id'],'["support"]',self.backend.cipher.encrypt(secret.encode()),self.now))
+        self.admit_staff(self.cookies[1])
         reads={'dashboard':'dashboard.read','users':'users.read','staff':'staff.manage','audit':'audit.read','support':'support.read','flags':'flags.manage','applications':'applications.manage','catalog':'plans.grant'}
-        writes={'applications/decide':'applications.manage','moderate':'users.moderate','grant':'plans.grant','revoke-grant':'plans.grant','override':'plans.grant','catalog':'plans.catalog','staff/invite':'staff.manage','staff/update':'staff.manage','support/reply':'support.reply','support/triage':'support.reply','flags/preview':'flags.manage','flags/commit':'flags.manage'}
+        writes={'user/recovery':'users.recover','applications/decide':'applications.manage','moderate':'users.moderate','grant':'plans.grant','revoke-grant':'plans.grant','override':'plans.grant','catalog':'plans.catalog','staff/invite':'staff.manage','staff/update':'staff.manage','support/reply':'support.reply','support/triage':'support.reply','flags/preview':'flags.manage','flags/commit':'flags.manage'}
         for role, permissions in ROLE_PERMISSIONS.items():
             with self.backend.connect() as db:
                 db.execute('UPDATE staff SET roles=?,last_counter=-1 WHERE id=?',(json.dumps([role]),sid))
@@ -157,6 +167,7 @@ class SecurityAuditTests(unittest.TestCase):
     def test_staff_lockout_attempts_and_idle_expiry(self):
         control=Control(self.backend)
         enrollment=control.bootstrap(self.alice['email'])
+        self.admit_staff(self.cookies[0])
         for _ in range(10):
             self.assertEqual(self.request('/control/api/login',{'email':self.alice['email'],'password':'wrong','code':'000000'},staff=True)[0],401)
         self.check('staff brute force persists',self.request('/control/api/login',{'email':self.alice['email'],'password':self.password,'code':totp(enrollment['totp_secret'],self.now//30)},staff=True)[0],429)

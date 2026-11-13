@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from .control import Control
+from .control_admission import ControlAdmission, COOKIE as ADMISSION_COOKIE
 from .support import Support
 from .service import Failure, require, token_hash
 from . import entitlements
@@ -23,11 +24,27 @@ class Web:
         from .google_identity import GoogleIdentity
         self.google = GoogleIdentity(backend, settings)
         self.control = Control(backend)
+        self.admission = ControlAdmission(backend)
         self.support = Support(backend, self.control)
         self.site = getattr(settings, 'site_origin', 'https://getuladim.space')
         self.staff = getattr(settings, 'control_origin', 'https://control.getuladim.space')
         from .web_push import WebPush
         self.push = WebPush(backend, self.site)
+
+    def is_control(self, env):
+        return env.get('HTTP_HOST', '') == urlsplit(self.staff).netloc
+
+    def admitted(self, env):
+        cookie = SimpleCookie()
+        try: cookie.load(env.get('HTTP_COOKIE', ''))
+        except Exception: raise Failure('not_found', 404)
+        value = cookie.get(ADMISSION_COOKIE)
+        return self.admission.authenticate(value.value if value else '', env.get('HTTP_USER_AGENT', '')[:500])
+
+    def redeem_admission(self, env, ticket):
+        require(env.get('HTTP_ORIGIN') == self.site, 'not_found', 404)
+        raw, seconds = self.admission.redeem(ticket, env.get('HTTP_USER_AGENT', '')[:500])
+        return b'', [('X-ULADIM-Status', '303'), ('Location', '/'), ('Referrer-Policy', 'no-referrer'), ('Set-Cookie', ADMISSION_COOKIE + '=' + raw + '; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=' + str(seconds))]
 
     def handles(self, env):
         return env.get('HTTP_HOST', '') in (urlsplit(self.site).netloc, urlsplit(self.staff).netloc)
@@ -59,10 +76,15 @@ class Web:
 
     def request(self, env, body):
         path, method = env.get('PATH_INFO', ''), env.get('REQUEST_METHOD', '')
-        staff = env.get('HTTP_HOST', '') == urlsplit(self.staff).netloc
+        staff = self.is_control(env)
+        admitted = env.get('uladim.admitted') if staff else None
+        if staff:
+            require(admitted, 'not_found', 404)
         origin = self.staff if staff else self.site
         headers = [('Content-Type', 'application/json; charset=utf-8'), ('Cache-Control', 'no-store'), ('X-Robots-Tag', 'noindex, nofollow' if staff or path.startswith('/account') else 'index, follow'),
                    ('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"), ('X-Content-Type-Options', 'nosniff'), ('Referrer-Policy', 'no-referrer')]
+        if not staff:
+            headers = [(key, value.replace("form-action 'self'", "form-action 'self' " + self.staff) if key == 'Content-Security-Policy' else value) for key, value in headers]
         if not staff and method == 'GET' and (path in ('/app', '/app/') or path.startswith('/app/assets/') or path == '/app/sw.js'):
             return self.app_asset(path, headers)
         if method == 'GET' and path == '/assets/locales.json':
@@ -106,6 +128,14 @@ class Web:
         if action in ('login', 'login/mfa') and method == 'POST':
             agent = env.get('HTTP_USER_AGENT', '')[:500]
             from .login_flow import LoginFlow
+            if staff:
+                if action == 'login/mfa':
+                    require(isinstance(body.get('challenge'), str) and len(body['challenge']) == 43, 'not_found', 404)
+                    with self.backend.connect() as db:
+                        pending = db.execute('SELECT user_id FROM login_challenges WHERE hash=?', (token_hash(body.get('challenge', '')),)).fetchone()
+                    require(pending and pending['user_id'] == admitted['user_id'], 'not_found', 404)
+                else:
+                    require(isinstance(body.get('email'), str) and body['email'].casefold() == admitted['email'], 'not_found', 404)
             if action == 'login/mfa':
                 result = LoginFlow(self.backend).finish(body.get('challenge'), body.get('code'), agent, staff)
             elif body.get('code'):
@@ -114,7 +144,7 @@ class Web:
             else:
                 result = LoginFlow(self.backend).begin(body.get('email'), body.get('password'), agent, staff)
             if result.get('mfa_required'): return result, headers
-            if not staff: return self.customer_session(result, agent, headers)
+            if not staff: return self.customer_session(result, agent, headers, env)
             token=result['token']
             return {'authenticated': True, 'csrf': self.csrf(token)}, headers + [self.cookie(token, True)]
         if not staff and method == 'POST' and action in ('signup', 'confirm-signup', 'resend-signup', 'recovery', 'reset'):
@@ -139,7 +169,10 @@ class Web:
             return self.push.receipt(body), headers
         token = self.token(env, staff)
         actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:500]) if staff else self.account(token, env.get('HTTP_USER_AGENT', '')[:500])
+        if staff: require(actor.user_id == admitted['user_id'], 'not_found', 404)
         if method == 'POST': require(hmac.compare_digest(env.get('HTTP_X_CSRF_TOKEN', ''), self.csrf(token)), 'csrf_invalid', 403)
+        if not staff and action == 'control/access' and method == 'POST':
+            return {'ticket': self.admission.issue(token, env.get('HTTP_USER_AGENT', '')[:500]), 'control_url': self.staff + '/admit', 'expires_in': 60}, headers
         if not staff and action == 'google' and method == 'GET':
             return self.google.status(actor), headers
         if not staff and action == 'google/link' and method == 'POST':
@@ -150,7 +183,7 @@ class Web:
         if not staff and action == 'google/unlink' and method == 'POST':
             return self.google.unlink(actor, body.get('password'), body.get('code')), headers + [self.cookie('', clear=True)]
         if action == 'session' and method == 'GET':
-            return ({'staff_id': actor.id, 'user_id': actor.user_id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token)}), headers
+            return ({'staff_id': actor.id, 'user_id': actor.user_id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token), 'control_available': self.admission.available(actor)}), headers
         if action == 'logout' and method == 'POST':
             if staff: self.control.logout(token)
             else:
@@ -176,12 +209,19 @@ class Web:
         item=cookie.get('__Host-uladim_google_' + name)
         return item.value if item and len(item.value)==43 else ''
 
-    def customer_session(self, result, agent, headers):
+    def customer_session(self, result, agent, headers, env=None):
         # Recheck underlying session: a revoked intermediate result cannot create
         # a new browser session after a password change, deletion or device revoke.
         actor=self.backend.authenticate(result['token'])
         token, now=secrets.token_urlsafe(32), int(self.backend.clock())
         with self.backend.transaction() as db:
+            # Replacing this browser's customer login invalidates its previous
+            # Control admission without changing customer device/session rules.
+            try: previous = self.token(env or {}, False)
+            except Failure: previous = ''
+            if previous:
+                db.execute('DELETE FROM control_admissions WHERE parent_hash=?', (token_hash(previous),))
+                db.execute('DELETE FROM control_handoffs WHERE parent_hash=?', (token_hash(previous),))
             db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)', (token_hash(token), actor['id'], result['device_id'], now, now, now+2592000, token_hash(agent)))
             db.execute("UPDATE devices SET label='Web browser' WHERE id=?", (result['device_id'],))
         return {'authenticated':True, 'csrf':self.csrf(token)}, headers+[self.cookie(token)]
@@ -221,7 +261,7 @@ class Web:
         if value.get('error'): return value,headers
         if value.get('mfa_required') or value.get('linked'): return value,headers
         # customer_session adds a second Set-Cookie; Application must preserve them.
-        return self.customer_session(value,agent,headers)
+        return self.customer_session(value,agent,headers,env)
 
     def staff_action(self, actor, action, method, b, q):
         c = self.control
@@ -256,6 +296,7 @@ class Web:
             if action == 'applications/decide':
                 from .early_access import EarlyAccess
                 return EarlyAccess(self.backend).decide(actor, c, b.get('id'), b.get('decision'), b.get('revision'), b.get('reason'))
+            if action == 'user/recovery': return c.request_recovery(actor, b.get('user_id'), b.get('reason'))
             if action == 'moderate': return c.moderate(actor, b.get('user_id'), b.get('service'), b.get('until_at'), b.get('reason'))
             if action == 'grant': return c.give_access(actor, b.get('user_id'), b.get('tier'), b.get('source'), b.get('valid_until'), b.get('reason'))
             if action == 'revoke-grant': return c.revoke_access(actor, b.get('grant_id'), b.get('reason'))
@@ -343,6 +384,7 @@ class Web:
         result = dict(headers)
         result.update({'Content-Type': mime, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow',
                        'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
+        result['Content-Security-Policy'] = result['Content-Security-Policy'].replace("form-action 'self'", "form-action 'self' " + self.staff)
         if relative == 'sw.js': result['Service-Worker-Allowed'] = '/app'
         return (root / relative).read_bytes(), list(result.items())
 

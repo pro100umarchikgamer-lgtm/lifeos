@@ -15,11 +15,11 @@ from . import entitlements
 
 ROLE_RANK = {'owner': 100, 'admin': 80, 'billing_manager': 40, 'moderator': 30, 'support': 20, 'auditor': 10}
 ROLE_PERMISSIONS = {
-    'owner': {'announcements.manage', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
-    'admin': {'announcements.manage', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'owner': {'announcements.manage', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'admin': {'announcements.manage', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
     'billing_manager': {'users.read', 'plans.grant', 'audit.read'},
     'moderator': {'users.read', 'users.moderate', 'support.read', 'support.reply'},
-    'support': {'users.read', 'support.read', 'support.reply'},
+    'support': {'users.recover', 'users.read', 'support.read', 'support.reply'},
     'auditor': {'dashboard.read', 'audit.read'},
 }
 SAFE_FLAGS = {'compact_onboarding', 'chart_styles', 'support_entry'}
@@ -200,6 +200,34 @@ class Control:
                 db.execute('INSERT INTO service_holds VALUES(?,?,?,?,?) ON CONFLICT(user_id,service) DO UPDATE SET until_at=excluded.until_at,reason=excluded.reason,actor_id=excluded.actor_id', (uid, service, until, scrub(reason), actor.id))
             self.audit(db, actor, uid, 'user.moderate.' + service, before, {'until_at': until}, reason)
         return {'updated': True, 'records_deleted': False}
+
+    def request_recovery(self, actor, uid, reason):
+        """Queue recipient-owned recovery; staff never receives or sets credentials."""
+        self.require(actor, 'users.recover')
+        identifier(uid); reason = text(reason, 500)
+        require(self.backend.deliver is not None, 'verification_delivery_unconfigured', 503)
+        now = int(self.backend.clock())
+        with self.backend.transaction() as db:
+            row = db.execute('SELECT email,verified FROM users WHERE id=?', (uid,)).fetchone()
+            require(row is not None, 'not_found', 404)
+            require(row['verified'] == 1, 'verified_account_required', 409)
+            self.backend._account_available(db, uid)
+            self._target_rank(db, actor, uid)
+            key = 'recovery:' + token_hash(row['email'])
+            prior = db.execute('SELECT until_at FROM auth_limits WHERE key=?', (key,)).fetchone()
+            require(prior is None or prior['until_at'] <= now, 'rate_limited', 429)
+            staff_key = token_hash('staff-recovery-request:' + actor.id)
+            limit = db.execute('SELECT count,until_at FROM auth_limits WHERE key=?', (staff_key,)).fetchone()
+            require(limit is None or limit['until_at'] <= now or limit['count'] < 10, 'rate_limited', 429)
+            count = limit['count'] + 1 if limit and limit['until_at'] > now else 1
+            db.execute('INSERT INTO auth_limits VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (staff_key, count, now + 900))
+            db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (key, now + 60))
+            code = secrets.token_urlsafe(32)
+            db.execute('DELETE FROM password_recovery WHERE user_id=?', (uid,))
+            db.execute('INSERT INTO password_recovery VALUES(?,?,?)', (token_hash(code), uid, now + 900))
+            self.backend._deliver(db, row['email'], code, 'recovery')
+            self.audit(db, actor, uid, 'user.recovery.request', {}, {'recovery_requested': True}, reason)
+        return {'recovery_requested': True}
 
     def give_access(self, actor, uid, tier, source, until, reason):
         self.require(actor, 'plans.grant')

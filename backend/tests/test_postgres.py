@@ -182,6 +182,7 @@ class PostgresControlWebTests(webfixtures.WebControlTests):
         self.owner=self.control.authenticate(self.staff_login['token'],'fixture')
         self.settings=PostgresTests.settings(self)
         self.app=Application(self.backend,self.settings)
+        self.setup_admission()
 
 from test_account_lifecycle import LifecycleScenarios
 
@@ -313,3 +314,31 @@ class PostgresGoogleIdentityTests(GoogleIdentityScenarios, unittest.TestCase):
             self.assertEqual(db.execute('SELECT id FROM users WHERE email=?',(actor['email'],)).fetchone()['id'],actor['id'])
             self.assertEqual(db.execute('SELECT opening_minor FROM accounts WHERE id=?',(rid,)).fetchone()['opening_minor'],123456789012345)
             self.assertEqual(db.execute("SELECT COUNT(*) AS n FROM schema_migrations WHERE version='011_google_identity.sql'").fetchone()['n'],1)
+
+
+import test_control_admission as admissionfixtures
+import test_control_recovery as recoveryfixtures
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresControlAdmissionTests(admissionfixtures.ControlAdmissionTests):
+    drop_schema = PostgresEarlyAccessTests.drop_schema
+
+    def make_backend(self, path):
+        if urlsplit(DSN).path != '/lifeos_test': raise RuntimeError('Tests refuse a non-test database')
+        self.schema='admission_'+uuid.uuid4().hex
+        with psycopg.connect(DSN,autocommit=True) as db:
+            db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(self.schema)))
+        self.addCleanup(self.drop_schema)
+        backend=PostgresBackend(DSN,Fernet(Fernet.generate_key()),schema=self.schema,migrate=True,clock=lambda:self.now)
+        self.addCleanup(backend.close)
+        deliver=backend._deliver
+        def capture(db,email,code,purpose):
+            deliver(db,email,code,purpose);self.mail[email]=code
+        backend._deliver=capture
+        return backend
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresControlRecoveryTests(recoveryfixtures.ControlRecoveryTests):
+    def setUp(self):
+        self.fixture=PostgresControlWebTests(methodName='test_staff_cookie_is_not_a_customer_bearer_and_mfa_required')
+        self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
