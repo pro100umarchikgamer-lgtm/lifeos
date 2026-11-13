@@ -95,6 +95,7 @@ jobs:
           python -m tool.check_optional_modules_browser
           python -m tool.check_erased_finance_browser
           python -m tool.check_privacy_erased_browser
+          python -m tool.check_account_unavailable_browser
       - name: Focus settings, refresh status and delayed workspace switching
         run: |
           python -m tool.check_focus_completion
