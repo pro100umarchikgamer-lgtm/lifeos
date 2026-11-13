@@ -16,7 +16,7 @@ import 'package:lifeos/sync/controller.dart';
 
 import 'support/sync_memory.dart';
 
-import 'widget_test.dart' show UIStore;
+import 'widget_test.dart' show UIStore, openNativeSections;
 import 'family_completion_visual_test.dart' show familyFixture;
 
 class PersistentViewStore extends UIStore {
@@ -181,7 +181,7 @@ void main() {
     expect(controller.preferences['modules_view'], 'list');
     await tester.pumpWidget(LifeOSApp(controller: controller));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('nav_modules')));
+    await openNativeSections(tester);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('modules_view_toggle')));
     await tester.pumpAndSettle();

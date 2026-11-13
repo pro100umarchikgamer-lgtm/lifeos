@@ -10,6 +10,7 @@ import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/personal_modules.dart';
 import 'package:lifeos/ui/finance_foundation.dart';
 import 'visual_snapshot_test.dart' show SnapshotStore,sampleRecords;
+import 'widget_test.dart' show openNativeProfile;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();timezone.initializeTimeZones();
@@ -42,7 +43,7 @@ void main() {
             await tester.pumpAndSettle();
             final context=tester.element(find.byType(HomeShell));
             if(screen=='profile') {
-              await tester.tap(find.byKey(const Key('profile_button')));
+              await openNativeProfile(tester);
             } else if(screen=='finance') {
               Navigator.push<void>(context,MaterialPageRoute(builder:(_)=>FinanceFoundation(controller:c)));
             } else {

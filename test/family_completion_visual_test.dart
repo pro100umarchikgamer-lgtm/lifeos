@@ -14,6 +14,7 @@ import 'package:lifeos/ui/statement_import.dart';
 
 import 'support/sync_memory.dart';
 import 'visual_snapshot_test.dart' show SnapshotStore;
+import 'widget_test.dart' show openNativeSections;
 
 // Synthetic identities and records; this fixture never contacts a server.
 FamilyController familyFixture({bool child = false}) {
@@ -150,7 +151,7 @@ void main() {
           Widget? page;
           switch (screen) {
             case 'modules':
-              await tester.tap(find.byKey(const Key('nav_modules')));
+              await openNativeSections(tester);
             case 'search':
               page = GlobalSearchPage(controller: c, family: false);
             case 'import':

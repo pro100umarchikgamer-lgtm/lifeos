@@ -16,6 +16,7 @@ import 'package:lifeos/ui/quick_add.dart';
 import 'package:lifeos/ui/selection.dart';
 
 import 'visual_snapshot_test.dart' show SnapshotStore;
+import 'widget_test.dart' show openNativeSections;
 
 class LaunchSnapshotStore extends SnapshotStore {
   LaunchSnapshotStore(super.items, super.mode, this.language);
@@ -104,7 +105,7 @@ void main() {
             tester.getRect(find.text(pack.t('example_task'))).bottom,
             lessThan(740),
           );
-          for (final tab in ['today', 'plans', 'finances', 'modules']) {
+          for (final tab in ['today', 'tasks', 'calendar', 'notes', 'finances', 'profile']) {
             expect(
               tester.getRect(find.byKey(Key('nav_$tab'))).height,
               greaterThanOrEqualTo(48),
@@ -156,7 +157,7 @@ void main() {
           Navigator.of(tester.element(find.byKey(const Key('save')))).pop();
           tester.view.viewInsets = const FakeViewPadding();
           await tester.pumpAndSettle();
-          await tester.tap(find.byKey(const Key('nav_modules')));
+          await openNativeSections(tester);
           await tester.pumpAndSettle();
           await snapshot('modules');
           final context = tester.element(find.byType(HomeShell));
@@ -259,7 +260,7 @@ void main() {
           );
           await tester.pumpAndSettle();
           await snapshot('category_insights');
-          await tester.tap(find.byKey(const Key('nav_modules')));
+          await openNativeSections(tester);
           await tester.pumpAndSettle();
           await tester.pumpWidget(
             LifeOSApp(
@@ -272,7 +273,7 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
-          for (final tab in ['today', 'plans', 'finances', 'modules']) {
+          for (final tab in ['today', 'tasks', 'calendar', 'notes', 'finances', 'profile']) {
             expect(
               tester.getRect(find.byKey(Key('nav_$tab'))).height,
               greaterThanOrEqualTo(48),
@@ -315,7 +316,7 @@ void main() {
           await tester.tap(find.byType(LifeSelect<String>));
           await tester.pumpAndSettle();
           await snapshot('currency_dialog_large_text');
-          Navigator.of(tester.element(find.byType(Dialog))).pop();
+          Navigator.of(tester.element(find.byKey(const Key('selection_dialog_body')))).pop();
           await tester.pumpAndSettle();
           await tester.pumpWidget(
             MaterialApp(
@@ -351,7 +352,7 @@ void main() {
           tester.view.viewInsets = const FakeViewPadding(bottom: 330);
           await tester.pumpAndSettle();
           await snapshot('format_dialog_keyboard');
-          Navigator.of(tester.element(find.byType(Dialog))).pop();
+          Navigator.of(tester.element(find.byKey(const Key('selection_dialog_body')))).pop();
           tester.view.viewInsets = const FakeViewPadding();
           await tester.pumpAndSettle();
           await tester.pumpWidget(
@@ -384,7 +385,7 @@ void main() {
             180,
             scrollable: find
                 .descendant(
-                  of: find.byKey(const Key('today')),
+                  of: find.byKey(const Key('today_page')),
                   matching: find.byType(Scrollable),
                 )
                 .first,

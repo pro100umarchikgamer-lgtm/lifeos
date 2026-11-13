@@ -8,7 +8,7 @@ import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/quick_add.dart';
 import 'package:lifeos/ui/selection.dart';
 
-import 'widget_test.dart' show UIStore;
+import 'widget_test.dart' show UIStore, openNativeSections;
 
 void main() {
   timezone.initializeTimeZones();
@@ -97,7 +97,8 @@ void main() {
           tester.getRect(find.byKey(const Key('insight_balance'))).top,
           lessThan(tester.getRect(find.text('Prepare for class')).top),
         );
-        await tester.tap(find.byKey(const Key('nav_modules')));
+        await openNativeSections(tester);
+        await tester.tap(find.byKey(const Key('modules_view_toggle')));
         await tester.pumpAndSettle();
         final cards = [
           for (var i = 0; i < 4; i++)
@@ -138,7 +139,8 @@ void main() {
     );
     await tester.tap(find.byType(LifeSelect<String>));
     await tester.pumpAndSettle();
-    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(Dialog), findsNothing);
     expect(
       tester.getSize(find.byKey(const Key('selection_dialog_body'))).height,
       lessThanOrEqualTo(480),
