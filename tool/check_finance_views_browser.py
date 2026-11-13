@@ -66,7 +66,7 @@ def main():
         checks=[]
         try:
             with sync_playwright() as p:
-                browser=p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM','/usr/bin/chromium'))
+                browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
                 context=browser.new_context(viewport={'width':1440,'height':1000},locale='ru-RU',service_workers='block',reduced_motion='reduce')
                 page=context.new_page();page.clock.install(time=datetime(2026,11,13,12,tzinfo=timezone.utc));errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
                 page.goto(origin+'/app');page.locator('input[name=email]').fill(actor['email']);page.locator('input[name=password]').fill(password);page.get_by_role('button',name='Войти',exact=True).click()

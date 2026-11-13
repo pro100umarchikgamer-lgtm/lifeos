@@ -6,6 +6,7 @@ in memory with --source-styles; integration checks use the built stylesheet.
 from dataclasses import replace
 import argparse
 import json
+import os
 from pathlib import Path
 import tempfile
 import threading
@@ -52,7 +53,7 @@ def main():
         checks=[]
         try:
             with sync_playwright() as p:
-                browser=p.chromium.launch(executable_path='/usr/bin/chromium')
+                browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
                 for width,theme in [(320,'light'),(390,'light'),(820,'light'),(1440,'light'),(390,'dark')]:
                     context=browser.new_context(viewport={'width':width,'height':900},color_scheme=theme,service_workers='block')
                     page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
