@@ -346,7 +346,8 @@ async function staffUser(id){
         valid_until:days==='unlimited'?null:Math.floor(Date.now()/1000)+Number(days)*86400,reason:b.reason});
       await staffUser(id);
     });
-    selectField(f,'tier','Уровень',[['Plus','Plus'],['Premium','Premium']]);
+    selectField(f,'tier','Уровень',[['Plus','Plus']]);
+    f.append(el('p','Premium и ИИ пока недоступны. Текущие рабочие возможности открыты бесплатно.','small'));
     selectField(f,'source','Основание',[['manual','Ручная выдача'],['promo','Подарок / тест']]);
     selectField(f,'duration','Срок доступа',[['30','30 дней'],['90','90 дней'],['365','1 год'],['unlimited','Без ограничения срока']]);
     notice('Это ручная выдача доступа. Платёж и магазинная подписка не создаются.');
