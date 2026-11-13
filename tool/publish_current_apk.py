@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import subprocess
 import zipfile
+import xml.etree.ElementTree as ET
 
 from tool.native_release_mode import BRANCH, REPOSITORY
 from tool import publish_retained_apk as retained
@@ -19,11 +20,12 @@ from tool import publish_retained_apk as retained
 REPOSITORY_ID = 1413453356
 CERTIFICATE = '5fa37e4abf1ec90d5787bd0d7dc4cf0b3f49022172f9d25e91f4d8a76702a96e'
 MINIMUM_VERSION = 312001
+ACCEPTED_APK_SHA256 = '66d123cef79f85b7b2665bdcad0e6309db4a694e9a5076ed871450154c762872'
 REQUIRED_JOBS = ('release_mode', 'production_backend / postgres', 'checks')
 SIGNED_STEPS = (
     'Verify prior validation evidence and prevent duplicate APKs',
     'Build and verify one APK with the persistent test identity',
-    'Upgrade signed 134001 through 303001 and verify OS notifications',
+    'Upgrade signed 134001 through 303001 and 312001 and verify OS notifications',
     'Save Android upgrade evidence',
     'Upload signed APK and public certificate evidence',
 )
@@ -163,6 +165,34 @@ def verify_gate(api, pin):
     return jobs
 
 
+def verify_accepted_upgrade(raw, declaration):
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        proof = json.loads(retained.read_member(archive, 'upgrade-result.json'))
+        expected = {
+            'acceptedBaselineVersionCode': MINIMUM_VERSION,
+            'acceptedBaselineApkSha256': ACCEPTED_APK_SHA256,
+            'directUpgradeFromVersionCode': MINIMUM_VERSION,
+            'upgradeVersionChain': [134001, 303001, MINIMUM_VERSION, declaration['version_code']],
+        }
+        require(all(proof.get(key) == value for key, value in expected.items()),
+                'Accepted312 direct-upgrade evidence mismatch')
+        for key in ('acceptedBaselineTaskAndFinancialDataRetained', 'acceptedBaselineCreatedTaskRetainedAfterRestart'):
+            require(proof.get(key) is True, 'Accepted312 data retention not proven')
+        package = retained.read_member(archive, 'accepted-312001-package.txt').decode()
+        require(re.search(r'\bversionCode=312001\b', package) is not None and 'app.lifeos.lifeos' in package,
+                'Accepted312 installed package missing')
+        install = retained.read_member(archive, 'direct-312001-to-candidate-install.txt').strip().splitlines()
+        require(bool(install) and install[-1].strip() == b'Success' and not any(b'Failure' in line for line in install),
+                'Accepted312 direct install did not succeed')
+        for stage in ('accepted-312001-control-task', 'accepted-312001-finances',
+                      'accepted-312001-created-task', 'upgraded-312001-created-task'):
+            require(retained.read_member(archive, stage+'.png').startswith(b'\x89PNG\r\n\x1a\n'),
+                    'Accepted312 screenshot missing')
+            tree = ET.fromstring(retained.read_member(archive, stage+'.xml'))
+            require(tree.tag == 'hierarchy' and tree.find('.//node') is not None,
+                    'Accepted312 UI hierarchy missing')
+
+
 def publish_current(api, pin):
     repository = api.request('')
     require(repository['private'] is False and repository['id'] == REPOSITORY_ID
@@ -176,6 +206,7 @@ def publish_current(api, pin):
     # Reuse the retained publisher's independent apksigner/aapt, exact metadata,
     # upgrade/data-retention/OS notification proof and ZIP digest checks.
     assets = retained.prepare_assets(declaration, apk_zip, upgrade_zip)
+    verify_accepted_upgrade(upgrade_zip, declaration)
     jobs = verify_gate(api, pin)
     proof = json.loads(assets['release-evidence.json'])
     proof['publication_gate'] = {

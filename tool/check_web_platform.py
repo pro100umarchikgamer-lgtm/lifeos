@@ -153,6 +153,7 @@ def main():
             d.get_by_role('button',name='Сохранить',exact=True).click();expect(d).to_have_count(0)
             assert any(r['data'].get('body','').startswith('Длинная заметка') for r in backend.pull(actor,wid,0)['records'])
             page.get_by_role('button',name='Редактировать',exact=True).first.click();d=page.get_by_role('dialog')
+            d.locator('.editor-more > summary').click()
             d.get_by_role('button',name='Удалить',exact=True).click()
             page.get_by_role('button',name='Отменить',exact=True).click()
             assert not any(r['deleted'] for r in backend.pull(actor,wid,0)['records']);checks.append('note_edit_and_cancel_before_delete')

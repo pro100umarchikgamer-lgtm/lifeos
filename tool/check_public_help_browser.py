@@ -1,11 +1,11 @@
 """Targeted public help/legal acceptance. Disposable fixture; no real accounts."""
-import json
+import json, os
 from pathlib import Path
 from urllib.request import urlopen
 from playwright.sync_api import sync_playwright, expect
 from tool.check_web_platform import fixture
 
-OUT=Path('/workspace/work/delivery/legal-faq-2026-11-13')
+OUT=Path(os.environ.get('ULADIM_PUBLIC_HELP_EVIDENCE','web_evidence/public-help'))
 PAGES={'/faq':'.help-question','/privacy':'.help-document','/terms':'.help-document','/delete-account':'.help-steps','/support':'.help-support-grid','/download':'.help-download-grid','/plans':'.help-plans'}
 ANCHORS=('today','tasks','calendar','notes','finances','account','security','notifications','recovery','family','import','support','privacy','deletion','plans','installation')
 

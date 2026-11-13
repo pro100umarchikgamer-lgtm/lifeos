@@ -98,25 +98,38 @@ class FeedbackGuardTest(unittest.TestCase):
 
     def inventory_fixture(self,folder):
         root=Path(folder)
-        live={name:before for name,(before,_) in self.original.items() if before is not None}
-        for name in self.original:
+        live={name:before for name,(before,_) in self.reviewed.items() if before is not None}
+        for name in self.reviewed:
             destination=root/name
             destination.parent.mkdir(parents=True,exist_ok=True)
-            destination.write_bytes((self.root/name).read_bytes())
+            destination.write_text('reviewed:'+name)
         extra=root/'backend/production.py'
         extra.write_text('# unchanged unreviewed backend module\n')
         live['backend/production.py']=hashlib.sha256(extra.read_bytes()).hexdigest()
         return root,live
 
-    def run_inventory_guard(self,root,live):
+    def run_inventory_guard(self,root,live,synthetic=True):
+        tree=ast.parse(self.body)
+        if synthetic:
+            for node in tree.body:
+                if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='REVIEWED_BACKEND_CHANGES' for t in node.targets):
+                    node.value=ast.parse(repr(self.reviewed),mode='eval').body
+            ast.fix_missing_locations(tree)
         with patch('sys.argv',['guard',str(root)]),patch('subprocess.check_output',return_value=json.dumps(live).encode()),contextlib.redirect_stdout(io.StringIO()) as output:
-            exec(compile(self.body,'feedback-inventory-guard','exec'),{})
+            exec(compile(tree,'feedback-inventory-guard','exec'),{})
         return output.getvalue()
 
-    def test_full_inventory_accepts_exact_reviewed_current_files(self):
+    def test_full_inventory_accepts_exact_reviewed_fixture_files(self):
         with tempfile.TemporaryDirectory() as folder:
             root,live=self.inventory_fixture(folder)
             self.assertIn('BACKEND_REVIEWED_DELTAS_ONLY',self.run_inventory_guard(root,live))
+
+    def test_frozen_legacy_guard_rejects_expanded_product_backend(self):
+        # New releases use a separately reviewed full-backend policy. The old
+        # privileged UI publisher must keep rejecting these additional changes.
+        live={name:before for name,(before,_) in self.original.items() if before is not None}
+        with self.assertRaises(SystemExit):
+            self.run_inventory_guard(self.root,live,synthetic=False)
 
     def test_full_inventory_rejects_nested_unreviewed_python_and_sql_additions(self):
         for suffix in ('.py','.sql'):

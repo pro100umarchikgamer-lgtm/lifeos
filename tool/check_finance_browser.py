@@ -109,6 +109,7 @@ def main():
                 expect(page.locator('.ledger')).to_contain_text('Пополнение счёта')
                 checks.append({'case':'incremental sync updates existing record','expected':'external edit visible without losing existing records','actual':'passed'})
                 for method in ['bar','line','smooth','donut','compact']:
+                    page.locator('.finance-chart-options').evaluate('(element)=>element.open=true')
                     page.locator('select[name=chart-mode]').select_option(method)
                     expect(page.locator('.chart-legend')).to_contain_text('RUB')
                 for width in [320,375,390,430,768,1024,1280,1440]:

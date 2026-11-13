@@ -141,6 +141,7 @@ def main():
                     page.get_by_label('Текст заметки',exact=True).fill('First verified note')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
                     page.get_by_role('button',name='Редактировать',exact=True).click()
+                    page.get_by_role('dialog').locator('.editor-more > summary').click()
                     expect(page.get_by_role('dialog').get_by_role('button',name='Удалить',exact=True)).to_be_visible()
                     page.get_by_label('Текст заметки',exact=True).fill('Edited verified note')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
@@ -172,16 +173,14 @@ def main():
                     cases.append({'case':route+' open signup/resend/confirmation/non-MFA login','expected':'verified account, no invitation, no automatic MFA','actual':'passed'})
                     context.close()
                 clock[0] += 901
-                context=browser.new_context();page=context.new_page();page.goto(staff+'/')
+                context=browser.new_context();page=context.new_page();response=page.goto(staff+'/')
+                assert response.status==404
                 expect(page.locator('input[name=code]')).to_have_count(0)
-                page.get_by_label('Электронная почта',exact=True).fill(actor['email'])
-                page.locator('input[name=password]').fill(PASSWORD)
-                page.get_by_role('button',name='Войти',exact=True).click()
-                expect(page.locator('input[type=password]')).to_have_count(0)
-                page.locator('input[name=code]').fill(totp(staff_factor['totp_secret'],clock[0]//30))
-                page.get_by_role('button',name='Войти',exact=True).click()
-                expect(page.get_by_role('heading',name='Обзор сервиса',exact=True)).to_be_visible()
-                cases.append({'case':'Control mandatory password-first MFA','expected':'no staff session until factor','actual':'passed'})
+                expect(page.get_by_label('Электронная почта',exact=True)).to_have_count(0)
+                assert page.request.get(staff+'/api/session').status==404
+                # Real admitted handoff + mandatory staff MFA is exercised by
+                # check_recovery_live_browser with actual same-site TLS.
+                cases.append({'case':'Control hidden from an unadmitted browser','expected':'root and API return404 without a sign-in form','actual':'passed'})
                 context.close();browser.close()
             except Exception:
                 diagnostic={'url':page.url,'body':page.locator('body').inner_text(),'errors':errors if 'errors' in locals() else []}

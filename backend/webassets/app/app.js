@@ -456,13 +456,43 @@ function decimalInput(value,currency){return ULADIMMoney.decimal(value,currency)
 function localDate(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 function currentSpace(){return state.spaces.find(s=>s.id===state.space);}
 function records(kind){return state.records.filter(r=>!r.deleted&&!pendingDeletes.has(r.id)&&r.kind===kind);}
+function structuralAccountReference(record){
+ return record?.kind==='account'&&record.deleted===true&&record.structural_reference===true&&
+  /^[A-Z]{3}$/.test(record.reference_currency||'')&&record.data&&typeof record.data==='object'&&
+  !Array.isArray(record.data)&&Object.keys(record.data).length===0;
+}
+function erasedFinanceCopy(){return ({
+ ru:['Удалённый счёт','Данные счёта удалены его владельцем. Суммы и дата вашей операции сохранены. Изменить перевод с удалённым счётом нельзя.'],
+ en:['Deleted account','The account owner deleted its details. Your transfer amounts and date are preserved. A transfer linked to a deleted account cannot be changed.'],
+ 'uz-Latn':['O‘chirilgan hisob','Hisob egasi uning ma’lumotlarini o‘chirdi. O‘tkazmangiz summalari va sanasi saqlandi. O‘chirilgan hisob bilan bog‘liq o‘tkazmani o‘zgartirib bo‘lmaydi.'],
+ 'uz-Cyrl':['Ўчирилган ҳисоб','Ҳисоб эгаси унинг маълумотларини ўчирди. Ўтказмангиз суммалари ва санаси сақланди. Ўчирилган ҳисоб билан боғлиқ ўтказмани ўзгартириб бўлмайди.']
+ })[state.lang]||['Deleted account','The account owner deleted its details. Your transfer amounts and date are preserved. A transfer linked to a deleted account cannot be changed.'];}
+function accountReference(id){
+ const record=state.records.find(r=>r.id===id&&r.kind==='account'&&(!r.deleted||structuralAccountReference(r)));
+ if(!record)return null;
+ return record.deleted?{name:erasedFinanceCopy()[0],currency:record.reference_currency}:record.data;
+}
+function forgetPrivacyErasedRecord(record,workspace){
+ if(!record.deleted||record.privacy_erased!==true)return;
+ const account=state.session?.user_id;if(!account)return;
+ try{
+  sessionStorage.removeItem('uladim-note-draft:'+account+':'+workspace+':'+record.id);
+  const prefix='uladim-task-action:'+account+':'+workspace+':';
+  for(let i=sessionStorage.length-1;i>=0;i--){const key=sessionStorage.key(i);if(!key?.startsWith(prefix))continue;
+   try{if(JSON.parse(sessionStorage.getItem(key))?.operation?.record_id===record.id)sessionStorage.removeItem(key);}catch{}
+  }
+ }catch{}
+ taskChanges.delete(workspace+':'+record.id);
+ const pending=pendingDeletes.get(record.id);if(pending){clearTimeout(pending.timer);pendingDeletes.delete(record.id);}
+ for(const editor of document.querySelectorAll('dialog[data-record-id]'))if(editor.dataset.workspace===workspace&&editor.dataset.recordId===record.id)editor.close();
+}
 async function readSpace(){
  const generation=++state.generation,wid=state.space;if(!wid){state.records=[];state.syncSpace=null;state.roster=null;return;}
  const roster=await call('roster?workspace='+encodeURIComponent(wid));const same=state.syncSpace===wid;let cursor=same?state.syncCursor:0,epoch=same?state.syncEpoch:'',all=new Map(same?state.records.map(r=>[r.id,r]):[]);
  for(let pages=0;pages<10000;pages++){
   const page=await call('sync?workspace='+encodeURIComponent(wid)+'&cursor='+cursor+'&epoch='+encodeURIComponent(epoch));
   if(generation!==state.generation)return;
-  if(page.reset)all.clear();for(const r of page.records){if(r.deleted)all.delete(r.id);else all.set(r.id,r);}if(page.more&&page.cursor===cursor&&!page.reset)throw {code:'invalid_sync_response'};cursor=page.cursor;epoch=page.epoch;if(!page.more){state.records=[...all.values()];state.roster=roster;state.syncSpace=wid;state.syncCursor=page.cursor;state.syncEpoch=page.epoch;return;}
+  if(page.reset)all.clear();for(const r of page.records){forgetPrivacyErasedRecord(r,wid);if(r.deleted&&!structuralAccountReference(r))all.delete(r.id);else all.set(r.id,r);}if(page.more&&page.cursor===cursor&&!page.reset)throw {code:'invalid_sync_response'};cursor=page.cursor;epoch=page.epoch;if(!page.more){state.records=[...all.values()];state.roster=roster;state.syncSpace=wid;state.syncCursor=page.cursor;state.syncEpoch=page.epoch;return;}
  }throw {code:'invalid_sync_response'};
 }
 let refreshTail=Promise.resolve();
@@ -994,6 +1024,7 @@ function listTasks(m){
    const groupRows=rows.filter(r=>Boolean(r.data.completed)===completed);
    if(!groupRows.length)continue;
    const group=E(completed&&status.value!=='done'?'details':'section',undefined,'task-group');
+   if(group.tagName==='DETAILS'&&query.value.trim())group.open=true;
    const heading=E('h2',t(name));heading.id='tasks-'+name;
    group.setAttribute('aria-labelledby',heading.id);
    group.append(append(E(group.tagName==='DETAILS'?'summary':'div',undefined,'task-group-head'),heading,E('span',String(groupRows.length),'task-group-count')));
@@ -1161,6 +1192,17 @@ function budgetEditorStart(period,at=localDate()){
  return date.toISOString().slice(0,10);
 }
 function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
+ if(r?.deleted)return;
+ if(kind==='transfer'&&r&&[r.data.from_id,r.data.to_id].some(id=>!records('account').some(a=>a.id===id))){
+  dialog(t('family_kind_transfer'),container=>{
+   container.classList.add('record-editor','transfer-reference-details');container.append(E('p',erasedFinanceCopy()[1]));
+   const values=E('dl');
+   for(const [label,id,amount]of [[t('family_from'),r.data.from_id,r.data.sent_minor],[t('family_to'),r.data.to_id,r.data.received_minor]]){
+    const reference=accountReference(id);values.append(E('dt',label+' · '+(reference?.name||erasedFinanceCopy()[0])),reference?moneyElement(amount,reference.currency,'','', 'dd'):E('dd','—'));
+   }
+   values.append(E('dt',t('family_date')),E('dd',displayDate(r.data.date)));container.append(values);
+  });return;
+ }
  const workspace=state.space,epoch=privateEpoch,taskKey=kind==='task'&&!r?taskActionKey('create'):'';
  const accountKey=kind==='transaction'?transactionAccountKey(workspace):'';
  const pendingTask=readTaskAction(taskKey);
@@ -1374,6 +1416,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  if(r.editable)more.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));secondary.append(more);}
  container.append(secondary);
  });
+ if(r)d.dataset.recordId=r.id;
  if(taskKey)d.addEventListener('close',()=>{
   if(epoch===privateEpoch&&workspace===state.space&&['today','tasks'].includes(state.tab)&&readTaskAction(taskKey))render();
  });
@@ -1624,7 +1667,7 @@ function finance(m){
   clearDrill.hidden=!drilldown;pagination.hidden=view==='overview'&&!drilldown;
   const ledgerHeading=ledger.querySelector('h2');ledgerHeading.textContent=drilldown?t(breakdownKind.value)+(categoryFilter===null?'':' · '+new Map(transactionCategoryChoices()).get(categoryFilter)):view==='overview'?copy.recent:t('web_history');
   const allOperations=ledger.querySelector('.finance-ledger-all');if(allOperations)allOperations.hidden=drilldown;
-  const accountsById=new Map(accountRecords.map(account=>[account.id,account.data]));ledgerRows.replaceChildren();
+  const accountsById=new Map(state.records.filter(account=>account.kind==='account'&&(!account.deleted||structuralAccountReference(account))).map(account=>[account.id,accountReference(account.id)]));ledgerRows.replaceChildren();
   const filterKey=JSON.stringify(state.financeFilters);if(filterKey!==ledgerFilterKey){ledgerLimit=25;ledgerFilterKey=filterKey;}
   const displayed=entries.slice(0,view==='overview'&&!drilldown?5:ledgerLimit);
   for(const [index,entry]of displayed.entries()){

@@ -210,7 +210,7 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart test/session_rotation_test.dart test/account_center_test.dart test/google_login_test.dart test/notification_delivery_test.dart test/native_shell_redesign_test.dart test/native_finance_design_test.dart test/native_account_design_test.dart test/native_planning_design_test.dart test/statement_timestamp_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart test/session_rotation_test.dart test/account_center_test.dart test/google_login_test.dart test/notification_delivery_test.dart test/native_shell_redesign_test.dart test/native_finance_design_test.dart test/native_account_design_test.dart test/native_planning_design_test.dart test/statement_timestamp_test.dart test/native_account_availability_test.dart test/native_api_availability_test.dart test/native_finance_navigation_test.dart test/native_inbox_ui_test.dart test/native_shell_polish_test.dart test/notification_center_test.dart test/notification_budget_preferences_test.dart test/notification_queue_race_test.dart test/public_links_test.dart test/help_center_test.dart test/subscription_access_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/account_center_visual_test.dart test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart test/ux31_visual_test.dart
         if: steps.validation.outputs.full == 'true'
@@ -285,8 +285,8 @@ jobs:
         if: steps.validation.outputs.build == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tool/check_release_upgrade.py --download --baseline 134001 --through-version 303001
-      - name: Upgrade signed 134001 through 303001 and verify OS notifications
+        run: python3 tool/check_release_upgrade.py --download --baseline 134001 --through-version 303001 --accepted-version 312001
+      - name: Upgrade signed 134001 through 303001 and 312001 and verify OS notifications
         if: steps.validation.outputs.build == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 12
@@ -297,7 +297,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim
-          script: python3 tool/check_release_upgrade.py --baseline 134001 --through-version 303001 --candidate build/app/outputs/flutter-apk/app-release.apk
+          script: python3 tool/check_release_upgrade.py --baseline 134001 --through-version 303001 --accepted-version 312001 --candidate build/app/outputs/flutter-apk/app-release.apk
       - name: Save Android upgrade evidence
         if: always() && steps.validation.outputs.build == 'true'
         uses: actions/upload-artifact@v4

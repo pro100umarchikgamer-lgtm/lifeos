@@ -12,7 +12,7 @@ concurrency:
 jobs:
   web:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 50
     # This version matches tool/web-requirements.txt and includes all browser dependencies.
     container:
       image: mcr.microsoft.com/playwright/python:v1.56.0-noble
@@ -75,6 +75,18 @@ jobs:
           python -m tool.check_mobile_today_browser
           python -m tool.check_transaction_categories
           python tool/test_publish_feedback_guard.py
+      - name: Recorded feedback, inbox, safe Control recovery and public help
+        run: |
+          python -m tool.check_feedback_browser
+          python -m tool.check_inbox_browser
+          python -m tool.check_control_announcements_browser
+          python -m tool.check_recovery_browser
+          python -m tool.check_recovery_live_browser
+          node tool/check_statement_accounts.cjs
+          python -m tool.check_statement_accounts_browser
+          python -m tool.check_notification_connection_browser
+          python -m tool.check_context_help_browser
+          python -m tool.check_public_help_browser
       - name: Focus settings, refresh status and delayed workspace switching
         run: |
           python -m tool.check_focus_completion

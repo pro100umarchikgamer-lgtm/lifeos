@@ -71,6 +71,44 @@ def artifacts_fixture():
             artifact_fixture('uladim-upgrade-evidence-400', 1, b'upgrade ZIP')]
 
 
+def accepted_upgrade_archive(changes=None, omitted=None):
+    fields = {'installedVersionCode': 400001, 'acceptedBaselineVersionCode': 312001,
+              'acceptedBaselineApkSha256': current.ACCEPTED_APK_SHA256,
+              'directUpgradeFromVersionCode': 312001, 'upgradeVersionChain': [134001,303001,312001,400001],
+              'acceptedBaselineTaskAndFinancialDataRetained': True,
+              'acceptedBaselineCreatedTaskRetainedAfterRestart': True}
+    fields.update(changes or {})
+    data=io.BytesIO()
+    with retained_tests.EvidenceTests().upgrade_archive(fields) as original, zipfile.ZipFile(data,'w') as archive:
+        for name in original.namelist():archive.writestr(name,original.read(name))
+        additional={'accepted-312001-package.txt':b'Package [app.lifeos.lifeos] versionCode=312001',
+                    'direct-312001-to-candidate-install.txt':b'Performing Streamed Install\nSuccess\n'}
+        for stage in ('accepted-312001-control-task','accepted-312001-finances',
+                      'accepted-312001-created-task','upgraded-312001-created-task'):
+            additional[stage+'.png']=b'\x89PNG\r\n\x1a\n'
+            additional[stage+'.xml']=b'<hierarchy><node text="synthetic retained record"/></hierarchy>'
+        for name,value in additional.items():
+            if name!=omitted:archive.writestr(name,value)
+    return data.getvalue()
+
+
+class AcceptedUpgradeTests(unittest.TestCase):
+    def test_direct_accepted_apk_and_data_retention_are_required(self):
+        current.verify_accepted_upgrade(accepted_upgrade_archive(),{'version_code':400001})
+        for key,value in [('acceptedBaselineVersionCode',303001),('acceptedBaselineApkSha256','0'*64),
+                          ('directUpgradeFromVersionCode',303001),('upgradeVersionChain',[134001,303001,400001]),
+                          ('acceptedBaselineTaskAndFinancialDataRetained',False),
+                          ('acceptedBaselineCreatedTaskRetainedAfterRestart',False)]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                current.verify_accepted_upgrade(accepted_upgrade_archive({key:value}),{'version_code':400001})
+
+    def test_json_claims_without_installed_package_or_real_ui_files_are_rejected(self):
+        for missing in ('accepted-312001-package.txt','direct-312001-to-candidate-install.txt',
+                        'accepted-312001-created-task.xml','upgraded-312001-created-task.png'):
+            with self.subTest(missing=missing), self.assertRaises(ValueError):
+                current.verify_accepted_upgrade(accepted_upgrade_archive(omitted=missing),{'version_code':400001})
+
+
 class ContextTests(unittest.TestCase):
     def test_only_exact_native_github_context_and_checked_out_source_are_accepted(self):
         self.assertEqual(pin(), {'id': 1001, 'number': 400, 'attempt': 1, 'source': SOURCE})
@@ -219,8 +257,7 @@ class CurrentRunAPI:
                              'apiOrigin=https://api.getuladim.space\n')
             archive.writestr('apk-certificate.txt', self.certificate)
             archive.writestr('apk-manifest.txt', self.manifest)
-        with retained_tests.EvidenceTests().upgrade_archive({'installedVersionCode': 400001}) as upgrade:
-            upgrade_raw = upgrade.fp.getvalue()
+        upgrade_raw = accepted_upgrade_archive()
         self.downloads = {3000: data.getvalue(), 3001: upgrade_raw}
         self.artifacts = [artifact_fixture('lifeos-release-test-apk-' + SOURCE, 0, self.downloads[3000]),
                           artifact_fixture('uladim-upgrade-evidence-400', 1, self.downloads[3001])]
