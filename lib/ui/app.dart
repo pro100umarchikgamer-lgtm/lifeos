@@ -436,7 +436,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               icon: const Icon(Icons.arrow_back_rounded, size: 18),
               label: Text(c.pack.t('profile')),
             )),
-        ..._modules(),
+        if (familyMode)
+          FamilyDashboard(controller: c, visibleKinds: const {
+            'note', 'task', 'account', 'transaction', 'transfer', 'budget',
+            'event', 'shopping', 'request',
+          })
+        else
+          ..._modules(),
       ] else if (_profileOpen) ...[
         ..._profile(),
         const SizedBox(height: 16),
@@ -453,7 +459,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               }),
             )),
       ] else if (familyMode)
-        FamilyDashboard(controller: c, tab: _tab)
+        FamilyDashboard(controller: c, tab: _tab, visibleKinds: switch (_destination) {
+          1 => const {'task'},
+          2 => const {'event'},
+          3 => const {'note'},
+          4 => const {'account', 'transaction', 'transfer', 'budget', 'request'},
+          _ => null,
+        })
       else if (_calendarOpen)
         CalendarPanel(controller: c)
       else if (_notesOpen)
