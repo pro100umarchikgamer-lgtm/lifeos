@@ -14,6 +14,7 @@ import 'appearance_editor.dart';
 import 'selection.dart';
 import 'preference_choices.dart';
 import 'personal_modules.dart';
+import 'help_center.dart';
 
 class PersonalSettings extends StatefulWidget {
   const PersonalSettings({super.key, required this.controller, this.section});
@@ -589,6 +590,16 @@ class _PersonalSettingsState extends State<PersonalSettings> {
               Text(c.pack.t('backup_privacy')),
               const SizedBox(height: 24),
               SettingsGroup(children: [
+                SettingsRow(
+                    key: const Key('help_center'),
+                    title: helpCenterTitle(c.pack.tag),
+                    icon: Icons.help_outline_rounded,
+                    onTap: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => HelpCenterScreen(
+                                languageTag: c.pack.tag,
+                                onOpenLink: c.native.openExternalLink)))),
                 SettingsRow(
                     key: const Key('legal_privacy'),
                     title: c.pack.t('legal_privacy'),
