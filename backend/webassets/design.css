@@ -3450,6 +3450,17 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .financ
  body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-event-dots { display:none; }
 }
 @media (max-width:759px) {
+ /* Keep the dedicated history's first record above the fixed phone navigation. */
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-toolbar { display:grid;grid-template-columns:repeat(2,minmax(0,1fr)); }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-toolbar>button:first-child { grid-column:auto; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger]>.context-help { margin-bottom:12px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger]>.finance-overview { margin-bottom:14px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-metric-grid { gap:6px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-metric { padding:6px 16px!important;row-gap:2px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-metric>.money-display:only-of-type { grid-row:1 / span 2; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] :is(.finance-view-tab, .finance-filter-panel>summary) { min-height:44px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .ledger .ledger-row { grid-template-columns:minmax(0,1fr) 44px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .ledger .ledger-row>button { width:44px;min-width:44px;height:44px;min-height:44px; }
  body[data-design=clarity][data-reference-layout=b12] #root .finance-page button.finance-metric { display:grid;grid-template-columns:minmax(62px,.8fr) minmax(0,2fr);align-items:center;gap:6px 12px; }
  body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>.small { grid-column:1;grid-row:1; }
  body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>.money-display { grid-column:2;grid-row:auto;margin:0;font-size:16px;--money-align:flex-end; }
