@@ -13,7 +13,7 @@ from backend.config import Settings
 from backend.production import Application
 from backend.service import Backend
 from tool.check_pwa_browser import Quiet
-from tool.web_browser_navigation import open_tab
+from tool.web_browser_navigation import open_tab, open_finance_section
 
 OUT=Path('web_evidence/finance-release')
 PASSWORD='synthetic-finance-release-password'
@@ -47,7 +47,7 @@ def main():
                 page.goto(origin+'/app');page.locator('input[name=email]').fill(actor['email']);page.locator('input[name=password]').fill(PASSWORD);page.get_by_role('button',name='Войти',exact=True).click()
                 expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
                 open_tab(page,'Финансы')
-                import_button=page.locator('.finance-toolbar').get_by_role('button',name='Импортировать выписку',exact=True)
+                import_button=page.locator('.reference-finance-group button:visible,.finance-toolbar button:visible').filter(has_text='Импортировать выписку')
                 expect(import_button).to_be_visible()
                 checks.append({'case':'shared domain worker preserves exact KWD/JPY and rejects unsafe inputs','expected':'exact minor units or explicit rejection','actual':page.evaluate('''async()=>{
                   const parse=async(text,extension='csv')=>statementWorker({action:'parse',bytes:btoa(unescape(encodeURIComponent(text))),extension,encoding:'auto',delimiter:'auto',currency:'RUB'});
@@ -92,7 +92,9 @@ def main():
                 checks.append({'case':'lost response then same operation retry','expected':'2 records exactly once','actual':'passed'})
                 page.unroute('**/account/api/sync',lost_response)
                 dialog.get_by_role('button',name='Закрыть',exact=True).click()
-                expect(page.locator('.account-balance strong')).to_have_text('865,44 RUB')
+                open_finance_section(page,'accounts')
+                expect(page.locator('.account-balance .finance-account-amount')).to_have_text('865,44 RUB')
+                open_tab(page,'Финансы')
                 checks.append({'case':'visible account balance immediately after import','expected':'865.44 RUB, including opening balance','actual':'passed'})
                 import_button.click();dialog=page.get_by_role('dialog')
                 dialog.locator('input[type=file]').set_input_files({'name':'renamed.csv','mimeType':'text/csv','buffer':statement.encode()})

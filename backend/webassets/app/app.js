@@ -2,7 +2,9 @@
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
 const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'violet',chart:'bar',generation:0,busy:false,googleEnabled:false};
 let calendarMode='month';
-let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null;
+let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null,backgroundDirty=false;
+const sessionEvents=typeof BroadcastChannel==='function'?new BroadcastChannel('uladim-session'):null;
+sessionEvents?.addEventListener('message',event=>{if(event.data==='signed-out'){clearNoteDrafts();clearTaskActions();clearIdentity();login();}});
 const pendingDeletes=new Map();
 const quickTasks=new Map();
 const taskChanges=new Map();
@@ -229,17 +231,122 @@ function icon(name){const svg=document.createElementNS('http://www.w3.org/2000/s
 function iconButton(name,label,run){const b=button('',run,'icon');b.setAttribute('aria-label',label);b.title=label;b.append(icon(name));return b;}
 function addButton(label,run){const b=button(label,run,'');b.prepend(icon('add'));return b;}
 function anchor(text,path){const a=E('a',text,'button');a.href=path;return a;}
-function input(container,name,label,type='text',value='',required=true){const id='input-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const n=E(type==='textarea'?'textarea':'input');n.name=name;n.id=id;if(type!=='textarea')n.type=type;if(type==='email')n.autocomplete='email';if(type==='password')n.autocomplete=['new','next','new-password'].includes(name)?'new-password':'current-password';if(type==='textarea')n.maxLength=20000;if(['name','label'].includes(name))n.maxLength=2000;if(name==='currency'){n.maxLength=3;n.autocapitalize='characters';}if(['amount','received'].includes(name))n.inputMode='decimal';if(name==='code'){n.autocomplete='one-time-code';n.spellcheck=false;}n.value=value??'';n.required=required&&type!=='checkbox';append(container,l,n);return n;}
+let activeCurrencyPicker=null,currencyPickerDismissReady=false;
+const CURRENCY_FALLBACK=['AED','AFN','ALL','AMD','ARS','AUD','AZN','BAM','BDT','BGN','BHD','BND','BOB','BRL','BWP','BYN','CAD','CHF','CLP','CNY','COP','CRC','CZK','DKK','DZD','EGP','EUR','GBP','GEL','GHS','HKD','HUF','IDR','ILS','INR','IQD','ISK','JOD','JPY','KES','KGS','KHR','KRW','KWD','KZT','LAK','LBP','LKR','MAD','MDL','MKD','MNT','MOP','MUR','MXN','MYR','NGN','NOK','NPR','NZD','OMR','PEN','PHP','PKR','PLN','PYG','QAR','RON','RSD','RUB','SAR','SEK','SGD','THB','TJS','TMT','TND','TRY','TWD','TZS','UAH','UGX','USD','UYU','UZS','VND','XAF','XOF','ZAR'];
+function currencyInput(n){
+ const labels={ru:['Выбрать валюту','Валюты','Валюта не найдена'],en:['Choose currency','Currencies','No currency found'],'uz-Latn':['Valyutani tanlash','Valyutalar','Valyuta topilmadi'],'uz-Cyrl':['Валютани танлаш','Валюталар','Валюта топилмади']}[state.lang]||['Choose currency','Currencies','No currency found'];
+ const field=E('div',undefined,'currency-picker'),toggle=E('button',undefined,'currency-picker-toggle'),list=E('div',undefined,'currency-picker-list');
+ n.replaceWith(field);field.append(n,toggle,list);n.currencyField=field;
+ n.maxLength=64;n.pattern='[A-Za-z]{3}';n.autocomplete='off';n.spellcheck=false;n.autocapitalize='characters';
+ n.setAttribute('role','combobox');n.setAttribute('aria-autocomplete','list');n.setAttribute('aria-haspopup','listbox');n.setAttribute('aria-expanded','false');
+ list.id=n.id+'-currencies';list.hidden=true;list.setAttribute('role','listbox');list.setAttribute('aria-label',labels[1]);n.setAttribute('aria-controls',list.id);
+ toggle.type='button';toggle.tabIndex=-1;toggle.setAttribute('aria-label',labels[0]);toggle.setAttribute('aria-controls',list.id);toggle.setAttribute('aria-expanded','false');toggle.append(E('span','⌄'));toggle.firstChild.setAttribute('aria-hidden','true');
+ let codes;
+ try{codes=Intl.supportedValuesOf('currency');}catch{codes=CURRENCY_FALLBACK;}
+ const common=['RUB','USD','EUR','UZS','KZT','GBP','CNY','AED'];
+ codes=[...new Set([...common,...codes])].sort((a,b)=>{
+  const ai=common.indexOf(a),bi=common.indexOf(b);return (ai<0?100:ai)-(bi<0?100:bi)||a.localeCompare(b);
+ });
+ let localNames,englishNames;
+ try{localNames=new Intl.DisplayNames([state.lang],{type:'currency'});}catch{}
+ try{englishNames=new Intl.DisplayNames(['en'],{type:'currency'});}catch{}
+ const normalize=value=>value.normalize('NFKD').replace(/\p{M}/gu,'').toLocaleLowerCase(state.lang).trim();
+ const choices=codes.map(code=>({code,name:localNames?.of(code)||code,search:normalize(code+' '+(localNames?.of(code)||'')+' '+(englishNames?.of(code)||''))}));
+ let shown=[],active=-1,opened=false,choosing=false,userQuery=false,committed=n.value;
+ const usable=()=>n.isConnected&&!n.readOnly&&!n.matches(':disabled');
+ const control={field,close};
+ function place(){
+  if(!opened||!usable()){close();return;}
+  const box=n.getBoundingClientRect(),dialog=n.closest('dialog')?.getBoundingClientRect(),viewport=window.visualViewport;
+  const top=Math.max(dialog?.top||0,viewport?.offsetTop||0)+12;
+  const bottom=Math.min(dialog?.bottom||innerHeight,(viewport?.offsetTop||0)+(viewport?.height||innerHeight))-12;
+  const below=bottom-box.bottom,above=box.top-top,up=below<Math.min(220,list.scrollHeight)&&above>below;
+  list.classList.toggle('opens-above',up);list.style.maxHeight=Math.min(220,Math.max(48,up?above:below))+'px';
+ }
+ function close(restore=false){
+  if(restore)n.value=committed;
+  opened=false;list.hidden=true;active=-1;n.setAttribute('aria-expanded','false');toggle.setAttribute('aria-expanded','false');n.removeAttribute('aria-activedescendant');
+  window.removeEventListener('resize',place);window.removeEventListener('scroll',place,true);window.visualViewport?.removeEventListener('resize',place);
+  if(activeCurrencyPicker===control)activeCurrencyPicker=null;
+ }
+ function mark(index){
+  active=index;
+  for(const [i,option]of [...list.querySelectorAll('[role=option]')].entries()){
+   const selected=i===active;option.setAttribute('aria-selected',String(selected));option.classList.toggle('is-active',selected);
+  }
+  const option=list.querySelectorAll('[role=option]')[active];
+  if(!option){n.removeAttribute('aria-activedescendant');return;}
+  n.setAttribute('aria-activedescendant',option.id);
+  if(option.offsetTop<list.scrollTop)list.scrollTop=option.offsetTop;
+  else if(option.offsetTop+option.offsetHeight>list.scrollTop+list.clientHeight)list.scrollTop=option.offsetTop+option.offsetHeight-list.clientHeight;
+ }
+ function choose(code){
+  if(!usable())return;
+  choosing=true;n.value=committed=code;userQuery=false;
+  n.dispatchEvent(new Event('input',{bubbles:true}));n.dispatchEvent(new Event('change',{bubbles:true}));choosing=false;
+  close();n.focus({preventScroll:true});
+ }
+ function open(query='',all=false){
+  if(!usable())return;
+  if(activeCurrencyPicker&&activeCurrencyPicker!==control)activeCurrencyPicker.close();
+  const needle=normalize(query);shown=choices.filter(choice=>choice.search.includes(needle)).slice(0,all?choices.length:8);
+  list.replaceChildren();active=-1;
+  for(const [i,choice]of shown.entries()){
+   const option=E('button',undefined,'currency-picker-option');option.type='button';option.tabIndex=-1;option.id=list.id+'-'+i;option.setAttribute('role','option');option.setAttribute('aria-selected','false');
+   option.append(E('strong',choice.code),E('span',choice.name));
+   option.addEventListener('pointerdown',event=>event.preventDefault());option.addEventListener('click',()=>choose(choice.code));list.append(option);
+  }
+  if(!shown.length)list.append(E('p',labels[2],'currency-picker-empty'));
+  opened=true;list.hidden=false;activeCurrencyPicker=control;n.setAttribute('aria-expanded','true');toggle.setAttribute('aria-expanded','true');n.removeAttribute('aria-activedescendant');
+  place();window.addEventListener('resize',place);window.addEventListener('scroll',place,true);window.visualViewport?.addEventListener('resize',place);
+ }
+ n.addEventListener('focus',()=>{if(!opened){committed=n.value;userQuery=false;}});
+ n.addEventListener('input',()=>{if(!choosing){userQuery=true;open(n.value);}});
+ n.addEventListener('change',()=>{if(/^[a-z]{3}$/i.test(n.value)){n.value=n.value.toUpperCase();committed=n.value;}});
+ n.addEventListener('keydown',event=>{
+  if(!usable()||event.isComposing)return;
+  if(['ArrowDown','ArrowUp'].includes(event.key)){
+   event.preventDefault();if(!opened)open(userQuery?n.value:'',true);
+   if(shown.length)mark(active<0?(event.key==='ArrowDown'?0:shown.length-1):(active+(event.key==='ArrowDown'?1:-1)+shown.length)%shown.length);
+  }else if(event.key==='Enter'&&opened){event.preventDefault();if(active>=0)choose(shown[active].code);else if(shown.length===1)choose(shown[0].code);}
+  else if(event.key==='Escape'&&opened){event.preventDefault();event.stopPropagation();close(true);}
+ });
+ toggle.addEventListener('click',()=>{if(!usable()){close();return;}if(opened){close();n.focus({preventScroll:true});}else{const query=userQuery?n.value:'';n.focus({preventScroll:true});open(query,true);}});
+ field.addEventListener('focusout',event=>{if(!field.contains(event.relatedTarget))close();});
+ new MutationObserver(()=>{toggle.disabled=n.readOnly||n.disabled;if(!usable())close();}).observe(n,{attributes:true,attributeFilter:['readonly','disabled']});
+ if(!currencyPickerDismissReady){
+  currencyPickerDismissReady=true;
+  document.addEventListener('pointerdown',event=>{if(activeCurrencyPicker&&!activeCurrencyPicker.field.contains(event.target))activeCurrencyPicker.close();},true);
+  document.addEventListener('close',()=>activeCurrencyPicker?.close(),true);
+ }
+ return n;
+}
+function input(container,name,label,type='text',value='',required=true){const id='input-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const n=E(type==='textarea'?'textarea':'input');n.name=name;n.id=id;if(type!=='textarea')n.type=type;if(type==='email')n.autocomplete='email';if(type==='password')n.autocomplete=['new','next','new-password'].includes(name)?'new-password':'current-password';if(type==='textarea')n.maxLength=20000;if(['name','label'].includes(name))n.maxLength=2000;if(['amount','received'].includes(name))n.inputMode='decimal';if(name==='code'){n.autocomplete='one-time-code';n.spellcheck=false;}n.value=value??'';n.required=required&&type!=='checkbox';append(container,l,n);if(name==='currency')currencyInput(n);return n;}
 function select(container,name,label,choices,value){const id='select-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const s=E('select');s.name=name;s.id=id;for(const [v,label]of choices){const o=E('option',label);o.value=v;s.append(o);}s.value=value;append(container,l,s);return s;}
 function card(title,body){const c=E('section',undefined,'card');if(title)c.append(E('h2',title));if(body)c.append(E('p',body));return c;}
 function form(container,title,build,submit,submitLabel=t('save')){
- const f=E('form');if(title)f.append(E('h2',title));
+ const f=E('form');f.noValidate=true;if(title)f.append(E('h2',title));
  const fields=E('fieldset'),values=build(fields)||{},initiallyDisabled=fields.disabled;
  const status=E('p',undefined,'error');status.setAttribute('role','status');
  const b=E('button',submitLabel);b.type='submit';append(f,fields,status,b);
  let pending=false;
+ const fieldError=(field,message)=>{
+  if(!field)return;
+  const id=field.id+'-error';let hint=document.getElementById(id);
+  if(!hint){hint=E('p',undefined,'field-error');hint.id=id;(field.currencyField||field).after(hint);}
+  hint.textContent=message;field.setAttribute('aria-invalid','true');
+  field.setAttribute('aria-describedby',[...new Set([...(field.getAttribute('aria-describedby')||'').split(' ').filter(Boolean),id])].join(' '));
+  const options=field.closest('details');if(options)options.open=true;
+ };
+ f.addEventListener('input',event=>{
+  const field=event.target;if(!field.id)return;
+  field.removeAttribute('aria-invalid');const id=field.id+'-error';document.getElementById(id)?.remove();
+  const descriptions=(field.getAttribute('aria-describedby')||'').split(' ').filter(value=>value&&value!==id);if(descriptions.length)field.setAttribute('aria-describedby',descriptions.join(' '));else field.removeAttribute('aria-describedby');
+ });
  f.addEventListener('submit',async event=>{
   event.preventDefault();if(pending)return;
+  const invalid=[...f.elements].find(field=>!field.disabled&&typeof field.checkValidity==='function'&&!field.checkValidity());
+  if(invalid){fieldError(invalid,invalid.validationMessage);invalid.focus({preventScroll:true});invalid.scrollIntoView({block:'nearest'});return;}
   pending=true;b.disabled=true;status.textContent='';
   try{await submit(values);status.textContent=t('account_done');}
   catch(error){
@@ -247,6 +354,8 @@ function form(container,title,build,submit,submitLabel=t('save')){
    fields.disabled=initiallyDisabled||!!retry;
    b.textContent=retry?t('retry'):submitLabel;
    status.textContent=error.displayMessage||(error.refreshOnly?t('web_saved_refresh'):error.uncertain?t('web_uncertain'):errorText(error));
+   const field=['invalid_amount','amount_precision'].includes(error.code)?values.amount:['invalid_currency','currency_mismatch'].includes(error.code)?values.currency:error.code==='invalid_date'?values.date||values.end||values.start:null;
+   if(field){fieldError(field,status.textContent);field.focus({preventScroll:true});}
    if(error.code==='unauthorized')report(error);
   }finally{b.disabled=false;pending=false;}
  });
@@ -292,7 +401,39 @@ function replaceDialog(d,...nodes){
  heading.focus({preventScroll:true});
 }
 
-function clearIdentity(){redrawFinance=null;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+const SESSION_COPY={
+ ru:{title:'Выйти из аккаунта?',hint:'Сеанс завершится только в этом браузере. Ваши записи останутся в аккаунте.',stay:'Остаться в ULADIM',cancel:'Отменить',done:'Вы вышли из аккаунта',googleDisconnect:'Отключить Google',googleHint:'После отключения потребуется войти с паролем. Другие данные аккаунта сохранятся.'},
+ en:{title:'Sign out of your account?',hint:'This ends the session in this browser. Your records stay in your account.',stay:'Stay in ULADIM',cancel:'Cancel',done:'You have signed out',googleDisconnect:'Disconnect Google',googleHint:'You will need to sign in with your password afterwards. Your account data will be kept.'},
+ 'uz-Latn':{title:'Hisobdan chiqasizmi?',hint:'Faqat shu brauzerdagi seans tugaydi. Yozuvlaringiz hisobingizda qoladi.',stay:'ULADIMda qolish',cancel:'Bekor qilish',done:'Hisobdan chiqdingiz',googleDisconnect:'Google ulanishini uzish',googleHint:'Keyin parol bilan kirishingiz kerak. Hisob ma’lumotlari saqlanadi.'},
+ 'uz-Cyrl':{title:'Ҳисобдан чиқасизми?',hint:'Фақат шу браузердаги сеанс тугайди. Ёзувларингиз ҳисобингизда қолади.',stay:'ULADIMда қолиш',cancel:'Бекор қилиш',done:'Ҳисобдан чиқдингиз',googleDisconnect:'Google уланишини узиш',googleHint:'Кейин парол билан киришингиз керак. Ҳисоб маълумотлари сақланади.'}
+};
+const sessionCopy=key=>(SESSION_COPY[state.lang]||SESSION_COPY.en)[key];
+function settingsInline(title,build,trigger){
+ const host=root.querySelector('.settings-content');if(!host)return;
+ host.querySelectorAll('.settings-inline-panel').forEach(panel=>panel.close());
+ const panel=card();panel.classList.add('settings-inline-panel');
+ panel.close=()=>{panel.remove();trigger?.setAttribute('aria-expanded','false');if(trigger?.isConnected)trigger.focus({preventScroll:true});};
+ panel.append(E('h3',title));
+ if(trigger){trigger.setAttribute('aria-expanded','true');trigger.after(panel);}else host.append(panel);
+ build(panel);
+ const cancel=button(sessionCopy('cancel'),()=>panel.close(),'text-button inline-cancel');panel.append(cancel);
+ panel.querySelector('input')?.focus({preventScroll:true});panel.scrollIntoView({block:'nearest',behavior:'auto'});
+ return panel;
+}
+async function finishSignOut(){
+ try{await call('logout',{});}catch(error){error.displayMessage={ru:'Не удалось подтвердить выход. Проверьте подключение и повторите.',en:'Could not confirm sign-out. Check your connection and retry.','uz-Latn':'Chiqish tasdiqlanmadi. Ulanishni tekshiring va takrorlang.','uz-Cyrl':'Чиқиш тасдиқланмади. Уланишни текширинг ва такрорланг.'}[state.lang]||'Could not confirm sign-out. Check your connection and retry.';throw error;}
+ clearNoteDrafts();clearTaskActions();clearIdentity();sessionEvents?.postMessage('signed-out');login();
+ const status=E('p',sessionCopy('done'),'signout-success');status.setAttribute('role','status');root.querySelector('.auth-form-panel')?.prepend(status);
+}
+function signoutPage(host){
+ const panel=card(sessionCopy('title'),sessionCopy('hint'));panel.classList.add('signout-panel');
+ panel.append(E('p',state.session.email,'account-email'));
+ form(panel,'',()=>({}),finishSignOut,t('family_logout'));
+ panel.append(button(sessionCopy('stay'),()=>openSettings(''),'secondary'));
+ host.append(panel);
+}
+
+function clearIdentity(){redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function displayDate(date){return new Date(date+'T12:00:00').toLocaleDateString(state.lang,{year:'numeric',month:'short',day:'numeric'});}
 function minor(value,signed=false,currency='RUB'){return ULADIMMoney.parse(value,currency,signed);}
@@ -385,6 +526,7 @@ async function googleReturn(){
  const result=await call('google/complete',{});
  if(result.error){login();const message=E('p',errorText({code:result.error}));message.setAttribute('role','alert');root.querySelector('main').append(message);return;}
  if(result.mfa_required){mfaStep(result.challenge);return;}
+ if(result.linked){state.tab='account';state.settingsTab='security';}
  await start();if(result.linked)toast(t('account_done'));
 }
 function mfaStep(challenge){
@@ -410,7 +552,7 @@ function referenceNavigate(tab,section=''){
  if(tab==='account')state.settingsTab=section;
  render();window.scrollTo(0,0);
  if(tab==='money'&&section){root.querySelector('#finance-'+section)?.scrollIntoView({block:'start'});}
- const heading=root.querySelector('main h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+ const heading=root.querySelector('main h1');if(heading){heading.tabIndex=-1;heading.dataset.focusTarget='true';heading.focus({preventScroll:true});}
 }
 function shell(){
  const previousMenu=root.querySelector('.nav-more');
@@ -428,7 +570,7 @@ function shell(){
  const makeItem=(tab,label,symbol,section='')=>{
   const item=button('',()=>referenceNavigate(tab,section),'reference-nav-item');item.dataset.tab=tab;item.dataset.section=section;
   append(item,icon(symbol),E('span',label));
-  const activeSection=tab==='money'?(state.referenceSection||''):tab==='account'?(state.settingsTab==='family'?'family':''):'';
+  const activeSection=tab==='money'?(state.referenceSection==='report'?'accounts':state.referenceSection||''):tab==='account'?(state.settingsTab==='family'?'family':''):'';
   if(state.tab===tab&&activeSection===section)item.setAttribute('aria-current','page');
   if(tab==='tasks'){const count=records('task').filter(r=>!r.data.completed).length;if(count)item.append(E('span',String(count),'reference-nav-count'));}
   return item;
@@ -436,7 +578,7 @@ function shell(){
  const planning=E('div',undefined,'reference-nav-group');planning.append(E('p',referenceCopy(0),'reference-nav-label'));
  for(const [tab,label,symbol]of [['today','today','today'],['tasks','widget_tasks','tasks'],['calendar','web_calendar','calendar'],['notes','widget_notes','notes']])planning.append(makeItem(tab,t(label),symbol));
  const finances=E('div',undefined,'reference-nav-group reference-finance-group');finances.append(E('p',referenceCopy(1),'reference-nav-label'));
- finances.append(makeItem('money',referenceCopy(3),'money'),makeItem('money',referenceCopy(11),'money','accounts'),makeItem('money',t('web_finance_budgets'),'money','budgets'));
+ finances.append(makeItem('money',referenceCopy(3),'money'),makeItem('money',referenceCopy(11),'money','accounts'),makeItem('money',t('web_finance_transactions'),'money','ledger'),makeItem('money',t('web_finance_budgets'),'money','budgets'));
  const importItem=button(statementCopy('title'),importStatement,'reference-nav-item');importItem.prepend(icon('notes'));finances.append(importItem);
  const spaceGroup=E('div',undefined,'reference-nav-group reference-space-group');spaceGroup.append(E('p',referenceCopy(2),'reference-nav-label'),makeItem('account',referenceCopy(4),'account','family'));
  append(nav,planning,finances,spaceGroup);
@@ -446,15 +588,16 @@ function shell(){
  const footer=E('div',undefined,'reference-sidebar-footer');
  const status=E('span',undefined,'workspace-sync');status.setAttribute('role','status');footer.append(status);
  footer.append(button(t('account_support'),()=>referenceNavigate('account','support'),'text-button reference-help'));
- const identity=button('',profile,'reference-identity');identity.setAttribute('aria-label',t('profile'));append(identity,E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),E('span',state.session.email||t('profile')));footer.append(identity);nav.append(footer,secondary);
+ const identity=button('',profile,'reference-identity');identity.setAttribute('aria-label',t('profile'));append(identity,E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),E('span',state.session.email||t('profile')));footer.append(identity,button(t('family_logout'),()=>openSettings('signout'),'text-button reference-signout'));nav.append(footer,secondary);
  const compactMoney=makeItem('money',t('finances'),'money');compactMoney.classList.add('reference-compact-money');nav.append(compactMoney);
  const compactProfile=makeItem('account',t('profile'),'account');compactProfile.classList.add('reference-compact-profile');nav.append(compactProfile);
  const pageLabels={today:'today',tasks:'widget_tasks',calendar:'web_calendar',notes:'widget_notes',money:'finances',account:'profile'};
  const crumbs=E('div',undefined,'reference-breadcrumb');append(crumbs,E('span',currentSpace()?.name||referenceCopy(9)),icon('forward'),E('strong',t(pageLabels[state.tab]||'today')));
  const tools=E('div',undefined,'header-tools');
  const date=button(new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',year:'numeric'}),()=>{state.calendarDay=localDate();referenceNavigate('calendar');},'secondary reference-date');date.prepend(icon('calendar'));
- const theme=button('',()=>{const dark=state.theme==='dark'||(state.theme==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);state.theme=dark?'light':'dark';preferences();redrawFinance?.();},'icon header-theme');theme.append(icon('appearance'));theme.setAttribute('aria-label',(SYNC_COPY[state.lang]||SYNC_COPY.en)[4]);
- const profileButton=button('',profile,'icon header-profile');profileButton.append(E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'));profileButton.setAttribute('aria-label',t('profile'));
+ const toolLabels={ru:['Тема','Профиль'],en:['Theme','Profile'],'uz-Latn':['Mavzu','Profil'],'uz-Cyrl':['Мавзу','Профил']}[state.lang]||['Theme','Profile'];
+ const theme=button('',()=>{const dark=state.theme==='dark'||(state.theme==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);state.theme=dark?'light':'dark';preferences();redrawFinance?.();},'icon header-theme');theme.append(icon('appearance'),E('span',toolLabels[0],'header-tool-label'));theme.setAttribute('aria-label',(SYNC_COPY[state.lang]||SYNC_COPY.en)[4]);
+ const profileButton=button('',profile,'icon header-profile');profileButton.append(E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),E('span',toolLabels[1],'header-tool-label'));profileButton.setAttribute('aria-label',t('profile'));
  append(tools,date,theme,profileButton);append(header,crumbs,tools);
  root.append(header,nav);
  if(!navigator.onLine){const n=E('div',t('web_online'));n.id='network';root.append(n);}
@@ -464,16 +607,16 @@ function shell(){
  measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);return m;
 }
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
-function render(){redrawFinance=null;if(!state.session){login();return;}const m=shell();if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
+function render(){redrawFinance=null;if(!state.session){login();return;}const view=[state.tab,state.settingsTab||'',state.referenceSection||''].join('/'),previous=root.querySelector('main')?.dataset.view;const m=shell();m.dataset.view=view;if(previous!==view)m.classList.add('view-enter');backgroundDirty=false;if(state.tab==='account'){account(m);return;}if(!state.space){onboarding(m);return;}
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='calendar')calendar(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);
 }
 function openTabSection(tab,selector){
- state.referenceSection='';
+ state.referenceSection=tab==='money'?({'#finance-ledger':'ledger','#finance-accounts':'accounts','#finance-budgets':'budgets','#finance-analysis':'analysis'}[selector]||''):'';
  state.tab=tab;
  render();
  const section=root.querySelector(selector);
  if(!section)return;
- section.tabIndex=-1;
+ section.tabIndex=-1;section.dataset.focusTarget='true';
  section.focus({preventScroll:true});
  section.scrollIntoView({block:'start'});
 }
@@ -512,21 +655,35 @@ function pendingTaskMessage(accepted){return t(accepted?'web_saved_refresh':'web
 function onboarding(m){
  m.classList.add('onboarding');const c=card();c.classList.add('setup-panel');c.append(icon('today'),E('h1',t('welcome_title')),E('p',t('web_onboarding')),addButton(t('web_personal_create'),()=>createSpace('personal')));const alternative=E('div',undefined,'setup-alternative');alternative.append(button(t('family_accept'),acceptInvite,'text-button'));append(m,c,alternative);
 }
+function referenceSummaryTile(container,kind,label,value,symbol,run,detail=''){
+ const item=button('',run,'reference-summary-tile');item.dataset.summary=kind;
+ append(item,icon(symbol),E('span',label,'reference-tile-label'));
+ if(Array.isArray(value)){
+  const amounts=E('span',undefined,'reference-tile-currencies');
+  for(const entry of value){
+   const full=money(entry.amount,entry.currency),row=E('span',undefined,'summary-currency-row');row.dataset.currency=entry.currency;row.setAttribute('aria-label',full);
+   append(row,E('span',entry.currency,'summary-currency-code'),E('strong',full.slice(0,-entry.currency.length-1),'summary-currency-amount'));amounts.append(row);
+  }
+  item.append(amounts);
+ }else item.append(E('strong',value));
+ if(detail)item.append(E('span',detail,'reference-tile-detail'));
+ container.append(item);return item;
+}
 function today(m){
- title(m,'today',()=>editRecord('task'));m.classList.add('today-page');
+ title(m,'today');m.classList.add('today-page');m.querySelector('.intro').append(addButton(t('web_add_task'),()=>editRecord('task')));
  const tasks=records('task'),open=tasks.filter(r=>!r.data.completed),done=tasks.length-open.length;
  const day=localDate(),end=new Date(day+'T12:00:00');end.setDate(end.getDate()+8);
  const occurrences=ULADIMDomain.occurrences(records('event'),day,dateString(end));
  const dayEvents=occurrences.filter(o=>o.day===day),upcoming=occurrences.filter(o=>o.day!==day);
  const tiles=E('div',undefined,'reference-summary');
- const tile=(label,value,symbol,run,detail='')=>{const item=button('',run,'reference-summary-tile');append(item,icon(symbol),E('span',label,'reference-tile-label'),E('strong',value));if(detail)item.append(E('span',detail,'reference-tile-detail'));tiles.append(item);};
- tile(referenceCopy(6),String(open.length),'tasks',()=>referenceNavigate('tasks'),t('web_today_progress').replace('{done}',done).replace('{total}',tasks.length));
+ const tile=(kind,label,value,symbol,run,detail='')=>referenceSummaryTile(tiles,kind,label,value,symbol,run,detail);
+ tile('tasks',referenceCopy(6),String(open.length),'tasks',()=>referenceNavigate('tasks'),t('web_today_progress').replace('{done}',done).replace('{total}',tasks.length));
  const monthly=records('transaction').filter(r=>r.data.date.slice(0,7)===day.slice(0,7)),currencies=[...new Set([...monthly,...records('account')].map(r=>r.data.currency))];
- const expenses=currencies.map(currency=>money(financeTotals(monthly,currency).expense,currency));
- tile(referenceCopy(7),expenses.join(' · ')||'—','money',()=>referenceNavigate('money'),new Date(day+'T12:00:00').toLocaleDateString(state.lang,{month:'long'}));
+ const expenses=currencies.map(currency=>({currency,amount:financeTotals(monthly,currency).expense}));
+ tile('expenses',referenceCopy(7),expenses.length?expenses:'—','money',()=>referenceNavigate('money'),new Date(day+'T12:00:00').toLocaleDateString(state.lang,{month:'long'}));
  const next=occurrences.find(o=>o.day>day||o.allDay||o.at>=Date.now());
- tile(referenceCopy(8),next?.record.data.title||'—','calendar',()=>referenceNavigate('calendar'),next?next.day+' · '+(next.allDay?t('web_all_day'):next.time):t('web_no_events'));
- tile(referenceCopy(9),currentSpace()?.name||referenceCopy(9),'account',()=>referenceNavigate('account','family'),t(currentSpace()?.kind==='family'?'family_account':'family_private'));
+ tile('event',referenceCopy(8),next?.record.data.title||'—','calendar',()=>referenceNavigate('calendar'),next?next.day+' · '+(next.allDay?t('web_all_day'):next.time):t('web_no_events'));
+ tile('workspace',referenceCopy(9),currentSpace()?.name||referenceCopy(9),'account',()=>referenceNavigate('account','family'),t(currentSpace()?.kind==='family'?'family_account':'family_private'));
  m.append(tiles);
  const grid=E('div',undefined,'today-grid');
  const side=E('div',undefined,'today-side');
@@ -601,12 +758,16 @@ function today(m){
    }
   }
  });
- for(const r of open.slice(0,6))a.append(taskRow(r));if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));
+ for(const [index,r]of open.slice(0,6).entries()){const row=taskRow(r);if(index>=3)row.classList.add('today-task-secondary');a.append(row);}if(!open.length)a.append(emptyPanel('tasks',t('empty_tasks')));
  const taskActions=E('div',undefined,'task-actions');
  taskActions.append(button(t('web_all_tasks'),()=>openTabSection('tasks','main h1'),'text-button'));
  if(!pendingCreate&&!draft.operation)taskActions.append(button(t('web_open_task_form'),()=>editRecord('task'),'text-button'));
  const primary=E('div',undefined,'today-primary');
  a.append(taskActions);primary.append(a);append(grid,primary,side);
+ const shortcuts=E('nav',undefined,'today-secondary-actions');shortcuts.setAttribute('aria-label',t('today'));
+ const calendarShortcut=button(t('web_calendar'),()=>referenceNavigate('calendar'),'secondary');calendarShortcut.prepend(icon('calendar'));
+ const workspaceShortcut=button(referenceCopy(4),()=>referenceNavigate('account','family'),'secondary');workspaceShortcut.prepend(icon('account'));
+ append(shortcuts,calendarShortcut,workspaceShortcut);grid.append(shortcuts);
 
  const finance=card(t('finances'));
  finance.classList.add('today-finance');
@@ -639,14 +800,16 @@ function today(m){
   const schedule=card(t('web_today_schedule'));
   schedule.classList.add('today-schedule');
   const timeline=E('ol',undefined,'today-timeline');
-  for(const o of dayEvents){
-   const item=E('li');
+  for(const [index,o]of dayEvents.entries()){
+   const item=E('li');if(index>=3)item.classList.add('today-event-secondary');
    const time=o.allDay?E('span',t('web_all_day')):E('time',o.time);
    if(!o.allDay)time.dateTime=new Date(o.at).toISOString();
    append(item,time,button(o.record.data.title,()=>editRecord('event',o.record),'text-button'));
    timeline.append(item);
   }
-  schedule.append(timeline);side.append(schedule);
+  schedule.append(timeline);
+  if(dayEvents.length>3){const more=button(t('web_calendar')+' · '+dayEvents.length,()=>{state.calendarDay=day;calendarMode='day';referenceNavigate('calendar');},'text-button today-schedule-more');schedule.append(more);}
+  side.append(schedule);
  }
  const agenda=card(t('web_upcoming'));
  agenda.classList.add('today-agenda');
@@ -926,6 +1089,41 @@ function rememberTransactionAccount(key,account){
   else sessionStorage.removeItem(key);
  }catch{}
 }
+function transactionCategoryChoices(){
+ const ids=['','food','transport','shopping','housing','health','leisure','education','transfers','other'];
+ const names={
+  ru:['Без категории','Питание','Транспорт','Покупки','Дом и счета','Здоровье','Отдых','Образование','Переводы','Другое'],
+  en:['Uncategorized','Food','Transport','Shopping','Home and bills','Health','Leisure','Education','Transfers','Other'],
+  'uz-Latn':['Toifasiz','Oziq-ovqat','Transport','Xaridlar','Uy va hisoblar','Salomatlik','Dam olish','Ta’lim','O‘tkazmalar','Boshqa'],
+  'uz-Cyrl':['Тоифасиз','Озиқ-овқат','Транспорт','Харидлар','Уй ва ҳисоблар','Саломатлик','Дам олиш','Таълим','Ўтказмалар','Бошқа']
+ };
+ return ids.map((id,index)=>[id,(names[state.lang]||names.en)[index]]);
+}
+const BUDGET_EDITOR_COPY={
+ ru:{options:'Дополнительно',recurring:'Лимит обновляется каждый период. Дату окончания указывать не нужно.',custom:'Укажите начало и конец своего периода.',since:'Начало действия',participants:'Участники'},
+ en:{options:'More options',recurring:'The limit renews each period. No end date is needed.',custom:'Choose the start and end of your period.',since:'Starts on',participants:'Participants'},
+ az:{options:'Əlavə seçimlər',recurring:'Limit hər dövrdə yenilənir. Bitmə tarixi lazım deyil.',custom:'Dövrün başlanğıcını və sonunu seçin.',since:'Başlanğıc',participants:'İştirakçılar'},
+ de:{options:'Weitere Optionen',recurring:'Das Limit erneuert sich in jedem Zeitraum. Ein Enddatum ist nicht nötig.',custom:'Wähle Beginn und Ende deines Zeitraums.',since:'Beginn',participants:'Teilnehmende'},
+ es:{options:'Más opciones',recurring:'El límite se renueva en cada período. No se necesita fecha de fin.',custom:'Elige el inicio y el fin de tu período.',since:'Empieza el',participants:'Participantes'},
+ fr:{options:'Plus d’options',recurring:'Le plafond se renouvelle à chaque période. Aucune date de fin n’est nécessaire.',custom:'Choisissez le début et la fin de votre période.',since:'Début',participants:'Participants'},
+ hy:{options:'Լրացուցիչ ընտրանքներ',recurring:'Սահմանաչափը թարմացվում է յուրաքանչյուր ժամանակահատվածում։ Ավարտի ամսաթիվ պետք չէ։',custom:'Ընտրեք ժամանակահատվածի սկիզբն ու ավարտը։',since:'Սկիզբ',participants:'Մասնակիցներ'},
+ it:{options:'Altre opzioni',recurring:'Il limite si rinnova a ogni periodo. Non serve una data di fine.',custom:'Scegli l’inizio e la fine del periodo.',since:'Inizio',participants:'Partecipanti'},
+ ka:{options:'დამატებითი პარამეტრები',recurring:'ლიმიტი ყოველ პერიოდში განახლდება. დასრულების თარიღი საჭირო არ არის.',custom:'აირჩიეთ პერიოდის დასაწყისი და დასასრული.',since:'დაწყება',participants:'მონაწილეები'},
+ kk:{options:'Қосымша параметрлер',recurring:'Лимит әр кезеңде жаңартылады. Аяқталу күнін көрсету қажет емес.',custom:'Кезеңнің басталуы мен аяқталуын таңдаңыз.',since:'Басталуы',participants:'Қатысушылар'},
+ ky:{options:'Кошумча параметрлер',recurring:'Чек ар бир мезгилде жаңыланат. Аяктоо күнүн көрсөтүү зарыл эмес.',custom:'Мезгилдин башталышын жана аякташын тандаңыз.',since:'Башталышы',participants:'Катышуучулар'},
+ pt:{options:'Mais opções',recurring:'O limite é renovado em cada período. Não é necessária uma data final.',custom:'Escolha o início e o fim do período.',since:'Início',participants:'Participantes'},
+ tg:{options:'Имконоти иловагӣ',recurring:'Ҳад дар ҳар давра нав мешавад. Санаи анҷом лозим нест.',custom:'Оғоз ва анҷоми давраро интихоб кунед.',since:'Оғоз',participants:'Иштирокчиён'},
+ uk:{options:'Додатково',recurring:'Ліміт оновлюється кожного періоду. Дату завершення вказувати не потрібно.',custom:'Вкажіть початок і кінець свого періоду.',since:'Початок дії',participants:'Учасники'},
+ 'uz-Latn':{options:'Qo‘shimcha',recurring:'Limit har davrda yangilanadi. Tugash sanasi kerak emas.',custom:'Davrning boshlanishi va tugashini tanlang.',since:'Boshlanishi',participants:'Ishtirokchilar'},
+ 'uz-Cyrl':{options:'Қўшимча',recurring:'Лимит ҳар даврда янгиланади. Тугаш санаси керак эмас.',custom:'Даврнинг бошланиши ва тугашини танланг.',since:'Бошланиши',participants:'Иштирокчилар'}
+};
+function budgetEditorStart(period,at=localDate()){
+ const date=new Date(at+'T12:00:00Z');
+ if(period==='month')date.setUTCDate(1);
+ else if(period==='year')date.setUTCMonth(0,1);
+ else if(period==='week')date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7);
+ return date.toISOString().slice(0,10);
+}
 function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  const workspace=state.space,epoch=privateEpoch,taskKey=kind==='task'&&!r?taskActionKey('create'):'';
  const accountKey=kind==='transaction'?transactionAccountKey(workspace):'';
@@ -953,7 +1151,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   const data=r?.data||{};const disabled=r&&!r.editable;
   const pair=(className,...controls)=>{
    const row=E('div',undefined,'finance-field-pair '+className);
-   for(const control of controls)row.append(append(E('div'),control.previousElementSibling,control));
+   for(const control of controls){const field=control.currencyField||control;row.append(append(E('div'),field.previousElementSibling,field));}
    return row;
   };
   if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',pendingTask?.operation.data.title||data.title||data.name||'');
@@ -985,14 +1183,19 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    fields.completed=input(f,'completed',t('completed'),'checkbox');fields.completed.checked=!!(pendingTask?.operation.data.completed??data.completed);fields.completed.disabled=!!data.assignees?.length;
    if(data.assignees?.length){f.append(E('p',t('family_review_pending')));for(const pid of data.assignees){const profile=state.roster.profiles.find(p=>p.id===pid);f.append(button(t('complete')+' · '+(profile?.name||pid),async()=>{await saveOperation({id:crypto.randomUUID(),action:'task.complete',record_id:r.id,revision:r.revision,profile_id:pid,completed:true});d.close();await refresh();render();}));}}
   }
-  if(['account','transaction','budget'].includes(kind))fields.currency=input(f,'currency',t('currency'),'text',data.currency||'RUB');
-  if(['account','transaction','budget','transfer'].includes(kind)){
-   fields.amount=input(f,'amount',t(kind==='account'?'opening_balance':'amount'),'text',kind==='transaction'&&!r?'':decimalInput(data.opening_minor??data.amount_minor??data.limit_minor??data.sent_minor??0,data.currency||records('account').find(a=>a.id===data.from_id)?.data.currency||'RUB'));
-   if(kind==='transaction'&&!r)fields.amount.placeholder=decimalInput(0,fields.currency.value);
+  if(['account','transaction'].includes(kind))fields.currency=input(f,'currency',t('currency'),'text',data.currency||'RUB');
+  if(['account','transaction','transfer'].includes(kind)){
+   fields.amount=input(f,'amount',t(kind==='account'?'opening_balance':'amount'),'text',!r?'':decimalInput(data.opening_minor??data.amount_minor??data.limit_minor??data.sent_minor??0,data.currency||records('account').find(a=>a.id===data.from_id)?.data.currency||'RUB'),kind!=='account');
+   fields.amount.placeholder=decimalInput(0,fields.currency?.value||records('account').find(a=>a.id===data.from_id)?.data.currency||'RUB');
+   fields.currency?.addEventListener('change',()=>{try{fields.amount.placeholder=decimalInput(0,fields.currency.value);}catch{/* Currency search text is validated when a code is chosen or saved. */}});
   }
   if(kind==='transaction'){
    fields.direction=select(f,'direction',t('family_kind_transaction'),[['expense',t('expense')],['income',t('income')]],data.kind||'expense');
    fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());fields.label=input(f,'label',t('family_name'),'text',data.label||'',false);
+   fields.category=select(f,'category',({ru:'Категория расходов',en:'Expense category','uz-Latn':'Xarajat toifasi','uz-Cyrl':'Харажат тоифаси'}[state.lang]||'Expense category'),transactionCategoryChoices(),data.category||'');
+   const categoryLabel=fields.category.previousElementSibling;
+   const categoryVisibility=()=>{const hidden=fields.direction.value!=='expense';fields.category.hidden=hidden;categoryLabel.hidden=hidden;};
+   categoryVisibility();fields.direction.addEventListener('change',categoryVisibility);
    const accounts=records('account'),selected=r?data.account_id:defaultTransactionAccount(accountKey,accounts)?.id;
    fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...accounts.map(a=>[a.id,a.data.name+' · '+a.data.currency])],selected||'');
    const accountCurrency=()=>{
@@ -1006,18 +1209,56 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    fields.account.addEventListener('change',accountCurrency);
    append(f,pair('transaction-context',fields.direction,fields.account),
     pair('transaction-value',fields.amount,fields.currency),fields.date.previousElementSibling,fields.date,
-    fields.label.previousElementSibling,fields.label);
+    fields.label.previousElementSibling,fields.label,categoryLabel,fields.category);
   }
   if(kind==='budget'){
+   const copy=BUDGET_EDITOR_COPY[state.lang]||BUDGET_EDITOR_COPY.en;
+   const currency=data.currency||defaultTransactionAccount(transactionAccountKey(workspace),records('account'))?.data.currency||'RUB';
+   fields.amount=input(f,'amount',t('budget_limit'),'text',r?decimalInput(data.limit_minor,currency):'');
+   fields.amount.placeholder=decimalInput(0,currency);
+   fields.currency=input(f,'currency',t('currency'),'text',currency);
+   fields.currency.spellcheck=false;
+   fields.currency.addEventListener('input',()=>{
+    try{fields.amount.placeholder=decimalInput(0,fields.currency.value.trim().toUpperCase());}catch{}
+   });
+   f.append(pair('budget-value',fields.amount,fields.currency));
    fields.period=select(f,'period',t('family_period'),['week','month','year','custom'].map(k=>[k,t('family_'+k)]),data.period||'month');
-   fields.start=input(f,'start',t('web_period_start'),'date',data.start_on||localDate());
+   fields.start=input(f,'start',t('web_period_start'),'date',data.start_on||budgetEditorStart(fields.period.value));
    fields.end=input(f,'end',t('web_period_end'),'date',data.end_on||'',false);
-   fields.rollover=select(f,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');
-   append(f,pair('budget-value',fields.amount,fields.currency),fields.period.previousElementSibling,fields.period,
-    pair('budget-dates',fields.start,fields.end),fields.rollover.previousElementSibling,fields.rollover);
+   const dates=pair('budget-dates',fields.start,fields.end);
+   const summary=E('section',undefined,'budget-period-summary'),periodTitle=E('strong'),periodDates=E('p'),periodHint=E('p',undefined,'small');
+   summary.setAttribute('aria-live','polite');append(summary,periodTitle,periodDates,periodHint);
+   const options=E('details',undefined,'budget-options');options.append(E('summary',copy.options));
+   fields.rollover=select(options,'rollover',t('family_rollover'),['none','positive','negative','both'].map(k=>[k,t('family_roll_'+k)]),data.rollover||'none');
+   if(data.start_on)options.append(E('p',copy.since+' · '+displayDate(data.start_on),'small budget-original-start'));
+   if(data.participants?.length)options.append(E('p',copy.participants+' · '+data.participants.map(id=>state.roster.profiles.find(p=>p.id===id)?.name||id).join(', '),'small'));
+   options.addEventListener('invalid',()=>{options.open=true;},true);
+   const showPeriod=()=>{
+    const custom=fields.period.value==='custom';
+    dates.hidden=!custom;fields.start.disabled=fields.end.disabled=!custom;
+    fields.start.required=fields.end.required=custom;
+    fields.end.min=fields.start.value;
+    periodTitle.textContent=t('family_'+fields.period.value);
+    if(custom){
+     periodDates.textContent=fields.start.value&&fields.end.value?displayDate(fields.start.value)+' — '+displayDate(fields.end.value):'';
+    }else{
+     const current=financeBudgetPeriod({period:fields.period.value,start_on:fields.start.value,end_on:null});
+     periodDates.textContent=displayDate(current.start)+' — '+displayDate(current.end);
+    }
+    periodDates.hidden=!periodDates.textContent;
+    periodHint.textContent=custom?copy.custom:copy.recurring;
+   };
+   fields.period.addEventListener('change',()=>{
+    fields.start.value=data.period===fields.period.value?data.start_on:budgetEditorStart(fields.period.value);
+    showPeriod();
+   });
+   fields.start.addEventListener('input',showPeriod);fields.end.addEventListener('input',showPeriod);
+   append(f,dates,summary,options);showPeriod();
   }
-  if(kind==='transfer'){if(records('account').length<2)f.append(E('p',t('web_transfer_accounts'),'error'));const accounts=records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency]);fields.from=select(f,'from',t('family_from'),accounts,data.from_id||accounts[0]?.[0]);fields.to=select(f,'to',t('family_to'),accounts,data.to_id||accounts[1]?.[0]);fields.received=input(f,'received',t('received_amount'),'text',decimalInput(data.received_minor||0,records('account').find(a=>a.id===data.to_id)?.data.currency||'RUB'));fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());}
-  fields.visibility=select(kind==='event'?f.querySelector('.event-options'):f,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
+  if(kind==='transfer'){if(records('account').length<2)f.append(E('p',t('web_transfer_accounts'),'error'));const accounts=records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency]);fields.from=select(f,'from',t('family_from'),accounts,data.from_id||accounts[0]?.[0]);fields.to=select(f,'to',t('family_to'),accounts,data.to_id||accounts[1]?.[0]);fields.received=input(f,'received',t('received_amount'),'text',r?decimalInput(data.received_minor||0,records('account').find(a=>a.id===data.to_id)?.data.currency||'RUB'):'');fields.received.placeholder=decimalInput(0,records('account').find(a=>a.id===fields.to.value)?.data.currency||'RUB');fields.to.addEventListener('change',()=>{fields.received.placeholder=decimalInput(0,records('account').find(a=>a.id===fields.to.value)?.data.currency||'RUB');});fields.from.addEventListener('change',()=>{fields.amount.placeholder=decimalInput(0,records('account').find(a=>a.id===fields.from.value)?.data.currency||'RUB');});fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());}
+  let accessOptions=kind==='event'?f.querySelector('.event-options'):kind==='budget'?f.querySelector('.budget-options'):null;
+  if(!accessOptions){accessOptions=E('details',undefined,'record-options');accessOptions.append(E('summary',t('family_visibility')));f.append(accessOptions);}
+  fields.visibility=select(accessOptions,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
   if(pendingTask)fields.visibility.value=pendingTask.operation.visibility;
   if(draftNotice){
    if(draft){fields.visibility.value=draft.visibility;draftNotice.textContent=localDraft;}
@@ -1043,9 +1284,9 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
     data={title:v.name.value,schedule};
    }
    if(kind==='task')data={title:v.name.value,completed:v.completed.checked?1:0,assignment:r?.data.assignment||'any',assignees:r?.data.assignees||[],review:r?.data.review||0};
-   if(kind==='account')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),opening_minor:minor(v.amount.value,true,v.currency.value)};
-   if(kind==='transaction')data={kind:v.direction.value,amount_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),currency:v.currency.value.trim().toUpperCase(),date:v.date.value,label:v.label.value,account_id:v.account.value||null};
-   if(kind==='budget')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),limit_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),period:v.period.value,start_on:v.start.value,end_on:v.end.value||null,rollover:v.rollover.value,participants:r?.data.participants||[]};
+   if(kind==='account')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),opening_minor:minor(v.amount.value||'0',true,v.currency.value)};
+   if(kind==='transaction')data={kind:v.direction.value,amount_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),currency:v.currency.value.trim().toUpperCase(),date:v.date.value,label:v.label.value,account_id:v.account.value||null,category:v.direction.value==='expense'?(v.category.value||null):null};
+   if(kind==='budget')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),limit_minor:minor(v.amount.value,false,v.currency.value.trim().toUpperCase()),period:v.period.value,start_on:v.start.value,end_on:v.period.value==='custom'?v.end.value||null:r?.data.end_on||null,rollover:v.rollover.value,participants:r?.data.participants||[]};
    if(kind==='transfer')data={from_id:v.from.value,to_id:v.to.value,sent_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),received_minor:minor(v.received.value,false,records('account').find(a=>a.id===v.to.value)?.data.currency||'RUB'),date:v.date.value};
    ULADIMDomain.validateFinance(kind,data,records('account'));
    operation={id:crypto.randomUUID(),action:'record.put',record_id:r?.id||crypto.randomUUID(),revision:draftRevision,kind,visibility:v.visibility.value,audience:r?.audience||(currentSpace()?.role==='child'?[currentSpace().profile_id]:[]),data};
@@ -1111,118 +1352,227 @@ function summaries(container){
 }
 
 function balance(a){let result=BigInt(a.data.opening_minor);for(const r of records('transaction').filter(r=>r.data.account_id===a.id))result+=(r.data.kind==='income'?1n:-1n)*BigInt(r.data.amount_minor);for(const r of records('transfer')){if(r.data.from_id===a.id)result-=BigInt(r.data.sent_minor);if(r.data.to_id===a.id)result+=BigInt(r.data.received_minor);}return result;}
-function finance(m){
- title(m,'finances');m.classList.add('finance-page');
- const toolbar=E('div',undefined,'finance-toolbar');
- append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'secondary'),button(statementCopy('title'),importStatement,'secondary'));
- m.querySelector('.intro').append(toolbar);
- const sections=E('nav',undefined,'finance-navigation');
- sections.setAttribute('aria-label',t('finances'));
- for(const [id,label] of [['ledger','web_finance_transactions'],['accounts','web_accounts'],['budgets','web_finance_budgets'],['analysis','web_analysis']]){
-  const link=E('a',t(label));
-  link.href='#finance-'+id;
-  sections.append(link);
+function financeBudgetPeriod(data,at=localDate()){
+ const first=new Date(data.start_on+'T00:00:00Z'),now=new Date(at+'T00:00:00Z'),day=86400000;
+ let start=new Date(first),end;
+ if(now>=first){
+  if(data.period==='month')start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
+  else if(data.period==='year')start=new Date(Date.UTC(now.getUTCFullYear(),0,1));
+  else{
+   const span=data.period==='custom'?Math.floor((Date.parse(data.end_on+'T00:00:00Z')-first)/day)+1:7;
+   start=new Date(+first+Math.floor((now-first)/day/span)*span*day);
+  }
+  if(start<first)start=new Date(first);
  }
- const grid=E('div',undefined,'finance-grid');
- const activity=E('div',undefined,'finance-activity'),details=E('aside',undefined,'finance-details');
- append(grid,activity,details);append(m,sections,grid);
- const summary=card(t('web_finance_summary'));
- summary.classList.add('finance-overview');details.append(summary);
- const ledger=card(t('web_history'));ledger.classList.add('ledger');activity.append(ledger);
- ledger.id='finance-ledger';ledger.tabIndex=-1;
+ if(data.period==='month')end=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+1,0));
+ else if(data.period==='year')end=new Date(Date.UTC(start.getUTCFullYear(),11,31));
+ else end=new Date(+start+(data.period==='custom'?Math.floor((Date.parse(data.end_on+'T00:00:00Z')-first)/day):6)*day);
+ return {start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};
+}
+function renderFinanceBudgets(m){
+ const copy={
+  ru:{spent:'Потрачено за период',available:'Доступно на период',remaining:'Осталось',over:'Превышение',carry:'Перенос остатка',future:'Начнётся',limit:'Лимит периода'},
+  en:{spent:'Spent this period',available:'Available this period',remaining:'Remaining',over:'Over budget',carry:'Rollover',future:'Starts',limit:'Period limit'},
+  'uz-Latn':{spent:'Davr xarajatlari',available:'Davr uchun mavjud',remaining:'Qoldiq',over:'Oshib ketgan',carry:'Qoldiqni o‘tkazish',future:'Boshlanadi',limit:'Davr limiti'},
+  'uz-Cyrl':{spent:'Давр харажатлари',available:'Давр учун мавжуд',remaining:'Қолдиқ',over:'Ошиб кетган',carry:'Қолдиқни ўтказиш',future:'Бошланади',limit:'Давр лимити'}
+ }[state.lang]||{spent:'Spent this period',available:'Available this period',remaining:'Remaining',over:'Over budget',carry:'Rollover',future:'Starts',limit:'Period limit'};
+ const budgets=E('section',undefined,'finance-budgets finance-budget-grid');budgets.id='finance-budgets';
+ const budgetRecords=records('budget'),views=new Map();
+ for(const r of budgetRecords){
+  const data=r.data,row=card(),head=E('div',undefined,'finance-budget-head'),text=E('div'),period=financeBudgetPeriod(data);
+  row.classList.add('finance-budget-card');row.dataset.budget=r.id;
+  append(text,E('h2',data.name),E('p',displayDate(period.start)+' — '+displayDate(period.end),'small'));
+  append(head,text,iconButton('more',t('edit')+' · '+data.name,()=>editRecord('budget',r)));row.append(head);
+  const remaining=E('strong','—'),balanceLine=E('div',undefined,'finance-budget-remaining');
+  append(balanceLine,E('span',copy.remaining,'small'),remaining);row.append(balanceLine);
+  const progress=E('progress');progress.max=10000;progress.value=0;progress.setAttribute('aria-label',copy.spent);row.append(progress);
+  const metrics=E('dl',undefined,'budget-metrics'),spent=E('dd','—'),available=E('dd','—');
+  append(metrics,append(E('div'),E('dt',copy.spent),spent),append(E('div'),E('dt',copy.available),available));row.append(metrics);
+  const conditions=E('p',copy.limit+': '+money(data.limit_minor,data.currency)+' · '+t('family_'+data.period),'small finance-budget-conditions');
+  if(data.rollover!=='none')conditions.append(E('span',' · '+copy.carry+': '+t('family_roll_'+data.rollover)));
+  if(localDate()<data.start_on)conditions.append(E('span',' · '+copy.future+' '+displayDate(data.start_on)));
+  row.append(conditions);budgets.append(row);views.set(r.id,{remaining,spent,available,progress,balanceLine});
+ }
+ if(!budgetRecords.length){const empty=card();empty.append(emptyPanel('money',BUDGET_EMPTY_COPY[state.lang]||BUDGET_EMPTY_COPY.en));budgets.append(empty);return budgets;}
+ const epoch=privateEpoch;
+ // Both remainder and spending come from the existing shared Dart engine. The
+ // ephemeral no-carry view isolates this period's spending without changing data.
+ const noCarry=budgetRecords.map(r=>({...r,id:r.id+':current-period',data:{...r.data,rollover:'none'}}));
+ statementWorker({action:'budgets',at:localDate(),records:records('transaction'),budgets:[...budgetRecords,...noCarry]}).then(result=>{
+  if(epoch!==privateEpoch||!m.isConnected)return;
+  for(const r of budgetRecords){
+   const view=views.get(r.id),remaining=BigInt(result.remaining[r.id]),limit=BigInt(r.data.limit_minor),spent=limit-BigInt(result.remaining[r.id+':current-period']),allowance=remaining+spent;
+   view.remaining.textContent=money(remaining,r.data.currency);view.spent.textContent=money(spent,r.data.currency);view.available.textContent=money(allowance,r.data.currency);
+   view.balanceLine.classList.toggle('expense',remaining<0n);
+   view.balanceLine.firstChild.textContent=remaining<0n?copy.over:copy.remaining;
+   if(remaining<0n)view.remaining.textContent=money(-remaining,r.data.currency);
+   view.progress.value=allowance>0n?Number((spent>allowance?allowance:spent)*10000n/allowance):spent>0n?10000:0;
+   view.progress.setAttribute('aria-valuetext',copy.spent+': '+money(spent,r.data.currency)+'; '+copy.remaining+': '+money(remaining,r.data.currency));
+  }
+ }).catch(error=>{if(m.isConnected)budgets.append(E('p',errorText(error),'error'));});
+ return budgets;
+}
+function financeExpenseGroups(rows,currency){
+ const labels=new Map(transactionCategoryChoices()),totals=new Map();
+ for(const row of rows){
+  if(row.kind!=='transaction'||row.data.kind!=='expense'||row.data.currency!==currency)continue;
+  const category=labels.has(row.data.category)?row.data.category:'';
+  totals.set(category,(totals.get(category)||0n)+BigInt(row.data.amount_minor));
+ }
+ const colors={food:'#7966c4',transport:'#3b83ac',shopping:'#b77a42',housing:'#438d79',health:'#b2668d',leisure:'#a68b35',education:'#7388bf',transfers:'#aa7160',other:'#668d87','':'#8992a0'};
+ return [...totals.entries()].map(([id,amount])=>({id,label:labels.get(id),amount,color:colors[id]})).sort((a,b)=>a.amount===b.amount?a.label.localeCompare(b.label,state.lang):a.amount>b.amount?-1:1);
+}
+function drawExpenseCategories(canvas,currency,groups){
+ const ctx=canvas.getContext('2d');ctx.clearRect(0,0,720,320);if(!currency)return;
+ const style=getComputedStyle(document.body),sum=groups.reduce((total,group)=>total+group.amount,0n);
+ const ratio=value=>sum?Number(value*1000000n/sum)/1000000:0;
+ let angle=-Math.PI/2;
+ ctx.lineWidth=40;ctx.lineCap='butt';
+ if(!sum){ctx.strokeStyle=style.getPropertyValue('--ux-border')||style.getPropertyValue('--line');ctx.beginPath();ctx.arc(360,155,102,0,Math.PI*2);ctx.stroke();}
+ for(const group of groups){
+  if(group.amount===0n)continue;
+  const sweep=ratio(group.amount)*Math.PI*2,gap=groups.length>1?Math.min(.025,sweep/4):0;
+  ctx.strokeStyle=group.color;ctx.beginPath();ctx.arc(360,155,102,angle+gap/2,angle+sweep-gap/2);ctx.stroke();angle+=sweep;
+ }
+ const scale=720/Math.max(canvas.clientWidth||720,240);
+ ctx.textAlign='center';ctx.fillStyle=style.getPropertyValue('--ux-muted')||style.getPropertyValue('--muted');ctx.font=(12*scale)+'px system-ui';ctx.fillText(t('expense'),360,146,170);
+ ctx.fillStyle=style.getPropertyValue('--ux-ink')||style.getPropertyValue('--ink');ctx.font='600 '+(20*scale)+'px system-ui';ctx.fillText(money(sum,currency),360,177,174);ctx.textAlign='left';
+ canvas.setAttribute('aria-label',t('expense')+': '+money(sum,currency)+(groups.length?'; '+groups.map(group=>group.label+': '+money(group.amount,currency)).join('; '):''));
+}
+function finance(m){
+ const copy={
+  ru:{overview:'Обзор финансов',history:'Вся история',balance:'Баланс счетов',recent:'Последние операции',report:'Отчёт по счёту',back:'Все счета',open:'Открыть отчёт',separate:'Суммы показаны отдельно по валютам.',noAccount:'Счёт больше недоступен',period:'Период отчёта'},
+  en:{overview:'Financial overview',history:'All time',balance:'Account balances',recent:'Recent transactions',report:'Account report',back:'All accounts',open:'Open report',separate:'Amounts are shown separately by currency.',noAccount:'Account is no longer available',period:'Report period'},
+  'uz-Latn':{overview:'Moliya sharhi',history:'Barcha vaqt',balance:'Hisoblar balansi',recent:'Oxirgi operatsiyalar',report:'Hisob bo‘yicha hisobot',back:'Barcha hisoblar',open:'Hisobotni ochish',separate:'Summalar valyuta bo‘yicha alohida ko‘rsatilgan.',noAccount:'Hisob endi mavjud emas',period:'Hisobot davri'},
+  'uz-Cyrl':{overview:'Молия шарҳи',history:'Барча вақт',balance:'Ҳисоблар баланси',recent:'Охирги операциялар',report:'Ҳисоб бўйича ҳисобот',back:'Барча ҳисоблар',open:'Ҳисоботни очиш',separate:'Суммалар валюта бўйича алоҳида кўрсатилган.',noAccount:'Ҳисоб энди мавжуд эмас',period:'Ҳисобот даври'}
+ }[state.lang]||{overview:'Financial overview',history:'All time',balance:'Account balances',recent:'Recent transactions',report:'Account report',back:'All accounts',open:'Open report',separate:'Amounts are shown separately by currency.',noAccount:'Account is no longer available',period:'Report period'};
+ const categoriesTitle=({ru:'Расходы по категориям',en:'Expenses by category','uz-Latn':'Xarajatlar toifalar bo‘yicha','uz-Cyrl':'Харажатлар тоифалар бўйича'})[state.lang]||'Expenses by category';
+ const categoriesHint=({ru:'Выберите категорию при добавлении или изменении операции. Прежние операции остаются без категории, пока вы её не укажете.',en:'Choose a category when adding or editing a transaction. Existing transactions remain uncategorized until you assign one.','uz-Latn':'Operatsiyani qo‘shish yoki tahrirlashda toifani tanlang. Avvalgi operatsiyalar toifa tanlanmaguncha toifasiz qoladi.','uz-Cyrl':'Операцияни қўшиш ёки таҳрирлашда тоифани танланг. Аввалги операциялар тоифа танланмагунча тоифасиз қолади.'})[state.lang]||'Choose a category when adding or editing a transaction. Existing transactions remain uncategorized until you assign one.';
+ const view=['accounts','budgets','ledger','analysis','report'].includes(state.referenceSection)?state.referenceSection:'overview';
+ const accountRecords=records('account'),reportAccount=view==='report'?accountRecords.find(a=>a.id===state.financeFilters.account):null;
+ title(m,'finances');m.classList.add('finance-page');m.dataset.financeView=view;
+ const heading=m.querySelector('.intro h1');heading.textContent=reportAccount?reportAccount.data.name:({overview:copy.overview,accounts:t('web_accounts'),budgets:t('web_finance_budgets'),ledger:t('web_finance_transactions'),analysis:t('web_analysis'),report:copy.report}[view]);
+ const toolbar=E('div',undefined,'finance-toolbar');
+ if(view==='accounts')append(toolbar,addButton(t('family_kind_account'),()=>editRecord('account')),button(t('family_kind_transfer'),()=>editRecord('transfer'),'secondary'));
+ else if(view==='budgets')toolbar.append(addButton(t('family_kind_budget'),()=>editRecord('budget')));
+ else append(toolbar,addButton(t('web_add_operation'),()=>editRecord('transaction')),button(statementCopy('title'),importStatement,'secondary finance-import-shortcut'));
+ m.querySelector('.intro').append(toolbar);
+ const sections=E('nav',undefined,'finance-navigation');sections.setAttribute('aria-label',t('finances'));
+ for(const [id,label] of [['',copy.overview],['ledger',t('web_finance_transactions')],['accounts',t('web_accounts')],['budgets',t('web_finance_budgets')]]){
+  const item=button(label,()=>referenceNavigate('money',id),'secondary finance-view-tab');item.dataset.section=id;
+  if((view==='overview'&&id==='')||view===id||(view==='report'&&id==='accounts'))item.setAttribute('aria-current','page');
+  sections.append(item);
+ }
+ m.append(sections);
+ if(view==='report'){
+  const back=button(copy.back,()=>referenceNavigate('money','accounts'),'text-button finance-report-back');back.prepend(icon('back'));m.append(back);
+  if(!reportAccount){m.append(emptyPanel('money',copy.noAccount));return;}
+ }
+ const summary=E('section',undefined,'finance-overview');summary.setAttribute('aria-label',t('web_finance_summary'));
+ const scope=E('p',undefined,'finance-summary-period small');
+ const metricGrid=E('div',undefined,'finance-metric-grid');append(summary,scope,metricGrid);
  const filterPanel=E('details',undefined,'finance-filter-panel');
- const filterLabel=E('summary',t('web_filters'));
- const filters=E('div',undefined,'finance-filters');
- append(filterPanel,filterLabel,filters);ledger.append(filterPanel);
- const ledgerRows=E('div',undefined,'ledger-rows');ledger.append(ledgerRows);
+ const filterLabel=E('summary',t('web_filters')),filters=E('div',undefined,'finance-filters');append(filterPanel,filterLabel,filters);
  const group=(name,label,type='search')=>{const wrap=E('div');filters.append(wrap);return input(wrap,name,label,type,state.financeFilters[name]||'',false);};
  const search=group('finance-search',t('search')),from=group('finance-from',t('web_period_start'),'date'),to=group('finance-to',t('web_period_end'),'date');
- const wrap=E('div');filters.append(wrap);const accountFilter=select(wrap,'finance-account',t('web_accounts'),[['',t('web_all_accounts')],...records('account').map(a=>[a.id,a.data.name+' · '+a.data.currency])],state.financeFilters.account||'');
+ const filterWrap=E('div');filters.append(filterWrap);
+ const accountFilter=select(filterWrap,'finance-account',t('web_accounts'),[['',t('web_all_accounts')],...accountRecords.map(a=>[a.id,a.data.name+' · '+a.data.currency])],state.financeFilters.account||'');
+ if(view==='report'){accountFilter.value=reportAccount.id;accountFilter.disabled=true;}
  const rows=()=>records('transaction').filter(r=>(!accountFilter.value||r.data.account_id===accountFilter.value)&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(r.data.label+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
- const accounts=card(t('web_accounts'));accounts.classList.add('finance-accounts');details.append(accounts);
- accounts.id='finance-accounts';accounts.tabIndex=-1;
- const addAccount=addButton(t('family_kind_account'),()=>editRecord('account'));
- addAccount.classList.add('secondary');
- accounts.prepend(append(E('div',undefined,'finance-section-head'),accounts.firstElementChild,addAccount));
- const accountRecords=records('account');
+ const grid=E('div',undefined,'finance-grid finance-content');m.append(grid);
+ const ledger=card(view==='overview'?copy.recent:t('web_history'));ledger.classList.add('ledger');ledger.id='finance-ledger';
+ const ledgerRows=E('div',undefined,'ledger-rows');ledger.append(ledgerRows);
+ let ledgerLimit=25,ledgerFilterKey='';
+ const pagination=E('div',undefined,'ledger-pagination'),pageStatus=E('p',undefined,'small');pageStatus.setAttribute('role','status');
+ const showMore=button('',()=>{ledgerLimit+=25;draw();},'secondary');append(pagination,pageStatus,showMore);if(view!=='overview')ledger.append(pagination);
+ if(view==='overview')ledger.append(button(t('web_all_operations'),()=>referenceNavigate('money','ledger'),'text-button finance-ledger-all'));
+ const accounts=card();accounts.classList.add('finance-accounts');accounts.id='finance-accounts';
  for(const a of accountRecords){
   const row=E('div',undefined,'account-balance');
-  const name=append(E('div',undefined,'account-name'),icon('money'),E('span',a.data.name,'text'));
-  append(row,name,E('strong',money(balance(a),a.data.currency)),iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));
-  accounts.append(row);
+  const report=button('',()=>{state.financeFilters={...state.financeFilters,account:a.id};referenceNavigate('money','report');},'secondary finance-account-report');
+  const name=append(E('span',undefined,'account-name'),icon('money'),E('strong',a.data.name,'text'));
+  append(report,name,E('strong',money(balance(a),a.data.currency),'finance-account-amount'),E('span',copy.open,'small finance-account-link'));
+  append(row,report,iconButton('more',t('edit')+' · '+a.data.name,()=>editRecord('account',a)));accounts.append(row);
  }
  if(!accountRecords.length)accounts.append(emptyPanel('money',t('empty_money')));
- const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');details.append(chart);
- chart.prepend(append(E('div',undefined,'finance-section-head'),chart.firstElementChild));
- const chartControls=E('div',undefined,'chart-controls'),chartCurrency=E('div'),chartMode=E('div');
- chart.append(append(chartControls,chartCurrency,chartMode));
- chart.id='finance-analysis';chart.tabIndex=-1;
- const currencies=[...new Set([...records('transaction'),...records('account')].map(r=>r.data.currency))];
- const currency=select(chartCurrency,'chart-currency',t('currency'),currencies.map(c=>[c,c]),currencies[0]);
- const mode=select(chartMode,'chart-mode',t('web_chart_type'),[['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.chart);
+ const chart=card(t('web_analysis'));chart.classList.add('finance-analysis');chart.id='finance-analysis';
+ const chartControls=E('div',undefined,'chart-controls'),chartCurrency=E('div'),chartMode=E('div');chart.append(append(chartControls,chartCurrency,chartMode));
+ const currencies=[...new Set([...records('transaction'),...accountRecords].map(r=>r.data.currency))];
+ const currency=select(chartCurrency,'chart-currency',t('currency'),currencies.map(c=>[c,c]),reportAccount?.data.currency||currencies[0]);
+ const mode=select(chartMode,'chart-mode',t('web_chart_type'),[['categories',categoriesTitle],['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.financeChartMode||'categories');
  currency.disabled=mode.disabled=!currencies.length;
- const legend=E('div',undefined,'chart-legend');chart.append(legend);const canvas=E('canvas');canvas.width=720;canvas.height=320;canvas.setAttribute('role','img');chart.append(canvas);
- const budgets=card(t('web_finance_budgets'));budgets.classList.add('finance-budgets');details.insertBefore(budgets,chart);
- budgets.id='finance-budgets';budgets.tabIndex=-1;
- const addBudget=addButton(t('family_kind_budget'),()=>editRecord('budget'));
- addBudget.classList.add('secondary');
- budgets.prepend(append(E('div',undefined,'finance-section-head'),budgets.firstElementChild,addBudget));
- const budgetRecords=records('budget'),budgetLabels=new Map();
- for(const r of budgetRecords){
-  const row=E('div',undefined,'budget-line'),text=E('div'),amount=E('strong','—');
-  const metrics=E('div',undefined,'budget-metrics');
-  append(metrics,append(E('div'),E('span',t('remaining'),'small'),amount),
-   append(E('div'),E('span',t('budget_limit'),'small'),E('strong',money(r.data.limit_minor,r.data.currency))));
-  append(text,E('h3',r.data.name),metrics);budgetLabels.set(r.id,amount);
-  append(row,text,iconButton('more',t('edit')+' · '+r.data.name,()=>editRecord('budget',r)));budgets.append(row);
- }
- if(budgetLabels.size){
-  const epoch=privateEpoch;
-  statementWorker({action:'budgets',at:localDate(),records:records('transaction'),budgets:budgetRecords}).then(result=>{
-   if(epoch!==privateEpoch||!m.isConnected)return;
-   for(const r of budgetRecords)budgetLabels.get(r.id).textContent=money(result.remaining[r.id],r.data.currency);
-  }).catch(error=>{if(m.isConnected)budgets.append(E('p',errorText(error),'error'));});
- }else budgets.append(emptyPanel('money',BUDGET_EMPTY_COPY[state.lang]||BUDGET_EMPTY_COPY.en));
+ if(reportAccount)currency.disabled=true;
+ const legend=E('div',undefined,'chart-legend');chart.append(legend);
+ const canvas=E('canvas');canvas.width=720;canvas.height=320;canvas.setAttribute('role','img');chart.append(canvas);
+ const categoryHint=E('p',categoriesHint,'small finance-category-hint');chart.append(categoryHint);
+ const budgets=view==='budgets'?renderFinanceBudgets(m):null;
+ if(['overview','ledger','analysis','report'].includes(view)){
+  grid.before(filterPanel,summary);
+  if(view==='ledger')grid.append(ledger);
+  else if(view==='analysis')grid.append(chart);
+  else append(grid,chart,ledger);
+ }else if(view==='accounts')grid.append(accounts);
+ else grid.append(budgets);
  function draw(){
-  state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};const active=Object.values(state.financeFilters).filter(Boolean).length;
+  state.financeFilters={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value};
+  const selectedAccount=accountRecords.find(account=>account.id===accountFilter.value);
+  if(selectedAccount)currency.value=selectedAccount.data.currency;
+  currency.disabled=Boolean(selectedAccount)||!currencies.length;
+  const active=Object.values(state.financeFilters).filter(Boolean).length,filtered=rows();
   filterLabel.textContent=t('web_filters')+(active?' · '+active:'');
-  filterLabel.title=[from.value,to.value,accountFilter.value?accountFilter.selectedOptions[0]?.textContent:''].filter(Boolean).join(' · ');
-  const filtered=rows();summary.replaceChildren(E('h2',t('web_finance_summary')));
-  const activeScope=[from.value? t('web_period_start')+' '+displayDate(from.value):'',to.value? t('web_period_end')+' '+displayDate(to.value):'',accountFilter.value?accountFilter.selectedOptions[0]?.textContent:''].filter(Boolean);
-  if(activeScope.length)summary.append(E('p',activeScope.join(' · '),'small finance-scope'));
-  for(const code of currencies){const values=financeTotals(filtered,code),row=E('div',undefined,'finance-total');append(row,E('span',code,'currency-code'),E('div',undefined,'income'),E('div',undefined,'expense'));row.children[1].append(E('span',t('income'),'small'),E('strong',money(values.income,code)));row.children[2].append(E('span',t('expense'),'small'),E('strong',money(values.expense,code)));summary.append(row);}if(!currencies.length)summary.append(E('p',t('empty_money')));summary.append(E('p',t('web_totals'),'small'));
-  const values=financeTotals(filtered,currency.value);legend.replaceChildren();
-  if(currency.value){
-   for(const kind of ['income','expense']){
-    const item=E('div',undefined,'chart-legend-row '+kind);
-    append(item,E('span',t(kind)),E('strong',money(values[kind],currency.value)));
-    legend.append(item);
+  const activeScope=[from.value?t('web_period_start')+' '+displayDate(from.value):'',to.value?t('web_period_end')+' '+displayDate(to.value):'',accountFilter.value?accountFilter.selectedOptions[0]?.textContent:'',search.value?'“'+search.value+'”':''].filter(Boolean);
+  scope.textContent=(activeScope.join(' · ')||copy.history)+' · '+copy.separate;filterLabel.title=activeScope.join(' · ');
+  metricGrid.replaceChildren();
+  const balanceByCurrency=new Map();
+  for(const a of accountRecords.filter(a=>!accountFilter.value||a.id===accountFilter.value))balanceByCurrency.set(a.data.currency,(balanceByCurrency.get(a.data.currency)||0n)+balance(a));
+  for(const [kind,label] of [['balance',copy.balance],['income',t('income')],['expense',t('expense')]]){
+   const tile=E('div',undefined,'card finance-metric '+kind);tile.append(E('span',label,'small'));
+   const values=kind==='balance'?[...balanceByCurrency.entries()]:currencies.filter(code=>!accountFilter.value||accountRecords.find(a=>a.id===accountFilter.value)?.data.currency===code).map(code=>[code,financeTotals(filtered,code)[kind]]);
+   for(const [code,amount]of values)tile.append(E('strong',money(amount,code)));
+   if(!values.length)tile.append(E('strong','—'));
+   metricGrid.append(tile);
+  }
+  const values=financeTotals(filtered,currency.value),categories=mode.value==='categories';legend.replaceChildren();
+  legend.classList.toggle('chart-category-legend',categories);categoryHint.hidden=!categories;chart.classList.toggle('finance-category-analysis',categories);
+  if(categories){
+   const groups=financeExpenseGroups(filtered,currency.value),sum=groups.reduce((total,group)=>total+group.amount,0n);
+   for(const group of groups){
+    const item=E('div',undefined,'chart-category-row'),label=E('span'),swatch=E('span',undefined,'chart-category-swatch');
+    swatch.style.backgroundColor=group.color;swatch.setAttribute('aria-hidden','true');
+    append(label,swatch,E('span',group.label));
+    const percent=sum?new Intl.NumberFormat(state.lang,{style:'percent',maximumFractionDigits:1}).format(Number(group.amount*1000000n/sum)/1000000):'0%';
+    append(item,label,E('strong',money(group.amount,currency.value)),E('small',percent));legend.append(item);
    }
+   if(!groups.length)legend.append(emptyPanel('money',t('empty_money')));
+   if(chart.isConnected)drawExpenseCategories(canvas,currency.value,groups);
+  }else if(currency.value){
+   for(const kind of ['income','expense']){const item=E('div',undefined,'chart-legend-row '+kind);append(item,E('span',t(kind)),E('strong',money(values[kind],currency.value)));legend.append(item);}
   }else legend.append(emptyPanel('money',t('empty_money')));
-  state.chart=mode.value;preferences();canvas.hidden=mode.value==='compact'||!currency.value;drawChart(canvas,currency.value,filtered);
+  state.financeChartMode=mode.value;if(!categories){state.chart=mode.value;preferences();}
+  canvas.hidden=mode.value==='compact'||!currency.value;if(chart.isConnected&&!categories)drawChart(canvas,currency.value,filtered,mode.value);
   const transfers=records('transfer').filter(r=>(!accountFilter.value||[r.data.from_id,r.data.to_id].includes(accountFilter.value))&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(t('family_kind_transfer')+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
-  const entries=[...filtered,...transfers].sort((a,b)=>b.data.date.localeCompare(a.data.date));
-  const accountsById=new Map(records('account').map(account=>[account.id,account.data]));
-  ledgerRows.replaceChildren();
-  const older=E('details',undefined,'ledger-older');
-  older.append(E('summary',t('web_all_operations')+' · '+entries.length));
-  for(const [index,entry] of entries.entries()){
+  const entries=[...filtered,...transfers].sort((a,b)=>b.data.date.localeCompare(a.data.date)||(b.seq||0)-(a.seq||0)||b.id.localeCompare(a.id));
+  const accountsById=new Map(accountRecords.map(account=>[account.id,account.data]));ledgerRows.replaceChildren();
+  const filterKey=JSON.stringify(state.financeFilters);if(filterKey!==ledgerFilterKey){ledgerLimit=25;ledgerFilterKey=filterKey;}
+  const displayed=entries.slice(0,view==='overview'?5:ledgerLimit);
+  for(const [index,entry]of displayed.entries()){
    const data=entry.data,isTransfer=entry.kind==='transfer',kind=isTransfer?'transfer':data.kind;
-   const row=E('div',undefined,'row ledger-row'),text=E('div',undefined,'text');
-   const label=isTransfer?t('family_kind_transfer'):data.label||t(kind);
+   const row=E('div',undefined,'row ledger-row'),text=E('div',undefined,'text'),label=isTransfer?t('family_kind_transfer'):data.label||t(kind);
    const account=isTransfer?[accountsById.get(data.from_id)?.name,accountsById.get(data.to_id)?.name].filter(Boolean).join(' → '):accountsById.get(data.account_id)?.name;
    append(text,E('h3',label),E('p',[displayDate(data.date),account].filter(Boolean).join(' · '),'small'));
-   const receiving=isTransfer&&accountFilter.value===data.to_id;
-   const transferCurrency=accountsById.get(receiving?data.to_id:data.from_id)?.currency;
+   const receiving=isTransfer&&accountFilter.value===data.to_id,transferCurrency=accountsById.get(receiving?data.to_id:data.from_id)?.currency;
    const amount=isTransfer?(transferCurrency?money(receiving?data.received_minor:data.sent_minor,transferCurrency):''):(kind==='expense'?'− ':'+ ')+money(data.amount_minor,data.currency);
    append(row,text,E('strong',amount,kind),iconButton('more',t('edit')+' · '+label,()=>editRecord(entry.kind,entry)));
-   (index<6?ledgerRows:older).append(row);
+   ledgerRows.append(row);
   }
-  if(entries.length>6)ledgerRows.append(older);
+  const paginationCopy={ru:['Показано','из','Показать ещё'],en:['Showing','of','Show more'],'uz-Latn':['Ko‘rsatilgan','jami','Yana ko‘rsatish'],'uz-Cyrl':['Кўрсатилган','жами','Яна кўрсатиш']}[state.lang]||['Showing','of','Show more'];
+  pageStatus.textContent=paginationCopy[0]+' '+displayed.length+' '+paginationCopy[1]+' '+entries.length;
+  showMore.hidden=displayed.length>=entries.length;showMore.textContent=paginationCopy[2]+' '+Math.min(25,entries.length-displayed.length);
   if(!entries.length)ledgerRows.append(E('p',t(active?'web_no_results':'empty_money'),'empty'));
  }
  redrawFinance=draw;
- for(const field of [search,from,to,accountFilter,currency,mode])field.addEventListener(field===search?'input':'change',draw);requestAnimationFrame(draw);
+ for(const field of [search,from,to,accountFilter,currency,mode])field.addEventListener(field===search?'input':'change',draw);
+ requestAnimationFrame(draw);
 }
 function financeTotals(rows,currency){let income=0n,expense=0n;for(const r of rows.filter(r=>r.data.currency===currency)){if(r.data.kind==='income')income+=BigInt(r.data.amount_minor);else expense+=BigInt(r.data.amount_minor);}return {income,expense};}
 function drawChart(canvas,currency,rows=records('transaction'),chartStyle=state.chart){
@@ -1306,11 +1656,34 @@ function familyPanel(m){
  }
 }
 function openSettings(section){
+ state.tab='account';
  state.settingsTab=section;
  render();
  const back=root.querySelector('.settings-back');
  const target=section?(back?.getClientRects().length?back:root.querySelector('.settings-content h2')):root.querySelector('.settings-navigation button');
  if(target){if(target.tagName==='H2')target.tabIndex=-1;target.focus();}
+}
+async function renderAccountPlan(content){
+ const [ent,catalog]=await Promise.all([call('entitlements'),call('plans')]);
+ if(!content.isConnected||state.tab!=='account'||state.settingsTab!=='plan')return;
+ const copy={
+  ru:{free:'«Пока всё доступно бесплатно»',current:'Ваш уровень доступа',intro:'Пользуйтесь всеми текущими возможностями. Оформлять подписку и вводить платёжные данные не нужно.',future:'Будущий тариф',included:'Сейчас включено',note:'Plus и Premium — подготовленная линейка на будущее. Цены и различия ещё не утверждены; продажи отключены.',titles:['Для личного ритма','Для своих привычек','Для совместных планов'],descriptions:['Задачи, заметки, календарь и финансы в одном месте.','Больше внимания настройкам, диаграммам и личному пространству.','Личные и семейные дела в отдельных пространствах.'],features:{personal_core:'Задачи, заметки, календарь и финансы',family_sync:'Семейное пространство и синхронизация',custom_charts:'Настройка диаграмм',extended_personalization:'Темы и палитры'}},
+  en:{free:'“Everything is free for now”',current:'Your access level',intro:'Use all current features. No subscription or payment details are needed.',future:'Future plan',included:'Included now',note:'Plus and Premium are prepared for the future. Prices and differences have not been approved; sales are disabled.',titles:['For your daily rhythm','For your own way of working','For plans together'],descriptions:['Tasks, notes, calendar and finances together.','A focus on settings, charts and your personal workspace.','Personal and family activities in separate workspaces.'],features:{personal_core:'Tasks, notes, calendar and finances',family_sync:'Family workspace and sync',custom_charts:'Chart settings',extended_personalization:'Themes and palettes'}},
+  'uz-Latn':{free:'«Hozircha barcha imkoniyatlar bepul»',current:'Kirish darajangiz',intro:'Barcha mavjud imkoniyatlardan foydalaning. Obuna yoki to‘lov ma’lumotlari kerak emas.',future:'Kelajakdagi tarif',included:'Hozir mavjud',note:'Plus va Premium kelajak uchun tayyorlangan. Narxlar va farqlar hali tasdiqlanmagan; savdo o‘chirilgan.',titles:['Kundalik maromingiz uchun','O‘zingizga mos ishlash uchun','Birgalikdagi rejalar uchun'],descriptions:['Vazifalar, qaydlar, taqvim va moliya bir joyda.','Sozlamalar, diagrammalar va shaxsiy makonga e’tibor.','Shaxsiy va oilaviy ishlar alohida makonlarda.'],features:{personal_core:'Vazifalar, qaydlar, taqvim va moliya',family_sync:'Oilaviy makon va sinxronlash',custom_charts:'Diagramma sozlamalari',extended_personalization:'Mavzular va ranglar'}},
+  'uz-Cyrl':{free:'«Ҳозирча барча имкониятлар бепул»',current:'Кириш даражангиз',intro:'Барча мавжуд имкониятлардан фойдаланинг. Обуна ёки тўлов маълумотлари керак эмас.',future:'Келажакдаги тариф',included:'Ҳозир мавжуд',note:'Plus ва Premium келажак учун тайёрланган. Нархлар ва фарқлар ҳали тасдиқланмаган; савдо ўчирилган.',titles:['Кундалик маромингиз учун','Ўзингизга мос ишлаш учун','Биргаликдаги режалар учун'],descriptions:['Вазифалар, қайдлар, тақвим ва молия бир жойда.','Созламалар, диаграммалар ва шахсий маконга эътибор.','Шахсий ва оилавий ишлар алоҳида маконларда.'],features:{personal_core:'Вазифалар, қайдлар, тақвим ва молия',family_sync:'Оилавий макон ва синхронлаш',custom_charts:'Диаграмма созламалари',extended_personalization:'Мавзулар ва ранглар'}}
+ };
+ const c=copy[state.lang]||copy.en;
+ const access=card(t('account_access'));access.classList.add('access-plan-status');
+ append(access,E('p',c.current,'small'),E('strong',ent.tier,'access-plan-tier'),E('p',c.free,'access-free-note'),E('p',c.intro));
+ const included=E('ul',undefined,'access-included-features');for(const [feature,label]of Object.entries(c.features))if(ent.features?.[feature])included.append(E('li',label));access.append(included);content.append(access);
+ const grid=E('div',undefined,'access-plan-grid');
+ ['Free','Plus','Premium'].forEach((tier,index)=>{
+  const plan=catalog.tiers?.[tier];if(!plan)return;
+  const item=E('section',undefined,'card access-plan-card');item.dataset.tier=tier;
+  append(item,E('p',index===0?c.included:c.future,'access-plan-label'),E('h3',tier+' · '+c.titles[index]),E('p',c.descriptions[index]));
+  grid.append(item);
+ });
+ append(content,grid,E('p',c.note,'small access-plan-boundary'));
 }
 async function account(m){
  const section=state.settingsTab||'profile';
@@ -1347,7 +1720,7 @@ async function account(m){
   for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar']]){
    const action=settingsRow(t(label),()=>openSettings(key),'reference-profile-option');action.prepend(icon(symbol));options.append(action);
   }
-  const logout=button(t('family_logout'),async()=>{await call('logout',{});clearNoteDrafts();clearTaskActions();clearIdentity();login();},'text-button profile-logout');
+  const logout=button(t('family_logout'),()=>openSettings('signout'),'text-button profile-logout');
   logout.append(icon('forward'));
   const signout=card();signout.classList.add('reference-profile-signout');
   append(signout,append(E('div'),E('h2',copy[5]),E('p',copy[6])),logout);
@@ -1355,18 +1728,67 @@ async function account(m){
   if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));
  }
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['violet',referenceCopy(12)],['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
+ if(section==='signout')signoutPage(content);
  if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);
  if(section==='devices')await devices(content).catch(error=>{if(error.code==='unauthorized'){report(error);return;}if(content.isConnected){content.replaceChildren(E('h2',t('account_devices')),E('p',errorText(error),'error'),button(t('retry'),()=>openSettings('devices'),'secondary'));}});
  if(section==='family'){familyPanel(content);familyPermissions(content);}
- try{if(section==='family')await incomingOwnership(content);if(section==='plan'){const ent=await call('entitlements');if(state.tab!=='account'||state.settingsTab!==section)return;const plans=card(t('account_access'));append(plans,E('div',ent.tier,'stat'),E('p',t('account_no_payment')));content.append(plans);}if(section==='support')await support(content);}catch(e){report(e);}
+ try{if(section==='family')await incomingOwnership(content);if(section==='plan')await renderAccountPlan(content);if(section==='support')await support(content);}catch(e){report(e);}
 }
 function enrollStaff(){dialog('ULADIM Control',container=>{const owner=new URLSearchParams(location.search).get('setup')==='owner';const d=container;form(container,t('account_manage'),f=>({password:input(f,'password',t('family_password'),'password'),invitation:input(f,'invitation',t('family_invitation'))}),async v=>{const result=await call('staff/enrollment',{owner,password:v.password.value,invitation:v.invitation.value});replaceDialog(container,E('h2',t('account_mfa')),E('p',t('account_mfa_setup')),E('pre',result.totp_secret));form(container,'',f=>({code:input(f,'code',t('family_code'))}),async code=>{const r=await call('staff/confirm',{owner,enrollment:result.enrollment,code:code.code.value});replaceDialog(container,E('h2',t('account_mfa_recovery')),E('pre',r.recovery_codes.join('\n')),button(t('close'),()=>d.close()));});});});}
-async function support(m){const result=await call('support');if(state.tab!=='account')return;const c=card(t('account_support'));m.append(c);for(const ticket of result.tickets||[])c.append(button(ticket.subject,()=>openThread(ticket.id)));form(c,'',f=>({subject:input(f,'subject',t('account_subject')),message:input(f,'message',t('account_message'),'textarea')}),async v=>{await call('support',{category:'other',subject:v.subject.value,message:v.message.value});toast(t('account_done'));render();},t('account_send'));}
-async function openThread(id){const result=await call('thread?id='+encodeURIComponent(id));dialog(result.ticket.subject,d=>{for(const message of result.messages)d.append(E('p',message.body,'note'));form(d,'',f=>({message:input(f,'message',t('account_message'),'textarea')}),async v=>{await call('support/reply',{ticket_id:id,message:v.message.value,state:'open'});d.close();await openThread(id);},t('account_send'));});}
-window.addEventListener('online',()=>{if(state.session)refresh().then(render).catch(report);});window.addEventListener('offline',()=>{updateSyncStatus();if(state.session&&!document.querySelector('dialog'))render();toast(t('web_online'));});window.addEventListener('pagehide',()=>{clearIdentity();root.replaceChildren();document.querySelector('#alerts').replaceChildren();});window.addEventListener('pageshow',e=>{if(e.persisted)start().catch(error=>{clearIdentity();login();if(error.code!=='unauthorized')toast(errorText(error));});});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.session&&!document.querySelector('dialog'))refresh().then(render).catch(report);});
-setInterval(()=>{if(state.session&&document.visibilityState==='visible'&&!document.querySelector('dialog')&&navigator.onLine)refresh().then(render).catch(report);},30000);
+let activeSupportThread=null;
+function supportCopy(){
+ const all={
+  ru:{category:'Тип обращения',back:'Все обращения',you:'Вы',empty:'Обращений пока нет',hint:'Опишите проблему или отправьте жалобу. Не прикладывайте пароли, коды и банковские выписки.',categories:[['other','Другой вопрос'],['bug','Ошибка в приложении'],['complaint','Жалоба'],['account','Аккаунт и вход'],['sync','Синхронизация'],['billing','Тарифы и доступ'],['privacy','Приватность'],['deletion','Удаление аккаунта']]},
+  en:{category:'Request type',back:'All requests',you:'You',empty:'No requests yet',hint:'Describe a problem or send a complaint. Do not include passwords, codes or bank statements.',categories:[['other','Other question'],['bug','App problem'],['complaint','Complaint'],['account','Account and sign-in'],['sync','Sync'],['billing','Plans and access'],['privacy','Privacy'],['deletion','Account deletion']]},
+  'uz-Latn':{category:'Murojaat turi',back:'Barcha murojaatlar',you:'Siz',empty:'Hali murojaatlar yo‘q',hint:'Muammoni tasvirlang yoki shikoyat yuboring. Parollar, kodlar yoki bank ko‘chirmalarini qo‘shmang.',categories:[['other','Boshqa savol'],['bug','Ilovadagi xato'],['complaint','Shikoyat'],['account','Hisob va kirish'],['sync','Sinxronlash'],['billing','Tariflar va kirish'],['privacy','Maxfiylik'],['deletion','Hisobni o‘chirish']]},
+  'uz-Cyrl':{category:'Мурожаат тури',back:'Барча мурожаатлар',you:'Сиз',empty:'Ҳали мурожаатлар йўқ',hint:'Муаммони тасвирланг ёки шикоят юборинг. Пароллар, кодлар ёки банк кўчирмаларини қўшманг.',categories:[['other','Бошқа савол'],['bug','Иловадаги хато'],['complaint','Шикоят'],['account','Ҳисоб ва кириш'],['sync','Синхронлаш'],['billing','Тарифлар ва кириш'],['privacy','Махфийлик'],['deletion','Ҳисобни ўчириш']]}
+ };return all[state.lang]||all.en;
+}
+async function support(m){
+ if(activeSupportThread?.epoch===privateEpoch)return openThread(activeSupportThread.id,m);
+ activeSupportThread=null;
+ const result=await call('support');if(!m.isConnected||state.tab!=='account'||state.settingsTab!=='support')return;
+ const copy=supportCopy(),c=card(t('account_support'));m.append(c);c.append(E('p',copy.hint,'small'));
+ if(!result.tickets?.length)c.append(E('p',copy.empty,'small'));
+ for(const ticket of result.tickets||[])c.append(button(ticket.subject,()=>openThread(ticket.id),'secondary support-ticket-link'));
+ form(c,'',f=>{
+  const category=select(f,'category',copy.category,copy.categories,'other');
+  const subject=input(f,'subject',t('account_subject')),message=input(f,'message',t('account_message'),'textarea');subject.maxLength=160;message.maxLength=8000;
+  return {category,subject,message};
+ },async v=>{await call('support',{category:v.category.value,subject:v.subject.value,message:v.message.value});toast(t('account_done'));render();},t('account_send'));
+}
+async function openThread(id,content){
+ const target=content||root.querySelector('.settings-content[data-section="support"]');
+ const result=await call('thread?id='+encodeURIComponent(id));
+ if(!target?.isConnected||state.tab!=='account'||state.settingsTab!=='support')return;
+ activeSupportThread={id,epoch:privateEpoch};
+ const copy=supportCopy(),thread=card(result.ticket.subject);thread.classList.add('support-thread');
+ target.replaceChildren(button(copy.back,()=>{activeSupportThread=null;render();},'text-button support-back'),thread);
+ for(const message of result.messages){
+  const item=E('article',undefined,'support-message');item.dataset.staff=String(Boolean(message.is_staff));
+  append(item,E('strong',message.is_staff?t('account_support'):copy.you),E('p',message.body));thread.append(item);
+ }
+ form(thread,'',f=>{const message=input(f,'message',t('account_message'),'textarea');message.maxLength=8000;return {message};},async v=>{await call('support/reply',{ticket_id:id,message:v.message.value,state:'open'});await openThread(id);},t('account_send'));
+}
+function backgroundView(){return JSON.stringify([state.space,state.spaces,state.roster,state.syncCursor,state.syncEpoch]);}
+function editingView(){const active=document.activeElement;return Boolean(document.querySelector('dialog[open],.settings-inline-panel,.device-revoke-inline')||active?.matches('input,textarea,select,[contenteditable=true]')||state.tab==='account');}
+function flushBackground(){if(backgroundDirty&&state.session&&!editingView()){const y=scrollY;render();window.scrollTo({top:y,behavior:'instant'});}}
+async function backgroundRefresh(){
+ if(!state.session||state.busy||document.querySelector('dialog[open]'))return;
+ const before=backgroundView(),epoch=privateEpoch;
+ await refresh();
+ if(epoch!==privateEpoch||!state.session)return;
+ if(before!==backgroundView())backgroundDirty=true;
+ flushBackground();
+}
+window.addEventListener('online',()=>backgroundRefresh().catch(report));
+window.addEventListener('offline',()=>{updateSyncStatus();toast(t('web_online'));});
+window.addEventListener('pagehide',()=>{clearIdentity();root.replaceChildren();alerts.replaceChildren();});
+window.addEventListener('pageshow',e=>{if(e.persisted)start().catch(error=>{if(error.code==='unauthorized'){clearIdentity();login();}else report(error);});});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')backgroundRefresh().catch(report);});
+document.addEventListener('focusout',()=>requestAnimationFrame(flushBackground));
+setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)backgroundRefresh().catch(report);},30000);
 (async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';applyTheme();const config=await call('config');state.googleEnabled=Boolean(config.google_enabled);try{if(new URLSearchParams(location.search).get('google')==='return')await googleReturn();else await start();}catch(error){if(error.code==='unauthorized'){login();if(new URLSearchParams(location.search).get('action')==='signup')await signup();}else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
 
 const SIGNUP_COPY = {
@@ -1475,7 +1897,7 @@ function privacy(m){
   return section;
  };
  const methods=group('account_google_methods');
- const google=settingsRow('Google',googleMethods);
+ const google=settingsRow('Google',()=>googleMethods(google));
  const googleStatus=E('span',t('web_google_status_loading'),'settings-row-status');
  google.setAttribute('aria-label','Google');
  googleStatus.id='google-status';
@@ -1483,10 +1905,12 @@ function privacy(m){
  const googleLabel=E('span',undefined,'settings-row-copy');
  append(googleLabel,E('span','Google'),googleStatus);
  google.firstChild.replaceWith(googleLabel);
- append(methods,google,settingsRow(t('family_password_change'),changePassword),
-  settingsRow(t('account_email_change'),changeEmail));
+ const password=settingsRow(t('family_password_change'),()=>changePassword(password));
+ const email=settingsRow(t('account_email_change'),()=>changeEmail(email));
+ append(methods,google,password,email);
  const protection=group('web_security_devices');
- append(protection,settingsRow(t('account_mfa'),customerMfa),settingsRow(t('account_devices'),()=>openSettings('devices')));
+ const mfa=settingsRow(t('account_mfa'),()=>customerMfa(mfa));
+ append(protection,mfa,settingsRow(t('account_devices'),()=>openSettings('devices')));
  const data=group('web_account_data');
  data.append(settingsRow(t('account_delete'),deletion,'danger-text'));
  call('google').then(status=>{
@@ -1495,20 +1919,20 @@ function privacy(m){
   if(googleStatus.isConnected)googleStatus.textContent=t('web_google_status_error');
  });
 }
-function changePassword(){
+function changePassword(trigger){
  const label=t('family_password_change');
- dialog(label,d=>{
+ settingsInline(label,d=>{
   d.append(E('p',t('web_password_change_hint'),'small'));
   form(d,'',f=>({old:input(f,'old',t('family_old_password'),'password'),next:input(f,'new',t('family_new_password'),'password')}),async v=>{
-   await call('password',{old_password:v.old.value,new_password:v.next.value});
+   try{await call('password',{old_password:v.old.value,new_password:v.next.value});}finally{v.old.value='';v.next.value='';}
    clearIdentity();
    login();
   },label);
- });
+ },trigger);
 }
-function changeEmail(){
+function changeEmail(trigger){
  const label=t('account_email_change');
- dialog(label,d=>form(d,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{
+ settingsInline(label,d=>form(d,'',f=>({email:input(f,'email',t('family_email'),'email'),password:input(f,'password',t('family_old_password'),'password')}),async v=>{
   const email=v.email.value;
   await call('email',{email,password:v.password.value});
   replaceDialog(d,E('h2',t('family_verify')),E('p',email,'account-email'));
@@ -1516,7 +1940,7 @@ function changeEmail(){
    await call('confirm-email',{code:v.code.value,password:v.password.value});clearIdentity();login();
   },t('family_verify'));
   d.querySelector('input').focus();
- },label));
+ },label),trigger);
 }
 async function incomingOwnership(content){
  const {incoming_transfers:transfers}=await call('deletion');
@@ -1561,18 +1985,20 @@ async function deletion(){
   }
  });
 }
-async function googleMethods(){
+async function googleMethods(trigger){
  const status=await call('google'),mfa=await call('mfa');
- dialog(t('account_google_methods'),d=>{
+ if(!trigger?.isConnected)return;
+ settingsInline(t('account_google_methods'),d=>{
   d.append(E('p',t(status.google_linked?'account_google_linked':'account_google_unlinked')));
   if(!status.has_password){d.append(E('p',t('account_google_password_first')),button(t('family_recovery'),recover));return;}
   if(!status.google_linked&&!status.google_web_enabled){d.append(E('p',t('family_error_google_unavailable'),'small'));return;}
+  if(status.google_linked)d.append(E('p',sessionCopy('googleHint'),'small'));
   form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password'),...(mfa.enabled?{code:input(f,'code',t('family_code'))}:{})}),async v=>{
    let value;try{value=await call(status.google_linked?'google/unlink':'google/link',{password:v.password.value,code:v.code?.value});}finally{v.password.value='';if(v.code)v.code.value='';}
    if(value.authorization_url){location.assign(value.authorization_url);return;}
    d.close();clearIdentity();login();
-  },t(status.google_linked?'account_google_disconnect':'account_google_connect'));
- });
+  },status.google_linked?sessionCopy('googleDisconnect'):t('account_google_connect'));
+ },trigger);
 }
 async function devices(host){
  if(!host){openSettings('devices');return;}
@@ -1597,7 +2023,7 @@ async function devices(host){
     if(device.current)description.append(E('span',t('web_current_session'),'device-status'));
     description.append(E('p',t(device.revoked_at?'web_revoked_on':'web_last_active')+' · '+deviceDate(device.revoked_at||device.last_seen_at),'small'));
     row.append(description);
-    if(!device.revoked_at)row.append(button(t('account_revoke'),()=>confirmDeviceRevoke(device,d),'text-button danger-text'));
+    if(!device.revoked_at){const revoke=button(t('account_revoke'),()=>confirmDeviceRevoke(device,d,revoke),'text-button danger-text');row.append(revoke);}
     section.append(row);
    }
    if(!entries.length)section.append(E('p',t('web_no_sessions'),'small'));
@@ -1606,23 +2032,28 @@ async function devices(host){
   group('web_active_sessions',active);
   if(revoked.length)group('web_revoked_sessions',revoked);
 }
-function confirmDeviceRevoke(device,list){
- dialog(t('account_revoke'),d=>{
-  d.classList.add('device-revoke-dialog');
-  append(d,E('p',device.label,'device-name'),E('p',t(device.current?'web_revoke_current_hint':'web_revoke_device_hint')));
+function confirmDeviceRevoke(device,list,trigger){
+ const row=trigger?.closest('.device-row');if(!row)return;
+ row.querySelector('.device-revoke-inline')?.remove();
+ const d=E('div',undefined,'device-revoke-inline');row.append(d);
+ trigger.hidden=true;
+ const close=()=>{d.remove();trigger.hidden=false;trigger.focus({preventScroll:true});};
+  append(d,E('p',t(device.current?'web_revoke_current_hint':'web_revoke_device_hint')));
   const confirmation=form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password')}),async v=>{
    try{await call('devices/revoke',{device_id:device.id,password:v.password.value});}finally{v.password.value='';}
-   d.close();
+   d.remove();
    if(device.current){clearIdentity();login();return;}
    toast(t('account_done'));
    if(list.isConnected)await openSettings('devices');
   },t('account_revoke'));
   confirmation.querySelector('button[type=submit]').classList.add('danger-action');
- });
+  d.append(button(sessionCopy('cancel'),close,'text-button'));
+  d.querySelector('input').focus({preventScroll:true});
 }
-async function customerMfa(){
+async function customerMfa(trigger){
  const status=await call('mfa');
- dialog(t('account_mfa'),d=>{
+ if(!trigger?.isConnected)return;
+ settingsInline(t('account_mfa'),d=>{
   if(status.enabled){
    const disable=form(d,'',f=>({password:input(f,'password',t('family_old_password'),'password'),code:input(f,'code',t('family_code'))}),async v=>{
     await call('mfa/disable',{password:v.password.value,code:v.code.value});
@@ -1639,7 +2070,7 @@ async function customerMfa(){
     replaceDialog(d,E('h2',t('account_mfa_recovery')),E('pre',value.recovery_codes.join('\n')),button(t('close'),()=>{d.close();clearIdentity();login();}));
    },t('web_mfa_enable'));
   },t('web_mfa_enable'));
- });
+ },trigger);
 }
 
 function familyPermissions(m){

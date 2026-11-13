@@ -2,7 +2,7 @@ name: ULADIM Web client
 on:
   pull_request:
     branches: [feature/uladim-hostinger-launch]
-    paths: ['backend/webassets/**', 'backend/web.py', 'backend/account_lifecycle.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/web_browser_navigation.py', 'tool/web_test_tls.py', 'tool/check_google_browser.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'tool/check_statement*', 'backend/tests/**', 'tool/check_focus*', 'tool/check_workspace_switch_focus.py', 'tool/verify_web_release.py', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
+    paths: ['backend/webassets/**', 'backend/web.py', 'backend/account_lifecycle.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/web_browser_navigation.py', 'tool/web_test_tls.py', 'tool/check_google_browser.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'tool/check_statement*', 'backend/tests/**', 'tool/check_focus*', 'tool/check_workspace_switch_focus.py', 'tool/check_*_browser.py', 'tool/check_session_experience.py', 'tool/check_currency_picker.py', 'tool/test_publish_feedback_guard.py', 'deploy/hostinger/publish-focus-ui.sh', 'tool/verify_web_release.py', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -64,6 +64,16 @@ jobs:
         run: python -m tool.check_web_platform
       - name: Clarity hierarchy and selected-device revocation
         run: python -m tool.check_clarity_review
+      - name: Owner feedback regressions
+        run: |
+          python -m tool.check_welcome_browser
+          python -m tool.check_session_experience
+          python -m tool.check_budget_input_browser
+          python -m tool.check_currency_picker
+          python -m tool.check_finance_views_browser
+          python -m tool.check_mobile_today_browser
+          python -m tool.check_transaction_categories
+          python tool/test_publish_feedback_guard.py
       - name: Focus settings, refresh status and delayed workspace switching
         run: |
           python -m tool.check_focus_completion

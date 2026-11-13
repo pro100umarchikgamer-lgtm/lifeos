@@ -21,3 +21,12 @@ def open_settings(page, section):
     if back.is_visible():
         back.click()
     page.locator(f'.settings-navigation button[data-section="{section}"]').click()
+
+
+def open_finance_section(page, section):
+    """Use the sidebar on desktop and the compact finance tabs on a phone."""
+    sidebar = page.locator(f'.nav button[data-tab="money"][data-section="{section}"]:visible')
+    if sidebar.count():
+        sidebar.click()
+    else:
+        page.locator(f'.finance-navigation button[data-section="{section}"]:visible').click()

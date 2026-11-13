@@ -18,7 +18,7 @@ async function api(path,body){const epoch=viewEpoch;const response=await fetch(p
 function heading(title,description){app.replaceChildren(el('div',staff?'ULADIM Control':'ULADIM','eyebrow'),el('h1',title));if(description)app.append(el('p',description));if(staff&&controlNavigation)app.append(controlNavigation);}
 function notice(text){app.append(el('div',text,'notice'));}
 function panel(title,body){return add(el('section',undefined,'card'),el('h2',title),el('p',body));}
-function field(form,name,label,type='text'){const id='field-'+name;const l=el('label',label);l.htmlFor=id;const input=el(name==='message'?'textarea':'input');input.id=id;input.name=name;if(name!=='message')input.type=type;input.required=true;if(type==='password')input.autocomplete='current-password';form.append(l,input);return input;}
+function field(form,name,label,type='text'){const id='field-'+name+'-'+crypto.randomUUID();const l=el('label',label);l.htmlFor=id;const input=el(name==='message'?'textarea':'input');input.id=id;input.name=name;if(name!=='message')input.type=type;input.required=true;if(type==='password')input.autocomplete='current-password';form.append(l,input);return input;}
 function form(title,fields,submit,run){const f=el('form',undefined,'panel');f.append(el('h2',title));const inputs={};for(const [name,label,type]of fields)inputs[name]=field(f,name,label,type);const message=el('p');message.setAttribute('role','status');const button=el('button',submit);button.type='submit';f.append(message,button);f.addEventListener('submit',async e=>{e.preventDefault();button.disabled=true;message.textContent='';try{await run(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));message.textContent=tr('account_done');}catch(error){message.className='error';message.textContent=error.message;}finally{button.disabled=false;}});app.append(f);return f;}
 function focusAuthHeading(title,description){
  heading(title,description);
@@ -69,12 +69,65 @@ function loginMfa(challenge){
 
 function action(label,run,parent=app){const button=el('button',label,'secondary');button.type='button';button.addEventListener('click',async()=>{button.disabled=true;try{await run();}catch(e){notice(e.message);}finally{button.disabled=false;}});parent.append(button);}
 function showObject(value){const pre=el('pre',JSON.stringify(value,null,2));app.append(pre);}
-async function support(){heading('Поддержка','Сообщайте только сведения, которыми хотите поделиться. Не отправляйте пароли, коды, банковские выписки или личные документы.');const result=await api('support');for(const ticket of result.tickets){const row=add(el('section',undefined,'card'),el('h2',ticket.subject),el('p',ticket.category+' · '+ticket.state));action('Открыть обращение',async()=>{const r=await api('thread?id='+encodeURIComponent(ticket.id));heading(ticket.subject);for(const m of r.messages)app.append(panel(m.is_staff?'Поддержка':'Вы',m.body));form('Ответить',[['message','Сообщение','text']],'Отправить',async b=>{await api(staff?'support/reply':'support/reply',{...b,ticket_id:ticket.id,state:staff?'waiting':'open'});await support();});},row);app.append(row);}if(!staff)form('Новое обращение',[['subject','Тема','text'],['message','Сообщение','text']],'Отправить',async b=>{await api('support',{...b,category:'other'});await support();});}
+function supportLabels(){return {
+ categories:{account:'Аккаунт и вход',sync:'Синхронизация',billing:'Тарифы и доступ',bug:'Ошибка в приложении',complaint:'Жалоба',privacy:'Приватность',deletion:'Удаление аккаунта',other:'Другой вопрос'},
+ states:{open:'Открыто',waiting:'Ожидает ответа',resolved:'Решено'},
+ priorities:{low:'Низкий',normal:'Обычный',high:'Высокий',urgent:'Срочный'}
+};}
+async function support(){
+ const result=await api('support'),labels=supportLabels();
+ heading(staff?'Обращения и жалобы':'Поддержка',staff?'Работайте с сообщениями, которые пользователь отправил сам. Личные задачи, финансы и заметки недоступны.':'Не отправляйте пароли, коды, банковские выписки или личные документы.');
+ const filters=el('div',undefined,'control-queue-filters'),list=el('div',undefined,'control-ticket-list');
+ const selections={};
+ for(const [name,title,choices]of [['state','Состояние',labels.states],['category','Тип обращения',labels.categories]]){
+  const label=el('label',title),select=el('select');select.id='support-filter-'+name;select.setAttribute('aria-label',title);label.htmlFor=select.id;
+  const all=el('option','Все');all.value='';select.append(all);
+  for(const [value,text]of Object.entries(choices)){const option=el('option',text);option.value=value;select.append(option);}
+  add(filters,add(el('div'),label,select));selections[name]=select;
+ }
+ add(app,filters,list);
+ function renderTickets(){
+  list.replaceChildren();
+  const tickets=(result.tickets||[]).filter(ticket=>(!selections.state.value||ticket.state===selections.state.value)&&(!selections.category.value||ticket.category===selections.category.value));
+  if(!tickets.length)list.append(el('p','Обращений по этим условиям пока нет.','notice'));
+  for(const ticket of tickets){
+   const row=add(el('section',undefined,'card control-ticket'),el('p',(labels.categories[ticket.category]||ticket.category)+' · '+(labels.states[ticket.state]||ticket.state),'control-ticket-meta'),el('h2',ticket.subject));
+   row.dataset.category=ticket.category;
+   if(staff)row.append(el('p','Приоритет: '+(labels.priorities[ticket.priority]||ticket.priority),'small'));
+   action('Открыть обращение',()=>supportThread(ticket.id),row);list.append(row);
+  }
+ }
+ Object.values(selections).forEach(select=>select.addEventListener('change',renderTickets));renderTickets();
+ if((result.tickets||[]).length===100)app.append(el('p','Показаны 100 последних обращений.','small'));
+ if(!staff){
+  const f=form('Новое обращение',[['subject','Тема','text'],['message','Сообщение','text']],'Отправить',async b=>{await api('support',{...b,category:f.elements.category.value});await support();});
+  selectField(f,'category','Тип обращения',Object.entries(labels.categories));f.elements.category.value='other';f.elements.subject.maxLength=160;f.elements.message.maxLength=8000;
+ }
+}
+async function supportThread(id){
+ const [result,session]=await Promise.all([api('thread?id='+encodeURIComponent(id)),staff?api('session'):Promise.resolve(null)]),labels=supportLabels();
+ heading(result.ticket.subject,(labels.categories[result.ticket.category]||result.ticket.category)+' · '+(labels.states[result.ticket.state]||result.ticket.state));
+ const actions=el('div',undefined,'actions');app.append(actions);action('Все обращения',support,actions);
+ if(session?.permissions.includes('users.read'))action('Открыть аккаунт',()=>staffUser(result.ticket.user_id),actions);
+ const thread=el('section',undefined,'control-support-thread');app.append(thread);
+ for(const message of result.messages){const item=panel(message.is_staff?'Поддержка':staff?'Пользователь':'Вы',message.body);item.classList.add('support-message');item.dataset.staff=String(Boolean(message.is_staff));thread.append(item);}
+ if(!staff||session.permissions.includes('support.reply')){
+  const reply=form('Ответить',[['message','Сообщение','text']],'Отправить ответ',async b=>{await api('support/reply',{...b,ticket_id:id,state:staff?'waiting':'open'});await supportThread(id);});reply.elements.message.maxLength=8000;
+ }
+ if(session?.permissions.includes('support.reply')){
+  const triage=form('Состояние и приоритет',[['reason','Причина изменения для журнала','text']],'Сохранить состояние',async b=>{await api('support/triage',{ticket_id:id,priority:triage.elements.priority.value,state:triage.elements.state.value,reason:b.reason});await supportThread(id);});
+  triage.classList.add('control-triage');triage.elements.reason.maxLength=500;
+  selectField(triage,'priority','Приоритет',Object.entries(labels.priorities)).value=result.ticket.priority;
+  selectField(triage,'state','Состояние',Object.entries(labels.states)).value=result.ticket.state;
+ }
+}
 async function dashboard(){const session=await api('session');csrf=session.csrf;if(!staff){location.replace('/app');return;}delete document.body.dataset.auth;heading(staff?'Обзор сервиса':'Ваш ULADIM',staff?'Операционные показатели без доступа к личным записям пользователей.':session.email);const tabs=el('div',undefined,'tabs');app.append(tabs);action('Выйти',async()=>{await api('logout',{});csrf='';login();},tabs);if(staff){controlNavigation=makeControlNavigation(session,tabs);if(session.permissions.includes('dashboard.read')){const data=await api('dashboard');const grid=el('div',undefined,'grid metrics');for(const [key,value]of Object.entries(data)){if(typeof value==='number'||value===null)grid.append(metricCard(key,value));}app.append(grid);}else notice('Выберите доступный раздел.');}else{action('Поддержка',support,tabs);action('Аккаунт и приватность',accountPrivacy,tabs);const ent=await api('entitlements');const grid=el('div',undefined,'grid');grid.append(panel('Ваш доступ: '+ent.tier,ent.billing_managed_by?'Управляется через '+ent.billing_managed_by:'Платёж не оформлен. Текущий доступ не означает платную подписку.'));grid.append(panel('Данные на устройстве','Личные записи остаются в зашифрованной базе Android. Кабинет не предоставляет к ним доступ.'));app.append(grid);const devices=await api('devices');app.append(el('h2','Устройства'));for(const device of devices.devices){const row=add(el('div',undefined,'row'),el('span',device.label||'Устройство'),el('span',new Date(device.last_seen_at*1000).toLocaleString(),'badge'));if(!device.revoked_at)action('Отозвать доступ',async()=>{heading('Отозвать доступ устройства');form(device.label,[['password','Ваш пароль','password']],'Подтвердить отзыв',async b=>{await api('devices/revoke',{device_id:device.id,password:b.password});await dashboard();});},row);app.append(row);}notice('Покупки пока отключены. Free, Plus и Premium используют единый серверный каталог.');}}
-function publicNavigation(path) {
+function publicNavigation(path,entry='guest') {
  const header=document.querySelector('body > header');
  const nav=header.querySelector('nav');
  const signIn=nav.querySelector('a[href="/account"]');
+ if(entry!=='guest'){signIn.textContent=entry==='signed-in'?'Моё пространство':'Открыть ULADIM';signIn.href='/app';}
+ signIn.classList.add('public-signin');
  const apps=el('a','Приложения');
  apps.href='/download';
  nav.insertBefore(apps,signIn);
@@ -105,8 +158,24 @@ function publicNavigation(path) {
  });
  document.addEventListener('click',event=>{if(!header.contains(event.target))close();});
 }
+function isInstalledLaunch(){
+ return navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+}
+async function customerEntryStatus(){
+ // Read the HttpOnly session; never infer account state from stored preferences.
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),3000);
+ try{
+  const response=await fetch('/account/api/session',{credentials:'same-origin',cache:'no-store',signal:controller.signal});
+  if(response.status===401)return 'guest';
+  if(!response.ok)return 'unavailable';
+  const session=await response.json();
+  return typeof session.user_id==='string'&&typeof session.email==='string'?'signed-in':'unavailable';
+ }catch{return 'unavailable';}finally{clearTimeout(timer);}
+}
 function startLink(config) {
- return config.registration_open ? link('Начать бесплатно','/app?action=signup') : link('Открыть ULADIM','/app');
+ if(config.entry==='signed-in')return link('Открыть моё пространство','/app');
+ if(config.entry==='unavailable')return link('Открыть ULADIM','/app');
+ return config.registration_open ? link('Создать аккаунт','/app?action=signup') : link('Открыть ULADIM','/app');
 }
 async function publicPage(config) {
  const path=location.pathname;
@@ -114,8 +183,9 @@ async function publicPage(config) {
   try{await dashboard();}catch(e){if(e.code==='unauthorized'||e.code==='staff_unauthorized')login();else throw e;}
   return;
  }
+ if(path==='/')config={...config,entry:await customerEntryStatus()};
  document.body.classList.add('product-site');
- publicNavigation(path);
+ publicNavigation(path,config.entry);
  if(path==='/'){await landing(config);return;}
  document.body.classList.add('focus-public');
  app.classList.add('product-content','focus-info');
@@ -153,6 +223,7 @@ async function publicPage(config) {
  if(path==='/support'||path==='/delete-account')app.append(link('Открыть аккаунт','/account'));
 }
 (async()=>{
+ if(!staff&&location.pathname==='/'&&isInstalledLaunch()){location.replace('/app');return;}
  try {
   authPacks=await (await fetch('/assets/locales.json',{cache:'no-store'})).json();
   if(!authPacks[authLanguage])authLanguage='ru';
@@ -218,7 +289,7 @@ function recovery(){
 async function accountPrivacy(){heading('Аккаунт и приватность');action('Двухфакторная защита',customerMfa);const status=await api('deletion');for(const transfer of status.incoming_transfers||[]){form('Принять владение: '+transfer.name,[['password','Ваш пароль','password']],'Принять владение семьёй',async b=>{await api('accept-transfer',{transfer_id:transfer.id,password:b.password});await accountPrivacy();});}form('Сменить пароль',[['old_password','Текущий пароль','password'],['new_password','Новый пароль: от 7 символов','password']],'Сменить и выйти',async b=>{await api('password',b);login();});form('Сменить почту',[['email','Новый адрес','email'],['password','Текущий пароль','password']],'Отправить код',async b=>{await api('email',b);heading('Подтвердить новую почту');form('Код из письма',[['code','Код','text']],'Подтвердить и выйти',async value=>{await api('confirm-email',{code:value.code,password:b.password});login();});});app.append(el('h2','Удаление облачного аккаунта'));notice('Запрос можно отменить в течение 24 часов. Локальная база Android и общие записи семьи сохраняются. Срок очистки резервных копий требует отдельной проверки оператором.');if(status.ownership_transfer_required.length){notice('Сначала передайте владение семейным пространством другому родителю с его подтверждением.');for(const family of status.ownership_transfer_required){if(family.eligible_parent_id)form('Передать владение: '+family.name,[['password','Ваш пароль','password']],'Запросить согласие другого родителя',async b=>{await api('transfer',{workspace_id:family.id,user_id:family.eligible_parent_id,password:b.password});notice('Запрос создан. Другой родитель может принять его в разделе приватности своего аккаунта.');});}}else if(status.request?.state==='pending'){notice('Запрос ожидает исполнения после '+new Date(status.request.due_at*1000).toLocaleString());form('Отменить запрос',[['password','Текущий пароль','password']],'Отменить удаление',async b=>{await api('cancel-deletion',b);await accountPrivacy();});}else{if(status.request?.state==='attention')notice('Для исполнения нужна отдельная проверка: общие ссылки или права изменились. Данные не удалены.');form('Подтвердить запрос удаления',[['password','Текущий пароль','password'],['confirmation','Введите DELETE для подтверждения','text']],'Запросить удаление',async b=>{await api('deletion',b);await accountPrivacy();});}}
 async function staffUsers(){heading('Пользователи','Поиск только по ID или почте. Личные записи не доступны.');form('Поиск',[['search','ID или почта','text']],'Найти',async b=>{const result=await api('users?search='+encodeURIComponent(b.search));const list=el('div',undefined,'grid');for(const user of result.users){const card=panel(user.email,user.verified?'Почта подтверждена':'Почта не подтверждена');action('Открыть аккаунт',()=>staffUser(user.id),card);list.append(card);}app.append(list);});}
 function selectField(form,name,label,choices){
-  const caption=el('label',label);caption.htmlFor='select-'+name;
+  const caption=el('label',label);caption.htmlFor='select-'+name+'-'+crypto.randomUUID();
   const select=el('select');select.name=name;select.id=caption.htmlFor;
   for(const [value,title]of choices){const option=el('option',title);option.value=value;select.append(option);}
   form.insertBefore(caption,form.querySelector('button'));form.insertBefore(select,form.querySelector('button'));
@@ -263,7 +334,10 @@ async function staffUser(id){
   }
   if(session.permissions.includes('users.moderate')){
     const services=[['account','Весь аккаунт'],['family_write','Изменения в семье'],['premium','Премиальные сервисы'],['support_write','Новые сообщения поддержки']];
-    for(const [service,until]of Object.entries(ent.holds)){
+    const holds={...ent.holds};if(result.user.disabled_until>Math.floor(Date.now()/1000))holds.account=result.user.disabled_until;
+    app.append(el('h2','Ограничения и модерация'),el('p','Ограничения временные и не удаляют записи. Каждое действие сохраняется в журнале с причиной.','small'));
+    if(!Object.keys(holds).length)app.append(el('p','Активных ограничений нет.','control-no-holds'));
+    for(const [service,until]of Object.entries(holds)){
       const name=services.find(row=>row[0]===service)?.[1]||service;
       const card=panel('Ограничение: '+name,'До '+accessUntil(until));app.append(card);
       action('Снять ограничение',async()=>{
@@ -273,9 +347,12 @@ async function staffUser(id){
         });action('Отменить',async()=>staffUser(id));
       },card);
     }
-    const f=form('Временное ограничение',[['reason','Обязательная причина','text']],'Ограничить на 24 часа',async b=>{
-      await api('moderate',{user_id:id,service:f.elements.service.value,until_at:Math.floor(Date.now()/1000)+86400,reason:b.reason});await staffUser(id);
-    });selectField(f,'service','Ограничиваемый сервис',services);
+    const f=form('Временное ограничение',[['reason','Обязательная причина','text']],'Применить ограничение',async b=>{
+      await api('moderate',{user_id:id,service:f.elements.service.value,until_at:Math.floor(Date.now()/1000)+Number(f.elements.duration.value),reason:b.reason});await staffUser(id);
+    });f.classList.add('control-moderation');f.elements.reason.maxLength=500;
+    const service=selectField(f,'service','Ограничиваемый сервис',services);service.value='family_write';
+    selectField(f,'duration','Срок ограничения',[['86400','24 часа'],['604800','7 дней'],['2592000','30 дней']]);
+    const warning=el('p','Блокировка всего аккаунта завершит его активные сеансы. Данные сохранятся.','notice');warning.hidden=true;f.insertBefore(warning,f.querySelector('button'));service.addEventListener('change',()=>{warning.hidden=service.value!=='account';});
   }
 }
 
@@ -361,37 +438,33 @@ async function landing(config) {
  document.body.classList.add('focus-home');
  app.replaceChildren();
  app.classList.add('landing');
- const hero = el('section', undefined, 'product-hero');
- const copy = el('div', undefined, 'hero-copy');
- const title = add(el('h1'), el('span', 'Дела, планы и финансы.'), ' ', el('span', 'Всё на своих местах.'));
- add(copy, el('p', 'Личное и семейное пространство', 'hero-eyebrow'), title, el('p', 'Разгрузите голову: соберите задачи, события, заметки и финансы в одном пространстве — для себя и близких.', 'hero-description'));
- const actions = el('div', undefined, 'hero-actions');
- add(actions, startLink(config), link('Возможности', '/docs', true));
- copy.append(actions);
- copy.append(el('p', 'В браузере на телефоне, планшете и компьютере.', 'hero-platform-note'));
- if (!config.registration_open) copy.append(el('p', 'Регистрация по приглашениям.', 'hero-caption'));
- app.append(add(hero, copy, todayPreview()));
+ const hero=el('section',undefined,'product-hero');
+ const copy=el('div',undefined,'hero-copy');
+ const title=add(el('h1'),el('span','Важное —'),' ',el('span','в одном месте.'));
+ add(copy,el('p','ULADIM · Личное и семейное пространство','hero-eyebrow'),title,
+  el('p','Задачи, заметки, календарь и финансы. Соберите повседневные дела в одном спокойном пространстве.','hero-description'));
+ const actions=el('div',undefined,'hero-actions');
+ actions.append(startLink(config));copy.append(actions);
+ copy.append(el('p',config.entry==='signed-in'?'Ваш аккаунт уже открыт в этом браузере.':'Сейчас все возможности доступны бесплатно.','hero-caption'));
+ app.append(add(hero,copy,todayPreview()));
 
- const features = add(el('section', undefined, 'product-features'), el('h2', 'Что можно делать в ULADIM'));
- const featureGrid = el('div', undefined, 'home-feature-grid');
- const capabilities = [
-  ['calendar', 'Дела и календарь', 'Планируйте день, ведите задачи и не пропускайте важные события.'],
-  ['notes', 'Заметки', 'Храните идеи, планы и важную информацию в одном месте.'],
-  ['money', 'Финансы', 'Учитывайте доходы и расходы, ведите счета и бюджеты. Суммы видны отдельно по валютам.'],
-  ['account', 'Семейное пространство', 'Планируйте дела вместе с близкими и выбирайте, какими записями поделиться.']
- ];
- for (const [icon, name, description] of capabilities) {
-  const text = add(el('div'), el('h3', name), el('p', description));
-  featureGrid.append(add(el('div', undefined, 'feature-row'), homeIcon(icon), text));
+ const overview=el('section',undefined,'welcome-overview');
+ overview.setAttribute('aria-label','Возможности ULADIM');
+ for(const [symbol,title,description]of [
+  ['calendar','Планируйте день','Задачи, заметки и события рядом.'],
+  ['money','Ведите финансы','Счета, операции и бюджеты без суеты.'],
+  ['account','Делайте вместе','Личное пространство и общие семейные дела.']
+ ]){
+  const item=el('div',undefined,'welcome-capability');
+  add(item,homeIcon(symbol),add(el('div'),el('h2',title),el('p',description)));
+  overview.append(item);
  }
- app.append(add(features, featureGrid));
- const platforms=el('section',undefined,'product-platforms');
- add(platforms,el('h2','ULADIM на ваших устройствах'),applicationCards(false));
- app.append(platforms);
- await planComparison(app);
- const faq=el('section',undefined,'product-faq');faq.append(el('h2','Частые вопросы'));
- for(const [question,answer]of [['Можно пользоваться без оплаты?','Да. Free доступен без покупки. Реальные платежи пока не подключены; Plus и Premium не продаются.'],['Нужен ли интернет?','Веб-версия работает прежде всего онлайн. В браузере кешируется интерфейс, а личные записи не сохраняются для полноценной работы без сети. У Android есть отдельное зашифрованное локальное хранилище.'],['Один ли аккаунт в вебе и Android?','Да. Используйте одинаковую почту. Передача записей зависит от выбранного пространства и его прав; сама авторизация не отправляет все локальные записи Android автоматически.'],['Что делать с прежним приглашением?','Откройте создание аккаунта. При открытой регистрации приглашение не требуется. Прежняя заявка сохранена: её статус и отмена доступны по ссылке «Прежние заявки».']]){const d=el('details');add(d,el('summary',question),el('p',answer));faq.append(d);}app.append(faq);
- const help=el('div',undefined,'hero-actions');add(help,link('Открыть ULADIM','/app'),link('Поддержка','/support',true),link('Прежние заявки','/early-access',true));app.append(help);
+ app.append(overview);
+ const learn=el('nav',undefined,'welcome-resources');learn.setAttribute('aria-label','Узнать больше');
+ for(const [label,path]of [['Возможности','/docs'],['Как установить','/download'],['Тарифы','/plans'],['Вопросы и ответы','/faq'],['Поддержка','/support']]){
+  const entry=el('a',label);entry.href=path;learn.append(entry);
+ }
+ app.append(learn);
 }
 function applicationCards(full) {
  const grid=el('div',undefined,'application-grid');
@@ -411,10 +484,21 @@ function applicationPage() {
  if(target)requestAnimationFrame(()=>target.scrollIntoView());
 }
 async function planComparison(target){
- const data=await api('plans');const section=el('section',undefined,'plan-comparison');add(section,el('h2','Три тарифа. Понятные условия.'),el('p','Free — без оплаты. Продажи Plus и Premium пока не подключены. Сейчас сервер предоставляет перечисленные возможности во всех трёх уровнях; будущие цены и различия ещё не утверждены.'));
+ const data=await api('plans');const section=el('section',undefined,'plan-comparison');
+ add(section,el('h2','Пространство для вашего ритма'),el('p','«Пока всё доступно бесплатно»','access-free-note'),el('p','Задачи, заметки, календарь, финансы и семейное пространство уже доступны. Подписка и платёжные данные не нужны.'));
+ const labels={personal_core:'Задачи, заметки, календарь и финансы',family_sync:'Семейная синхронизация',custom_charts:'Настройка диаграмм',extended_personalization:'Темы и палитры'};
+ const descriptions=[['Free','Для личного ритма','Задачи, заметки, календарь и финансы в одном месте.'],['Plus','Для своих привычек','Больше внимания настройкам, диаграммам и личному пространству.'],['Premium','Для совместных планов','Личные и семейные дела в отдельных пространствах.']];
+ const grid=el('div',undefined,'access-plan-grid');
+ for(const [tier,title,description]of descriptions){
+  const plan=data.tiers[tier];if(!plan)continue;
+  const card=el('article',undefined,'card access-plan-card');card.dataset.tier=tier;
+  add(card,el('p',tier==='Free'?'Доступен сейчас':'Будущий тариф','access-plan-label'),el('h3',tier),el('strong',title),el('p',description));
+  card.append(el('p',tier==='Free'?'Без оплаты':'Сейчас эти возможности тоже бесплатны.','access-plan-availability'));grid.append(card);
+ }
+ add(section,grid,el('p','Plus и Premium — подготовленная линейка на будущее. Цены и различия ещё не утверждены; продажи отключены.','access-plan-boundary'));
+ const details=el('details',undefined,'access-plan-details');details.append(el('summary','Сравнить доступные возможности'));
  const scroll=el('div',undefined,'table-scroll');scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label','Сравнение тарифов');const table=el('table');const head=el('thead');const row=el('tr');for(const label of ['Возможность','Free','Plus','Premium']){const th=el('th',label);th.scope='col';row.append(th);}head.append(row);table.append(head);const body=el('tbody');
- const labels={personal_core:'Задачи, заметки и финансы',family_sync:'Семейная синхронизация',custom_charts:'Настройка диаграмм',extended_personalization:'Темы и палитры'};
- for(const [key,label]of Object.entries(labels)){const row=el('tr');const th=el('th',label);th.scope='row';row.append(th);for(const tier of ['Free','Plus','Premium'])row.append(el('td',data.tiers[tier].features.includes(key)?'Доступно':'Не включено'));body.append(row);}table.append(body);scroll.append(table);section.append(scroll);target.append(section);
+ for(const [key,label]of Object.entries(labels)){const row=el('tr');const th=el('th',label);th.scope='row';row.append(th);for(const tier of ['Free','Plus','Premium'])row.append(el('td',data.tiers[tier]?.features.includes(key)?'Доступно':'Не включено'));body.append(row);}table.append(body);scroll.append(table);details.append(scroll);section.append(details);target.append(section);
 }
 function installGuide(target){
  const section=el('section',undefined,'install-guide');

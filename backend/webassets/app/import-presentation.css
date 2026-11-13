@@ -29,3 +29,12 @@
 
 .statement-date-help.is-resolved>h3,.statement-date-help.is-resolved>p:not(.statement-date-examples){display:none}
 .statement-date-help.is-resolved label{margin-top:0}
+
+.statement-required-fields{display:grid;gap:6px;margin-bottom:10px;min-width:0}
+.statement-required-fields select{width:100%;min-width:0;max-width:100%;text-overflow:ellipsis}
+.statement-row-correction{margin-block:16px;padding:20px;border:1px solid var(--ux-border,var(--line));border-radius:16px;background:var(--ux-soft,var(--soft))}
+.statement-row-correction[hidden]{display:none!important}
+.statement-row-correction h3{margin-top:0}
+.statement-row-correction form{max-width:44rem}
+.statement-row-correction form>button{margin-right:10px}
+@media(max-width:640px){.statement-row-correction{padding:16px}}

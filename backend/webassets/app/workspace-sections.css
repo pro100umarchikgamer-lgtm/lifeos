@@ -238,3 +238,24 @@ body[data-design=clarity] #root main.finance-page .finance-overview h2{font-fami
  body[data-design=clarity] main.finance-page .finance-details .finance-budgets{grid-column:2;grid-row:2}
  body[data-design=clarity] main.finance-page .finance-details .finance-analysis{grid-column:3;grid-row:2}
 }
+
+/* Budget entry keeps the usual monthly case short; uncommon options stay closed. */
+body[data-design=clarity] dialog.budget-editor{width:min(540px,calc(100% - 24px));max-height:calc(100dvh - 24px);overflow:auto;scroll-padding:18px}
+body[data-design=clarity] dialog.budget-editor fieldset{min-width:0}
+body[data-design=clarity] dialog.budget-editor .budget-value{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:12px}
+body[data-design=clarity] dialog.budget-editor .budget-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+body[data-design=clarity] dialog.budget-editor .budget-dates[hidden]{display:none!important}
+body[data-design=clarity] dialog.budget-editor .budget-period-summary{padding:14px 16px;margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);overflow-wrap:anywhere}
+body[data-design=clarity] dialog.budget-editor .budget-period-summary strong{font-size:14px;color:var(--ink)}
+body[data-design=clarity] dialog.budget-editor .budget-period-summary p{margin:5px 0 0;font-size:13px;line-height:1.5}
+body[data-design=clarity] dialog.budget-editor .budget-options{margin-top:16px;border-block:1px solid var(--line);padding:0 2px}
+body[data-design=clarity] dialog.budget-editor .budget-options>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;color:var(--muted);font-size:13px;font-weight:600}
+body[data-design=clarity] dialog.budget-editor .budget-options>summary::-webkit-details-marker{display:none}
+body[data-design=clarity] dialog.budget-editor .budget-options>summary::after{content:'+';font-size:18px;font-weight:400}
+body[data-design=clarity] dialog.budget-editor .budget-options[open]{padding-bottom:16px}
+body[data-design=clarity] dialog.budget-editor .budget-options[open]>summary::after{content:'−'}
+body[data-design=clarity] dialog.budget-editor .budget-original-start{overflow-wrap:anywhere}
+@media(max-width:420px){
+ body[data-design=clarity] dialog.budget-editor{padding:18px}
+ body[data-design=clarity] dialog.budget-editor .budget-dates{grid-template-columns:minmax(0,1fr);gap:0}
+}

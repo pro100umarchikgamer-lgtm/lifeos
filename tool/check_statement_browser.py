@@ -259,7 +259,8 @@ def run(browser, backend, actor, workspace, origin):
     expect(dialog.get_by_text('В выписке указаны разные валюты.', exact=False)).to_be_visible()
     expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
     dialog.get_by_role('button', name='Исправить строку', exact=True).click()
-    editor = page.locator('dialog[open]').last
+    editor = dialog.locator('.statement-row-correction')
+    expect(page.locator('dialog[open]')).to_have_count(1)
     currency = editor.locator('input[name=currency]')
     expect(currency).to_have_value('')
     currency.fill('USD')
@@ -340,7 +341,8 @@ def run(browser, backend, actor, workspace, origin):
     launch.click()
     upload('invalid.csv', 'Date;Debit;Credit;Description\n04/05/2026;1.03;;Ambiguous day')
     dialog.get_by_role('button', name='Исправить строку', exact=True).click()
-    editor = page.locator('dialog[open]').last
+    editor = dialog.locator('.statement-row-correction')
+    expect(page.locator('dialog[open]')).to_have_count(1)
     editor.locator('input[name=date]').fill('2026-05-04')
     editor.get_by_role('button', name='Сохранить', exact=True).click()
     save([('RUB', 103)])

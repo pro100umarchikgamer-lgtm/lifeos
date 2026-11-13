@@ -9,6 +9,9 @@ def main():
         browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}));context=browser.new_context(color_scheme='light');page=context.new_page()
         try:
             login(page,origin);open_tab(page,'Финансы')
+            # The overview defaults to real expense categories; select the
+            # existing income/expense bars to verify their exact theme colours.
+            page.locator('[name=chart-mode]').select_option('bar')
             page.wait_for_function('''()=>{const c=document.querySelector('canvas');if(!c)return false;
                 const pixel=c.getContext('2d').getImageData(30,70,1,1).data;
                 const color=getComputedStyle(document.body).getPropertyValue('--income').trim();

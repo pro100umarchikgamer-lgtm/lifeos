@@ -7,7 +7,7 @@ from pathlib import Path
 from playwright.sync_api import expect, sync_playwright
 
 from tool.check_web_platform import PASSWORD, fixture, login
-from tool.web_browser_navigation import open_settings, open_tab
+from tool.web_browser_navigation import open_finance_section, open_settings, open_tab
 
 VIEWPORTS = (
     ('phone', 390, 844), ('ipad-portrait', 820, 1180),
@@ -37,10 +37,12 @@ def check_account(page, baseline):
     for key in ('family_password_change', 'account_email_change', 'account_delete'):
         label = page.evaluate('key => t(key)', key)
         page.locator('.settings-content').get_by_role('button', name=label, exact=True).click()
-        dialog = page.get_by_role('dialog')
-        expect(dialog.get_by_role('button', name=label, exact=True)).to_be_visible()
-        expect(dialog.get_by_role('button', name='Сохранить', exact=True)).to_have_count(0)
-        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        panel = page.get_by_role('dialog') if key == 'account_delete' else page.locator('.settings-inline-panel')
+        expect(panel.get_by_role('button', name=label, exact=True)).to_be_visible()
+        expect(panel.get_by_role('button', name='Сохранить', exact=True)).to_have_count(0)
+        if key != 'account_delete':
+            expect(page.locator('dialog[open]')).to_have_count(0)
+        panel.get_by_role('button', name='Закрыть' if key == 'account_delete' else 'Отменить', exact=True).click()
 
 
 def check_revocation(page, backend, actor):
@@ -53,9 +55,11 @@ def check_revocation(page, backend, actor):
     expect(revoked.get_by_role('button')).to_have_count(0)
     before = {device['label']: device for device in backend.list_devices(actor, '')['devices']}
     selected.get_by_role('button', name='Отозвать доступ', exact=True).click()
-    confirm = page.locator('dialog[open]').last
-    expect(confirm.get_by_text('Android · Pixel', exact=True)).to_be_visible()
-    confirm.get_by_role('button', name='Закрыть', exact=True).click()
+    confirm = selected.locator('.device-revoke-inline')
+    expect(page.locator('dialog[open]')).to_have_count(0)
+    expect(selected.get_by_text('Android · Pixel', exact=True)).to_be_visible()
+    expect(confirm.get_by_label('Текущий пароль', exact=True)).to_be_visible()
+    confirm.get_by_role('button', name='Отменить', exact=True).click()
     assert not next(device for device in backend.list_devices(actor, '')['devices']
                     if device['id'] == before['Android · Pixel']['id'])['revoked_at']
     selected.get_by_role('button', name='Отозвать доступ', exact=True).click()
@@ -172,11 +176,18 @@ def main():
                     assert 0 < panel.bounding_box()['width'] <= content_width + 1, name
             capture(page, args.output, name, 'today')
             open_tab(page, 'Финансы')
+            if not args.baseline:
+                open_finance_section(page, 'ledger')
+                expect(page.locator('main')).to_have_attribute('data-finance-view', 'ledger')
             expect(page.locator('.ledger')).to_contain_text('Продукты на неделю')
             if not args.baseline:
                 first = page.locator('.ledger-row').first.bounding_box()
-                assert first['y'] + first['height'] < height * .8, (name, first)
-                for control in page.locator('.nav button:visible, .finance-toolbar button').all():
+                nav = page.locator('.nav').bounding_box()
+                # The dedicated ledger has its own summary. Its first record must
+                # still fit above the phone's fixed bottom navigation, unscrolled.
+                visible_bottom = nav['y'] if nav and nav['width'] >= width * .8 and nav['y'] > 0 else height
+                assert first['y'] + first['height'] <= visible_bottom, (name, first, visible_bottom)
+                for control in page.locator('.nav button:visible, .finance-toolbar button:visible').all():
                     box = control.bounding_box()
                     assert min(box['width'], box['height']) >= 44, (name, box)
             capture(page, args.output, name, 'finance')

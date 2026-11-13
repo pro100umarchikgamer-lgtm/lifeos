@@ -113,7 +113,7 @@ def main():
                 assert sum(r['data'].get('body')=='Одна запись при повторе после потери ответа' for r in self_records)==1
                 checks.append('lost_response_retry_is_idempotent')
                 open_tab(page,'Финансы')
-                expect(page.get_by_role('heading',name='Финансы',exact=True,level=1)).to_be_visible()
+                expect(page.get_by_role('heading',name='Обзор финансов',exact=True,level=1)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-finance-light.png'),full_page=False)
                 for width,height,name in [(320,740,'small-phone'),(820,1180,'ipad'),(1100,900,'compact-desktop'),(1440,960,'desktop')]:
                     page.set_viewport_size({'width':width,'height':height})
@@ -182,6 +182,9 @@ def main():
                 open_tab(page,'Профиль')
                 open_settings(page,'profile')
                 page.get_by_role('button',name='Выйти',exact=True).click()
+                expect(page.get_by_role('heading',name='Выйти из аккаунта?',exact=True)).to_be_visible()
+                expect(page.locator('dialog[open]')).to_have_count(0)
+                page.locator('.signout-panel button[type=submit]').click()
                 expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible()
                 assert 'Подготовить план' not in page.locator('body').inner_text()
                 checks.append('logout_clears_rendered_personal_data')

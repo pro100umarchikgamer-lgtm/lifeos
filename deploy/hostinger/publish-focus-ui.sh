@@ -28,10 +28,43 @@ for path in ('.github/workflows/web-platform.yml', '.github/workflows/stage1.yml
     print('CI_PASSED', run['html_url'])
 PY
 
-# Refuse a frontend release if it would also change the running backend/schema.
+# Reject backend/schema changes except the exact reviewed feedback additions below.
 python3 - "$source_dir" <<'PY'
-import hashlib, json, subprocess, sys
+import hashlib, json, re, subprocess, sys
 from pathlib import Path
+
+# Baseline: the published 5617fff release. Root fills each candidate digest only
+# after reviewing the final seven-file change. No wildcard or version-only bypass.
+# None permits an absent old file, not any previous content. These approvals
+# authorize one additive category column and safe moderation-state presentation;
+# authentication, existing record permissions and every other backend file must
+# remain byte-for-byte identical to the running image.
+REVIEWED_BACKEND_CHANGES = {
+    'backend/control.py': ('65eff55f14f3bd4bcfbe6e0110902f58cc24590d6c7011cbda7cb0da9a1bc939', 'd3d25e8bc5726a110c88e8612aca6994b1545c1037316bc45cd6d83d5d433bfc'),
+    'backend/service.py': ('67b2f9d04141677ebcdfb73e9efafaf1828ca84400eaaaa6af71bd3cc13bfac7', '00cbd0837313c19a804bef67f6f15f0be9565d9af31c527d0ebc5bfa284dfb86'),
+    'backend/schema.sql': ('0f066ca4569f9c616052efec30b1167bd2ac2796ad07e9fde3a0f4852a928bb8', '2adae60e9307da8935d5c655bd3819991a2a4c3a9ea5a622f12909a03c234d7c'),
+    'backend/migrations/012_transaction_categories.sql': (None, '8cb3c22388baa1039603e98148f67463110126817db1d1512d58c56d43be7119'),
+    'backend/tests/test_control.py': ('d5d765d370ff6192bbbaa44ca9d3167e835882f3eb2ce051f9ed5d45044be9c2', '918a9011f9dfad53349c9c34bc7717d3935dd6d59139e1fa6d52fd52ceea04ad'),
+    'backend/tests/test_postgres.py': ('4ab3b36d21d2115e07d6a6bb9022d141f4c2d8514a43a5404dd3cca57ab7024b', 'de2500b1e7370b01182ddc4cffb2825dd6ec415ec76da384f43d966ff25f8c54'),
+    'backend/tests/test_transaction_categories.py': (None, '9201f02e8219899a05d68947391f36898ded67a269b33d0a70857459bcba58f9'),
+}
+
+def reviewed_backend_changes(live, source):
+    for name, (before, after) in REVIEWED_BACKEND_CHANGES.items():
+        if not re.fullmatch('[0-9a-f]{64}', str(after)):
+            raise SystemExit('Stopped: backend review digest is not finalized: ' + name)
+        if before is not None and not re.fullmatch('[0-9a-f]{64}', before):
+            raise SystemExit('Stopped: invalid baseline backend digest: ' + name)
+        if source.get(name) != after:
+            raise SystemExit('Stopped: candidate differs from reviewed backend digest: ' + name)
+    changed = {name for name in source.keys() | live.keys() if source.get(name) != live.get(name)}
+    reviewed = []
+    for name in sorted(changed):
+        expected = REVIEWED_BACKEND_CHANGES.get(name)
+        if expected and live.get(name) == expected[0] and source.get(name) == expected[1]:
+            reviewed.append(name)
+    return changed.difference(reviewed), reviewed
+
 root = Path(sys.argv[1])
 code = """import hashlib,json;from pathlib import Path
 root=Path('/app');print(json.dumps({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (root/'backend').rglob('*') if p.is_file() and p.suffix in ('.py','.sql') and 'webassets' not in p.parts}))"""
@@ -39,7 +72,9 @@ live = json.loads(subprocess.check_output(['docker','exec','lifeos-api-1','pytho
 source = {str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest()
           for p in (root/'backend').rglob('*') if p.is_file()
           and p.suffix in ('.py','.sql') and 'webassets' not in p.parts}
-changed = [name for name in source.keys() | live.keys() if source.get(name) != live.get(name)]
+changed, reviewed = reviewed_backend_changes(live, source)
+if reviewed:
+    print('REVIEWED_BACKEND_ADDITIONS ' + ', '.join(reviewed))
 # This release adds one image to the existing static asset allowlist. Require
 # byte-for-byte equality after removing exactly that literal; no API change can
 # pass this exception.
@@ -49,11 +84,11 @@ if 'backend/web.py' in changed:
     addition = b"'app.css', 'auth-texture.webp', 'manifest.webmanifest'"
     original = b"'app.css', 'manifest.webmanifest'"
     if candidate.count(addition) == 1 and candidate.replace(addition, original) == running:
-        changed.remove('backend/web.py')
+        changed.discard('backend/web.py')
         print('STATIC_ASSET_ALLOWLIST_ADDITION auth-texture.webp')
 if changed:
     raise SystemExit('Stopped: running backend differs from candidate: ' + ', '.join(sorted(changed)))
-print('BACKEND_AND_SCHEMA_UNCHANGED')
+print('BACKEND_REVIEWED_DELTAS_ONLY' if reviewed else 'BACKEND_AND_SCHEMA_UNCHANGED')
 PY
 
 # Require a fresh encrypted backup and verify its stored checksum before switching.

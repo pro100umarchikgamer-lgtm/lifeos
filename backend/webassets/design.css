@@ -1745,6 +1745,21 @@ body[data-design=clarity] .today-page .note-excerpt{font-size:13px;font-weight:4
 @media(max-width:999px){body[data-design=clarity] .today-actionbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
 @media(max-width:759px){body[data-design=clarity] .today-actionbar{margin-bottom:18px}body[data-design=clarity] .today-actionbar button{font-size:13px;padding:12px;min-height:56px;gap:9px}}
 
+/* One compact currency search shared by all record and import forms. */
+.currency-picker{position:relative;min-width:0}
+.currency-picker>input{padding-inline-end:48px!important}
+.currency-picker .currency-picker-toggle{position:absolute;inset-inline-end:3px;top:3px;width:40px;height:40px;min-height:40px;padding:0;border:0;background:transparent;color:var(--ux-muted,var(--muted));border-radius:8px;font-size:22px;line-height:1}
+.currency-picker .currency-picker-toggle:hover{background:var(--ux-soft,var(--soft))}
+.currency-picker:has(input[readonly]) .currency-picker-toggle,.currency-picker:has(input:disabled) .currency-picker-toggle{display:none}
+.currency-picker-list{position:absolute;z-index:12;top:calc(100% + 5px);inset-inline:0;max-height:220px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:5px;border:1px solid var(--ux-border,var(--line));border-radius:12px;background:var(--ux-surface,var(--card));box-shadow:0 8px 28px #17142826}
+.currency-picker-list[hidden]{display:none!important}
+.currency-picker-list.opens-above{top:auto;bottom:calc(100% + 5px)}
+.currency-picker-list .currency-picker-option{display:grid;grid-template-columns:3.3rem minmax(0,1fr);align-items:center;gap:8px;width:100%;min-height:42px;padding:9px 10px;text-align:start;border:0;border-radius:7px;background:transparent;color:var(--ux-ink,var(--ink));font-size:13px;font-weight:400}
+.currency-picker-option strong{font-size:12px;font-variant-numeric:tabular-nums}
+.currency-picker-option span{overflow-wrap:anywhere;line-height:1.35}
+.currency-picker-list .currency-picker-option:hover,.currency-picker-list .currency-picker-option.is-active{background:var(--ux-soft,var(--soft));color:var(--ux-green,var(--accent))}
+.currency-picker-empty{padding:10px;font-size:13px;margin:0}
+
 /* app/workspace-sections.css */
 /* Workspace content surfaces. Presentation only: existing controls and actions remain intact. */
 body[data-design=clarity] main:is(.tasks-page,.calendar-page,.notes-page,.finance-page,.settings-page){
@@ -1985,6 +2000,27 @@ body[data-design=clarity] #root main.finance-page .finance-overview h2{font-fami
  body[data-design=clarity] main.finance-page .finance-details .finance-accounts{grid-column:1;grid-row:2}
  body[data-design=clarity] main.finance-page .finance-details .finance-budgets{grid-column:2;grid-row:2}
  body[data-design=clarity] main.finance-page .finance-details .finance-analysis{grid-column:3;grid-row:2}
+}
+
+/* Budget entry keeps the usual monthly case short; uncommon options stay closed. */
+body[data-design=clarity] dialog.budget-editor{width:min(540px,calc(100% - 24px));max-height:calc(100dvh - 24px);overflow:auto;scroll-padding:18px}
+body[data-design=clarity] dialog.budget-editor fieldset{min-width:0}
+body[data-design=clarity] dialog.budget-editor .budget-value{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:12px}
+body[data-design=clarity] dialog.budget-editor .budget-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+body[data-design=clarity] dialog.budget-editor .budget-dates[hidden]{display:none!important}
+body[data-design=clarity] dialog.budget-editor .budget-period-summary{padding:14px 16px;margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);overflow-wrap:anywhere}
+body[data-design=clarity] dialog.budget-editor .budget-period-summary strong{font-size:14px;color:var(--ink)}
+body[data-design=clarity] dialog.budget-editor .budget-period-summary p{margin:5px 0 0;font-size:13px;line-height:1.5}
+body[data-design=clarity] dialog.budget-editor .budget-options{margin-top:16px;border-block:1px solid var(--line);padding:0 2px}
+body[data-design=clarity] dialog.budget-editor .budget-options>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;color:var(--muted);font-size:13px;font-weight:600}
+body[data-design=clarity] dialog.budget-editor .budget-options>summary::-webkit-details-marker{display:none}
+body[data-design=clarity] dialog.budget-editor .budget-options>summary::after{content:'+';font-size:18px;font-weight:400}
+body[data-design=clarity] dialog.budget-editor .budget-options[open]{padding-bottom:16px}
+body[data-design=clarity] dialog.budget-editor .budget-options[open]>summary::after{content:'−'}
+body[data-design=clarity] dialog.budget-editor .budget-original-start{overflow-wrap:anywhere}
+@media(max-width:420px){
+ body[data-design=clarity] dialog.budget-editor{padding:18px}
+ body[data-design=clarity] dialog.budget-editor .budget-dates{grid-template-columns:minmax(0,1fr);gap:0}
 }
 
 /* public-focus.css */
@@ -2268,6 +2304,111 @@ body.product-site[data-theme=dark]{--public-canvas:#121a15;--public-ink:#eef1e9;
  body.product-site.focus-home .feature-row svg{padding:0;margin:2px 0 0}
  body.product-site .application-grid .button+.button{margin:10px 0 0}
 }
+/* Access plans describe the existing free catalog; there is no checkout. */
+.access-plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-block:24px}
+.access-plan-card{min-width:0;overflow-wrap:anywhere;display:flex;flex-direction:column;align-items:flex-start}
+.access-plan-card h3{margin:0 0 12px;font:700 22px/1.25 Inter,system-ui,sans-serif;letter-spacing:-.025em}
+.access-plan-card>strong{font-size:15px;line-height:1.5}
+.access-plan-card>p{font-size:14px;line-height:1.65}
+.access-plan-card .access-plan-label{font-size:11px;line-height:1.5;font-weight:650;letter-spacing:.04em;text-transform:uppercase;margin:0 0 14px;color:var(--muted)}
+.access-plan-card ul{padding-left:19px;margin-block:12px;flex:1;font-size:13px;line-height:1.65}
+.access-plan-card li+li{margin-top:8px}
+.access-included-features{padding-inline-start:19px;font-size:13px;line-height:1.7;margin-block:18px 0}
+.access-included-features li+li{margin-top:7px}
+.access-plan-card .access-plan-availability{font-size:12px;font-weight:650;margin-top:12px;margin-bottom:0}
+.access-free-note{font-weight:650;color:var(--accent);border-inline-start:3px solid currentColor;padding-inline-start:12px}
+.access-plan-tier{font-size:28px;line-height:1.3;letter-spacing:-.03em}
+.access-plan-boundary{font-size:13px;line-height:1.7;color:var(--muted);max-width:70ch}
+.access-plan-details{margin-block:24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.access-plan-details>summary{min-height:48px;padding-block:14px;cursor:pointer;font-size:14px;font-weight:600}
+body.product-site .access-plan-grid .card{margin:0;padding:24px;border:1px solid var(--public-rule);background:var(--public-surface);border-radius:14px;box-shadow:none}
+body.product-site .access-plan-label,body.product-site .access-plan-boundary{color:var(--public-muted)}
+body.product-site .access-free-note{color:var(--public-green)}
+body.product-site .access-plan-details{border-color:var(--public-rule)}
+.settings-content .access-plan-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:12px;margin-block:16px}
+.settings-content .access-plan-card h3{font-size:16px!important;line-height:1.4!important}
+.settings-content .access-plan-card>p,.settings-content .access-plan-card ul{font-size:13px}
+.settings-content .access-plan-status>h2{margin-bottom:18px}
+/* Existing permission-checked support and moderation, within the page. */
+.support-ticket-link{display:block;width:100%;text-align:start;min-height:44px;margin-block:8px}
+.support-message{min-width:0;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:12px;padding:16px;margin-block:12px;background:var(--card)}
+.support-message[data-staff=true]{border-inline-start:3px solid var(--accent)}
+.support-message>p{white-space:pre-wrap;font-size:14px;line-height:1.7;margin-bottom:0}
+.support-message>strong{font-size:12px;color:var(--muted)}
+.support-back{margin-bottom:12px}
+body[data-control=true] .control-queue-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-block:24px}
+body[data-control=true] .control-queue-filters label{display:block;margin-bottom:8px}
+body[data-control=true] .control-queue-filters select{width:100%;min-height:48px}
+body[data-control=true] .control-ticket{margin-block:16px}
+body[data-control=true] .control-ticket-meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+body[data-control=true] .control-triage,body[data-control=true] .control-moderation{border-top:1px solid var(--line);margin-top:28px;padding-top:24px}
+body[data-control=true] .control-moderation .notice[hidden]{display:none}
+body[data-control=true] .control-no-holds{padding-inline-start:12px;border-inline-start:3px solid var(--accent)}
+@media(max-width:759px){
+ .access-plan-grid{grid-template-columns:minmax(0,1fr)}
+ .access-plan-card h3{font-size:21px}
+ body[data-control=true] .control-queue-filters{grid-template-columns:minmax(0,1fr);gap:12px}
+}
+/* A short welcome: one entry, a workspace preview, and optional next steps. */
+body.product-site > header.public-header nav a.public-signin{
+ border:1px solid var(--public-green);border-radius:100px;padding-inline:20px;
+ background:var(--public-green);color:var(--public-surface);
+}
+body.product-site.focus-home #app.landing{padding-top:20px;padding-bottom:40px}
+body.product-site.focus-home #app.landing .product-hero{padding:46px 0 52px;gap:52px}
+body.product-site.focus-home .hero-copy h1{font-size:clamp(48px,5.4vw,74px);max-width:10em}
+body.product-site.focus-home .hero-copy .hero-description{max-width:28em;font-size:17px;line-height:1.75;margin-bottom:28px}
+body.product-site.focus-home .hero-copy .hero-actions .button{font-size:15px;min-height:50px;padding-inline:26px}
+body.product-site.focus-home .hero-copy .hero-caption{font-size:13px;line-height:1.6;margin:16px 0 0;color:var(--public-muted)}
+body.product-site.focus-home .welcome-overview{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;
+ border-top:1px solid var(--public-rule);border-bottom:1px solid var(--public-rule);padding:26px 0;
+}
+body.product-site.focus-home .welcome-capability{display:flex;align-items:flex-start;gap:14px;min-width:0}
+body.product-site.focus-home .welcome-capability>svg{width:23px;height:23px;flex:none;margin-top:3px;color:var(--public-secondary)}
+body.product-site.focus-home .welcome-capability h2{font:650 16px/1.5 Inter,system-ui,sans-serif;letter-spacing:-.02em;margin:0 0 4px}
+body.product-site.focus-home .welcome-capability p{font-size:13px;line-height:1.7;margin:0;color:var(--public-muted)}
+body.product-site.focus-home .welcome-resources{display:flex;flex-wrap:wrap;gap:8px 26px;margin:24px 0 0}
+body.product-site.focus-home .welcome-resources a{display:inline-flex;align-items:center;min-height:44px;font-size:13px;color:var(--public-muted);text-decoration:none;text-underline-offset:4px}
+body.product-site.focus-home .welcome-resources a:hover{text-decoration:underline;color:var(--public-green)}
+body.product-site :is(a.button,button){transition:background-color 160ms ease,color 160ms ease,box-shadow 160ms ease,transform 160ms ease}
+@media(hover:hover){body.product-site a.button:hover{transform:translateY(-1px);box-shadow:0 5px 16px #15231b10}}
+@media(prefers-reduced-motion:no-preference){
+ body.product-site.focus-home .product-hero{animation:welcome-arrive 280ms ease-out both}
+ @keyframes welcome-arrive{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+@media(max-width:1099px){
+ body.product-site.focus-home #app.landing .product-hero{gap:28px}
+ body.product-site.focus-home .hero-copy h1{font-size:clamp(44px,5.7vw,62px)}
+ body.product-site.focus-home .welcome-overview{gap:20px}
+}
+@media(max-width:759px){
+ body.product-site.focus-home #app.landing{padding-top:10px;padding-bottom:24px}
+ body.product-site.focus-home #app.landing .product-hero{padding:28px 0 30px;gap:30px}
+ body.product-site.focus-home .hero-eyebrow{font-size:9px;letter-spacing:.08em;margin-bottom:18px}
+ body.product-site.focus-home .hero-copy h1{font-size:clamp(44px,12vw,60px);margin-bottom:18px}
+ body.product-site.focus-home .hero-copy .hero-description{font-size:16px;line-height:1.7;margin-bottom:24px;max-width:30em}
+ body.product-site.focus-home .hero-copy .hero-actions .button{flex:none;width:auto;min-height:50px;padding-inline:24px}
+ body.product-site.focus-home .hero-copy .hero-caption{font-size:12px;margin-top:13px}
+ body.product-site.focus-home .workspace-preview{max-width:540px;width:100%;justify-self:center}
+ body.product-site.focus-home .welcome-overview{grid-template-columns:minmax(0,1fr);gap:21px;padding:24px 0}
+ body.product-site.focus-home .welcome-capability h2{font-size:15px}
+ body.product-site.focus-home .welcome-capability p{font-size:13px}
+ body.product-site.focus-home .welcome-resources{gap:4px 22px;margin-top:18px}
+ body.product-site.focus-home .welcome-resources a{font-size:12px}
+ body.product-site>header.public-header nav a.public-signin{margin-top:5px;justify-content:center}
+}
+@media(prefers-reduced-motion:reduce){body.product-site :is(a.button,button){transition:none}}
+/* Keep the hidden tablet rail from leaving an empty fixed-width grid track. */
+@media(max-width:1099px){
+ body.product-site.focus-home .workspace-preview{grid-template-columns:minmax(0,1fr)}
+ body.product-site.focus-home .workspace-preview .preview-rail{display:none}
+ body.product-site.focus-home .preview-workspace{grid-column:1}
+}
+@media(max-width:759px){
+ body.product-site.focus-home .hero-copy .hero-actions{display:flex;max-width:none}
+ body.product-site.focus-home .hero-copy .hero-actions .button{white-space:nowrap}
+}
 
 /* app/import-presentation.css */
 /* Presentation only: recognition, validation and persistence stay in import.js. */
@@ -2301,6 +2442,15 @@ body.product-site[data-theme=dark]{--public-canvas:#121a15;--public-ink:#eef1e9;
 
 .statement-date-help.is-resolved>h3,.statement-date-help.is-resolved>p:not(.statement-date-examples){display:none}
 .statement-date-help.is-resolved label{margin-top:0}
+
+.statement-required-fields{display:grid;gap:6px;margin-bottom:10px;min-width:0}
+.statement-required-fields select{width:100%;min-width:0;max-width:100%;text-overflow:ellipsis}
+.statement-row-correction{margin-block:16px;padding:20px;border:1px solid var(--ux-border,var(--line));border-radius:16px;background:var(--ux-soft,var(--soft))}
+.statement-row-correction[hidden]{display:none!important}
+.statement-row-correction h3{margin-top:0}
+.statement-row-correction form{max-width:44rem}
+.statement-row-correction form>button{margin-right:10px}
+@media(max-width:640px){.statement-row-correction{padding:16px}}
 
 /* app/reference.css */
 /* Actual B12 video composition, applied to existing ULADIM records and actions. */
@@ -2504,6 +2654,175 @@ body[data-design=clarity][data-reference-layout=b12][data-palette=ocean]{--ux-bu
 body[data-design=clarity][data-reference-layout=b12][data-palette=pistachio]{--ux-button:#617d45}
 body[data-design=clarity][data-reference-layout=b12] #root button:where(:not(.ghost):not(.secondary):not(.text-button):not(.icon):not(.reference-summary-tile):not(.reference-nav-item):not(.reference-identity):not(.reference-transaction):not(.reference-help)){background:var(--ux-button);color:var(--ux-button-ink)}
 @media(prefers-color-scheme:dark){body[data-design=clarity][data-reference-layout=b12][data-theme=system][data-palette=violet]{--ux-button:#7460c8}}
+
+/* Finance destinations are screens, with one coherent overview instead of anchor cards. */
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .intro{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;margin-block-end:20px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:0;justify-content:flex-end}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-navigation{display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel{margin:0 0 14px;padding:0;border:0;background:transparent;max-width:100%}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel>summary{min-height:40px;display:list-item;align-content:center;width:fit-content;cursor:pointer;color:var(--ux-muted);font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters{padding:16px;margin:4px 0 0;border:1px solid var(--ux-border);border-radius:12px;background:var(--ux-surface);grid-template-columns:minmax(0,1.5fr) repeat(3,minmax(0,1fr));gap:14px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-overview{padding:0!important;margin:0 0 22px;background:transparent;border:0;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-summary-period{font-size:12px;margin:0 0 12px;color:var(--ux-muted)!important}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric{padding:20px!important;margin:0;display:flex;flex-direction:column;gap:10px;min-width:0;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:12px;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>span{color:var(--ux-muted);font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>strong{display:block;font-size:clamp(18px,1.7vw,26px);font-weight:650;line-height:1.3;font-variant-numeric:tabular-nums;letter-spacing:-.035em;overflow-wrap:anywhere;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric.income>strong{color:var(--income)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric.expense>strong{color:var(--expense)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-content{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:stretch}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-content>.card{grid-column:auto;grid-row:auto;padding:22px!important;min-width:0;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:12px;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-content h2{font-family:inherit;font-size:16px;margin:0 0 16px;letter-spacing:-.025em;line-height:1.4}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-analysis{display:flex;flex-direction:column;gap:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-analysis .chart-controls{margin:0 0 12px;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-analysis :is(label,select){font-size:12px;min-width:0;max-width:100%}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-analysis canvas{width:100%;height:auto;aspect-ratio:720/320;min-height:0;max-height:none;background:transparent;border:0;border-radius:0;margin-block:auto 0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-legend{margin:0 0 8px;gap:0;padding:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-legend-row{gap:6px;font-size:12px;padding:9px 0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger{display:flex;flex-direction:column;align-self:stretch}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row{display:grid;grid-template-columns:minmax(0,1fr) auto 32px;gap:8px;padding:14px 0;min-height:68px;border-bottom:1px solid var(--ux-border);align-items:center}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row .text{min-width:0;grid-column:auto;grid-row:auto}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row h3{font-size:12px;line-height:1.45;margin:0;font-weight:550}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row p{font-size:10px;line-height:1.5;white-space:normal;margin:3px 0 0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>strong{font-size:12px;white-space:normal;max-width:14ch;min-width:0;grid-column:auto;grid-row:auto;line-height:1.45}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>button{grid-column:auto;grid-row:auto;width:32px;min-width:32px;height:36px;min-height:36px;padding:6px;flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-ledger-all{margin-top:auto;padding-block-start:16px;justify-content:flex-start;align-self:flex-start;font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=accounts] .finance-content,
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=budgets] .finance-content,
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-content,
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=analysis] .finance-content{grid-template-columns:minmax(0,1fr)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-accounts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;border:0!important;background:transparent!important;padding:0!important}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-balance{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:8px;padding:16px;border:1px solid var(--ux-border);border-radius:12px;background:var(--ux-surface);align-items:start;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-account-report{padding:0;border:0;border-radius:0;background:transparent;color:var(--ux-ink);text-align:start;display:flex;flex-direction:column;align-items:flex-start;gap:22px;min-width:0;max-width:100%;white-space:normal;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-name{display:flex;align-items:center;gap:10px;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-name>.text{font-size:15px;white-space:normal;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-name>svg{width:28px;height:28px;padding:8px;box-sizing:content-box;border-radius:10px;background:var(--ux-soft);color:var(--ux-green);flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-account-amount{font-size:clamp(20px,2vw,28px);line-height:1.3;letter-spacing:-.03em;min-width:0;overflow-wrap:anywhere;white-space:normal}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-account-link{color:var(--ux-green);font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-report-back{display:flex;gap:6px;align-items:center;padding:0 0 14px;font-size:12px;color:var(--ux-muted);width:fit-content}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-card{padding:22px!important;margin:0;min-width:0;display:flex;flex-direction:column;gap:18px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:12px;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-head>div{min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-head h2{margin:0 0 5px;font-size:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-head p{margin:0;font-size:11px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-remaining{display:flex;flex-direction:column;gap:7px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-remaining>strong{font-size:27px;font-weight:650;letter-spacing:-.035em;font-variant-numeric:tabular-nums;line-height:1.3}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-card progress{display:block;width:100%;height:7px;accent-color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-card .budget-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .budget-metrics :is(dt,dd){margin:0;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .budget-metrics dt{font-size:11px;color:var(--ux-muted);margin-bottom:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .budget-metrics dd{font-size:14px;font-weight:550;font-variant-numeric:tabular-nums}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-conditions{font-size:11px;line-height:1.6;margin:0;padding-top:14px;border-top:1px solid var(--ux-border)}
+@media(max-width:1199px){
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-content{grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>strong{font-size:20px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-analysis canvas{max-height:320px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(min-width:760px){body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-import-shortcut{display:none}}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .intro{align-items:flex-start;gap:14px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .intro>div:first-child{flex:1 1 100%}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-toolbar{justify-content:flex-start}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-toolbar>button{font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-navigation{display:flex;gap:6px;padding:0 0 5px;margin:0 0 14px;border:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-view-tab{flex:none;padding:9px 12px;min-height:40px;border:1px solid var(--ux-border);border-radius:8px;color:var(--ux-muted);background:var(--ux-surface);font-size:12px;white-space:nowrap}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-view-tab[aria-current=page]{background:var(--ux-soft);border-color:transparent;color:var(--ux-green)}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric-grid{gap:10px;grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 16px;padding:15px 16px!important}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>span{grid-column:1;grid-row:1/-1}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>strong{grid-column:2;font-size:19px;text-align:end}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-content>.card{padding:18px!important}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-accounts{grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-analysis :is(.chart-controls,.chart-legend){grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-legend-row{display:flex;flex-direction:column;align-items:flex-start;border:0;padding:8px 0}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-legend-row>strong{margin:0;font-size:14px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-budget-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:359px){
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-analysis .chart-controls{grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters{grid-template-columns:minmax(0,1fr)}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric{display:flex;align-items:flex-start}
+}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;margin:6px 0 12px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 8px;align-items:baseline;min-width:0;font-size:11px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-row>span{display:flex;align-items:center;gap:6px;min-width:0;grid-column:1/-1}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-row>span>span:last-child{min-width:0;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-swatch{display:inline-block;flex:none;width:9px;height:9px;border-radius:3px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-row>strong{font-size:12px;font-weight:550;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;padding-inline-start:15px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-row>small{font-size:10px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-category-hint{font-size:11px;line-height:1.65;margin:12px 0 0;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-category-hint[hidden]{display:none}
+@media(max-width:359px){body[data-design=clarity][data-reference-layout=b12] #root .finance-page .chart-category-legend{grid-template-columns:minmax(0,1fr)}}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-balance>.finance-account-report{grid-column:1;grid-row:1}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .account-balance>.icon{grid-column:2;grid-row:1}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>strong{order:0}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row{grid-template-columns:minmax(0,1fr) 32px;gap:4px 10px}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>.text{grid-column:1;grid-row:1}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>strong{grid-column:1;grid-row:2;max-width:100%;text-align:start;font-size:14px;line-height:1.45;white-space:normal}
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>button{grid-column:2;grid-row:1 / span 2}
+}
+
+/* Mobile Today starts with an actionable brief; desktop keeps its four summaries. */
+body[data-design=clarity][data-reference-layout=b12] #root .reference-tile-currencies{display:grid;gap:5px;width:100%;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .summary-currency-row{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:8px;width:100%;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .summary-currency-code{color:var(--ux-muted);font-size:10px;font-weight:550;letter-spacing:.025em}
+body[data-design=clarity][data-reference-layout=b12] #root .summary-currency-amount{font-size:14px;font-weight:650;text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.5;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .today-secondary-actions,
+body[data-design=clarity][data-reference-layout=b12] #root .today-schedule-more{display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block-start:18px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger-pagination>p{margin:0;color:var(--ux-muted);font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger-pagination>button{min-height:42px;font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger-pagination>button[hidden]{display:none}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .intro{margin-bottom:16px;align-items:center}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .intro>button{font-size:12px;padding:9px 11px;min-height:42px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile{display:grid;grid-template-columns:minmax(0,1fr) auto;min-height:0;gap:3px 10px;padding:12px 14px;border-radius:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile>.ui-icon{display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=tasks]>.reference-tile-label{grid-column:1;grid-row:1;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=tasks]>strong{grid-column:2;grid-row:1 / span 2;font-size:25px;font-variant-numeric:tabular-nums;align-self:center;line-height:1.2}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=tasks]>.reference-tile-detail{grid-column:1;grid-row:2;font-size:11px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=expenses]>.reference-tile-label{grid-column:1;grid-row:1;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=expenses]>.reference-tile-detail{grid-column:2;grid-row:1;text-align:end;font-size:11px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=expenses]>.reference-tile-currencies{grid-column:1/-1;grid-row:2;gap:2px;margin-top:5px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .summary-currency-code{font-size:11px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .summary-currency-amount{font-size:16px;line-height:1.5}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile:is([data-summary=event],[data-summary=workspace]){display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid{gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid .card{padding:16px!important}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks{order:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks>.today-task-secondary{display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks .task-row{padding:9px 0;min-height:54px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks .task-row>.text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.5;font-size:13px;min-width:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks .quick-capture input{font-size:16px;min-width:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-schedule{order:1}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-timeline>.today-event-secondary{display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-timeline>li{grid-template-columns:54px minmax(0,1fr);gap:10px;align-items:start}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-timeline>li>button{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.5;white-space:normal;min-width:0;max-width:100%;text-align:start;font-size:13px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-schedule-more{display:flex;justify-content:flex-start;min-height:40px;padding-inline:0;font-size:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-secondary-actions{order:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;border:0;background:transparent}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-secondary-actions>button{display:flex;align-items:center;justify-content:flex-start;gap:7px;min-height:46px;min-width:0;padding:9px 11px;text-align:start;font-size:12px;line-height:1.4;white-space:normal;border-radius:10px;border:1px solid var(--ux-border);background:var(--ux-surface);color:var(--ux-ink)}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-secondary-actions>button>svg{flex:none;width:17px;height:17px;color:var(--ux-green)}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-agenda{order:3}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-notes{order:4}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-finance{order:5}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-transactions{order:6}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-note-text>strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.5}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-note-text>.note-excerpt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.5}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-transaction{display:grid;grid-template-columns:34px minmax(0,1fr);gap:4px 10px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-transaction>svg{grid-column:1;grid-row:1 / span 2}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-transaction>.reference-transaction-copy{grid-column:2;grid-row:1}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-transaction>strong{grid-column:2;grid-row:2;font-size:13px;line-height:1.5;text-align:start;white-space:normal;overflow-wrap:normal;min-width:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-transaction-copy strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.5;white-space:normal}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-balance strong{font-size:16px;line-height:1.5;white-space:normal;overflow-wrap:normal}
+}
+@media(max-width:759px){
+ /* A pending task retry stays visible even when it falls beyond the short preview. */
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks>.today-task-secondary:has(.task-change-status:not([hidden])){display:grid}
+}
 
 /* app/reference-workspaces.css */
 /* Calendar and notes: the quiet surfaces and violet detail of the B12 reference. */
@@ -2841,4 +3160,105 @@ body[data-theme=dark]:has(main.focus-login>.auth-form-panel){
  body main.focus-login .auth-form-panel h1,
  body[data-design=clarity] #root main.focus-login .auth-form-panel h1{font-size:32px;margin-bottom:26px}
  body dialog .registration-dialog{padding:26px 20px}
+}
+
+/* app/experience.css */
+/* Shared interaction and form treatment across the existing product. */
+body[data-design=clarity] {
+ --motion-fast:140ms;
+ --motion-view:190ms;
+ -webkit-tap-highlight-color:transparent;
+}
+body[data-design=clarity] :is(button,a,input,select,textarea) {
+ transition:background-color var(--motion-fast) ease,border-color var(--motion-fast) ease,box-shadow var(--motion-fast) ease,color var(--motion-fast) ease;
+}
+body[data-design=clarity] :is(button,a,input,select,textarea):focus-visible {
+ outline:2px solid var(--ux-green);
+ outline-offset:3px;
+}
+body[data-design=clarity] :is(h1,h2,section)[tabindex="-1"]:focus,
+body[data-design=clarity] [data-focus-target]:focus { outline:none!important; }
+body[data-design=clarity] main.view-enter { animation:uladim-view-in var(--motion-view) ease-out; }
+.header-tool-label { display:none; }
+@keyframes uladim-view-in { from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)} }
+body[data-design=clarity] :is(dialog,.settings-content) form { max-width:100%; }
+body[data-design=clarity] :is(dialog,.settings-content) :is(input,select,textarea) {
+ min-height:46px;border-radius:11px;
+}
+body[data-design=clarity] :is(dialog,.settings-content) :is(input,textarea)[aria-invalid=true] { border-color:var(--expense); }
+body[data-design=clarity] :is(dialog,.settings-content) label { font-size:13px;font-weight:550;line-height:1.5; }
+body[data-design=clarity] .field-error { color:var(--expense);font-size:12px;line-height:1.5;margin:6px 0 0; }
+body[data-design=clarity] :is(.record-options,.budget-options,.event-options) {
+ border:1px solid var(--ux-border);border-radius:11px;padding:0 14px;margin-top:18px;
+}
+body[data-design=clarity] :is(.record-options,.budget-options,.event-options)>summary {
+ font-size:13px;font-weight:500;color:var(--ux-muted);min-height:46px;
+}
+body[data-design=clarity] :is(.record-options,.budget-options,.event-options)[open] { padding-bottom:14px; }
+body[data-design=clarity] .settings-inline-panel {
+ padding:20px;border:1px solid var(--ux-border);border-radius:14px;background:var(--ux-soft);margin:8px 0 20px;box-shadow:none;
+}
+body[data-design=clarity] .settings-inline-panel h3 { font-size:16px;line-height:1.4;margin:0 0 12px; }
+body[data-design=clarity] .settings-inline-panel .inline-cancel { margin-top:8px;color:var(--ux-muted); }
+body[data-design=clarity] .device-row { flex-wrap:wrap; }
+body[data-design=clarity] .device-row .device-revoke-inline { flex:1 0 100%;padding:12px 0 8px;min-width:0; }
+body[data-design=clarity] .device-revoke-inline form { max-width:440px; }
+body[data-design=clarity] .device-revoke-inline form button[type=submit] { width:auto; }
+body[data-design=clarity] .device-revoke-inline>button { margin-top:6px; }
+body[data-design=clarity] .signout-panel { max-width:580px;padding:28px;border-radius:18px; }
+body[data-design=clarity] .signout-panel h2 { font-size:23px;letter-spacing:-.03em; }
+body[data-design=clarity] .signout-panel p { font-size:14px;line-height:1.7; }
+body[data-design=clarity] .signout-panel .account-email { color:var(--ux-ink);margin:24px 0 16px;overflow-wrap:anywhere; }
+body[data-design=clarity] .signout-panel form button { min-width:180px; }
+body[data-design=clarity] .signout-panel>button { margin-top:12px; }
+body[data-design=clarity] .signout-success { font-size:14px;color:var(--income);margin:0 0 20px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar-footer>.reference-signout {
+ display:flex;flex-direction:row;align-items:center;justify-content:flex-start;padding:8px 10px;min-height:44px;font-size:12px;color:var(--ux-muted);background:none;
+}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-content>.profile-summary {
+ padding:28px;border-radius:18px;border-color:var(--ux-border);box-shadow:0 4px 22px #18152404;
+}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-summary>h2 { font-size:17px;margin-bottom:24px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity { gap:18px;padding-bottom:28px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity>.reference-avatar {
+ width:62px;height:62px;font-size:26px;background:var(--ux-soft);color:var(--ux-green);border-radius:20px;
+}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-identity dd.account-email { font-size:17px;line-height:1.5; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-identity dt { font-size:12px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified { font-size:12px;background:var(--ux-soft);padding:5px 10px;border-radius:20px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-options>.reference-profile-option { font-size:14px;min-height:72px; }
+body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.reference-profile-signout { border-radius:16px;padding:22px 26px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout h2 { font-size:14px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout p { font-size:12px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout .profile-logout { min-height:42px;font-size:13px;padding:9px 14px;border-radius:10px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:18px; }
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card { min-height:200px;border-radius:18px;padding:24px; }
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card[aria-pressed=true] { border-color:var(--ux-green);box-shadow:0 0 0 1px var(--ux-green);background:var(--ux-soft); }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-name { font-size:17px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-kind { font-size:13px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-member-count,
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-detail { font-size:12px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-panel>.reference-family-roster { padding:24px;border-radius:18px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-roster>h2 { font-size:17px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy>strong { font-size:14px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy>span { font-size:12px; }
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-role { font-size:12px;border:1px solid var(--ux-border);border-radius:20px;padding:4px 10px; }
+@media(max-width:999px) {
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar-footer>.reference-signout { display:none; }
+}
+@media(max-width:759px) {
+ body[data-design=clarity][data-reference-layout=b12] #root .header-tools :is(.header-theme,.header-profile) { display:flex;flex-direction:column;gap:2px;min-width:48px;min-height:46px;padding:3px 5px;border-radius:10px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .header-tool-label { display:block;color:var(--ux-muted);font-size:10px;font-weight:500;line-height:1.2;white-space:nowrap;overflow-wrap:normal; }
+ body[data-design=clarity][data-reference-layout=b12] #root .header-tools .header-profile { min-width:56px;padding-inline:4px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .header-profile>.reference-avatar { width:24px;height:24px;border-radius:9px;font-size:12px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .header-theme>.ui-icon { width:22px;height:22px; }
+ body[data-design=clarity] :is(dialog,.settings-content) :is(input,select,textarea) { font-size:16px; }
+ body[data-design=clarity] .signout-panel { padding:22px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-content>.profile-summary { padding:22px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified { flex:initial;margin-inline-start:80px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid { grid-template-columns:minmax(0,1fr); }
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-member-role { max-width:35%;font-size:11px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ body[data-design=clarity] *,body.product-site * { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
 }

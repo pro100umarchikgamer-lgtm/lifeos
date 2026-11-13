@@ -13,6 +13,14 @@ const rows = parse(tbank);
 assert.equal(rows.length,145);
 assert.deepEqual(rows[0].value,{date:'2026-11-11',kind:'expense',amount:123456,currency:'RUB',label:'Покупка 0',bankID:''});
 assert.equal(parse('Date\tAmount\tDescription\n2026-11-10T23:58:00-05:00\t+12.05\tPay')[0].value.date,'2026-11-10');
+// Bank exports distinguish the transaction timestamp from its later posting timestamp.
+// Recognize the transaction date without asking the owner to map an ordinary export.
+const timestampExport = 'transaction_id;transaction_datetime;posting_datetime;amount;currency;card_amount;description\n'+
+  'synthetic-1;2026-11-10 19:00:00;2026-11-11 03:56:00;-50.00;RUB;-500.00;Synthetic purchase';
+assert.deepEqual(parse(timestampExport)[0].value,
+  {date:'2026-11-10',kind:'expense',amount:5000,currency:'RUB',label:'Synthetic purchase',bankID:'synthetic-1'});
+assert.equal(parse('Operation Datetime;Posting Datetime;Amount\n2026-11-10 19:00:00;2026-11-11 03:56:00;-50.00')[0].value.date,'2026-11-10');
+assert.equal(parse('Posting Datetime;Amount\n2026-11-11 03:56:00;-50.00')[0].value.date,'2026-11-11');
 assert.equal(parse('{"transactions":[{"bookingDate":"2026-11-11","amount":-1.23,"currency":"USD","transactionId":"bank-42","description":"Coffee"}]}')[0].value.bankID,'bank-42');
 assert.equal(parse('OFXHEADER:100\nDATA:OFXSGML\n\n<OFX><CURDEF>USD<BANKTRANLIST><STMTTRN><DTPOSTED>20261111090000[-5:EST]<TRNAMT>-1.23<FITID>42<NAME>Store</STMTTRN></BANKTRANLIST></OFX>')[0].value.amount,123);
 assert.equal(parse('!Type:Bank\nD11/21\'26\nT-12.05\nPStore\nL[Other account]\n^\n')[0].error,'import_transfer_review');

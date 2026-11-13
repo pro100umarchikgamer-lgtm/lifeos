@@ -112,3 +112,18 @@ body[data-design=clarity] .today-page .today-notes .note-link>.ui-icon{padding:1
 body[data-design=clarity] .today-page .note-excerpt{font-size:13px;font-weight:400;line-height:1.5;color:var(--ux-muted)}
 @media(max-width:999px){body[data-design=clarity] .today-actionbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
 @media(max-width:759px){body[data-design=clarity] .today-actionbar{margin-bottom:18px}body[data-design=clarity] .today-actionbar button{font-size:13px;padding:12px;min-height:56px;gap:9px}}
+
+/* One compact currency search shared by all record and import forms. */
+.currency-picker{position:relative;min-width:0}
+.currency-picker>input{padding-inline-end:48px!important}
+.currency-picker .currency-picker-toggle{position:absolute;inset-inline-end:3px;top:3px;width:40px;height:40px;min-height:40px;padding:0;border:0;background:transparent;color:var(--ux-muted,var(--muted));border-radius:8px;font-size:22px;line-height:1}
+.currency-picker .currency-picker-toggle:hover{background:var(--ux-soft,var(--soft))}
+.currency-picker:has(input[readonly]) .currency-picker-toggle,.currency-picker:has(input:disabled) .currency-picker-toggle{display:none}
+.currency-picker-list{position:absolute;z-index:12;top:calc(100% + 5px);inset-inline:0;max-height:220px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:5px;border:1px solid var(--ux-border,var(--line));border-radius:12px;background:var(--ux-surface,var(--card));box-shadow:0 8px 28px #17142826}
+.currency-picker-list[hidden]{display:none!important}
+.currency-picker-list.opens-above{top:auto;bottom:calc(100% + 5px)}
+.currency-picker-list .currency-picker-option{display:grid;grid-template-columns:3.3rem minmax(0,1fr);align-items:center;gap:8px;width:100%;min-height:42px;padding:9px 10px;text-align:start;border:0;border-radius:7px;background:transparent;color:var(--ux-ink,var(--ink));font-size:13px;font-weight:400}
+.currency-picker-option strong{font-size:12px;font-variant-numeric:tabular-nums}
+.currency-picker-option span{overflow-wrap:anywhere;line-height:1.35}
+.currency-picker-list .currency-picker-option:hover,.currency-picker-list .currency-picker-option.is-active{background:var(--ux-soft,var(--soft));color:var(--ux-green,var(--accent))}
+.currency-picker-empty{padding:10px;font-size:13px;margin:0}

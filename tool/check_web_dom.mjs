@@ -37,7 +37,13 @@ try{
  const initialLedger=w.document.querySelector('#finance-ledger');
  assert(initialLedger?.querySelector('h2').textContent==='История операций','Today opens the finance ledger');
  assert.equal(w.document.activeElement,initialLedger,'Today directs focus to transaction history');
- assert(w.document.querySelector('.finance-navigation a[href="#finance-accounts"]'),'Finance exposes direct links to its sections');
+ assert.equal(w.document.querySelector('main').dataset.financeView,'ledger','Today opens the transaction-history view');
+ const accountsTab=w.document.querySelector('.finance-navigation button[data-section="accounts"]');
+ assert(accountsTab,'Finance exposes a direct account view');
+ accountsTab.click();
+ assert.equal(w.document.querySelector('main').dataset.financeView,'accounts','Finance account navigation opens its own view');
+ assert(w.document.querySelector('#finance-accounts'),'Accounts are present in their own view');
+ assert(!w.document.querySelector('#finance-ledger'),'Account navigation does not scroll through a combined page');
  button('Сегодня').click();
  button('Все задачи',w.document.querySelector('.today-page')).click();
  assert(w.document.querySelector('#tasks-open_tasks').closest('.task-group').textContent.includes('Подготовить план'));
@@ -67,7 +73,7 @@ try{
  button('Заметки').click();button('Редактировать').click();w.document.querySelector('textarea').value='DOM changed note';submit();await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM changed note'));
  assert.equal(w.document.querySelectorAll('.note-preview').length,0,'single-line note must not repeat its heading as body');
  button('Редактировать').click();button('Удалить').click();button('Отменить').click();assert(w.document.querySelector('main').textContent.includes('DOM changed note'));
- button('Финансы').click();await wait(()=>w.document.querySelector('.finance-total'));assert(w.document.querySelector('main').textContent.includes('RUB'));
+ button('Финансы').click();await wait(()=>w.document.querySelector('.finance-metric-grid'));assert(w.document.querySelector('main').textContent.includes('RUB'));
  button('Добавить операцию').click();
  w.document.querySelector('[name=amount]').value='125,50';w.document.querySelector('[name=label]').value='DOM coffee';submit();
  await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM coffee'));

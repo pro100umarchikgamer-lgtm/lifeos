@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY,workspace_id TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY REFERENCES records(id),title TEXT NOT NULL,completed INTEGER NOT NULL,assignment TEXT NOT NULL,assignees TEXT NOT NULL,review INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS notes(id TEXT PRIMARY KEY REFERENCES records(id),body TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY REFERENCES records(id),name TEXT NOT NULL,currency TEXT NOT NULL,opening_minor INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS transactions(id TEXT PRIMARY KEY REFERENCES records(id),kind TEXT NOT NULL,amount_minor INTEGER NOT NULL,currency TEXT NOT NULL,date TEXT NOT NULL,label TEXT NOT NULL,account_id TEXT);
+CREATE TABLE IF NOT EXISTS transactions(id TEXT PRIMARY KEY REFERENCES records(id),kind TEXT NOT NULL,amount_minor INTEGER NOT NULL,currency TEXT NOT NULL,date TEXT NOT NULL,label TEXT NOT NULL,account_id TEXT,category TEXT CHECK(category IS NULL OR category IN ('food','transport','shopping','housing','health','leisure','education','transfers','other')));
 CREATE TABLE IF NOT EXISTS transfers(id TEXT PRIMARY KEY REFERENCES records(id),from_id TEXT NOT NULL,to_id TEXT NOT NULL,sent_minor INTEGER NOT NULL,received_minor INTEGER NOT NULL,date TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS budgets(id TEXT PRIMARY KEY REFERENCES records(id),name TEXT NOT NULL,currency TEXT NOT NULL,limit_minor INTEGER NOT NULL,period TEXT NOT NULL,start_on TEXT NOT NULL,end_on TEXT,rollover TEXT NOT NULL,participants TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY REFERENCES records(id),title TEXT NOT NULL,schedule TEXT NOT NULL);

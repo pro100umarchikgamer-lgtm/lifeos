@@ -78,10 +78,16 @@ class ControlScenarios:
         self.assertNotIn('records', result)
 
     def test_bans_revoke_sessions_without_deleting_records(self):
+        self.assertEqual(self.control.user(self.owner, self.p2['id'])['user']['disabled_until'], 0)
         token = self.backend.login(self.p2['email'], 'a-valid-long-passphrase')['token']
         self.control.moderate(self.owner, self.p2['id'], 'account', self.now + 3600, 'Test abuse restriction')
+        moderator = StaffPrincipal('moderator', self.p1['id'], ('moderator',))
+        self.assertEqual(self.control.user(moderator, self.p2['id'])['user']['disabled_until'], self.now + 3600)
+        auditor = StaffPrincipal('auditor', self.p1['id'], ('auditor',))
+        with self.assertRaises(Failure): self.control.user(auditor, self.p2['id'])
         with self.assertRaises(Failure): self.backend.authenticate(token)
         self.control.moderate(self.owner, self.p2['id'], 'account', 0, 'Appeal accepted')
+        self.assertEqual(self.control.user(self.owner, self.p2['id'])['user']['disabled_until'], 0)
         result = self.backend.login(self.p2['email'], 'a-valid-long-passphrase')
         self.assertEqual(self.backend.authenticate(result['token'])['id'], self.p2['id'])
         with self.assertRaises(Failure): self.control.moderate(self.owner, self.p1['id'], 'account', self.now + 3600, 'Cannot ban owner')

@@ -7,7 +7,7 @@ from pathlib import Path
 import json, os, sys, tempfile, threading, uuid
 from wsgiref.simple_server import make_server
 from cryptography.fernet import Fernet
-from tool.web_browser_navigation import open_tab, open_settings
+from tool.web_browser_navigation import open_tab, open_settings, open_finance_section
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.production import Application
@@ -157,7 +157,7 @@ def main():
             page.get_by_role('button',name='Отменить',exact=True).click()
             assert not any(r['deleted'] for r in backend.pull(actor,wid,0)['records']);checks.append('note_edit_and_cancel_before_delete')
             page.locator('.nav').get_by_role('button',name='Финансы',exact=True).click()
-            expect(page.locator('.finance-total')).to_be_visible()
+            expect(page.locator('.finance-metric').first).to_be_visible()
             account_id=next(r['id'] for r in backend.pull(actor,wid,0)['records'] if r['kind']=='account')
             page.get_by_role('button',name='Добавить операцию',exact=True).click()
             d=page.get_by_role('dialog');d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Покупка из браузера')
@@ -165,7 +165,8 @@ def main():
             d.get_by_role('button',name='Сохранить',exact=True).click();expect(page.locator('.ledger')).to_contain_text('Покупка из браузера')
             saved=[r for r in backend.pull(actor,wid,0)['records'] if r['kind']=='transaction' and r['data']['label']=='Покупка из браузера']
             assert len(saved)==1 and saved[0]['data']['amount_minor']==12550 and saved[0]['data']['account_id']==account_id
-            assert ''.join(page.locator('.account-balance strong').inner_text().split()).replace(',','.')=='266354.50RUB'
+            open_finance_section(page,'accounts')
+            assert ''.join(page.locator('.account-balance .finance-account-amount').inner_text().split()).replace(',','.')=='266354.50RUB'
             checks.append('browser_financial_write_and_exact_account_balance')
             for theme in ('light','dark'):
                 page.evaluate("value=>{state.theme=value;preferences();}",theme)

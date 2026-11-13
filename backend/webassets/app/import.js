@@ -31,7 +31,7 @@ const STATEMENT_FLOW_COPY={
 function importStatement() {
  const workspace=state.space,user=state.session.user_id,epoch=privateEpoch;
  let accounts=records('account'), source=null, parsed=null, preview=[], pending=null, page=0;
- let running=false, closed=false, modified=false, generation=0, attempted=[], stage=0;
+ let running=false, closed=false, modified=false, generation=0, attempted=[], stage=0, correcting=null;
  const [chooseStep,reviewStep,resultStep,savedLabel,failedLabel,historyLabel,reviewLabel,refreshLabel]=STATEMENT_FLOW_COPY[state.lang]||STATEMENT_FLOW_COPY.en;
  const copy=statementCopy;
  const ensureContext=()=>{if(closed||privateEpoch!==epoch||state.space!==workspace||state.session?.user_id!==user)throw {code:'view_changed'};};
@@ -57,13 +57,16 @@ function importStatement() {
   const advancedTitle=E('summary');advancedTitle.append(E('span',copy('advanced')),E('span',copy('advanced_badge'),'statement-advanced-badge'));advanced.append(advancedTitle,E('p',copy('advanced_help'),'small'));controls.append(advanced);
   const dateHelp=E('section',undefined,'statement-date-help');dateHelp.hidden=true;controls.insertBefore(dateHelp,advanced);
   const recognitionHelp=E('section',undefined,'statement-recognition-help');recognitionHelp.hidden=true;controls.insertBefore(recognitionHelp,advanced);
-  recognitionHelp.append(E('p',copy('recognition_help')),button(copy('open_advanced'),()=>{advanced.open=true;const field=fields.date?.value==='-1'?fields.date:fields.amount?.value==='-1'?fields.amount:encoding;field.focus();field.scrollIntoView({block:'center'});},'secondary'));
+  const recognitionMessage=E('p',copy('recognition_help'));
+  const recognitionFields=E('div',undefined,'statement-required-fields');
+  recognitionHelp.append(recognitionMessage,recognitionFields,button(copy('open_advanced'),()=>{advanced.open=true;const field=fields.date?.value==='-1'?fields.date:fields.amount?.value==='-1'?fields.amount:encoding;field.focus();field.scrollIntoView({block:'center'});},'text-button'));
   const encoding=select(advanced,'encoding',t('encoding'),[['auto',copy('auto')],['utf8','UTF-8'],['utf16','UTF-16 LE'],['utf-16be','UTF-16 BE'],['cp1251','Windows-1251'],['windows-1252','Windows-1252']],'auto');
   const delimiter=select(advanced,'delimiter',t('web_delimiter'),[['auto',copy('auto')],[';', ';'],[',',','],['\t','Tab'],['|','|']],'auto');
   const mapping=E('div',undefined,'statement-mapping');advanced.append(mapping);
   const status=E('p',undefined,'import-status');status.setAttribute('role','status');
   const totals=E('div',undefined,'statement-totals');
   const results=E('div',undefined,'import-results');
+  const correction=E('section',undefined,'statement-row-correction');correction.hidden=true;
   const actions=E('div',undefined,'actions statement-actions');
   const commit=E('button',t('import_confirm'));commit.type='button';commit.disabled=true;
   commit.addEventListener('click',()=>commitRows().catch(report));
@@ -76,7 +79,7 @@ function importStatement() {
    draw();
   },'text-button');
   const bulk=E('div',undefined,'actions statement-bulk');bulk.append(selectReady,clearSelection);
-  actions.append(commit);append(container,steps,need,controls,status,receipt,totals,bulk,results,actions);
+  actions.append(commit);append(container,steps,need,controls,status,receipt,correction,totals,bulk,results,actions);
   function setStage(next){
    stage=next;
    for(const [i,item] of [...steps.children].entries()){
@@ -87,7 +90,7 @@ function importStatement() {
    fileOptions.open=stage===0;
    fileTitleLabel.textContent=source?.name||chooseStep;
    fileTitleLabel.title=source?.name||'';
-   totals.hidden=results.hidden=stage===2;bulk.hidden=stage!==1;
+   totals.hidden=results.hidden=stage===2;bulk.hidden=stage!==1||!preview.length;
    actions.hidden=stage===2||accounts.length===0;
   }
   setStage(0);
@@ -116,19 +119,42 @@ function importStatement() {
    const matching=accounts.filter(a=>a.data.currency===currency);
    return matching.length===1?matching[0]:null;
   }
-  function showError(error){if(!closed){status.textContent=copy(error.code||'import_format');recognitionHelp.hidden=!['import_mapping_required','import_encoding_required','import_delimiter_ambiguous'].includes(error.code);}}
+  function showError(error){
+   if(closed)return;
+   status.textContent=copy(error.code||'import_format');
+   recognitionFields.replaceChildren();
+   recognitionHelp.hidden=!['import_mapping_required','import_encoding_required','import_delimiter_ambiguous'].includes(error.code);
+   recognitionMessage.textContent=copy(error.code==='import_mapping_required'?'recognition_help':error.code||'import_format');
+   if(error.code==='import_mapping_required'&&parsed){
+    // Ask only for unknown required fields. The full expert mapping remains folded.
+    setStage(1);
+    const required=['date'];
+    if(fields.amountMode.value==='split'){
+     if(Number(fields.debit.value)<0&&Number(fields.credit.value)<0)required.push('debit','credit');
+    }else required.push('amount');
+    if(fields.amountMode.value==='typed')required.push('directionColumn');
+    for(const key of required){
+     const field=fields[key];if(!field||Number(field.value)>=0)continue;
+     const label=mappingKeys.find(([name])=>name===key)?.[1]||copy(key);
+     const choices=[...field.options].map(option=>[option.value,option.textContent]);
+     const picker=select(recognitionFields,'required-'+key,label,choices,field.value);
+     for(const [index,option] of [...picker.options].entries())option.disabled=field.options[index].disabled;
+     picker.addEventListener('change',()=>{field.value=picker.value;review();});
+    }
+   }
+  }
   function ready(row){return !!row.value&&!row.error&&!row.imported&&!row.repeated&&!row.duplicate&&!!row.targetID&&!parsed?.needsReview;}
   function updateControls(){
-   selectReady.disabled=running||!!pending||!preview.some(row=>ready(row)&&!row.selected);
-   clearSelection.disabled=running||!!pending||!preview.some(row=>row.selected);
-   controls.disabled=running||!!pending;results.inert=running||!!pending;commit.disabled=running||!(pending||preview.some(row=>row.selected));
+   selectReady.disabled=running||!!pending||!!correcting||!preview.some(row=>ready(row)&&!row.selected);
+   clearSelection.disabled=running||!!pending||!!correcting||!preview.some(row=>row.selected);
+   controls.disabled=running||!!pending||!!correcting;results.inert=running||!!pending||!!correcting;commit.disabled=running||!!correcting||!(pending||preview.some(row=>row.selected));
    const close=container.querySelector('.dialog-head button');if(close)close.disabled=running;
   }
   async function readFile(){
    if(pending||!source)return;
    const turn=++generation;
    setStage(0);attempted=[];
-   preview=[];parsed=null;mapping.replaceChildren();dateHelp.replaceChildren();dateHelp.hidden=true;recognitionHelp.hidden=true;sheetControls.replaceChildren();results.replaceChildren();totals.replaceChildren();
+   clearCorrection();preview=[];parsed=null;mapping.replaceChildren();dateHelp.replaceChildren();dateHelp.hidden=true;recognitionHelp.hidden=true;recognitionFields.replaceChildren();advanced.open=false;sheetControls.replaceChildren();results.replaceChildren();totals.replaceChildren();
    running=true;updateControls();status.textContent=copy('reading');
    try{
     if(source.size>5*1024*1024)throw {code:'import_limit'};
@@ -275,13 +301,14 @@ function importStatement() {
    settings.defaultCurrency=defaultAccount()?.data.currency;
    preview=ULADIMStatement.preview(parsed,settings);
    await identify();page=0;setStage(1);draw();
-   const dateProblem=preview.some(row=>['import_date_ambiguous','import_date_invalid'].includes(row.error));
+   const dateProblem=preview.some(row=>row.error==='import_date_ambiguous');
    if(dateProblem)dateHelp.dataset.needed='true';
    dateHelp.hidden=dateHelp.dataset.needed!=='true';
    dateHelp.classList.toggle('is-resolved',!dateProblem);
    const example=preview.find(row=>row.original?.date),exampleText=dateHelp.querySelector('.statement-date-examples');
    if(exampleText&&example)exampleText.textContent=copy('date_example')+' '+example.original.date+(example.value?.date?' → '+example.value.date:'');
-   recognitionHelp.hidden=!preview.length||!preview.every(row=>row.error)||dateProblem;
+   // A parsed table with row validation errors does not need its structure remapped.
+   recognitionHelp.hidden=true;recognitionFields.replaceChildren();
   }
   function rowStatus(row){
    if(row.saved)return copy('saved');
@@ -363,20 +390,25 @@ function importStatement() {
    summary();updateControls();
   }
   function editRow(item){
-   const rowDialog=dialog(copy('edit_row')+' · '+item.line,host=>form(host,'',f=>{
+   correcting=item;correction.hidden=false;correction.replaceChildren(E('h3',copy('edit_row')+' · '+item.line));updateControls();
+   const editor=form(correction,'',f=>{
     const original=item.original;
     return {date:input(f,'date',t('date'),'text',original.date),amount:input(f,'amount',t('amount'),'text',original.amount),
      currency:input(f,'currency',t('currency'),'text',original.currency),label:input(f,'label',t('description'),'text',original.label,false),
      direction:select(f,'direction',t('family_kind_transaction'),[['',copy('auto')],['income',t('income')],['expense',t('expense')]],item.value?.kind||original.kind||'')};
    },async v=>{
+    ensureContext();if(correcting!==item||!preview.includes(item))throw {code:'view_changed'};
     const row=[v.date.value,v.amount.value,v.label.value,v.currency.value,item.original.bankID,v.direction.value];
     const single=ULADIMStatement.table([['Date','Amount','Description','Currency','Transaction ID','Direction'],row],'CSV');
     const normalized=ULADIMStatement.preview(single,{...single.detection,defaultCurrency:defaultAccount()?.data.currency})[0];
     if(!normalized?.value)throw {code:normalized?.error||'import_format'};
     Object.assign(item,{value:normalized.value,original:normalized.original,error:null});
-    await reidentify();rowDialog.close();
-   }));
+    clearCorrection();await reidentify();
+   });
+   editor.append(button(t('close'),()=>{clearCorrection();updateControls();},'text-button'));
+   const first=correction.querySelector('input');first?.focus({preventScroll:true});first?.scrollIntoView({block:'center'});
   }
+  function clearCorrection(){correcting=null;correction.hidden=true;correction.replaceChildren();}
   async function commitRows(){
    ensureContext();if(running)return;
    running=true;updateControls();
@@ -474,14 +506,14 @@ const STATEMENT_COPY={
   amount_mode:'Как задана сумма',amount_signed:'Одна сумма со знаком + / −',amount_split:'Отдельные столбцы дохода и расхода',amount_typed:'Сумма и тип операции',
   mapping_help:'Изменения применяются ко всем строкам. В названиях столбцов показаны примеры из файла.',apply_mapping:'Проверить все строки',
   import_direction_invalid:'Проверьте тип операции: доход или расход.',
-  advanced_badge:'Для опытных',advanced_help:'Расширенные настройки файла. Обычно их менять не нужно: используйте их, только если выписка распознана неверно.',recognition_help:'Нужно уточнить структуру файла. Откройте расширенные настройки и проверьте дату и сумму по примерам.',open_advanced:'Открыть расширенные настройки',date_help_title:'Уточните формат даты',date_help_body:'Выберите порядок дня и месяца. Настройка применится ко всей выписке.',date_day_first:'День → месяц (4 мая)',date_month_first:'Месяц → день (5 апреля)',date_example:'Пример из вашей выписки:',show_date_format:'Формат даты',advanced:'Исправить распознавание',auto:'Автоматически',bank_id:'Идентификатор операции',direction_field:'Тип операции',reading:'Распознаём выписку…',
+  advanced_badge:'Для опытных',advanced_help:'Расширенные настройки файла. Обычно их менять не нужно: используйте их, только если выписка распознана неверно.',recognition_help:'Неизвестное название столбца. Выберите его по примерам ниже — один выбор применится ко всей выписке.',open_advanced:'Открыть расширенные настройки',date_help_title:'Уточните формат даты',date_help_body:'Выберите порядок дня и месяца. Настройка применится ко всей выписке.',date_day_first:'День → месяц (4 мая)',date_month_first:'Месяц → день (5 апреля)',date_example:'Пример из вашей выписки:',show_date_format:'Формат даты',advanced:'Исправить распознавание',auto:'Автоматически',bank_id:'Идентификатор операции',direction_field:'Тип операции',reading:'Распознаём выписку…',
   saved:'сохранено',skipped:'пропущено',selected:'выбрано',needs_review:'требуют проверки',ready:'Готово',rows:'строк',
   include:'Включить',status:'Статус',edit_row:'Исправить строку',no_rows:'В выписке нет операций для проверки.',
   partially_finished:'Сохранена только часть строк. Проверьте ошибки и пропущенные операции.',
   finished:'Импорт завершён. Сохранённые операции доступны в истории.',
   missing_currency_account:'Выберите или создайте счёт в валюте операции.',repeated_id:'Банковский идентификатор повторяется.',
   pdf_review:'Сверьте строку с PDF и отметьте её для импорта.',
-  import_mapping_required:'Укажите столбцы даты и суммы в разделе «Исправить распознавание».',
+  import_mapping_required:'Выберите нераспознанный столбец ниже. Остальные настройки уже определены.',
   import_delimiter_ambiguous:'В файле несколько возможных разделителей. Укажите нужный.',
   import_encoding_required:'Кодировка не определена. Выберите её в разделе «Исправить распознавание».',
   import_format:'Структуру выписки не удалось распознать. Проверьте файл или экспортируйте таблицу из банка.',
@@ -513,14 +545,14 @@ const STATEMENT_COPY={
   amount_mode:'Amount format',amount_signed:'One signed amount + / −',amount_split:'Separate income and expense columns',amount_typed:'Amount and transaction type',
   mapping_help:'Changes apply to every row. Column choices include examples from the file.',apply_mapping:'Check all rows',
   import_direction_invalid:'Check the transaction type: income or expense.',
-  advanced_badge:'Advanced',advanced_help:'Advanced file settings. Usually no changes are needed; use these only if the statement was read incorrectly.',recognition_help:'The file structure needs clarification. Open advanced settings and check the date and amount against the examples.',open_advanced:'Open advanced settings',date_help_title:'Confirm the date format',date_help_body:'Choose the day and month order once for the whole statement.',date_day_first:'Day first (4 May)',date_month_first:'Month first (5 April)',date_example:'Example from your statement:',show_date_format:'Date format',advanced:'Correct recognition',auto:'Automatic',bank_id:'Transaction ID',direction_field:'Transaction type',reading:'Reading statement…',
+  advanced_badge:'Advanced',advanced_help:'Advanced file settings. Usually no changes are needed; use these only if the statement was read incorrectly.',recognition_help:'This column name is unfamiliar. Choose it using the examples below; your choice applies to the whole statement.',open_advanced:'Open advanced settings',date_help_title:'Confirm the date format',date_help_body:'Choose the day and month order once for the whole statement.',date_day_first:'Day first (4 May)',date_month_first:'Month first (5 April)',date_example:'Example from your statement:',show_date_format:'Date format',advanced:'Correct recognition',auto:'Automatic',bank_id:'Transaction ID',direction_field:'Transaction type',reading:'Reading statement…',
   saved:'saved',skipped:'skipped',selected:'selected',needs_review:'need review',ready:'Ready',rows:'rows',
   include:'Include',status:'Status',edit_row:'Correct row',no_rows:'There are no transactions to review in this statement.',
   partially_finished:'Only part of the statement was saved. Review errors and skipped transactions.',
   finished:'Import finished. Saved transactions are available in history.',
   missing_currency_account:'Choose or create an account in the transaction currency.',repeated_id:'The bank transaction ID appears more than once.',
   pdf_review:'Compare this row with the PDF, then select it for import.',
-  import_mapping_required:'Choose the date and amount columns under Correct recognition.',
+  import_mapping_required:'Choose the unrecognized column below. The other settings are already detected.',
   import_delimiter_ambiguous:'Several separators are possible. Select the one used by the statement.',
   import_encoding_required:'The file encoding is unclear. Select it under Correct recognition.',
   import_format:'The statement structure is unclear. Check the file or export a table from your bank.',

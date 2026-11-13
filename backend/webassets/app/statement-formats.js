@@ -4,7 +4,7 @@
   const LIMIT = 10000;
   const fail = code => { throw {code}; };
   const aliases = {
-    date: [['operation date','дата операции','booking date','bookingdate','date','дата','дата и время'], ['дата платежа','value date','posted date','dtposted']],
+    date: [['operation date','operation datetime','operationdatetime','transaction date','transaction datetime','transaction date time','transactiondate','transactiondatetime','дата операции','booking date','booking datetime','bookingdate','bookingdatetime','date','дата','дата и время'], ['дата платежа','value date','posted date','posting date','posting datetime','postingdate','postingdatetime','dtposted']],
     amount: [['сумма операции','transaction amount','amount','сумма','trnamt'], ['сумма платежа','payment amount','billing amount','amount in account currency']],
     currency: [['валюта операции','transaction currency','currency','валюта','код валюты','curdef'], ['валюта платежа','payment currency','billing currency','account currency']],
     description: [['description','описание','назначение','назначение платежа','memo','payee','name','remittance information']],

@@ -168,7 +168,7 @@ class Control:
         self.require(actor, 'users.read')
         identifier(uid)
         with self.backend.connect() as db:
-            row = db.execute('SELECT id,email,verified,created_at FROM users WHERE id=?', (uid,)).fetchone()
+            row = db.execute('SELECT u.id,u.email,u.verified,u.created_at,COALESCE(a.disabled_until,0) AS disabled_until FROM users u LEFT JOIN account_state a ON a.user_id=u.id WHERE u.id=?', (uid,)).fetchone()
             require(row is not None, 'not_found', 404)
             devices = db.execute('SELECT id,label,created_at,last_seen_at,revoked_at FROM devices WHERE user_id=? ORDER BY created_at DESC LIMIT 30', (uid,)).fetchall()
             access = entitlements.resolve(db, uid, int(self.backend.clock()))

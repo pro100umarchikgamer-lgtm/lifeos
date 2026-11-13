@@ -15,6 +15,7 @@ import uuid
 from .account_sessions import AccountSessions
 
 MAX_MINOR = 999999999999999
+TRANSACTION_CATEGORIES = frozenset({'food', 'transport', 'shopping', 'housing', 'health', 'leisure', 'education', 'transfers', 'other'})
 PERMISSIONS = {'view_budget', 'record_spending', 'edit_own', 'request_money', 'view_shared', 'create_tasks', 'complete_tasks'}
 TABLES = {'task':'tasks','note':'notes','account':'accounts','transaction':'transactions','transfer':'transfers','budget':'budgets','event':'events','shopping':'shopping','request':'requests'}
 FIELDS = {
@@ -66,7 +67,12 @@ class ManagedConnection(sqlite3.Connection):
 class Backend(AccountSessions):
     def __init__(self,path,deliver=None,clock=time.time):
         self.path,self.deliver,self.clock=str(path),deliver,clock
-        with self.connect() as db: db.executescript(Path(__file__).with_name('schema.sql').read_text())
+        with self.connect() as db:
+            db.executescript(Path(__file__).with_name('schema.sql').read_text())
+            # Existing development databases predate the optional category. A
+            # nullable additive column preserves all prior transaction values.
+            if 'category' not in {row['name'] for row in db.execute('PRAGMA table_info(transactions)')}:
+                db.execute("ALTER TABLE transactions ADD COLUMN category TEXT CHECK(category IS NULL OR category IN ('food','transport','shopping','housing','health','leisure','education','transfers','other'))")
         os.chmod(self.path,0o600)
     def connect(self):
         db=sqlite3.connect(self.path,timeout=10,factory=ManagedConnection);db.row_factory=sqlite3.Row
@@ -304,11 +310,14 @@ class Backend(AccountSessions):
             return result
         result=dict(row);result['audience']=json.loads(result['audience']);data=dict(db.execute('SELECT * FROM '+TABLES[row['kind']]+' WHERE id=?',(row['id'],)).fetchone());data.pop('id')
         for key in JSON_FIELDS & data.keys(): data[key]=json.loads(data[key])
+        # Keep the legacy response shape for records without a selected category.
+        if row['kind']=='transaction' and data.get('category') is None:data.pop('category',None)
         result['data']=data
         if row['kind']=='task':result['progress']=[dict(p) for p in db.execute('SELECT profile_id,completed,approved FROM task_progress WHERE task_id=?',(row['id'],))]
         return result
     def _validate_data(self,db,wid,kind,data,audience,actor,space):
-        require(isinstance(data,dict) and set(data)==FIELDS[kind],'invalid_fields')
+        optional={'category'} if kind=='transaction' else set()
+        require(isinstance(data,dict) and FIELDS[kind]<=set(data)<=FIELDS[kind]|optional,'invalid_fields')
         for pid in audience: require(db.execute('SELECT id FROM profiles WHERE id=? AND workspace_id=? AND archived=0',(pid,wid)).fetchone() is not None,'invalid_participant')
         for key in ('name','title','body'):
             if key in data:text(data[key],20000 if key=='body' else 2000)
@@ -321,6 +330,9 @@ class Backend(AccountSessions):
             if data.get(key) is not None:civil(data[key])
         if 'label' in data:require(isinstance(data['label'],str) and len(data['label'])<=2000)
         if kind=='transaction':
+            if 'category' in data:
+                category=data['category']
+                require(category is None or isinstance(category,str) and category in TRANSACTION_CATEGORIES,'invalid_category')
             require(data['kind'] in ('income','expense'));aid=data['account_id']
             if aid is not None:self._reference(db,wid,aid,'account',currency=data['currency'],actor=actor,space=space)
         if kind=='transfer':

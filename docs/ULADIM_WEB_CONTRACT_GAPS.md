@@ -44,7 +44,7 @@ about fields the browser should silently submit. No proposed field below is acti
 | Server restore/trash | `record.delete` exists; no restore action; record.put rejects deleted rows | Restore action with revision/permissions, reference restoration and expiry rules |
 | Habits | No habit record kind in shared service | Shared schedule, completion history, per-profile permissions and conflict model |
 | Goals/savings/debts/investments | No corresponding record kinds | Shared schemas, money units/currencies, account references and balance effects |
-| Categories/counterparties | Transaction `label`, but no category/counterparty IDs | Stable shared entities and schema versions; don't encode metadata in label |
+| Categories/counterparties | Optional built-in transaction `category`; no custom category/counterparty IDs | Custom shared entities still require stable IDs; don't encode metadata in `label` |
 | Note organization | `body` only | Folder/tag/title schema and Android compatibility |
 | Today widget preferences | Browser preferences only; no server layout schema | If cross-device widget configuration is wanted, add profile preferences contract |
 | Notification reminders | Event schedule contains no reminder field | Shared reminder semantics and delivery ownership |
