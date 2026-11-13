@@ -253,7 +253,12 @@ void main() {
           await tester.tap(find.byKey(const Key('nav_finances')));
           await tester.pumpAndSettle();
           await snapshot('finance_insights');
-          await tester.tap(find.byKey(const Key('cashflow_chart')));
+          final cashflowChart = find.byKey(const Key('cashflow_chart'));
+          // Localized chart controls can wrap below the initial viewport.
+          await tester.ensureVisible(cashflowChart);
+          await tester.pumpAndSettle();
+          expect(cashflowChart.hitTestable(), findsOneWidget);
+          await tester.tap(cashflowChart);
           await tester.pumpAndSettle();
           await tester.ensureVisible(
             find.byKey(const Key('expense_categories_chart')),
