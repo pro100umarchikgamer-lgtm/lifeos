@@ -152,6 +152,8 @@ def run(output, engine):
         editor.get_by_role('button', name='Сохранить').click()
         expect(another.get_by_role('heading', name='Тестовая заметка после правки')).to_be_visible()
         open_tab(another, 'Задачи')
+        # Completed tasks are folded in the All view; open their visible group.
+        another.locator('details.task-group[aria-labelledby="tasks-completed"] > summary').click()
         expect(another.get_by_role('checkbox', name='Импортированная задача')).to_be_checked()
 
         open_tab(another, 'Профиль')
@@ -171,8 +173,12 @@ def run(output, engine):
         if output:
             guide.screenshot(path=output / 'personal-import-guide.png')
         guide.goto(origin + '/faq#import')
-        guide.get_by_text('Где открыть импорт?', exact=True).click()
-        expect(guide.get_by_text('На телефоне профиль находится', exact=False)).to_be_visible()
+        import_help = guide.locator('#import')
+        expect(import_help).to_have_attribute('open', '')
+        expect(import_help.locator('summary')).to_have_text('Как перенести записи из другого приложения?')
+        expect(import_help.locator('.help-answer')).to_be_visible()
+        expect(import_help.locator('.help-answer')).to_contain_text('Профиль → Импорт и синхронизация')
+        expect(import_help.get_by_role('link', name='Пошаговый перенос', exact=True)).to_have_attribute('href', '/docs#import')
         assert not errors, errors
         browser.close()
     print(f'PERSONAL_IMPORT_OK ({engine}): 6 saved; duplicate prevention, second session, notes editing, FAQ')
