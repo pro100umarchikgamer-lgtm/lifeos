@@ -735,7 +735,7 @@ const PUBLIC_RELEASE_FACTS=Object.freeze({
  securityRetention:'Сведения о действиях, необходимых для защиты сервиса, могут сохраняться в виде служебного номера аккаунта, вида действия и времени — без почты, средств входа и содержимого ваших записей. Для этих сведений срок автоматического удаления пока не установлен. Текстовые пояснения сотрудников хранятся отдельно в защищённом виде: до 90 дней или до удаления связанного аккаунта, если оно наступит раньше. Обращения в поддержку не включаются в такой журнал.',
  backupRetention:null,correspondenceRetention:null,plannedBackupDays:7,supportProviderRetentionDays:30,
  deletionGraceHours:24,deletionPolicy:'После завершения удаления стираются данные входа, почта, связь с Google, устройства и сеансы, обращения внутри приложения, а также все созданные вами личные и общие записи, включая их содержимое, доступное для восстановления. Личные записи других участников сохраняются: их суммы, даты, валюты и описания не переписываются. Общие итоги могут измениться, потому что ваши записи больше не участвуют в расчётах. Для отображения операций других участников может остаться только отметка об удалённом счёте и его валюта, без вашего имени и исходного содержимого. Служебный номер удалённого аккаунта и дата удаления сохраняются для предотвращения возврата данных при восстановлении.',
- android:{version:'0.3.1',build:312001,minAndroid:'Android 7.0',bytes:77458893,
+ android:{source:'84b0bdf2c6d54132691d22323553496f6b3b1d43',certificateSha256:'5fa37e4abf1ec90d5787bd0d7dc4cf0b3f49022172f9d25e91f4d8a76702a96e',version:'0.3.1',build:312001,minAndroid:'Android 7.0',bytes:77458893,
   url:'https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/download/uladim-native-84b0bdf2c6d5/ULADIM.apk',
   sha256:'66d123cef79f85b7b2665bdcad0e6309db4a694e9a5076ed871450154c762872',
   release:'https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/tag/uladim-native-84b0bdf2c6d5'}
@@ -924,14 +924,54 @@ const publicExperience=(()=>{
    ['no-access','Если вход недоступен',['Попробуйте восстановить доступ. Если это невозможно, обратитесь по вопросу удаления через доступный контакт поддержки. Для защиты ваших данных потребуется подтвердить принадлежность аккаунта. Пароль и одноразовый код сообщать поддержке не нужно.']]
   ]);contactLink(app,'Обратиться по вопросу удаления');related([['Восстановление доступа','/faq#recovery'],['Конфиденциальность','/privacy#retention'],['Поддержка','/support']]);openHash();
  }
+ // The optional edge manifest is published only after the signed APK is
+ // verified. Validate the whole immutable tuple before replacing any content.
+ let downloadRequest=null;
+ function validatedAndroidRelease(value){
+  const keys=['source','version_code','version_name','bytes','apk_url','apk_sha256','certificate_sha256'];
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==keys.length||!keys.every(key=>Object.hasOwn(value,key)))return null;
+  if(typeof value.source!=='string'||!/^[a-f0-9]{40}$/.test(value.source))return null;
+  if(!Number.isSafeInteger(value.version_code)||value.version_code<312001||value.version_code>2100000000)return null;
+  if(!Number.isSafeInteger(value.bytes)||value.bytes<1||value.bytes>2147483647)return null;
+  const name=value.version_name;
+  if(name!==null&&(typeof name!=='string'||name.length>80||/[\u0000-\u001f\u007f]/.test(name)||name.trim()!==name))return null;
+  const release='https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/tag/uladim-native-'+value.source.slice(0,12);
+  const url='https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/download/uladim-native-'+value.source.slice(0,12)+'/ULADIM.apk';
+  if(value.apk_url!==url||typeof value.apk_sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.apk_sha256)||value.certificate_sha256!==PUBLIC_RELEASE_FACTS.android.certificateSha256)return null;
+  return Object.freeze({source:value.source,certificateSha256:value.certificate_sha256,version:name||null,build:value.version_code,bytes:value.bytes,url,sha256:value.apk_sha256,release,minAndroid:PUBLIC_RELEASE_FACTS.android.minAndroid});
+ }
+ function androidReleaseCard(android){
+  const card=block('Приложение для Android','Доступная сборка для прямой установки. Скачивайте APK только по официальной ссылке ниже.');card.id='android';card.classList.add('help-android-release');
+  card.dataset.source=android.source;card.dataset.versionCode=String(android.build);card.dataset.apkBytes=String(android.bytes);card.dataset.apkSha256=android.sha256;card.dataset.certificateSha256=android.certificateSha256;
+  const title=android.version?'Версия '+android.version:'Android';
+  const download=link('Скачать APK для Android',android.url);download.dataset.releaseDownload='';
+  const notes=inline('Сведения об этой сборке',android.release);notes.dataset.releaseNotes='';
+  card.append(node('p',`${title} · сборка ${android.build} · ${(android.bytes/1000000).toLocaleString('ru',{maximumFractionDigits:1})} МБ · ${android.minAndroid} и новее`,'help-download-meta'),download,notes);
+  const hash=node('details',undefined,'help-question');hash.append(node('summary','Как проверить скачанный файл?'));const body=node('div',undefined,'help-answer');body.append(node('p','Для доступной сборки контрольная сумма SHA-256:'),node('code',android.sha256,'help-digest'),node('p','Контрольная сумма помогает убедиться, что файл совпадает с опубликованным. Если значения отличаются, не устанавливайте файл и сообщите в поддержку.'));hash.append(body);card.append(hash);
+  return card;
+ }
+ async function refreshAndroidRelease(card){
+  downloadRequest?.abort();
+  const controller=new AbortController();downloadRequest=controller;
+  const epoch=viewEpoch,timer=setTimeout(()=>controller.abort(),2500);
+  try{
+   const response=await fetch('/download/release.json',{method:'GET',credentials:'omit',cache:'no-store',redirect:'error',signal:controller.signal});
+   if(response.status!==200||(response.headers.get('Content-Type')||'').split(';')[0].trim().toLowerCase()!=='application/json'||Number(response.headers.get('Content-Length')||0)>4096)return;
+   const text=await response.text();if(text.length>4096)return;
+   const android=validatedAndroidRelease(JSON.parse(text));
+   if(!android||controller.signal.aborted||epoch!==viewEpoch||location.pathname!=='/download'||!card.isConnected||!app.contains(card))return;
+   // One subtree replacement publishes version, size, URLs and digest together.
+   card.replaceWith(androidReleaseCard(android));
+  }catch{/* Keep the complete verified fallback for unavailable or invalid metadata. */}
+  finally{clearTimeout(timer);if(downloadRequest===controller)downloadRequest=null;}
+ }
  function download(){
   intro('ULADIM НА ВАШИХ УСТРОЙСТВАХ','Ближе к вашему дню','В браузере на телефоне и компьютере. Отдельное приложение — для Android.');
   const grid=node('div',undefined,'help-download-grid'),web=block('Открыть в браузере','На iPhone, iPad, Android, Windows, macOS и Linux. Можно пользоваться во вкладке или добавить значок на домашний экран.');web.append(link('Открыть ULADIM','/app'),inline('Добавить на домашний экран','#installation'));grid.append(web);
-  const android=facts.android,card=block('Приложение для Android','Доступная сборка для прямой установки. Скачивайте APK только по официальной ссылке ниже.');card.id='android';
-  card.append(node('p',`Версия ${android.version} · сборка ${android.build} · ${(android.bytes/1000000).toLocaleString('ru',{maximumFractionDigits:1})} МБ · ${android.minAndroid} и новее`,'help-download-meta'),link('Скачать APK для Android',android.url),inline('Сведения об этой сборке',android.release));grid.append(card);app.append(grid);
+  const card=androidReleaseCard(PUBLIC_RELEASE_FACTS.android);grid.append(card);app.append(grid);
   const update=block('Обновление без потери записей','Установите новую официальную версию поверх уже установленной. Не удаляйте приложение и не очищайте его данные ради обновления. Если Android предлагает удалить прежнюю версию, остановитесь и обратитесь в поддержку.','Перед обновлением важных локальных данных сделайте собственную резервную копию. Установка APK может потребовать временно разрешить установку из выбранного браузера или файлового приложения; после установки разрешение можно отключить.');app.append(update);
-  const hash=node('details',undefined,'help-question');hash.append(node('summary','Как проверить скачанный файл?'));const body=node('div',undefined,'help-answer');body.append(node('p','Для доступной сборки контрольная сумма SHA-256:'),node('code',android.sha256,'help-digest'),node('p','Контрольная сумма помогает убедиться, что файл совпадает с опубликованным. Если значения отличаются, не устанавливайте файл и сообщите в поддержку.'));hash.append(body);app.append(hash);
   installGuide(app);related([['Помощь с установкой','/faq#installation'],['Поддержка','/support']]);openHash();
+  refreshAndroidRelease(card);
  }
  return {configure,legal,faq,support,deletion,download};
 })();
