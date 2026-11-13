@@ -134,8 +134,8 @@ def main():
                     page.emulate_media(color_scheme=scheme)
                     for theme in ('system','light','dark'):
                         page.locator('select[name=theme]').select_option(theme)
-                        for palette in ('forest','ocean','pistachio'):
-                            page.locator('select[name=palette]').select_option(palette)
+                        for palette in ('violet','forest','ocean','pistachio','rose','sand'):
+                            page.locator(f'button[data-palette-choice="{palette}"]').click()
                             colors=page.evaluate('''()=>{const s=getComputedStyle(document.body);return Object.fromEntries(['ink','muted','income','expense','bg','card','soft'].map(k=>[k,s.getPropertyValue('--'+k).trim()]));}''')
                             backgrounds=['bg','card']+(['soft'] if DESIGN else [])
                             for fg in ('ink','muted','income','expense'):
@@ -148,7 +148,7 @@ def main():
                 page.emulate_media(color_scheme='light')
                 open_settings(page,'appearance')
                 page.get_by_label('Оформление',exact=True).select_option('dark')
-                page.get_by_label('Цветовая палитра',exact=True).select_option('ocean')
+                page.locator('button[data-palette-choice="ocean"]').click()
                 open_tab(page,'Финансы')
                 page.screenshot(path=str(OUT/'iphone-finance-dark.png'),full_page=False)
                 await_sw=page.evaluate('navigator.serviceWorker.ready.then(()=>true)')

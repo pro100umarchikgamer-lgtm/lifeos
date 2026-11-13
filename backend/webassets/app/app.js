@@ -1045,10 +1045,19 @@ function listTasks(m){
    root.querySelector('.quick-capture button')?.focus({preventScroll:true});
   }
  },'secondary'));
- const filters=E('div',undefined,'task-filters'),queryBox=E('div'),statusBox=E('div');append(filters,queryBox,statusBox);m.append(filters);
+ const workspace=E('div',undefined,'task-workspace'),primary=E('div',undefined,'task-primary');
+ const overview=E('aside',undefined,'task-overview'),tasks=records('task'),done=tasks.filter(r=>Boolean(r.data.completed)).length;
+ overview.setAttribute('aria-label',t('widget_tasks'));
+ const counts=E('dl',undefined,'task-overview-counts');
+ for(const [label,count]of [['open_tasks',tasks.length-done],['completed',done]])counts.append(append(E('div'),E('dt',t(label)),E('dd',count.toLocaleString(state.lang))));
+ const progress=E('progress');progress.max=tasks.length||1;progress.value=done;
+ progress.setAttribute('aria-label',t('completed')+' '+done+' / '+tasks.length);
+ append(overview,append(E('div',undefined,'task-overview-heading'),icon('tasks'),E('h2',t('widget_tasks'))),counts,progress);
+ append(workspace,primary,overview);m.append(workspace);
+ const filters=E('div',undefined,'task-filters'),queryBox=E('div'),statusBox=E('div');append(filters,queryBox,statusBox);primary.append(filters);
  const query=input(queryBox,'task-search',t('web_task_search'),'search',state.taskQuery,false);
  const status=select(statusBox,'task-status',t('web_task_status'),[['all',t('web_all')],['open',t('open_tasks')],['done',t('completed')]],state.taskStatus);
- const c=E('div',undefined,'task-list');m.append(c);
+ const c=E('div',undefined,'task-list');primary.append(c);
  const draw=()=>{
   state.taskQuery=query.value;state.taskStatus=status.value;c.replaceChildren();
   const available=records('task'),rows=ULADIMDomain.tasks(available,query.value,status.value);
@@ -1975,6 +1984,41 @@ async function renderAccountPlan(content){
  });
  append(content,grid,E('p',c.note,'small access-plan-boundary'));
 }
+const APPEARANCE_PALETTE_COPY={
+ az:['Lavanda','Qızılgül','Qum'],de:['Lavendel','Rose','Sand'],en:['Lavender','Rose','Sand'],
+ es:['Lavanda','Rosa','Arena'],fr:['Lavande','Rose','Sable'],hy:['Նարդոս','Վարդագույն','Ավազագույն'],
+ it:['Lavanda','Rosa','Sabbia'],ka:['ლავანდა','ვარდისფერი','ქვიშისფერი'],kk:['Лаванда','Раушан','Құм'],
+ ky:['Лаванда','Кызгылт','Кум'],pt:['Lavanda','Rosa','Areia'],ru:['Лаванда','Роза','Песочный'],
+ tg:['Лаванда','Гулобӣ','Регӣ'],uk:['Лаванда','Троянда','Пісочний'],
+ 'uz-Cyrl':['Лаванда','Атиргул','Қумранг'],'uz-Latn':['Lavanda','Atirgul','Qumrang']
+};
+function appearanceSettings(content){
+ const settings=card(t('theme'));settings.classList.add('settings-grid','appearance-settings');content.append(settings);
+ const controls=E('div',undefined,'appearance-controls'),languageBox=E('div'),themeBox=E('div');
+ append(controls,languageBox,themeBox);settings.append(controls);language(languageBox);
+ const theme=select(themeBox,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);
+ theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});
+ const labels=APPEARANCE_PALETTE_COPY[state.lang]||APPEARANCE_PALETTE_COPY.en;
+ const palettes=E('fieldset',undefined,'appearance-palettes'),choices=E('div',undefined,'palette-choices');
+ append(palettes,E('legend',t('palette')),choices);settings.append(palettes);
+ for(const [key,label]of [['violet',labels[0]],['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')],['rose',labels[1]],['sand',labels[2]]]){
+  const choice=button('',()=>{
+   state.palette=key;preferences();
+   for(const option of choices.children)option.setAttribute('aria-pressed',String(option===choice));
+  },'secondary palette-choice');
+  choice.dataset.paletteChoice=key;choice.setAttribute('aria-pressed',String(state.palette===key));choice.setAttribute('aria-label',label);
+  const preview=E('span',undefined,'palette-preview');preview.setAttribute('aria-hidden','true');
+  const page=E('span',undefined,'palette-preview-page');
+  append(page,E('i',undefined,'palette-preview-title'),E('i',undefined,'palette-preview-card'),E('i',undefined,'palette-preview-action'));
+  append(preview,E('span',undefined,'palette-preview-sidebar'),page);
+  const check=E('span','✓','palette-choice-check');check.setAttribute('aria-hidden','true');
+  append(choice,preview,append(E('span',undefined,'palette-choice-label'),E('span',label),check));choices.append(choice);
+ }
+ const help=E('div',undefined,'appearance-help'),install=E('details',undefined,'installation-help');
+ append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));
+ append(help,install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));settings.append(help);
+ if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));
+}
 async function account(m){
  const section=state.settingsTab||'profile';
  const pageTitle={deletion:'web_account_deletion',recovery:'web_recovery',notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
@@ -2019,7 +2063,7 @@ async function account(m){
   if(state.session.control_available===true)content.append(button('ULADIM Control',openControl,'secondary'));
   if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));
  }
- if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['violet',referenceCopy(12)],['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
+ if(section==='appearance')appearanceSettings(content);
  if(section==='signout')signoutPage(content);
  if(section==='notifications'){inboxCenter().settings(content);await notificationPage(content);}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
