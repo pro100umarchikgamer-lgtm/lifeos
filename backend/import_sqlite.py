@@ -9,6 +9,8 @@ OPTIONAL_TABLES={'owner_setup','early_access','early_access_limits','account_mfa
 TABLES=re.findall(r'CREATE TABLE IF NOT EXISTS (\w+)\s*\(',Path(__file__).with_name('schema.sql').read_text())
 OPTIONAL_TABLES |= {'record_recovery_requests', 'control_handoffs', 'control_admissions'}
 OPTIONAL_TABLES |= {'web_push_keys','web_push_subscriptions','web_push_deliveries'}
+OPTIONAL_TABLES |= {'inbox_notifications','announcements','announcement_recipients','announcement_states',
+                    'inbox_settings','budget_inbox_notifications','budget_inbox_sources'}
 
 def import_server(backend,source,apply=False):
     path=Path(source).resolve()
