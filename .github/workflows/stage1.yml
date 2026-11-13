@@ -28,7 +28,8 @@ on:
         default: false
 concurrency:
   group: lifeos-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  # Superseded PR checks can stop; a signed manual build remains uninterrupted.
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 permissions:
   contents: read
   actions: read
