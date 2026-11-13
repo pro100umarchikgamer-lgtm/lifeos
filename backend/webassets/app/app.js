@@ -457,7 +457,7 @@ function localDate(){const d=new Date();return [d.getFullYear(),String(d.getMont
 function currentSpace(){return state.spaces.find(s=>s.id===state.space);}
 function records(kind){return state.records.filter(r=>!r.deleted&&!pendingDeletes.has(r.id)&&r.kind===kind);}
 function structuralAccountReference(record){
- return record?.kind==='account'&&record.deleted===true&&record.structural_reference===true&&
+ return record?.kind==='account'&&(record.deleted===true||record.deleted===1)&&record.structural_reference===true&&
   /^[A-Z]{3}$/.test(record.reference_currency||'')&&record.data&&typeof record.data==='object'&&
   !Array.isArray(record.data)&&Object.keys(record.data).length===0;
 }
@@ -484,7 +484,7 @@ function forgetPrivacyErasedRecord(record,workspace){
  }catch{}
  taskChanges.delete(workspace+':'+record.id);
  const pending=pendingDeletes.get(record.id);if(pending){clearTimeout(pending.timer);pendingDeletes.delete(record.id);}
- for(const editor of document.querySelectorAll('dialog[data-record-id]'))if(editor.dataset.workspace===workspace&&editor.dataset.recordId===record.id)editor.close();
+ for(const editor of document.querySelectorAll('dialog[data-record-id]'))if(editor.dataset.workspace===workspace&&editor.dataset.recordId===record.id){editor.dataset.privacyErased='true';editor.close();}
 }
 async function readSpace(){
  const generation=++state.generation,wid=state.space;if(!wid){state.records=[];state.syncSpace=null;state.roster=null;return;}
@@ -1219,8 +1219,9 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
  const draftRevision=draft?.revision??r?.revision??0;
  const draftNotice=draftKey?E('p',undefined,'small note-draft-status'):null;
  if(draftNotice)draftNotice.setAttribute('role','status');
+ const invalidated=()=>epoch!==privateEpoch||container.dataset.privacyErased==='true';
  const keepDraft=()=>{
-  if(!draftKey)return;
+  if(!draftKey||invalidated())return;
   if(!r&&!operation&&!fields.body.value){
    draftNotice.textContent=writeNoteDraft(draftKey,null)?'':failedDraft;
    return;
@@ -1384,12 +1385,12 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    const durable=!taskKey||storeTaskAction(taskKey,operation);
    try{
     await saveOperation(operation,workspace);
-    if(epoch!==privateEpoch)return;
+    if(invalidated())return;
     accepted=true;keepDraft();
     if(kind==='transaction')rememberTransactionAccount(accountKey,operation.data.account_id);
     if(taskKey)storeTaskAction(taskKey,operation,true);
    }catch(error){
-    if(epoch!==privateEpoch)return;
+    if(invalidated())return;
     if(!error.uncertain&&(error.code!=='unauthorized'||!taskKey)){
      operation=null;keepDraft();
      if(taskKey)storeTaskAction(taskKey,null);
@@ -1399,7 +1400,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    }
   }
   try{await refresh();}catch(error){throw {...error,refreshOnly:true};}
-  if(epoch!==privateEpoch)return;
+  if(invalidated())return;
   if(draftKey)writeNoteDraft(draftKey,null);
   if(taskKey)storeTaskAction(taskKey,null);
   d.close();render();onSaved?.();
