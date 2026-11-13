@@ -69,7 +69,12 @@ class _FamilyPageState extends State<FamilyPage> {
   @override
   void initState() {
     super.initState();
-    c.refreshLoginMethods();
+    final principal = c.capturePrincipal();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && c.isCurrentPrincipal(principal)) {
+        c.refreshLoginMethods();
+      }
+    });
   }
 
   @override

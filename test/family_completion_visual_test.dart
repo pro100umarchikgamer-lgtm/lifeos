@@ -16,7 +16,7 @@ import 'package:lifeos/ui/statement_import.dart';
 
 import 'support/sync_memory.dart';
 import 'visual_snapshot_test.dart' show SnapshotStore;
-import 'widget_test.dart' show openNativeSections;
+import 'widget_test.dart' show openNativeProfile, openNativeSections;
 
 // Cloud registration uses the production API contract without network access.
 class _RegistrationVisualApi extends FamilyApi {
@@ -230,6 +230,30 @@ void main() {
       }
     }
   }
+  testWidgets('configured account opens from profile without build exceptions',
+      (tester) async {
+    final c = AppController(SnapshotStore([], 'light'), catalog, 'ru');
+    await c.load();
+    c.family = familyFixture(configured: true)..account = null;
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      c.dispose();
+    });
+    await tester.pumpWidget(LifeOSApp(controller: c));
+    await tester.pumpAndSettle();
+    await openNativeProfile(tester);
+    await tester.tap(find.text(c.pack.t('family_account')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FamilyPage), findsOneWidget);
+    expect(find.text(c.pack.t('account_google_disabled')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text(c.pack.t('family_register')));
+    await tester.pumpAndSettle();
+    expect(find.text(c.pack.t('repeat_password')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   test('child creation choices reflect granted permissions', () {
     final f = familyFixture(child: true);
     expect(f.creatableKinds, {'transaction', 'request'});
