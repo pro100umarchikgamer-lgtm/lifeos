@@ -169,6 +169,7 @@ class Web:
             return self.push.receipt(body), headers
         token = self.token(env, staff)
         actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:500]) if staff else self.account(token, env.get('HTTP_USER_AGENT', '')[:500])
+        if not staff: actor['_auth_hash'] = token_hash(token)
         if staff: require(actor.user_id == admitted['user_id'], 'not_found', 404)
         if method == 'POST': require(hmac.compare_digest(env.get('HTTP_X_CSRF_TOKEN', ''), self.csrf(token)), 'csrf_invalid', 403)
         if not staff and action == 'control/access' and method == 'POST':
@@ -179,6 +180,11 @@ class Web:
             binding=secrets.token_urlsafe(32)
             value=self.google.start('web', env.get('HTTP_USER_AGENT','')[:500], binding, actor=actor,
                 password=body.get('password'), code=body.get('code'), auth_hash=token_hash(token))
+            return value, headers + [self.google_cookie('binding', binding)]
+        if not staff and action == 'google/reauth/start' and method == 'POST':
+            binding=secrets.token_urlsafe(32)
+            value=self.google.start('web', env.get('HTTP_USER_AGENT','')[:500], binding, actor=actor,
+                auth_hash=token_hash(token), purpose='reauth')
             return value, headers + [self.google_cookie('binding', binding)]
         if not staff and action == 'google/unlink' and method == 'POST':
             return self.google.unlink(actor, body.get('password'), body.get('code')), headers + [self.cookie('', clear=True)]
@@ -259,7 +265,7 @@ class Web:
         # Use one clear header to avoid duplicate Set-Cookie collapse in WSGI.
         headers=headers+[self.google_cookie('result','',True)]
         if value.get('error'): return value,headers
-        if value.get('mfa_required') or value.get('linked'): return value,headers
+        if value.get('mfa_required') or value.get('linked') or value.get('reauth_token'): return value,headers
         # customer_session adds a second Set-Cookie; Application must preserve them.
         return self.customer_session(value,agent,headers,env)
 
@@ -351,7 +357,10 @@ class Web:
             if action == 'roster': return self.backend.roster(actor, q.get('workspace', [''])[0])
             if action == 'sync': return self.backend.pull_incremental(actor, q.get('workspace', [''])[0], int(q.get('cursor', ['0'])[0]), q.get('epoch', [''])[0])
             if action == 'mfa':return mfa.status(actor)
-            if action == 'deletion': return lifecycle.deletion_status(actor)
+            if action == 'deletion':
+                value=lifecycle.deletion_status(actor)
+                value['google_reauth_available']=bool(value['google_linked'] and self.google.web_enabled)
+                return value
             if action == 'entitlements':
                 with self.backend.connect() as db: return entitlements.resolve(db, actor['id'], int(self.backend.clock()))
             if action == 'devices':
@@ -373,13 +382,14 @@ class Web:
                 from .owner_enrollment import OwnerEnrollment
                 if b.get('owner'): return OwnerEnrollment(self.backend).finish(actor, b.get('enrollment'), b.get('code'))
                 return self.control.finish_enrollment(actor, b.get('enrollment'), b.get('code'))
-            if action == 'transfer':return lifecycle.transfer(actor,b.get('workspace_id'),b.get('user_id'),b.get('password'))
-            if action == 'accept-transfer':return lifecycle.accept_transfer(actor,b.get('transfer_id'),b.get('password'))
+            if action == 'transfer':return lifecycle.transfer(actor,b.get('workspace_id'),b.get('user_id'),b.get('password'), b.get('reauth_token'), b.get('code'))
+            if action == 'accept-transfer':return lifecycle.accept_transfer(actor,b.get('transfer_id'),b.get('password'), b.get('reauth_token'), b.get('code'))
             if action == 'mfa/begin':return mfa.begin(actor,b.get('password'))
             if action == 'mfa/enable':return mfa.enable(actor,b.get('password'),b.get('enrollment'),b.get('code'))
             if action == 'mfa/disable':return mfa.disable(actor,b.get('password'),b.get('code'))
-            if action == 'deletion': return lifecycle.request_deletion(actor, b.get('password'), b.get('confirmation'))
-            if action == 'cancel-deletion': return lifecycle.cancel_deletion(actor, b.get('password'))
+            if action == 'deletion': return lifecycle.request_deletion(actor, b.get('password'), b.get('confirmation'), b.get('reauth_token'), b.get('code'))
+            if action == 'cancel-deletion': return lifecycle.cancel_deletion(actor, b.get('password'), b.get('reauth_token'), b.get('code'))
+            if action == 'close-family': return lifecycle.close_family(actor, b.get('workspace_id'), b.get('revision'), b.get('password'), b.get('confirmation'), b.get('reauth_token'), b.get('code'))
             if action == 'email': return lifecycle.change_email(actor, b.get('email'), b.get('password'))
             if action == 'confirm-email': return lifecycle.confirm_email(actor, b.get('code'), b.get('password'))
             if action == 'password': return self.backend.password(actor, b.get('old_password'), b.get('new_password'))
@@ -398,6 +408,7 @@ class Web:
         allowed.update({'inbox.js', 'inbox.css'})
 
         allowed.update({'recovery.js', 'recovery.css'})
+        allowed.update({'account-deletion.js', 'account-deletion.css'})
         require(relative in allowed and (root / relative).is_file(), 'not_found', 404)
         mime = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.webmanifest': 'application/manifest+json', '.json': 'application/json'}.get(Path(relative).suffix, mimetypes.guess_type(relative)[0] or 'application/octet-stream')
         result = dict(headers)

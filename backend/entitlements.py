@@ -163,6 +163,7 @@ def reconcile(backend, adapter, notification):
     digest = token_hash(canonical(event.__dict__))
     reference = token_hash(event.source + ':' + event.reference)
     with backend.transaction() as db:
+        backend._account_available(db, event.user_id)
         old = db.execute('SELECT * FROM provider_events WHERE source=? AND event_id=?', (event.source, event.event_id)).fetchone()
         if old:
             require(old['digest'] == digest, 'provider_event_conflict', 409)

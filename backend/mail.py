@@ -50,16 +50,31 @@ def deliver_one(backend, settings, send=None):
         if not row:return False
         db.execute('UPDATE email_jobs SET leased_until=?,attempts=attempts+1 WHERE id=?',(now+90,row['id']))
     try:
-        payload=json.loads(backend.cipher.decrypt(bytes(row['payload'])))
-        (send or smtp_send)(settings,message(settings,row['id'],payload))
+        subject = row.get('user_id')
+        if not subject:
+            # Compatibility for jobs queued before migration 019.
+            pending = json.loads(backend.cipher.decrypt(bytes(row['payload'])))
+            with backend.connect() as db:
+                from .account_erasure import mail_subject
+                owner=mail_subject(db,pending.get('email'),pending.get('code'),pending.get('purpose'))
+                subject=owner['user_id'] if owner else None
+        # A lease is not permission to send after account erasure. Re-read it
+        # under the same per-subject lock used by the eraser, and keep that lock
+        # through SMTP. PostgreSQL does not hold the global sync lock here.
+        with backend.delivery_transaction(subject) as db:
+            current=db.execute('SELECT * FROM email_jobs WHERE id=? AND delivered_at IS NULL AND expires_at>? AND octet_length(payload)>0', (row['id'], int(backend.clock()))).fetchone()
+            if not current: return True
+            if subject:
+                backend._account_available(db, subject)
+            payload=json.loads(backend.cipher.decrypt(bytes(current['payload'])))
+            (send or smtp_send)(settings,message(settings,row['id'],payload))
+            db.execute('UPDATE email_jobs SET delivered_at=?,leased_until=0,payload=?,last_error=NULL WHERE id=?',(int(backend.clock()),b'',row['id']))
     except Exception as error:
         # Exception messages may include provider credentials or addresses: log class only.
         with backend.connect() as db:
             db.execute('UPDATE email_jobs SET leased_until=0,next_attempt=?,last_error=? WHERE id=?',(now+min(300,2**min(row['attempts']+1,8)),type(error).__name__,row['id']))
         log.warning('mail_delivery_failed class=%s',type(error).__name__)
         return True
-    with backend.connect() as db:
-        db.execute('UPDATE email_jobs SET delivered_at=?,leased_until=0,payload=?,last_error=NULL WHERE id=?',(int(backend.clock()),b'',row['id']))
     return True
 
 def main():
@@ -69,10 +84,14 @@ def main():
     logging.basicConfig(level=logging.INFO)
     config=Settings.load()
     backend=PostgresBackend(config.database_url,Fernet(config.email_queue_key.encode()),pool_size=2)
+    from .account_erasure import initialize
+    initialize(backend, config.account_erasure_ledger, config.account_erasure_ack_socket)
     from .web_push import WebPush
     push=WebPush(backend,config.site_origin)
     try:
         while True:
+            from .account_erasure import prune_ephemeral
+            prune_ephemeral(backend)
             with backend.connect() as db:
                 db.execute("INSERT INTO worker_health VALUES('mail',?) ON CONFLICT(name) DO UPDATE SET last_seen=excluded.last_seen",(int(backend.clock()),))
             from .account_lifecycle import AccountLifecycle

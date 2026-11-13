@@ -1,11 +1,30 @@
 """Verified account changes and reversible deletion requests; Android local data is untouched."""
 import re
+import hmac
 import secrets
 import uuid
-from .service import require, text, token_hash, identifier, Failure, TABLES
+from .service import require, token_hash, identifier, Failure
 
 class AccountLifecycle:
     def __init__(self, backend): self.backend = backend
+
+    def _reauthenticate(self, db, actor, password, reauth_token=None, code=None):
+        self.backend._account_available(db, actor['id'])
+        if reauth_token is not None:
+            require(isinstance(reauth_token, str) and len(reauth_token) == 43, 'reauth_required', 401)
+            row = db.execute('SELECT * FROM account_reauth_grants WHERE hash=? AND user_id=? AND expires_at>?', (token_hash(reauth_token), actor['id'], int(self.backend.clock()))).fetchone()
+            require(row and actor.get('_auth_hash') and hmac.compare_digest(row['auth_hash'], actor['_auth_hash']), 'reauth_required', 401)
+            from .google_identity import GoogleIdentity
+            from .login_flow import LoginFlow
+            GoogleIdentity(self.backend, None)._active_session(db, actor['id'], row['auth_hash'])
+            flow = LoginFlow(self.backend)
+            user, factor = flow._principal(db, actor['id'], False)
+            require(user and hmac.compare_digest(row['credential_version'], flow._version(user, factor, False)), 'reauth_required', 401)
+            db.execute('DELETE FROM account_reauth_grants WHERE hash=?', (row['hash'],))
+        else:
+            self.backend.reauthenticate(db, actor, password)
+        from .customer_mfa import accept
+        require(accept(self.backend, db, actor['id'], code), 'mfa_invalid', 403)
 
     def signup(self, email, password):
         # Same response for an existing address. Never invent a successful session.
@@ -78,25 +97,30 @@ class AccountLifecycle:
         now = int(self.backend.clock())
         with self.backend.connect() as db:
             job = db.execute('SELECT id,requested_at,due_at,state,last_error FROM deletion_jobs WHERE user_id=?', (actor['id'],)).fetchone()
-            families = db.execute("SELECT w.id,w.name FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (actor['id'], actor['id'])).fetchall()
+            families = db.execute("SELECT w.id,w.name,w.revision AS workspace_revision FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (actor['id'], actor['id'])).fetchall()
+            password = db.execute('SELECT has_password FROM account_credentials WHERE user_id=?', (actor['id'],)).fetchone()
+            google = db.execute('SELECT 1 FROM google_identities WHERE user_id=?', (actor['id'],)).fetchone()
+            mfa = db.execute('SELECT 1 FROM account_mfa WHERE user_id=?', (actor['id'],)).fetchone()
+            staff = db.execute('SELECT 1 FROM staff WHERE user_id=? AND active=1', (actor['id'],)).fetchone()
             transfers=db.execute("SELECT t.id,t.workspace_id,w.name,t.from_id,t.expires_at FROM ownership_transfers t JOIN workspaces w ON w.id=t.workspace_id JOIN memberships m ON m.workspace_id=w.id AND m.user_id=t.to_id WHERE t.to_id=? AND t.expires_at>? AND t.accepted_at=0 AND w.creator_id=t.from_id AND w.dissolved=0 AND m.role='parent' AND m.active=1",(actor['id'],now)).fetchall()
             outgoing=[]
             for family in families:
-                parent=db.execute("SELECT user_id FROM memberships WHERE workspace_id=? AND user_id<>? AND role='parent' AND active=1 ORDER BY user_id LIMIT 1",(family['id'],actor['id'])).fetchone()
+                parent=db.execute("SELECT m.user_id,u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.workspace_id=? AND m.user_id<>? AND m.role='parent' AND m.active=1 ORDER BY m.user_id LIMIT 1",(family['id'],actor['id'])).fetchone()
                 recipient = parent['user_id'] if parent else None
                 pending = db.execute(
                     'SELECT MAX(expires_at) AS deadline FROM ownership_transfers WHERE workspace_id=? AND from_id=? AND to_id=? AND accepted_at=0 AND expires_at>?',
                     (family['id'], actor['id'], recipient, now),
                 ).fetchone() if recipient else None
-                outgoing.append(dict(family, eligible_parent_id=recipient,
+                outgoing.append(dict(family, eligible_parent_id=recipient, eligible_parent_label=parent['email'] if parent else None, close_family_available=True,
                                      pending_until=pending['deadline'] if pending else None))
-        return {'request': dict(job) if job else None, 'ownership_transfer_required': outgoing, 'incoming_transfers':[dict(t) for t in transfers], 'local_data_deleted': False, 'backup_erasure': 'operator_retention_review_required'}
+        durable=bool(getattr(self.backend,'erasure_ledger_path','') and getattr(self.backend,'erasure_ack_socket',''))
+        return {'request': dict(job) if job else None, 'ownership_transfer_required': outgoing, 'incoming_transfers':[dict(t) for t in transfers], 'local_data_deleted': False, 'backup_erasure': 'independent_ledger_ack_configured' if durable else 'independent_ledger_ack_setup_required', 'has_password': password is None or bool(password['has_password']), 'google_linked': bool(google), 'mfa_required': bool(mfa), 'staff_offboarding_required': bool(staff), 'grace_seconds': 86400, 'cancel_available': bool(job and job['state'] == 'pending' and job['due_at'] > now)}
 
-    def request_deletion(self, actor, password, confirmation):
+    def request_deletion(self, actor, password, confirmation, reauth_token=None, code=None):
         require(confirmation == 'DELETE', 'confirmation_required')
         self.backend.reserve_reauth(actor)
         with self.backend.transaction() as db:
-            self.backend.reauthenticate(db, actor, password)
+            self._reauthenticate(db, actor, password, reauth_token, code)
             require(not db.execute("SELECT 1 FROM staff WHERE user_id=? AND active=1", (actor['id'],)).fetchone(), 'staff_offboarding_required', 409)
             blocked = db.execute("SELECT 1 FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (actor['id'], actor['id'])).fetchone()
             require(not blocked, 'ownership_transfer_required', 409)
@@ -107,19 +131,21 @@ class AccountLifecycle:
             db.execute("INSERT INTO deletion_jobs VALUES(?,?,?,?,'pending',NULL) ON CONFLICT(user_id) DO UPDATE SET id=excluded.id,requested_at=excluded.requested_at,due_at=excluded.due_at,state='pending',last_error=NULL", (jid, actor['id'], now, now + 86400))
         return {'request_id': jid, 'due_at': now + 86400, 'state': 'pending'}
 
-    def cancel_deletion(self, actor, password):
+    def cancel_deletion(self, actor, password, reauth_token=None, code=None):
         self.backend.reserve_reauth(actor)
         with self.backend.transaction() as db:
-            self.backend.reauthenticate(db, actor, password)
+            self._reauthenticate(db, actor, password, reauth_token, code)
+            job = db.execute('SELECT due_at FROM deletion_jobs WHERE user_id=? AND state=\'pending\'', (actor['id'],)).fetchone()
+            require(job is None or job['due_at'] > int(self.backend.clock()), 'deletion_started', 409)
             db.execute("UPDATE deletion_jobs SET state='cancelled' WHERE user_id=? AND state='pending'", (actor['id'],))
         return {'cancelled': True}
 
-    def transfer(self, actor, wid, target, password):
+    def transfer(self, actor, wid, target, password, reauth_token=None, code=None):
         identifier(wid);identifier(target)
         self.backend.reserve_reauth(actor)
         now, tid = int(self.backend.clock()), str(uuid.uuid4())
         with self.backend.transaction() as db:
-            self.backend.reauthenticate(db, actor, password)
+            self._reauthenticate(db, actor, password, reauth_token, code)
             row = db.execute("SELECT 1 FROM workspaces w JOIN memberships m ON m.workspace_id=w.id WHERE w.id=? AND w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND m.user_id=? AND m.role='parent' AND m.active=1", (wid, actor['id'], target)).fetchone()
             require(row and target != actor['id'], 'transfer_forbidden', 403)
             pending = db.execute(
@@ -132,10 +158,10 @@ class AccountLifecycle:
                 db.execute('INSERT INTO ownership_transfers VALUES(?,?,?,?,?,0)', (tid, wid, actor['id'], target, now + 86400))
         return {'transfer_id': tid, 'recipient_confirmation_required': True}
 
-    def accept_transfer(self, actor, tid, password):
+    def accept_transfer(self, actor, tid, password, reauth_token=None, code=None):
         identifier(tid);self.backend.reserve_reauth(actor)
         with self.backend.transaction() as db:
-            self.backend.reauthenticate(db, actor, password)
+            self._reauthenticate(db, actor, password, reauth_token, code)
             row = db.execute('SELECT * FROM ownership_transfers WHERE id=? AND to_id=? AND expires_at>? AND accepted_at=0', (tid, actor['id'], int(self.backend.clock()))).fetchone()
             require(row is not None, 'transfer_invalid', 409)
             member = db.execute("SELECT 1 FROM memberships WHERE workspace_id=? AND user_id=? AND role='parent' AND active=1", (row['workspace_id'], actor['id'])).fetchone()
@@ -146,74 +172,65 @@ class AccountLifecycle:
             self.backend._audit(db, row['workspace_id'], actor, tid, 'workspace.ownership.transfer')
         return {'transferred': True}
 
+    def close_family(self, actor, wid, revision, password, confirmation, reauth_token=None, code=None):
+        identifier(wid)
+        require(confirmation == 'CLOSE FAMILY', 'confirmation_required')
+        self.backend.reserve_reauth(actor)
+        with self.backend.transaction() as db:
+            self._reauthenticate(db, actor, password, reauth_token, code)
+            space = self.backend._workspace(db, actor, wid)
+            require(space['kind'] == 'family' and space['creator_id'] == actor['id'], 'creator_only', 403)
+            self.backend._revision(space, revision)
+            # Identical to workspace.dissolve: explicitly close access for every
+            # member, without erasing any other member's records or account.
+            db.execute('UPDATE workspaces SET dissolved=1,revision=revision+1 WHERE id=?', (wid,))
+            db.execute('UPDATE memberships SET active=0,revision=revision+1 WHERE workspace_id=?', (wid,))
+            self.backend._audit(db, wid, actor, str(uuid.uuid4()), 'workspace.dissolve')
+        return {'dissolved': True}
+
     def process_one_deletion(self):
         selected=[]
         try:
             return self._process_one_deletion(selected)
         except Exception as error:
+            if not selected and isinstance(error, Failure) and error.code == 'privacy_delivery_busy': return False
             if not selected:raise
             # Rollback all payload changes before recording a bounded, non-secret
             # failure state. A bad request must not stop transactional mail delivery.
             with self.backend.transaction() as db:
-                db.execute("UPDATE deletion_jobs SET state='attention',last_error=? WHERE id=? AND state='pending'", (type(error).__name__,selected[0]))
+                db.execute("UPDATE deletion_jobs SET state=CASE WHEN state='pending' THEN 'attention' ELSE state END,last_error=? WHERE id=? AND state IN ('pending','erasing')", (type(error).__name__,selected[0]))
             return True
 
     def _process_one_deletion(self, selected):
-        """Worker consumes only explicit, due user requests; no automatic history pruning."""
+        """Freeze due consent, confirm independent durability, then erase."""
         now = int(self.backend.clock())
-        with self.backend.transaction() as db:
-            job = db.execute("SELECT * FROM deletion_jobs WHERE state='pending' AND due_at<=? ORDER BY due_at,id LIMIT 1", (now,)).fetchone()
-            if not job: return False
-            selected.append(job['id'])
-            uid = job['user_id']
-            # Recheck authority at execution, including families created during grace.
-            blocked = db.execute("SELECT 1 FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (uid, uid)).fetchone()
-            staff = db.execute('SELECT 1 FROM staff WHERE user_id=? AND active=1', (uid,)).fetchone()
-            if blocked or staff:
-                db.execute("UPDATE deletion_jobs SET state='attention',last_error=? WHERE id=?", ('ownership_or_staff_changed', job['id']))
-                return True
-            user = db.execute('SELECT email FROM users WHERE id=?', (uid,)).fetchone()
-            # Preserve UUID tombstones and shared records; erase only private payloads
-            # and records in the requesting user's personal space.
-            rows = db.execute("SELECT r.* FROM records r JOIN workspaces w ON w.id=r.workspace_id WHERE r.owner_id=? AND (r.visibility='private' OR w.kind='personal')", (uid,)).fetchall()
-            private_ids = {r['id'] for r in rows}
-            for record in rows:
-                for table, field in (('transactions','account_id'),('transfers','from_id'),('transfers','to_id'),('requests','movement_id')):
-                    linked = db.execute('SELECT r.id FROM '+table+' d JOIN records r ON r.id=d.id WHERE d.'+field+'=? AND r.deleted=0', (record['id'],)).fetchall()
-                    if any(r['id'] not in private_ids for r in linked):
-                        db.execute("UPDATE deletion_jobs SET state='attention',last_error='shared_reference_review_required' WHERE id=?", (job['id'],))
+        with self.backend.connect() as db:
+            candidate = db.execute("SELECT user_id FROM deletion_jobs WHERE state IN ('pending','erasing') AND due_at<=? ORDER BY due_at,id LIMIT 1", (now,)).fetchone()
+        if not candidate: return False
+        uid=candidate['user_id']
+        # PostgreSQL holds only this subject's advisory lock during the remote
+        # durability roundtrip. No global sync lock spans network latency.
+        with self.backend.privacy_guard(uid):
+            with self.backend.transaction() as db:
+                job = db.execute("SELECT * FROM deletion_jobs WHERE user_id=? AND state IN ('pending','erasing') AND due_at<=?", (uid, now)).fetchone()
+                if not job: return False
+                selected.append(job['id'])
+                if job['state']=='pending':
+                    blocked = db.execute("SELECT 1 FROM workspaces w WHERE w.creator_id=? AND w.kind='family' AND w.dissolved=0 AND EXISTS(SELECT 1 FROM memberships m WHERE m.workspace_id=w.id AND m.user_id<>? AND m.active=1)", (uid, uid)).fetchone()
+                    staff = db.execute('SELECT 1 FROM staff WHERE user_id=? AND active=1', (uid,)).fetchone()
+                    if blocked or staff:
+                        db.execute("UPDATE deletion_jobs SET state='attention',last_error='ownership_or_staff_changed' WHERE id=?", (job['id'],))
                         return True
-            for record in rows:
-                rid = record['id']
-                db.execute('DELETE FROM task_progress WHERE task_id=?', (rid,))
-                db.execute('DELETE FROM grants WHERE record_id=?', (rid,))
-                db.execute('DELETE FROM '+TABLES[record['kind']]+' WHERE id=?', (rid,))
-                seq = self.backend._audit(db, record['workspace_id'], {'id': uid}, str(uuid.uuid4()), 'record.delete', rid)
-                db.execute('UPDATE records SET deleted=1,revision=revision+1,seq=? WHERE id=?', (seq, rid))
-            self.backend.revoke_all_in(db, uid)
-            for table in ('budget_inbox_sources', 'budget_inbox_notifications', 'inbox_settings', 'inbox_notifications', 'announcement_states', 'announcement_recipients', 'web_push_subscriptions', 'verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa', 'login_challenges', 'google_identities', 'account_credentials', 'oauth_challenges'):
-                db.execute('DELETE FROM '+table+' WHERE user_id=?', (uid,))
-            db.execute('DELETE FROM grants WHERE user_id=?', (uid,))
-            db.execute('DELETE FROM record_recovery_requests WHERE user_id=?', (uid,))
-            db.execute('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid,))
-            db.execute('DELETE FROM support_tickets WHERE user_id=?', (uid,))
-            db.execute('DELETE FROM invitations WHERE email=? AND used_by IS NULL', (user['email'],))
-            db.execute('DELETE FROM staff_invitations WHERE email=? OR issued_by IN (SELECT id FROM staff WHERE user_id=?)', (user['email'],uid))
-            db.execute('UPDATE invitations SET email=? WHERE email=?', ('deleted-'+uid+'@invalid.example',user['email']))
-            db.execute('DELETE FROM staff_recovery WHERE staff_id IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
-            db.execute('UPDATE staff SET mfa_secret=? WHERE user_id=?', (b'',uid))
-            db.execute('UPDATE memberships SET active=0,revision=revision+1 WHERE user_id=?', (uid,))
-            db.execute("UPDATE devices SET label='Deleted account' WHERE user_id=?", (uid,))
-            # Per-user pseudonym keeps shared FK history valid; no login is possible.
-            db.execute('UPDATE users SET email=?,password_hash=?,salt=? WHERE id=?', ('deleted-'+uid+'@invalid.example', secrets.token_hex(32), secrets.token_hex(16), uid))
-            db.execute('INSERT INTO account_state VALUES(?,0,?) ON CONFLICT(user_id) DO UPDATE SET deleted_at=excluded.deleted_at', (uid, max(1, now)))
-            # SQLite development has no email_jobs. Production queues contain only
-            # encrypted ephemeral verification/recovery material; clear matching jobs.
-            if hasattr(db, 'raw'):
-                for mail in db.execute('SELECT id,payload FROM email_jobs WHERE octet_length(payload)>0').fetchall():
-                    import json
-                    try: payload = json.loads(self.backend.cipher.decrypt(bytes(mail['payload'])))
-                    except Exception: continue
-                    if payload.get('email') == user['email']: db.execute('DELETE FROM email_jobs WHERE id=?', (mail['id'],))
-            db.execute("UPDATE deletion_jobs SET state='completed',last_error=NULL WHERE id=?", (job['id'],))
+                    # Cancellation already ended at due_at. Freeze old sessions
+                    # before acknowledging an irreversible restore-suppression
+                    # entry, so no new personal/family data can race this phase.
+                    db.execute("UPDATE deletion_jobs SET state='erasing',last_error=NULL WHERE id=?",(job['id'],))
+            from .account_erasure import append_ledger, acknowledge, erase_in
+            path = getattr(self.backend, 'erasure_ledger_path', '')
+            if path:
+                append_ledger(path, uid, max(1, now))
+                ack_socket=getattr(self.backend,'erasure_ack_socket','')
+                if ack_socket:acknowledge(ack_socket,'acknowledge',uid,max(1,now))
+            with self.backend.transaction() as db:
+                erase_in(self.backend, db, uid, max(1, now))
         return True

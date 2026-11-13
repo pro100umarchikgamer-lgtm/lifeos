@@ -48,7 +48,7 @@ class LifecycleScenarios:
             self.assertNotEqual(db.execute('SELECT email FROM users WHERE id=?',(self.p2['id'],)).fetchone()['email'],self.p2['email'])
             self.assertEqual(db.execute('SELECT email FROM users WHERE id=?',(self.p1['id'],)).fetchone()['email'],self.p1['email'])
 
-    def test_deletion_erases_private_payload_preserves_shared_history_and_sync(self):
+    def test_deletion_erases_private_and_owned_shared_payload_and_sync(self):
         ids = {}
         for visibility in ('private', 'shared'):
             rid = str(uuid.uuid4());ids[visibility] = rid
@@ -59,23 +59,23 @@ class LifecycleScenarios:
         self.lifecycle.request_deletion(self.p1,PASSWORD,'DELETE');self.now+=86401
         self.assertTrue(self.lifecycle.process_one_deletion())
         records = self.backend.pull(self.p2,self.wid,0)['records']
-        self.assertEqual([r['data']['body'] for r in records if not r['deleted']],['shared synthetic note'])
+        self.assertEqual([r['data']['body'] for r in records if not r['deleted']],[])
         with self.backend.connect() as db:
             self.assertIsNone(db.execute('SELECT body FROM notes WHERE id=?',(ids['private'],)).fetchone())
             self.assertEqual(db.execute('SELECT deleted FROM records WHERE id=?',(ids['private'],)).fetchone()['deleted'],1)
 
-    def test_shared_finance_reference_stops_cleanup_without_history_loss(self):
+    def test_owned_shared_finance_reference_does_not_block_erasure(self):
         aid=str(uuid.uuid4());tid=str(uuid.uuid4())
         operations=[{'id':str(uuid.uuid4()),'record_id':aid,'action':'record.put','revision':0,'kind':'account','visibility':'private','audience':[],'data':{'name':'Private account','currency':'USD','opening_minor':10000}},
                     {'id':str(uuid.uuid4()),'record_id':tid,'action':'record.put','revision':0,'kind':'transaction','visibility':'shared','audience':[],'data':{'kind':'expense','amount_minor':100,'currency':'USD','date':'2026-10-16','label':'Shared expense','account_id':aid}}]
         self.assertTrue(all(r['status']=='accepted' for r in self.backend.batch(self.p2,self.wid,operations)['results']))
         self.lifecycle.request_deletion(self.p2,PASSWORD,'DELETE');self.now+=86401
         self.lifecycle.process_one_deletion()
-        self.assertEqual(self.lifecycle.deletion_status(self.p2)['request']['last_error'],'shared_reference_review_required')
+        self.assertEqual(self.lifecycle.deletion_status(self.p2)['request']['state'],'completed')
         with self.backend.connect() as db:
-            self.assertEqual(db.execute('SELECT opening_minor FROM accounts WHERE id=?',(aid,)).fetchone()['opening_minor'],10000)
-            self.assertEqual(db.execute('SELECT amount_minor FROM transactions WHERE id=?',(tid,)).fetchone()['amount_minor'],100)
-            self.assertEqual(db.execute('SELECT email FROM users WHERE id=?',(self.p2['id'],)).fetchone()['email'],self.p2['email'])
+            self.assertIsNone(db.execute('SELECT opening_minor FROM accounts WHERE id=?',(aid,)).fetchone())
+            self.assertIsNone(db.execute('SELECT amount_minor FROM transactions WHERE id=?',(tid,)).fetchone())
+            self.assertNotEqual(db.execute('SELECT email FROM users WHERE id=?',(self.p2['id'],)).fetchone()['email'],self.p2['email'])
 
     def test_failed_cleanup_rolls_back_and_preserves_payload_for_review(self):
         rid=str(uuid.uuid4())
@@ -85,7 +85,7 @@ class LifecycleScenarios:
         with patch.object(self.backend,'_audit',side_effect=RuntimeError('synthetic detail must not be stored')):
             self.assertTrue(self.lifecycle.process_one_deletion())
         state=self.lifecycle.deletion_status(self.p2)['request']
-        self.assertEqual(state['state'],'attention');self.assertEqual(state['last_error'],'RuntimeError')
+        self.assertEqual(state['state'],'erasing');self.assertEqual(state['last_error'],'RuntimeError')
         with self.backend.connect() as db:
             self.assertEqual(db.execute('SELECT body FROM notes WHERE id=?',(rid,)).fetchone()['body'],'preserve on failure')
             self.assertEqual(db.execute('SELECT email FROM users WHERE id=?',(self.p2['id'],)).fetchone()['email'],self.p2['email'])

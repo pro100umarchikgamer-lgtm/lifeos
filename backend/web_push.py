@@ -354,7 +354,12 @@ class WebPush:
             headers = {'Authorization':'vapid t=' + bearer + ',k=' + key['public_key'], 'Content-Encoding':'aes128gcm',
                        'Content-Type':'application/octet-stream', 'TTL':str(min(3600, job['expires_at'] - now)),
                        'Urgency':sub['priority'], 'Topic':b64(hashlib.sha256(job['id'].encode()).digest()[:24])}
-            code = self.transport(endpoint, encrypt_message(subscription, payload), headers)
+            with self.backend.delivery_transaction(sub['user_id']) as db:
+                current = db.execute("SELECT * FROM web_push_deliveries WHERE id=? AND state='sending' AND expires_at>?", (job['id'], int(self.backend.clock()))).fetchone()
+                current_sub = db.execute('SELECT * FROM web_push_subscriptions WHERE id=?', (sub['id'],)).fetchone()
+                if not current or not current_sub: return True
+                self._authorized(db, current_sub, current)
+                code = self.transport(endpoint, encrypt_message(subscription, payload), headers)
         except Exception as error:
             # Provider errors can contain credentials or endpoints. Persist/log a
             # short classification only; retry within the original queue expiry.

@@ -160,6 +160,10 @@ class Application:
         auth = env.get('HTTP_AUTHORIZATION', '')
         token = auth[7:] if auth.startswith('Bearer ') else ''
         actor = self.backend.authenticate(token)
+        if path == '/v1/auth/google/reauth/start' and method == 'POST':
+            from .service import token_hash
+            return self.google.start('android', env.get('HTTP_USER_AGENT','')[:500], actor=actor,
+                auth_hash=token_hash(token), purpose='reauth')
         if path == '/v1/account/google' and method == 'GET':
             return self.google.status(actor)
         if path == '/v1/account/google/link' and method == 'POST':
@@ -183,7 +187,10 @@ def create_app():
     from .config import Settings
     from .postgres import PostgresBackend
     settings=Settings.load()
-    return Application(PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()),pool_size=settings.pool_size),settings)
+    backend=PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()),pool_size=settings.pool_size)
+    from .account_erasure import initialize
+    initialize(backend, settings.account_erasure_ledger, settings.account_erasure_ack_socket)
+    return Application(backend,settings)
 
 def main():
     import sys

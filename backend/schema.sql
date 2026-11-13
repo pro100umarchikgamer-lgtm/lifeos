@@ -1,4 +1,5 @@
 PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS account_erasure_ledger(user_id TEXT PRIMARY KEY,erased_at BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,salt TEXT NOT NULL,verified INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS verification(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL);
@@ -8,6 +9,7 @@ CREATE TABLE IF NOT EXISTS profiles(id TEXT PRIMARY KEY,workspace_id TEXT NOT NU
 CREATE TABLE IF NOT EXISTS invitations(hash TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),email TEXT NOT NULL,role TEXT NOT NULL,profile_id TEXT REFERENCES profiles(id),issued_by TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL,used_by TEXT);
 CREATE TABLE IF NOT EXISTS parent_changes(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),target_id TEXT NOT NULL,new_role TEXT NOT NULL,requested_by TEXT NOT NULL,approved_by TEXT,revision INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),owner_id TEXT NOT NULL REFERENCES users(id),kind TEXT NOT NULL,visibility TEXT NOT NULL CHECK(visibility IN ('private','shared')),audience TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,deleted INTEGER NOT NULL DEFAULT 0,seq INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS erased_financial_stubs(record_id TEXT PRIMARY KEY REFERENCES records(id),erased_at BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY REFERENCES records(id),title TEXT NOT NULL,completed INTEGER NOT NULL,assignment TEXT NOT NULL,assignees TEXT NOT NULL,review INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS notes(id TEXT PRIMARY KEY REFERENCES records(id),body TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY REFERENCES records(id),name TEXT NOT NULL,currency TEXT NOT NULL,opening_minor INTEGER NOT NULL);
@@ -34,7 +36,9 @@ CREATE TABLE IF NOT EXISTS staff(id TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQU
 CREATE TABLE IF NOT EXISTS control_sessions(hash TEXT PRIMARY KEY,staff_id TEXT NOT NULL REFERENCES staff(id),created_at BIGINT NOT NULL,last_seen_at BIGINT NOT NULL,expires_at BIGINT NOT NULL,agent_hash TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS staff_invitations(hash TEXT PRIMARY KEY,email TEXT NOT NULL,roles TEXT NOT NULL,issued_by TEXT NOT NULL REFERENCES staff(id),expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS staff_recovery(hash TEXT PRIMARY KEY,staff_id TEXT NOT NULL REFERENCES staff(id),used_at BIGINT NOT NULL DEFAULT 0);
-CREATE TABLE IF NOT EXISTS control_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,actor_id TEXT NOT NULL,subject_id TEXT,action TEXT NOT NULL,before_value TEXT NOT NULL,after_value TEXT NOT NULL,reason TEXT NOT NULL,created_at BIGINT NOT NULL,request_id TEXT NOT NULL,previous_hash TEXT NOT NULL,entry_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS control_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,actor_id TEXT NOT NULL,subject_id TEXT,action TEXT NOT NULL,before_value TEXT NOT NULL,after_value TEXT NOT NULL,reason TEXT NOT NULL,created_at BIGINT NOT NULL,request_id TEXT NOT NULL,previous_hash TEXT NOT NULL,entry_hash TEXT NOT NULL,format_version BIGINT NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS control_audit_notes(entry_id TEXT PRIMARY KEY REFERENCES control_audit(id),subject_id TEXT,actor_id TEXT NOT NULL,note BYTEA NOT NULL,expires_at BIGINT NOT NULL);
+CREATE INDEX IF NOT EXISTS control_audit_notes_expiry ON control_audit_notes(expires_at);
 CREATE TABLE IF NOT EXISTS plan_catalog(version BIGINT PRIMARY KEY,body TEXT NOT NULL,created_at BIGINT NOT NULL,actor_id TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS entitlement_grants(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),tier TEXT NOT NULL CHECK(tier IN ('Plus','Premium')),source TEXT NOT NULL CHECK(source IN ('manual','promo')),starts_at BIGINT NOT NULL,valid_until BIGINT,revoked_at BIGINT NOT NULL DEFAULT 0,reason TEXT NOT NULL,actor_id TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS user_grants ON entitlement_grants(user_id,revoked_at,valid_until);
@@ -84,6 +88,8 @@ CREATE TABLE IF NOT EXISTS google_identities (
 CREATE TABLE IF NOT EXISTS account_credentials (
  user_id TEXT PRIMARY KEY REFERENCES users(id), has_password BIGINT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS account_reauth_grants(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),auth_hash TEXT NOT NULL,credential_version TEXT NOT NULL,expires_at BIGINT NOT NULL);
+CREATE INDEX IF NOT EXISTS account_reauth_expiry ON account_reauth_grants(expires_at);
 CREATE TABLE IF NOT EXISTS oauth_challenges (
  hash TEXT PRIMARY KEY, client TEXT NOT NULL, agent_hash TEXT NOT NULL,
  binding_hash TEXT NOT NULL, payload BYTEA NOT NULL,

@@ -11,6 +11,7 @@ class Support:
         self.backend, self.control = backend, control
 
     def _writable(self, db, uid):
+        self.backend._account_available(db, uid)
         hold = db.execute("SELECT until_at FROM service_holds WHERE user_id=? AND service='support_write'", (uid,)).fetchone()
         require(not hold or hold['until_at'] <= int(self.backend.clock()), 'support_restricted', 403)
 

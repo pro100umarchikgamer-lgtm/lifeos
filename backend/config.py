@@ -25,6 +25,8 @@ class Settings:
     google_client_secret: str = ''
     registration_mode: str = 'closed'
     registration_allowlist: tuple[str, ...] = ()
+    account_erasure_ledger: str = ''
+    account_erasure_ack_socket: str = ''
 
     @classmethod
     def load(cls, env=None):
@@ -45,6 +47,8 @@ class Settings:
             google_client_id=e.get('GOOGLE_OAUTH_CLIENT_ID',''),
             google_client_secret=e.get('GOOGLE_OAUTH_CLIENT_SECRET',''),
             registration_mode=e.get('REGISTRATION_MODE','closed'),
+            account_erasure_ledger=e.get('ACCOUNT_ERASURE_LEDGER',''),
+            account_erasure_ack_socket=e.get('ACCOUNT_ERASURE_ACK_SOCKET',''),
             registration_allowlist=tuple(v.strip().casefold() for v in e.get('REGISTRATION_ALLOWLIST','').split(',') if v.strip()))
         from urllib.parse import urlsplit
         for origin in (value.site_origin,value.control_origin):

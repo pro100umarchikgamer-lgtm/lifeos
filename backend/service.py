@@ -73,17 +73,23 @@ class Backend(AccountSessions):
             # nullable additive column preserves all prior transaction values.
             if 'category' not in {row['name'] for row in db.execute('PRAGMA table_info(transactions)')}:
                 db.execute("ALTER TABLE transactions ADD COLUMN category TEXT CHECK(category IS NULL OR category IN ('food','transport','shopping','housing','health','leisure','education','transfers','other'))")
+            if 'format_version' not in {row['name'] for row in db.execute('PRAGMA table_info(control_audit)')}:
+                db.execute('ALTER TABLE control_audit ADD COLUMN format_version BIGINT NOT NULL DEFAULT 1')
         os.chmod(self.path,0o600)
     def connect(self):
         db=sqlite3.connect(self.path,timeout=10,factory=ManagedConnection);db.row_factory=sqlite3.Row
         db.execute('PRAGMA foreign_keys=ON');return db
     @contextlib.contextmanager
-    def transaction(self):
+    def transaction(self, account_id=None):
         db=self.connect()
         try:
             db.execute('BEGIN IMMEDIATE');yield db;db.commit()
         except Exception: db.rollback();raise
         finally: db.close()
+    def delivery_transaction(self, account_id):
+        return self.transaction(account_id=account_id)
+    def privacy_guard(self, account_id):
+        return contextlib.nullcontext()
     def _session(self,db,uid):
         token=secrets.token_urlsafe(32);db.execute('INSERT INTO sessions VALUES(?,?,?)',(token_hash(token),uid,int(self.clock())+86400));return token
     def _deliver(self,db,email,code,purpose):
@@ -150,7 +156,7 @@ class Backend(AccountSessions):
             limit=db.execute('SELECT * FROM auth_limits WHERE key=?',(key,)).fetchone()
             require(limit is None or limit['until_at']<=now,'rate_limited',429)
             db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at',(key,now+60))
-            row=db.execute('SELECT id FROM users WHERE email=?',(email.casefold(),)).fetchone()
+            row=db.execute("SELECT u.id FROM users u LEFT JOIN account_state a ON a.user_id=u.id WHERE u.email=? AND COALESCE(a.deleted_at,0)=0 AND NOT EXISTS(SELECT 1 FROM deletion_jobs j WHERE j.user_id=u.id AND j.state='erasing')",(email.casefold(),)).fetchone()
             if row:
                 code=secrets.token_urlsafe(32);db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
                 db.execute('INSERT INTO password_recovery VALUES(?,?,?)',(token_hash(code),row['id'],now+900))
@@ -162,6 +168,7 @@ class Backend(AccountSessions):
         with self.transaction() as db:
             row=db.execute('SELECT u.id FROM password_recovery r JOIN users u ON u.id=r.user_id WHERE r.hash=? AND u.email=? AND r.expires_at>?',(token_hash(code),email.casefold(),int(self.clock()))).fetchone()
             require(row is not None,'verification_invalid')
+            self._account_available(db,row['id'])
             salt=secrets.token_hex(16);encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
             db.execute('UPDATE users SET salt=?,password_hash=?,verified=1 WHERE id=?',(salt,encoded,row['id']))
             db.execute('INSERT INTO account_credentials VALUES(?,1) ON CONFLICT(user_id) DO UPDATE SET has_password=1', (row['id'],))
@@ -181,6 +188,7 @@ class Backend(AccountSessions):
         return {'signed_out':True}
     def _workspace(self,db,actor,wid,parent=False):
         require(actor['verified']==1,'verify_email',403)
+        self._account_available(db,actor['id'])
         row=db.execute('SELECT w.*,m.role,m.profile_id,m.revision AS member_revision FROM workspaces w JOIN memberships m ON m.workspace_id=w.id WHERE w.id=? AND m.user_id=? AND m.active=1 AND w.dissolved=0',(wid,actor['id'])).fetchone()
         require(row is not None,'workspace_forbidden',403)
         if row['kind']=='family':
@@ -201,6 +209,7 @@ class Backend(AccountSessions):
         """Every family mutation is a UUID operation with audited revision checks."""
         require(actor['verified']==1,'verify_email',403);kind=op.get('action')
         with self.transaction() as db:
+            self._account_available(db,actor['id'])
             wid=identifier(op.get('workspace_id'))
             space=None if kind=='workspace.create' else self._workspace(db,actor,wid,parent=kind not in ('workspace.leave',))
             if (space and space['kind']=='family') or (kind=='workspace.create' and op.get('kind')=='family'):
@@ -257,6 +266,7 @@ class Backend(AccountSessions):
         require(actor['verified']==1,'verify_email',403);identifier(op.get('id'))
         code=op.get('invitation');require(isinstance(code,str) and len(code)==43)
         with self.transaction() as db:
+            self._account_available(db,actor['id'])
             prior=self._idempotent(db,actor,op)
             if prior:
                 self._workspace(db,actor,prior['workspace_id']);return prior
@@ -290,6 +300,11 @@ class Backend(AccountSessions):
         row=db.execute('SELECT permissions FROM profiles WHERE id=? AND workspace_id=? AND archived=0',(space['profile_id'],space['id'])).fetchone()
         require(row is not None,'profile_forbidden',403);return set(json.loads(row['permissions']))
     def _readable(self,db,actor,space,row):
+        if db.execute('SELECT 1 FROM erased_financial_stubs WHERE record_id=?', (row['id'],)).fetchone():
+            # A child may own an old transfer even after its audience changed.
+            # Expose only the generic structural shell needed by that history.
+            links = db.execute('SELECT r.* FROM transfers t JOIN records r ON r.id=t.id WHERE (r.deleted=0 OR r.owner_id=?) AND (t.from_id=? OR t.to_id=?)', (actor['id'], row['id'], row['id'])).fetchall()
+            if any(self._readable(db,actor,space,link) for link in links): return True
         if row['owner_id']==actor['id']:return True
         grant=db.execute('SELECT can_edit FROM grants WHERE record_id=? AND user_id=?',(row['id'],actor['id'])).fetchone()
         if row['visibility']=='private':return grant is not None
@@ -297,6 +312,7 @@ class Backend(AccountSessions):
         perms=self._permissions(db,space);audience=json.loads(row['audience']);own=space['profile_id'] in audience
         return ('view_shared' in perms and row['kind'] in ('task','event','shopping')) or own and ((row['kind'] in ('budget','account') and 'view_budget' in perms) or row['kind'] in ('transaction','request') or row['kind']=='task' and 'complete_tasks' in perms)
     def _editable(self,db,actor,space,row):
+        if db.execute('SELECT 1 FROM erased_financial_stubs WHERE record_id=?', (row['id'],)).fetchone(): return False
         if row['visibility']=='private':
             grant=db.execute('SELECT can_edit FROM grants WHERE record_id=? AND user_id=?',(row['id'],actor['id'])).fetchone()
             return row['owner_id']==actor['id'] or grant is not None and grant['can_edit']==1
@@ -306,6 +322,13 @@ class Backend(AccountSessions):
     def _data(self,db,row):
         if row['deleted']:
             result=dict(row);result['audience']=json.loads(result['audience']);result['data']={}
+            state=db.execute('SELECT deleted_at FROM account_state WHERE user_id=?',(row['owner_id'],)).fetchone()
+            if state and state['deleted_at']: result['privacy_erased']=True
+            if db.execute('SELECT 1 FROM erased_financial_stubs WHERE record_id=?', (row['id'],)).fetchone():
+                stub=db.execute('SELECT currency FROM accounts WHERE id=?', (row['id'],)).fetchone()
+                if stub:
+                    result['structural_reference']=True
+                    result['reference_currency']=stub['currency']
             if row['kind']=='task':result['progress']=[]
             return result
         result=dict(row);result['audience']=json.loads(result['audience']);data=dict(db.execute('SELECT * FROM '+TABLES[row['kind']]+' WHERE id=?',(row['id'],)).fetchone());data.pop('id')
