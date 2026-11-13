@@ -141,17 +141,17 @@ def verify_branch(api, pin):
 
 
 class SourcePinnedAPI:
-    """Recheck the branch before every write, including the final draft publish."""
+    """Recheck the current-run gate before every write and final draft publish."""
     def __init__(self, api, pin):
         self.api, self.pin = api, pin
 
     def request(self, path, method='GET', payload=None):
         if method != 'GET':
-            verify_branch(self.api, self.pin)
+            verify_gate(self.api, self.pin)
         return self.api.request(path, method, payload)
 
     def upload(self, *args):
-        verify_branch(self.api, self.pin)
+        verify_gate(self.api, self.pin)
         return self.api.upload(*args)
 
 

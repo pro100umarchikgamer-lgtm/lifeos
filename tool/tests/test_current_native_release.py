@@ -162,6 +162,11 @@ class GateTests(unittest.TestCase):
                 self.mutations = []
 
             def request(self, path, method='GET', payload=None):
+                if path == 'actions/runs/1001':
+                    return run_fixture()
+                if path.startswith('actions/runs/1001/attempts/1/jobs?'):
+                    jobs = jobs_fixture()
+                    return {'jobs': jobs, 'total_count': len(jobs)}
                 if path.startswith('git/ref/heads/'):
                     return {'ref': ENV['GITHUB_REF'], 'object': {'type': 'commit', 'sha': self.source}}
                 self.mutations.append((path, method, payload))
@@ -311,6 +316,60 @@ class PublicationIntegrationTests(unittest.TestCase):
             self.publish(api)
         self.assertTrue(api.release['draft'])
         self.assertFalse(any(method == 'PATCH' for _, method in api.calls))
+
+    def test_cancellation_during_download_or_upload_never_publishes(self):
+        for boundary in ('download', 'first_upload', 'last_upload'):
+            with self.subTest(boundary=boundary):
+                class CancelledAPI(CurrentRunAPI):
+                    def download(self, artifact_id):
+                        raw = super().download(artifact_id)
+                        if boundary == 'download':
+                            self.run.update(status='completed', conclusion='cancelled')
+                        return raw
+
+                    def upload(self, *args):
+                        asset = super().upload(*args)
+                        if (boundary == 'first_upload' and len(self.uploaded) == 1
+                                or boundary == 'last_upload' and len(self.uploaded) == 6):
+                            self.run.update(status='completed', conclusion='cancelled')
+                        return asset
+
+                api = CancelledAPI()
+                with self.assertRaisesRegex(ValueError, 'in progress'):
+                    self.publish(api)
+                if boundary == 'download':
+                    self.assertIsNone(api.release)
+                else:
+                    self.assertTrue(api.release['draft'])
+                    self.assertEqual(len(api.uploaded), 1 if boundary == 'first_upload' else 6)
+                self.assertFalse(any(method == 'PATCH' for _, method in api.calls))
+
+    def test_attempt_change_during_download_or_upload_never_publishes(self):
+        for boundary in ('download', 'first_upload', 'last_upload'):
+            with self.subTest(boundary=boundary):
+                class ReattemptedAPI(CurrentRunAPI):
+                    def download(self, artifact_id):
+                        raw = super().download(artifact_id)
+                        if boundary == 'download':
+                            self.run['run_attempt'] = 2
+                        return raw
+
+                    def upload(self, *args):
+                        asset = super().upload(*args)
+                        if (boundary == 'first_upload' and len(self.uploaded) == 1
+                                or boundary == 'last_upload' and len(self.uploaded) == 6):
+                            self.run['run_attempt'] = 2
+                        return asset
+
+                api = ReattemptedAPI()
+                with self.assertRaisesRegex(ValueError, 'identity/attempt'):
+                    self.publish(api)
+                if boundary == 'download':
+                    self.assertIsNone(api.release)
+                else:
+                    self.assertTrue(api.release['draft'])
+                    self.assertEqual(len(api.uploaded), 1 if boundary == 'first_upload' else 6)
+                self.assertFalse(any(method == 'PATCH' for _, method in api.calls))
 
 
 if __name__ == '__main__':
