@@ -107,6 +107,33 @@
     return {rows,format,detection:{...detection,dateFormat:'auto',decimal:'auto',direction:'signed',...formatSettings}};
   }
 
+  // Owner-account metadata stays beside the financial parser. Never infer an
+  // account from descriptions or debtor/creditor/counterparty fields.
+  const ownerHeaders = new Set(['account id','account number','accountid','accountnumber','iban','acct id','acctid','номер счета','номер счёта']);
+  const providerHeaders = new Set(['bank id','bankid','bank code','bankcode','provider id','providerid']);
+  function ownerID(value, iban = false) {
+    if (typeof value !== 'string') return '';
+    const id = value.normalize('NFKC').trim();
+    if (!id || id.length > 128 || /[\x00-\x1f\ufffd*•]/.test(id) || /[xX]{3,}/.test(id)) return '';
+    if (!iban) return id;
+    const compact = id.replace(/\s/g,'').toUpperCase();
+    return /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(compact) ? compact : '';
+  }
+  function sourceAccounts(source, header = source.detection.header) {
+    if (!['CSV','TSV','JSON','XLSX','OFX'].includes(source.format)) return {};
+    if (source.ownerAccounts) return {...source.ownerAccounts};
+    const columns = source.rows[header]?.flatMap((label,index) => ownerHeaders.has(headerText(label)) ? [index] : []) || [];
+    // Multiple owner identifiers may refer to different accounts. Ask for no
+    // automatic account split unless each row names one unambiguous owner.
+    if (columns.length !== 1) return {};
+    const providers = source.rows[header].flatMap((label,index) => providerHeaders.has(headerText(label)) ? [index] : []);
+    if (providers.length > 1) return {};
+    return Object.fromEntries(source.rows.slice(header+1).flatMap((row,index) => {
+      const id = ownerID(row[columns[0]],headerText(source.rows[header][columns[0]])==='iban');
+      return id ? [[header+index+2,{id,provider:providers.length===1?ownerID(row[providers[0]]):''}]] : [];
+    }));
+  }
+
   function fromJson(text) {
     let payload;
     // Preserve number tokens exactly, including decimal digits, before JSON.parse can round them.
@@ -122,6 +149,16 @@
     const currencyConflicts = new Set();
     const expanded = entries.map((entry,index) => {
       const fields = Object.assign(Object.create(null),entry);
+      // A JSON account object is owner context; creditorAccount and
+      // debtorAccount are deliberately ignored.
+      const owner = entry.account || (!Array.isArray(payload) && (payload.account || payload));
+      const ownerFields = owner && typeof owner === 'object' && !Array.isArray(owner) ?
+        Object.entries(owner).filter(([key]) => ownerHeaders.has(headerText(key.replace(/([a-z])([A-Z])/g,'$1 $2')))) : [];
+      if (!Object.keys(fields).some(key => ownerHeaders.has(headerText(key.replace(/([a-z])([A-Z])/g,'$1 $2')))) && ownerFields.length === 1)
+        fields[ownerFields[0][0]] = ownerFields[0][1];
+      const providerFields = !Array.isArray(payload) ? Object.entries(payload).filter(([key]) => providerHeaders.has(headerText(key.replace(/([a-z])([A-Z])/g,'$1 $2')))) : [];
+      if (!Object.keys(fields).some(key => providerHeaders.has(headerText(key.replace(/([a-z])([A-Z])/g,'$1 $2')))) && providerFields.length === 1)
+        fields.bank_id = providerFields[0][1];
       const declared = [];
       for(const key of ['currency','transactionCurrency','currencyCode']){
         if(key in fields){declared.push(fields[key]);delete fields[key];}
@@ -148,20 +185,23 @@
   function fromOfx(text) {
     if (/<!DOCTYPE|<!ENTITY/i.test(text)) fail('import_unsafe');
     const get = (source,tag) => source.match(new RegExp('<(?:[\\w.-]+:)?'+tag+'\\b[^>]*>\\s*([^<]*)','i'))?.[1].trim() || '';
-    const rows = [canonical];
+    const rows = [canonical], ownerAccounts = {};
     const lists = text.matchAll(/<(?:[\w.-]+:)?(?:STMTRS|CCSTMTRS)\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?(?:STMTRS|CCSTMTRS)>/gi);
     let statements = Array.from(lists, match => match[1]);
     if (!statements.length) statements = [text];
     for (const statement of statements) {
       const currency = get(statement,'CURDEF');
+      const owner = statement.match(/<(?:[\w.-]+:)?(?:BANKACCTFROM|CCACCTFROM)\b[^>]*>([\s\S]*?)(?=<\/(?:[\w.-]+:)?(?:BANKACCTFROM|CCACCTFROM)>|<(?:[\w.-]+:)?BANKTRANLIST\b)/i)?.[1];
+      const accountID = owner ? ownerID(get(owner,'ACCTID')) : '';
       for (const match of statement.matchAll(/<(?:[\w.-]+:)?STMTTRN\b[^>]*>([\s\S]*?)(?=<\/?(?:[\w.-]+:)?(?:STMTTRN|BANKTRANLIST)\b)/gi)) {
         const row = match[1];
         const desc = [get(row,'NAME'),get(row,'MEMO')].filter(Boolean);
+        if (accountID) ownerAccounts[rows.length+1] = {id:accountID,provider:ownerID(get(owner,'BANKID'))};
         rows.push([get(row,'DTPOSTED'),get(row,'TRNAMT'),[...new Set(desc)].join(' — '),currency,get(row,'FITID'),get(row,'TRNTYPE')]);
         if (rows.length > LIMIT + 1) fail('import_limit');
       }
     }
-    return table(rows,'OFX',{decimal:'.'});
+    return {...table(rows,'OFX',{decimal:'.'}),ownerAccounts};
   }
 
   function fromQif(text) {
@@ -351,5 +391,5 @@
       } catch (error) { return {line,row,original,error:error.code || 'import_format'}; }
     });
   }
-  globalThis.ULADIMStatement = Object.freeze({read,table,preview,columnCompatible});
+  globalThis.ULADIMStatement = Object.freeze({read,table,preview,columnCompatible,sourceAccounts});
 })();

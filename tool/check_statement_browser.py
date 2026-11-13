@@ -104,7 +104,7 @@ def run(browser, backend, actor, workspace, origin):
     launch.click()
     dialog = page.get_by_role('dialog')
     expect(dialog.get_by_text('Для импорта нужен счёт.', exact=False)).to_be_visible()
-    expect(dialog.locator('input[type=file]')).to_be_hidden()
+    expect(dialog.locator('input[type=file]')).to_be_visible()
     dialog.get_by_role('button', name='Создать счёт', exact=True).click()
     editor = page.locator('dialog[open]').last
     editor.locator('input[name=name]').fill('Основной счёт')

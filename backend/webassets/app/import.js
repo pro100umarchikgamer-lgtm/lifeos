@@ -28,10 +28,18 @@ const STATEMENT_FLOW_COPY={
  'uz-Latn':['Fayl tanlash','Tekshirish','Natija','Saqlangan amallar','Tanlangan, ammo saqlanmagan','Amallar tarixini ochish','Tekshirishga qaytish','Server yozuvni qabul qildi. Tarixni qayta yuklang.'],
  'uz-Cyrl':['Файл танлаш','Текшириш','Натижа','Сақланган амаллар','Танланган, аммо сақланмаган','Амаллар тарихини очиш','Текширишга қайтиш','Сервер ёзувни қабул қилди. Тарихни қайта юкланг.']
 };
+const STATEMENT_SOURCE_COPY={
+ ru:['Счета в выписке','Использовать отдельные счета','Объединить в существующий счёт','Новый счёт','Использовать счета','Создать счета и использовать','Начальный остаток новых счетов — 0. Операции сохраняются следующим шагом.','Разные валюты нельзя объединить в один счёт. Выберите отдельные счета.','Сначала подтвердите счета выписки.','Счета не подтверждены. Повторите запрос — копии не создадутся.','Не удалось подтвердить счёт. Проверьте доступ и повторите.','Найден существующий счёт','Создать','Счёт из выписки'],
+ en:['Statement accounts','Use separate accounts','Combine into an existing account','New account','Use accounts','Create accounts and use them','New accounts start at 0. Save transactions in the next step.','Different currencies cannot share one account. Use separate accounts.','Confirm statement accounts first.','Accounts are not confirmed. Retry the request; it will not create copies.','The account could not be confirmed. Check access and retry.','Existing account found','Create','Statement account'],
+ 'uz-Latn':['Ko‘chirmadagi hisoblar','Alohida hisoblardan foydalanish','Mavjud hisobga birlashtirish','Yangi hisob','Hisoblardan foydalanish','Hisoblarni yaratish va foydalanish','Yangi hisoblar 0 dan boshlanadi. Amallarni keyingi bosqichda saqlang.','Turli valyutalarni bir hisobga birlashtirib bo‘lmaydi. Alohida hisoblarni tanlang.','Avval ko‘chirma hisoblarini tasdiqlang.','Hisoblar tasdiqlanmadi. Qayta urining; nusxalar yaratilmaydi.','Hisob tasdiqlanmadi. Ruxsatni tekshiring va qayta urining.','Mavjud hisob topildi','Yaratish','Ko‘chirma hisobi'],
+ 'uz-Cyrl':['Кўчирмадаги ҳисоблар','Алоҳида ҳисоблардан фойдаланиш','Мавжуд ҳисобга бирлаштириш','Янги ҳисоб','Ҳисоблардан фойдаланиш','Ҳисобларни яратиш ва фойдаланиш','Янги ҳисоблар 0 дан бошланади. Амалларни кейинги босқичда сақланг.','Турли валюталарни бир ҳисобга бирлаштириб бўлмайди. Алоҳида ҳисобларни танланг.','Аввал кўчирма ҳисобларини тасдиқланг.','Ҳисоблар тасдиқланмади. Қайта урининг; нусхалар яратилмайди.','Ҳисоб тасдиқланмади. Рухсатни текширинг ва қайта урининг.','Мавжуд ҳисоб топилди','Яратиш','Кўчирма ҳисоби']
+};
 function importStatement() {
  const workspace=state.space,user=state.session.user_id,epoch=privateEpoch;
  let accounts=records('account'), source=null, parsed=null, preview=[], pending=null, page=0;
  let running=false, closed=false, modified=false, generation=0, attempted=[], stage=0, correcting=null;
+ let sourcePlans=[],sourceSignature='',sourceApplied=false,accountPending=null,sourceMode='separate';
+ const sourceCopy=STATEMENT_SOURCE_COPY[state.lang]||STATEMENT_SOURCE_COPY.en;
  const [chooseStep,reviewStep,resultStep,savedLabel,failedLabel,historyLabel,reviewLabel,refreshLabel]=STATEMENT_FLOW_COPY[state.lang]||STATEMENT_FLOW_COPY.en;
  const copy=statementCopy;
  const ensureContext=()=>{if(closed||privateEpoch!==epoch||state.space!==workspace||state.session?.user_id!==user)throw {code:'view_changed'};};
@@ -44,6 +52,15 @@ function importStatement() {
   need.append(E('p',copy('need_account')),button(copy('create_account'),openAccount));
   const controls=E('fieldset',undefined,'statement-controls');
   const account=select(controls,'import-account',t('family_account_select'),[],'');
+  const sourceGroup=E('section',undefined,'statement-source-accounts');sourceGroup.hidden=true;
+  const sourceChoices=E('fieldset'),sourceRows=E('div'),sourceMessage=E('p',undefined,'small');
+  sourceChoices.append(E('legend',sourceCopy[0]));
+  const sourceStrategy=select(sourceChoices,'statement-account-strategy',sourceCopy[0],[['separate',sourceCopy[1]],['combine',sourceCopy[2]]],'separate');
+  sourceStrategy.setAttribute('aria-label',sourceCopy[0]);sourceChoices.querySelector('label').hidden=true;
+  const combineAccount=select(sourceChoices,'statement-combine-account',t('family_account_select'),[],'');
+  const sourceConfirm=button(sourceCopy[4],()=>confirmSourceAccounts(),'secondary');
+  sourceConfirm.classList.add('statement-source-confirm');
+  sourceGroup.append(sourceChoices,sourceRows,sourceMessage,sourceConfirm);
   const fileOptions=E('details',undefined,'statement-file-options');
   const fileTitle=E('summary');
   const fileTitleLabel=E('span',chooseStep);
@@ -79,19 +96,21 @@ function importStatement() {
    draw();
   },'text-button');
   const bulk=E('div',undefined,'actions statement-bulk');bulk.append(selectReady,clearSelection);
-  actions.append(commit);append(container,steps,need,controls,status,receipt,correction,totals,bulk,results,actions);
+  actions.append(commit);append(container,steps,need,controls,sourceGroup,status,receipt,correction,totals,bulk,results,actions);
   function setStage(next){
    stage=next;
    for(const [i,item] of [...steps.children].entries()){
     if(i===stage)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');
    }
    receipt.hidden=stage!==2;
-   controls.hidden=stage===2||accounts.length===0;
+   controls.hidden=stage===2;
+   sourceGroup.hidden=stage===2||!sourcePlans.length;
+   need.hidden=accounts.length>0||!!sourcePlans.length;
    fileOptions.open=stage===0;
    fileTitleLabel.textContent=source?.name||chooseStep;
    fileTitleLabel.title=source?.name||'';
    totals.hidden=results.hidden=stage===2;bulk.hidden=stage!==1||!preview.length;
-   actions.hidden=stage===2||accounts.length===0;
+   actions.hidden=stage===2;
   }
   setStage(0);
   const mappingKeys=[['date',t('date')],['amount',t('amount')],['description',t('description')],['currency',t('currency')],
@@ -101,7 +120,9 @@ function importStatement() {
    account.replaceChildren();
    for(const a of accounts){const option=E('option',a.data.name+' · '+a.data.currency);option.value=a.id;account.append(option);}
    if(accounts.some(a=>a.id===selected))account.value=selected;
-   need.hidden=accounts.length>0;controls.hidden=!accounts.length||stage===2;actions.hidden=!accounts.length||stage===2;
+   need.hidden=accounts.length>0;controls.hidden=stage===2;actions.hidden=stage===2;
+   account.hidden=!accounts.length;
+   controls.querySelector('label[for="'+account.id+'"]').hidden=account.hidden;
   }
   syncAccounts(accounts[0]?.id);
   function openAccount() {
@@ -119,9 +140,131 @@ function importStatement() {
    const matching=accounts.filter(a=>a.data.currency===currency);
    return matching.length===1?matching[0]:null;
   }
+  function confirmedSourceAccount(id,currency){
+   const record=state.records.find(item=>item.id===id);
+   if(!record)return null;
+   if(record.deleted||record.kind!=='account'||record.data.currency!==currency)throw {code:'statement_account_conflict'};
+   return record;
+  }
+  async function prepareSourcePlans(header){
+   const metadata=ULADIMStatement.sourceAccounts(parsed,header);
+   const valid=preview.filter(row=>row.value);
+   // Incomplete owner context must never silently send unknown rows elsewhere.
+   if(!valid.length||preview.some(row=>!metadata[row.line])){
+    sourcePlans=[];sourceSignature='';sourceApplied=false;drawSourceAccounts();return;
+   }
+   const grouped=new Map();
+   for(const row of valid){
+    const owner=metadata[row.line],key=JSON.stringify([owner.provider||'',owner.id,row.value.currency]);
+    row.sourceAccountKey=key;
+    if(!grouped.has(key))grouped.set(key,{key,owner,currency:row.value.currency});
+   }
+   const signature=JSON.stringify([...grouped.keys()].sort());
+   const previous=new Map(sourcePlans.map(plan=>[plan.key,plan]));
+   sourcePlans=await Promise.all([...grouped.values()].map(async (plan,index)=>{
+    const id=await statementID(JSON.stringify([user,workspace,'uladim-statement-owner-account-v1',plan.key]));
+    const existing=confirmedSourceAccount(id,plan.currency);
+    const suffix=plan.owner.id.length>4?plan.owner.id.slice(-4):'';
+    return {...plan,id,name:sourceCopy[13]+' '+(index+1)+' •••• '+suffix,
+     targetID:previous.get(plan.key)?.targetID||(existing?id:'')};
+   }));
+   ensureContext();
+   if(signature!==sourceSignature){sourceApplied=false;sourceMode='separate';}
+   sourceSignature=signature;drawSourceAccounts();
+  }
+  function drawSourceAccounts(){
+   sourceGroup.hidden=stage===2||!sourcePlans.length;
+   need.hidden=accounts.length>0||!!sourcePlans.length;
+   account.hidden=!accounts.length||!!sourcePlans.length;
+   controls.querySelector('label[for="'+account.id+'"]').hidden=account.hidden;
+   sourceStrategy.value=sourceMode;sourceRows.replaceChildren();
+   const selected=combineAccount.value||account.value;
+   const currencies=new Set(sourcePlans.map(plan=>plan.currency));
+   combineAccount.replaceChildren(...accounts.filter(item=>currencies.size===1&&currencies.has(item.data.currency)).map(item=>{
+    const option=E('option',item.data.name+' · '+item.data.currency);option.value=item.id;return option;
+   }));
+   if(accounts.some(item=>item.id===selected))combineAccount.value=selected;
+   combineAccount.hidden=sourceMode!=='combine';
+   sourceChoices.querySelector('label[for="'+combineAccount.id+'"]').hidden=combineAccount.hidden;
+   let creating=0;
+   for(const [index,plan] of sourcePlans.entries()){
+    const line=E('div',undefined,'statement-source-row');
+    const existing=accounts.find(item=>item.id===plan.targetID);
+    const label=plan.name+' · '+plan.currency;
+    if(sourceMode==='separate'){
+     const choices=[['',sourceCopy[3]],...accounts.filter(item=>item.data.currency===plan.currency).map(item=>[item.id,item.data.name+' · '+item.data.currency])];
+     const picker=select(line,'statement-source-'+index,label,choices,plan.targetID);
+     picker.addEventListener('change',()=>{plan.targetID=picker.value;sourceApplied=false;invalidateSourceRows();drawSourceAccounts();});
+     if(existing)line.append(E('span',sourceCopy[11],'small'));else creating++;
+    }else line.append(E('p',label));
+    sourceRows.append(line);
+   }
+   const mixed=new Set(sourcePlans.map(plan=>plan.currency)).size>1;
+   sourceMessage.textContent=sourceMode==='combine'&&mixed?sourceCopy[7]:sourceCopy[6];
+   sourceConfirm.textContent=accountPending?t('retry'):creating&&sourceMode==='separate'?sourceCopy[5]+' · '+creating:sourceCopy[4];
+   sourceConfirm.hidden=sourceApplied;
+   updateControls();
+  }
+  function invalidateSourceRows(){
+   for(const row of preview){row.targetID='';row.selected=false;row.selectionPreference=null;}
+   draw();
+  }
+  sourceStrategy.addEventListener('change',()=>{
+   sourceMode=sourceStrategy.value;
+   if(sourceMode==='separate')for(const plan of sourcePlans)plan.targetID=accounts.some(item=>item.id===plan.id&&item.data.currency===plan.currency)?plan.id:'';
+   sourceApplied=false;invalidateSourceRows();drawSourceAccounts();
+  });
+  combineAccount.addEventListener('change',()=>{sourceApplied=false;invalidateSourceRows();drawSourceAccounts();});
+  async function confirmSourceAccounts(){
+   ensureContext();if(running||pending||!sourcePlans.length)return;
+   running=true;updateControls();
+   try{
+    if(!accountPending){
+     await refresh();ensureContext();accounts=records('account');
+     if(sourceMode==='combine'){
+      const currencies=new Set(sourcePlans.map(plan=>plan.currency));
+      if(currencies.size!==1||!accounts.some(item=>item.id===combineAccount.value&&item.data.currency===[...currencies][0]))throw {code:'statement_account_currency'};
+     }else{
+      const child=currentSpace()?.role==='child';accountPending=[];
+      for(const plan of sourcePlans){
+       if(plan.targetID){if(!confirmedSourceAccount(plan.targetID,plan.currency))throw {code:'statement_account_conflict'};continue;}
+       if(confirmedSourceAccount(plan.id,plan.currency))continue;
+       accountPending.push({plan,operation:{id:crypto.randomUUID(),action:'record.put',record_id:plan.id,revision:0,kind:'account',
+        visibility:child?'shared':'private',audience:child?[currentSpace().profile_id]:[],
+        data:{name:plan.name,currency:plan.currency,opening_minor:0}}});
+      }
+     }
+    }
+    // Account operations are retained, including their IDs, until the complete
+    // response is known. No transaction write can run before this finishes.
+    while(accountPending?.length){
+     const batch=accountPending.slice(0,100);
+     const result=await call('sync',{workspace_id:workspace,operations:batch.map(item=>item.operation)});ensureContext();
+     if(!Array.isArray(result.results)||result.results.length!==batch.length||result.results.some((item,index)=>item.id!==batch[index].operation.id))throw {code:'offline',uncertain:true};
+     if(result.results.some(item=>item.status==='accepted'))modified=true;
+     if(result.results.some(item=>!['accepted','conflict'].includes(item.status)&&item.error!=='revision_conflict')){
+      accountPending=null;throw {code:'statement_account_rejected'};
+     }
+     modified=true;accountPending.splice(0,batch.length);
+    }
+    await refresh();ensureContext();accounts=records('account');
+    for(const plan of sourcePlans){
+     const target=sourceMode==='combine'?combineAccount.value:plan.targetID||plan.id;
+     if(!confirmedSourceAccount(target,plan.currency))throw {code:'offline',uncertain:true};
+     plan.targetID=target;
+    }
+    accountPending=null;sourceApplied=true;syncAccounts(account.value);
+    await identify();drawSourceAccounts();draw();
+   }catch(error){
+    if(!error.uncertain)accountPending=null;
+    sourceMessage.textContent=error.uncertain?sourceCopy[9]:error.code==='statement_account_currency'?sourceCopy[7]:sourceCopy[10];
+    sourceConfirm.textContent=t('retry');
+    if(['unauthorized','workspace_forbidden'].includes(error.code))report(error);
+   }finally{running=false;updateControls();}
+  }
   function showError(error){
    if(closed)return;
-   status.textContent=copy(error.code||'import_format');
+   status.textContent=error.code==='statement_account_conflict'?sourceCopy[10]:copy(error.code||'import_format');
    recognitionFields.replaceChildren();
    recognitionHelp.hidden=!['import_mapping_required','import_encoding_required','import_delimiter_ambiguous'].includes(error.code);
    recognitionMessage.textContent=copy(error.code==='import_mapping_required'?'recognition_help':error.code||'import_format');
@@ -147,14 +290,17 @@ function importStatement() {
   function updateControls(){
    selectReady.disabled=running||!!pending||!!correcting||!preview.some(row=>ready(row)&&!row.selected);
    clearSelection.disabled=running||!!pending||!!correcting||!preview.some(row=>row.selected);
-   controls.disabled=running||!!pending||!!correcting;results.inert=running||!!pending||!!correcting;commit.disabled=running||!!correcting||!(pending||preview.some(row=>row.selected));
+   controls.disabled=running||!!pending||!!correcting||!!accountPending;results.inert=running||!!pending||!!correcting||!!accountPending;commit.disabled=running||!!correcting||!!accountPending||(sourcePlans.length&&!sourceApplied)||!(pending||preview.some(row=>row.selected));
+   sourceChoices.disabled=running||!!pending||!!correcting||!!accountPending;
+   for(const field of sourceRows.querySelectorAll('select'))field.disabled=sourceChoices.disabled;
+   sourceConfirm.disabled=running||!!pending||!!correcting||(sourceMode==='combine'&&(!combineAccount.value||new Set(sourcePlans.map(plan=>plan.currency)).size>1));
    const close=container.querySelector('.dialog-head button');if(close)close.disabled=running;
   }
   async function readFile(){
    if(pending||!source)return;
    const turn=++generation;
    setStage(0);attempted=[];
-   clearCorrection();preview=[];parsed=null;mapping.replaceChildren();dateHelp.replaceChildren();dateHelp.hidden=true;recognitionHelp.hidden=true;recognitionFields.replaceChildren();advanced.open=false;sheetControls.replaceChildren();results.replaceChildren();totals.replaceChildren();
+   clearCorrection();preview=[];parsed=null;sourcePlans=[];sourceSignature='';sourceApplied=false;sourceGroup.hidden=true;mapping.replaceChildren();dateHelp.replaceChildren();dateHelp.hidden=true;recognitionHelp.hidden=true;recognitionFields.replaceChildren();advanced.open=false;sheetControls.replaceChildren();results.replaceChildren();totals.replaceChildren();
    running=true;updateControls();status.textContent=copy('reading');
    try{
     if(source.size>5*1024*1024)throw {code:'import_limit'};
@@ -254,7 +400,9 @@ function importStatement() {
    for(const row of preview){
     if(!row.value)continue;
     const value=row.value;
-    const target=accounts.find(a=>a.id===row.targetID&&a.data.currency===value.currency)||destination(value.currency);
+    const sourcePlan=sourcePlans.find(plan=>plan.key===row.sourceAccountKey);
+    const target=sourcePlans.length?(sourceApplied&&sourcePlan?accounts.find(a=>a.id===sourcePlan.targetID&&a.data.currency===value.currency):null):
+     accounts.find(a=>a.id===row.targetID&&a.data.currency===value.currency)||destination(value.currency);
     row.targetID=target?.id||'';
     row.imported=false;row.repeated=false;row.duplicate=false;row.selected=false;row.id=null;row.bankGroup=null;
     if(!target)continue;
@@ -292,7 +440,7 @@ function importStatement() {
   }
   async function reidentify(){
    running=true;updateControls();
-   try{await identify();draw();}finally{running=false;updateControls();}
+   try{await prepareSourcePlans(Number(fields.header.value));await identify();draw();}finally{running=false;updateControls();}
   }
   async function buildPreview(){
    ensureContext();
@@ -300,6 +448,7 @@ function importStatement() {
    const settings=Object.fromEntries(Object.entries(fields).map(([key,field])=>[key,numbers.includes(key)?Number(field.value):field.value]));
    settings.defaultCurrency=defaultAccount()?.data.currency;
    preview=ULADIMStatement.preview(parsed,settings);
+   await prepareSourcePlans(settings.header);
    await identify();page=0;setStage(1);draw();
    const dateProblem=preview.some(row=>row.error==='import_date_ambiguous');
    if(dateProblem)dateHelp.dataset.needed='true';
@@ -315,6 +464,7 @@ function importStatement() {
    if(row.error)return copy(row.error);
    if(row.imported)return t('already_imported');
    if(row.repeated)return copy('repeated_id');
+   if(sourcePlans.length&&!sourceApplied)return sourceCopy[8];
    if(!row.targetID)return copy('missing_currency_account');
    if(row.duplicate)return t('import_duplicate');
    if(parsed.needsReview&&!row.selected)return copy('pdf_review');
@@ -349,7 +499,7 @@ function importStatement() {
   function draw(){
    results.replaceChildren();status.textContent=preview.length?parsed.format+' · '+preview.length+' '+copy('rows'):copy('no_rows');
    if(!preview.length){summary();updateControls();return;}
-   if(preview.some(row=>row.value&&!row.targetID))results.append(button(copy('create_account'),openAccount,'secondary'));
+   if(!sourcePlans.length&&preview.some(row=>row.value&&!row.targetID))results.append(button(copy('create_account'),openAccount,'secondary'));
    const table=E('table');table.setAttribute('role','table');const head=E('thead'),header=E('tr');header.setAttribute('role','row');
    const columnLabels=[copy('include'),t('date'),t('description'),t('amount'),t('family_kind_transaction'),t('family_account_select'),copy('status')];
    for(const label of columnLabels){
@@ -366,7 +516,7 @@ function importStatement() {
     const statusCell=E('td');statusCell.append(E('span',rowStatus(item)));
     const accountCell=E('td');
     const matching=v?accounts.filter(a=>a.data.currency===v.currency):[];
-    if(matching.length>1&&!item.imported&&!pending){
+    if(!sourcePlans.length&&matching.length>1&&!item.imported&&!pending){
      const choices=[['',t('family_none')],...matching.map(a=>[a.id,a.data.name])];
      const picker=select(accountCell,'row-account-'+item.line,t('family_account_select')+' · '+item.line,choices,item.targetID);
      picker.addEventListener('change',async()=>{item.targetID=picker.value;try{await reidentify();}catch(error){showError(error);}});
@@ -410,7 +560,7 @@ function importStatement() {
   }
   function clearCorrection(){correcting=null;correction.hidden=true;correction.replaceChildren();}
   async function commitRows(){
-   ensureContext();if(running)return;
+   ensureContext();if(running||accountPending||(sourcePlans.length&&!sourceApplied))return;
    running=true;updateControls();
    try{
     if(!pending){
@@ -484,8 +634,8 @@ function importStatement() {
   for(const field of [encoding,delimiter])field.addEventListener('change',readFile);
   account.addEventListener('change',()=>{for(const row of preview)row.targetID='';review();});
   dCleanup(()=>{
-   const outstanding=!!pending?.length;
-   closed=true;source=null;parsed=null;preview=[];pending=null;
+   const outstanding=!!pending?.length||!!accountPending?.length;
+   closed=true;source=null;parsed=null;preview=[];pending=null;sourcePlans=[];accountPending=null;
    if(privateEpoch!==epoch||state.space!==workspace)return;
    if(outstanding)refresh().then(()=>{if(privateEpoch===epoch)render();}).catch(report);
    else if(modified)render();
