@@ -7,7 +7,7 @@ from tool.check_web_platform import fixture
 
 OUT=Path(os.environ.get('ULADIM_PUBLIC_HELP_EVIDENCE','web_evidence/public-help'))
 PAGES={'/faq':'.help-question','/privacy':'.help-document','/terms':'.help-document','/delete-account':'.help-steps','/support':'.help-support-grid','/download':'.help-download-grid','/plans':'.help-plans'}
-ANCHORS=('today','tasks','calendar','notes','finances','account','security','notifications','recovery','family','import','support','privacy','deletion','plans','installation')
+ANCHORS=('today','tasks','calendar','notes','finances','account','security','notifications','recovery','family','import','support','privacy','deletion','plans','installation','delete-staff-account')
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
@@ -41,12 +41,12 @@ def main():
             page.goto(origin+'/faq')
             search=page.get_by_label('О чём хотите узнать?')
             search.fill('удалить аккаунт')
-            expect(page.locator('.help-question:visible')).to_have_count(1)
+            expect(page.locator('.help-question:visible')).to_have_count(2)
             expect(page.locator('#deletion')).to_have_attribute('open','')
             search.fill('definitely-no-answer')
             expect(page.locator('.help-empty')).to_be_visible()
             search.fill('')
-            expect(page.locator('.help-question:visible')).to_have_count(20)
+            expect(page.locator('.help-question:visible')).to_have_count(21)
             summary=page.locator('#today summary');summary.focus();page.keyboard.press('Enter')
             expect(page.locator('#today')).to_have_attribute('open','')
             for anchor in ANCHORS:
@@ -68,15 +68,17 @@ def main():
             metadata={'published':True,'operatorName':'Synthetic fixture operator'}
             page.route('**/account/api/config',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps({'public_legal':metadata})))
             page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_be_visible()
-            metadata.update({key:'Synthetic fixture fact' for key in ('operatorCountry','processingRegion','minimumAgePolicy','legalBasis','securityRetention','backupRetention','deletionPolicy')})
+            metadata.update({key:'Synthetic fixture fact' for key in ('operatorCountry','operatorPostalAddress','processingRegion','minimumAgePolicy','legalBasis','securityRetention','backupRetention','correspondenceRetention','deletionPolicy')})
             metadata['supportEmail']='invalid-mailbox'
             page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_be_visible()
             metadata['supportEmail']='support@example.test'
+            page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_be_visible()
+            metadata.update({key:True for key in ('supportEmailReady','processingVerified','privacyLifecycleReady','retentionVerified','agePolicyEnforced')})
             page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_have_count(0)
             assert 'будут окончательно указаны' not in page.locator('main').inner_text()
             page.goto(origin+'/support');expect(page.locator('a[href="mailto:support@example.test"]')).to_be_visible()
             assert not errors,errors
-            results.append({'legal_metadata':'partial and invalid stay draft; complete synthetic facts publish without stale pending text; public support email shown'})
+            results.append({'legal_metadata':'partial/invalid/unverified facts retain draft; complete verified synthetic facts publish; public support email shown'})
             results.append({'search':'match/empty/clear passed','keyboard':'native details Enter passed','context_anchors':len(ANCHORS),'config_outage':'six informational routes passed','page_errors':errors})
             browser.close()
     (OUT/'browser-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
