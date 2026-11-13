@@ -226,6 +226,7 @@ async function call(path,body){
 }
 function button(text,run,cls='ghost'){const b=E('button',text,cls);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await run();}catch(error){report(error);}finally{b.disabled=false;}});return b;}
 const ICON_PATHS={calendar:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','M8 14h2M14 14h2M8 18h2'],today:['M8 2v4M16 2v4M3 10h18','M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2','m8 15 2 2 5-5'],tasks:['m3 6 1 1 2-2M10 6h11m-18 6 1 1 2-2M10 12h11m-18 6 1 1 2-2M10 18h11'],notes:['M5 3h14v18H5zM8 8h8M8 12h8M8 16h5'],money:['M4 20V10m6 10V4m6 16v-8m5 8H2'],account:['M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-2a8 8 0 0 1 16 0v2'],close:['m6 6 12 12M6 18 18 6'],forward:['m9 6 6 6-6 6'],back:['m15 6-6 6 6 6'],more:['M5 12h.01M12 12h.01M19 12h.01'],add:['M12 5v14M5 12h14']};
+ICON_PATHS.bell=['M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4'];
 ICON_PATHS.appearance=['M20.5 13a8.5 8.5 0 0 1-9.5-9.5A8.5 8.5 0 1 0 20.5 13'];
 function icon(name){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');for(const [key,value]of Object.entries({viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':'1.7','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true',focusable:'false',class:'ui-icon'}))svg.setAttribute(key,value);for(const path of ICON_PATHS[name]||[]){const node=document.createElementNS(svg.namespaceURI,'path');node.setAttribute('d',path);svg.append(node);}return svg;}
 function iconButton(name,label,run){const b=button('',run,'icon');b.setAttribute('aria-label',label);b.title=label;b.append(icon(name));return b;}
@@ -476,7 +477,7 @@ function updateSyncStatus(){
  node.dataset.status=index===1?'error':index===3?'offline':'read';
 }
 function refresh(){const epoch=privateEpoch;const run=async()=>{if(epoch!==privateEpoch)return;state.busy=true;state.syncState='loading';updateSyncStatus();try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();if(epoch===privateEpoch&&(!state.space||state.syncSpace===state.space)){state.lastRead=Date.now();state.syncState='read';}}catch(error){if(epoch===privateEpoch)state.syncState='error';throw error;}finally{if(epoch===privateEpoch){state.busy=false;updateSyncStatus();}}};const pending=refreshTail.then(run,run);refreshTail=pending.catch(()=>{});return pending;}
-async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();render();}
+async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();await consumeNotificationLink();render();refreshNotificationTimezone();}
 function login(){
  delete document.body.dataset.referenceLayout;
  root.replaceChildren();
@@ -1672,13 +1673,126 @@ function familyPanel(m){
   actions.append(button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));},'text-button'));
  }
 }
+const NOTIFICATION_COPY={
+ ru:{title:'Уведомления',intro:'Напоминания календаря на этом устройстве, даже когда ULADIM закрыт.',off:'Выключены на этом устройстве',on:'Включены на этом устройстве',enable:'Включить уведомления',disable:'Выключить на устройстве',test:'Проверить доставку',loading:'Проверяем настройки…',unavailable:'Этот браузер не поддерживает фоновые уведомления. Откройте ULADIM в актуальном браузере.',install:'На iPhone и iPad уведомления работают в установленном приложении с iOS 16.4 или новее. В Safari нажмите «Поделиться» → «На экран Домой», затем откройте ULADIM с экрана Домой.',denied:'Уведомления запрещены в настройках браузера. Разрешите их для ULADIM и вернитесь сюда.',update:'Чтобы подключить уведомления, закройте остальные окна ULADIM и откройте приложение снова: обновление ещё устанавливается.',permission:'Разрешение не получено. Можно включить уведомления позже.',options:'Параметры напоминаний',lead:'До начала события',minutes:'мин',priority:'Приоритет доставки',high:'Высокий',normal:'Обычный',save:'Сохранить параметры',saved:'Параметры сохранены',schedule:'События со временем — заранее; события на весь день — в 09:00 по часовому поясу этого устройства.',privacy:'Текст уведомлений не раскрывает названия событий. Звук и показ на экране определяет система устройства. Высокий приоритет не обходит режим «Не беспокоить».',delivery:'Последняя проверка доставки',queued:'Уведомление в очереди',sending:'Отправляем в push-сервис…',accepted:'Push-сервис принял уведомление. Ждём ответа устройства.',displayed:'Передано системе устройства. Проверьте экран и настройки звука.',suppressed:'Показ пропущен: сеанс недоступен или устройство не разрешило уведомление.',failed:'Доставка не подтверждена. Проверьте соединение и разрешения устройства.',cancelled:'Отправка отменена',pending:'Ответ устройства пока не получен. Можно вернуться сюда позже.',error:'Не удалось обновить настройки уведомлений. Проверьте соединение и повторите.',cooldown:'Повторная проверка доступна через минуту.',retry:'Повторить',enabledHelp:'Только этот браузер или установленное веб-приложение. Другие устройства настраиваются отдельно.',disablePartial:'Не удалось подтвердить отключение на сервере. Повторите отключение.',testHelp:'Проверка отправит одно уведомление. Подтверждение системы не означает, что баннер был виден.'},
+ en:{title:'Notifications',intro:'Calendar reminders on this device, even when ULADIM is closed.',off:'Off on this device',on:'On on this device',enable:'Enable notifications',disable:'Turn off on this device',test:'Check delivery',loading:'Checking settings…',unavailable:'This browser does not support background notifications. Open ULADIM in an up-to-date browser.',install:'On iPhone and iPad, notifications require the installed app and iOS 16.4 or later. In Safari, choose Share → Add to Home Screen, then open ULADIM from your Home Screen.',denied:'Notifications are blocked in browser settings. Allow them for ULADIM and return here.',update:'Close the other ULADIM windows and reopen the app to enable notifications: an update is still installing.',permission:'Permission was not granted. You can enable notifications later.',options:'Reminder settings',lead:'Before an event',minutes:'min',priority:'Delivery priority',high:'High',normal:'Normal',save:'Save settings',saved:'Settings saved',schedule:'Timed events arrive in advance; all-day events at 09:00 in this device’s time zone.',privacy:'Notification text does not reveal event titles. Your device controls sound and banners. High priority does not override Do Not Disturb.',delivery:'Latest delivery check',queued:'Notification queued',sending:'Sending to the push service…',accepted:'The push service accepted the notification. Waiting for the device.',displayed:'Passed to the device system. Check your screen and sound settings.',suppressed:'Display skipped: the session was unavailable or the device did not allow notifications.',failed:'Delivery was not confirmed. Check your connection and device permissions.',cancelled:'Sending cancelled',pending:'The device has not responded yet. You can return here later.',error:'Could not update notification settings. Check your connection and retry.',cooldown:'Another check is available in one minute.',retry:'Retry',enabledHelp:'Applies to this browser or installed web app only. Set up other devices separately.',disablePartial:'The server did not confirm disabling notifications. Try turning them off again.',testHelp:'This sends one notification. System confirmation does not mean the banner was visible.'},
+ 'uz-Latn':{title:'Bildirishnomalar',intro:'ULADIM yopiq bo‘lsa ham, ushbu qurilmada taqvim eslatmalari.',off:'Bu qurilmada o‘chirilgan',on:'Bu qurilmada yoqilgan',enable:'Bildirishnomalarni yoqish',disable:'Bu qurilmada o‘chirish',test:'Yetkazishni tekshirish',loading:'Sozlamalar tekshirilmoqda…',unavailable:'Bu brauzer fon bildirishnomalarini qo‘llamaydi. ULADIMni yangilangan brauzerda oching.',install:'iPhone va iPadda bildirishnomalar o‘rnatilgan ilovada, iOS 16.4 yoki yangiroq tizimda ishlaydi. Safarida Ulashish → Bosh ekranga qo‘shish tugmasini bosing va ULADIMni bosh ekrandan oching.',denied:'Brauzer sozlamalarida bildirishnomalar taqiqlangan. ULADIM uchun ruxsat bering va bu yerga qayting.',update:'Yangilanish hali o‘rnatilmoqda. ULADIMning boshqa oynalarini yoping va ilovani qayta oching.',permission:'Ruxsat berilmadi. Bildirishnomalarni keyinroq yoqishingiz mumkin.',options:'Eslatma sozlamalari',lead:'Tadbirdan oldin',minutes:'daq',priority:'Yetkazish ustuvorligi',high:'Yuqori',normal:'Oddiy',save:'Sozlamalarni saqlash',saved:'Sozlamalar saqlandi',schedule:'Vaqti belgilangan tadbirlar oldindan, kun bo‘yi tadbirlar esa qurilma vaqt mintaqasida 09:00 da eslatiladi.',privacy:'Bildirishnomada tadbir nomi ko‘rsatilmaydi. Ovoz va bannerlarni qurilma boshqaradi. Yuqori ustuvorlik «Bezovta qilmang» rejimini chetlab o‘tmaydi.',delivery:'So‘nggi yetkazish tekshiruvi',queued:'Bildirishnoma navbatda',sending:'Push xizmatiga yuborilmoqda…',accepted:'Push xizmati qabul qildi. Qurilma javobi kutilmoqda.',displayed:'Qurilma tizimiga uzatildi. Ekran va ovoz sozlamalarini tekshiring.',suppressed:'Ko‘rsatish o‘tkazib yuborildi: seans mavjud emas yoki qurilma ruxsat bermadi.',failed:'Yetkazish tasdiqlanmadi. Ulanish va qurilma ruxsatlarini tekshiring.',cancelled:'Yuborish bekor qilindi',pending:'Qurilma hali javob bermadi. Keyinroq qaytishingiz mumkin.',error:'Bildirishnoma sozlamalarini yangilab bo‘lmadi. Ulanishni tekshirib qayta urinib ko‘ring.',cooldown:'Bir daqiqadan so‘ng qayta tekshirish mumkin.',retry:'Qayta urinish',enabledHelp:'Faqat shu brauzer yoki o‘rnatilgan veb-ilova uchun. Boshqa qurilmalar alohida sozlanadi.',disablePartial:'Server o‘chirishni tasdiqlamadi. Qayta o‘chirib ko‘ring.',testHelp:'Tekshiruv bitta bildirishnoma yuboradi. Tizim tasdig‘i banner ko‘ringanini anglatmaydi.'},
+ 'uz-Cyrl':{title:'Билдиришномалар',intro:'ULADIM ёпиқ бўлса ҳам, ушбу қурилмада тақвим эслатмалари.',off:'Бу қурилмада ўчирилган',on:'Бу қурилмада ёқилган',enable:'Билдиришномаларни ёқиш',disable:'Бу қурилмада ўчириш',test:'Етказишни текшириш',loading:'Созламалар текширилмоқда…',unavailable:'Бу браузер фон билдиришномаларини қўлламайди. ULADIMни янгиланган браузерда очинг.',install:'iPhone ва iPadда билдиришномалар ўрнатилган иловада, iOS 16.4 ёки янгироқ тизимда ишлайди. Safariда Улашиш → Бош экранга қўшиш тугмасини босинг ва ULADIMни бош экрандан очинг.',denied:'Браузер созламаларида билдиришномалар тақиқланган. ULADIM учун рухсат беринг ва бу ерга қайтинг.',update:'Янгиланиш ҳали ўрнатилмоқда. ULADIMнинг бошқа ойналарини ёпинг ва иловани қайта очинг.',permission:'Рухсат берилмади. Билдиришномаларни кейинроқ ёқишингиз мумкин.',options:'Эслатма созламалари',lead:'Тадбирдан олдин',minutes:'дақ',priority:'Етказиш устуворлиги',high:'Юқори',normal:'Оддий',save:'Созламаларни сақлаш',saved:'Созламалар сақланди',schedule:'Вақти белгиланган тадбирлар олдиндан, кун бўйи тадбирлар эса қурилма вақт минтақасида 09:00 да эслатилади.',privacy:'Билдиришномада тадбир номи кўрсатилмайди. Овоз ва баннерларни қурилма бошқаради. Юқори устуворлик «Безовта қилманг» режимини четлаб ўтмайди.',delivery:'Сўнгги етказиш текшируви',queued:'Билдиришнома навбатда',sending:'Push хизматига юборилмоқда…',accepted:'Push хизмати қабул қилди. Қурилма жавоби кутилмоқда.',displayed:'Қурилма тизимига узатилди. Экран ва овоз созламаларини текширинг.',suppressed:'Кўрсатиш ўтказиб юборилди: сеанс мавжуд эмас ёки қурилма рухсат бермади.',failed:'Етказиш тасдиқланмади. Уланиш ва қурилма рухсатларини текширинг.',cancelled:'Юбориш бекор қилинди',pending:'Қурилма ҳали жавоб бермади. Кейинроқ қайтишингиз мумкин.',error:'Билдиришнома созламаларини янгилаб бўлмади. Уланишни текшириб қайта уриниб кўринг.',cooldown:'Бир дақиқадан сўнг қайта текшириш мумкин.',retry:'Қайта уриниш',enabledHelp:'Фақат шу браузер ёки ўрнатилган веб-илова учун. Бошқа қурилмалар алоҳида созланади.',disablePartial:'Сервер ўчиришни тасдиқламади. Қайта ўчириб кўринг.',testHelp:'Текширув битта билдиришнома юборади. Тизим тасдиғи баннер кўринганини англатмайди.'}
+};
+for(const [locale,copy]of Object.entries(NOTIFICATION_COPY))WORKSPACE_COPY[locale].web_notifications=copy.title;
+function notificationSupport(){
+ const ios=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ if(ios&&!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches)return 'install';
+ return isSecureContext&&'Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window?'supported':'unavailable';
+}
+function notificationTimeout(promise,ms){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('notification_timeout')),ms);promise.then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});});}
+async function notificationWorker(){
+ await navigator.serviceWorker.register('/app/sw.js',{scope:'/app'});
+ const registration=await notificationTimeout(navigator.serviceWorker.ready,12000);
+ const supported=await new Promise(resolve=>{
+  const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();resolve(false);},2000);
+  channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data?.supported===true&&event.data.version===1);};
+  if(!registration.active){clearTimeout(timer);resolve(false);return;}
+  registration.active.postMessage({type:'uladim-notifications-capabilities'},[channel.port2]);
+ });
+ return {registration,supported};
+}
+function notificationKey(value){const text=atob(value.replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(text,c=>c.charCodeAt(0));}
+function notificationSettings(subscription,settings){return {subscription:subscription.toJSON(),lead_minutes:settings.lead_minutes||15,priority:settings.priority||'high',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'};}
+async function refreshNotificationTimezone(){
+ const epoch=privateEpoch;if(!state.session||notificationSupport()!=='supported'||Notification.permission!=='granted')return;
+ try{
+  const settings=await call('notifications');if(epoch!==privateEpoch||!settings.enabled)return;
+  const worker=await notificationWorker();if(epoch!==privateEpoch||!worker.supported)return;
+  const subscription=await worker.registration.pushManager.getSubscription();
+  if(subscription&&epoch===privateEpoch&&state.session)await call('notifications/subscribe',notificationSettings(subscription,settings));
+ }catch{} // Existing opt-in only; startup must never show a permission dialog.
+}
+async function notificationPage(content){
+ const copy=NOTIFICATION_COPY[state.lang]||NOTIFICATION_COPY.en,epoch=privateEpoch;
+ const active=()=>epoch===privateEpoch&&content.isConnected&&state.tab==='account'&&state.settingsTab==='notifications';
+ const panel=card(copy.title);panel.classList.add('notification-panel');content.append(panel);
+ append(panel,E('p',copy.intro,'notification-intro'));
+ const status=E('p',copy.loading,'notification-status');status.setAttribute('role','status');panel.append(status);
+ const support=notificationSupport();
+ if(support!=='supported'){status.textContent=copy[support];status.dataset.state='attention';return;}
+ const controls=E('div',undefined,'notification-actions'),feedback=E('p','','notification-feedback');feedback.setAttribute('role','status');
+ const delivery=E('section',undefined,'notification-delivery');delivery.setAttribute('aria-live','polite');
+ append(panel,controls,feedback,E('p',copy.enabledHelp,'small'),delivery);
+ const details=E('details',undefined,'notification-options');details.append(E('summary',copy.options));
+ const fields=E('div',undefined,'notification-option-fields');
+ const lead=select(fields,'notification-lead',copy.lead,[5,15,30,60].map(n=>[String(n),n+' '+copy.minutes]),'15');
+ const priority=select(fields,'notification-priority',copy.priority,[['high',copy.high],['normal',copy.normal]],'high');
+ const save=button(copy.save,()=>execute(async()=>{settings=await call('notifications/subscribe',notificationSettings(subscription,{lead_minutes:Number(lead.value),priority:priority.value}));feedback.textContent=copy.saved;await draw();}),'secondary');
+ fields.append(save);append(details,fields,E('p',copy.schedule,'small'));append(panel,details,E('p',copy.privacy,'small notification-privacy'));
+ let settings=null,worker=null,subscription=null,busy=false;
+ const failure=error=>{if(!active())return;feedback.textContent=['rate_limited','notification_test_rate_limited','notification_test_cooldown'].includes(error.code)?copy.cooldown:copy.error;if(error.code==='unauthorized')report(error);};
+ async function execute(run){if(busy||!active())return;busy=true;panel.setAttribute('aria-busy','true');controls.querySelectorAll('button').forEach(b=>b.disabled=true);save.disabled=true;try{await run();}catch(error){failure(error);}finally{busy=false;if(active()){panel.removeAttribute('aria-busy');await draw();}}}
+ function showDelivery(value,pending=false){delivery.replaceChildren();if(!value)return;append(delivery,E('h3',copy.delivery),E('p',copy[value.state]||copy.pending));if(pending)delivery.append(E('p',copy.pending,'small'));}
+ async function draw(){
+  if(!active())return;
+  const permission=Notification.permission,on=Boolean(settings?.enabled&&subscription&&permission==='granted');
+  status.textContent=permission==='denied'?copy.denied:!worker?.supported?copy.update:on?copy.on:copy.off;status.dataset.state=on?'enabled':'attention';
+  controls.replaceChildren();save.disabled=!on||busy;lead.disabled=priority.disabled=busy;
+  if(on){
+   controls.append(button(copy.test,()=>execute(async()=>{
+    const test=await call('notifications/test',{});showDelivery({state:test.state});
+    for(let attempt=0;attempt<15&&active();attempt++){
+     await new Promise(resolve=>setTimeout(resolve,2000));if(!active())return;
+     settings=await call('notifications');const last=settings.last_delivery;
+     if(last?.id===test.delivery_id){showDelivery(last);if(['displayed','suppressed','failed','cancelled'].includes(last.state))return;}
+    }
+    if(active())showDelivery(settings?.last_delivery,true);
+   }),'primary'));
+   controls.append(button(copy.disable,()=>execute(async()=>{
+    const results=await Promise.allSettled([call('notifications/unsubscribe',{}),subscription.unsubscribe()]);
+    if(results[1].status==='fulfilled'&&results[1].value)subscription=null;
+    if(results[0].status==='rejected'){feedback.textContent=copy.disablePartial;return;}
+    settings=results[0].value;subscription=await worker.registration.pushManager.getSubscription();feedback.textContent='';
+   }),'secondary'));
+  }else{
+   const enable=button(copy.enable,()=>{
+    // requestPermission must run synchronously inside this explicit click.
+    const permissionResult=Notification.permission==='default'?Notification.requestPermission():Promise.resolve(Notification.permission);
+    return execute(async()=>{
+     const permission=await permissionResult;if(!active())return;
+     if(permission!=='granted'){feedback.textContent=copy.permission;return;}
+     const prepared=await call('notifications/prepare');if(!active())return;
+     subscription=await worker.registration.pushManager.getSubscription()||await worker.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:notificationKey(prepared.application_server_key)});
+     if(!active())return;
+     settings=await call('notifications/subscribe',notificationSettings(subscription,{lead_minutes:Number(lead.value),priority:priority.value}));feedback.textContent='';
+    });
+   },'primary');enable.disabled=permission==='denied'||!worker?.supported||busy;controls.append(enable);
+   // Revocation may have removed the local subscription while the server still
+   // has opt-in state. Keep a way to turn that server registration off.
+   if(settings?.enabled)controls.append(button(copy.disable,()=>execute(async()=>{settings=await call('notifications/unsubscribe',{});}),'secondary'));
+  }
+  if(on)controls.append(E('p',copy.testHelp,'small notification-test-help'));
+ }
+ try{
+  settings=await call('notifications');if(!active())return;
+  lead.value=String(settings.lead_minutes||15);priority.value=settings.priority||'high';showDelivery(settings.last_delivery);
+  worker=await notificationWorker();if(!active())return;subscription=await worker.registration.pushManager.getSubscription();await draw();
+ }catch(error){if(!active())return;status.textContent=copy.error;failure(error);controls.append(button(copy.retry,()=>openSettings('notifications'),'secondary'));}
+}
+async function consumeNotificationLink(){
+ const url=new URL(location.href);if(url.searchParams.get('notification')!=='calendar')return;
+ const workspace=url.searchParams.get('workspace'),day=url.searchParams.get('day');
+ for(const key of ['notification','workspace','day'])url.searchParams.delete(key);history.replaceState(null,'',url.pathname+url.search+url.hash);
+ if(!state.spaces.some(space=>space.id===workspace)||!/^\d{4}-\d{2}-\d{2}$/.test(day||''))return;
+ const date=new Date(day+'T12:00:00Z');if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==day||date.getUTCFullYear()<1900||date.getUTCFullYear()>2200)return;
+ if(state.space!==workspace){state.space=workspace;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;await refresh();}
+ state.tab='calendar';state.calendarDay=day;
+}
+
 function openSettings(section){
  state.tab='account';
  state.settingsTab=section;
  render();
  const back=root.querySelector('.settings-back');
  const target=section?(back?.getClientRects().length?back:root.querySelector('.settings-content h2')):root.querySelector('.settings-navigation button');
- if(target){if(target.tagName==='H2')target.tabIndex=-1;target.focus();}
+ if(target){if(target.tagName==='H2')target.tabIndex=-1;target.focus({preventScroll:true});}
+ window.scrollTo({top:0,behavior:'instant'});
 }
 async function renderAccountPlan(content){
  const [ent,catalog]=await Promise.all([call('entitlements'),call('plans')]);
@@ -1704,7 +1818,7 @@ async function renderAccountPlan(content){
 }
 async function account(m){
  const section=state.settingsTab||'profile';
- const pageTitle={security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
+ const pageTitle={notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
  title(m,pageTitle[section]||'account_manage');m.classList.add('settings-page');
  m.dataset.settingsDetail=String(Boolean(state.settingsTab));
  const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
@@ -1712,7 +1826,7 @@ async function account(m){
  navigation.setAttribute('aria-label',t('account_manage'));
  const back=button(t('web_back_settings'),()=>openSettings(''),'settings-back text-button');
  back.prepend(icon('back'));append(layout,navigation,content);append(m,back,layout);
- const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['devices','account_devices'],['family','family_account'],['personal-import','web_personal_import'],['plan','account_access'],['support','account_support']];
+ const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['devices','account_devices'],['notifications','web_notifications'],['family','family_account'],['personal-import','web_personal_import'],['plan','account_access'],['support','account_support']];
  for(const [key,label] of sections){
   const item=settingsRow(t(label),()=>openSettings(key),'settings-item');
   item.dataset.section=key;
@@ -1734,7 +1848,7 @@ async function account(m){
   const identity=append(E('div',undefined,'reference-profile-identity'),E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),append(E('dl',undefined,'profile-identity'),E('dt',t('family_email')),email));
   const verified=E('span',copy[state.session.verified?3:4],'reference-profile-verified');verified.dataset.verified=String(Boolean(state.session.verified));identity.append(verified);
   const options=E('div',undefined,'reference-profile-options');
-  for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar'],['family','family_account','account'],['personal-import','web_personal_import','notes'],['plan','account_access','money'],['support','account_support','notes']]){
+  for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar'],['notifications','web_notifications','bell'],['family','family_account','account'],['personal-import','web_personal_import','notes'],['plan','account_access','money'],['support','account_support','notes']]){
    const action=settingsRow(t(label),()=>openSettings(key),'reference-profile-option'+(['appearance','security','devices'].includes(key)?'':' reference-profile-extra'));action.dataset.settingsSection=key;action.prepend(icon(symbol));options.append(action);
   }
   const logout=button(t('family_logout'),()=>openSettings('signout'),'text-button profile-logout');
@@ -1746,6 +1860,7 @@ async function account(m){
  }
  if(section==='appearance'){const settings=card(t('theme'));settings.classList.add('settings-grid');content.append(settings);language(settings);const theme=select(settings,'theme',t('theme'),['system','light','dark'].map(k=>[k,t(k)]),state.theme);theme.addEventListener('change',()=>{state.theme=theme.value;preferences();});const palette=select(settings,'palette',t('palette'),[['violet',referenceCopy(12)],['forest',t('appearance_emerald')],['ocean',t('appearance_sky')],['pistachio',t('appearance_pistachio')]],state.palette);palette.addEventListener('change',()=>{state.palette=palette.value;preferences();});const install=E('details',undefined,'installation-help');append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));settings.append(install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));}
  if(section==='signout')signoutPage(content);
+ if(section==='notifications')await notificationPage(content);
  if(section==='personal-import')await personalImportCenter(content).catch(report);
  if(section==='security')privacy(content);
  if(section==='devices')await devices(content).catch(error=>{if(error.code==='unauthorized'){report(error);return;}if(content.isConnected){content.replaceChildren(E('h2',t('account_devices')),E('p',errorText(error),'error'),button(t('retry'),()=>openSettings('devices'),'secondary'));}});

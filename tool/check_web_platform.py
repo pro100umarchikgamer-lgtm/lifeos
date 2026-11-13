@@ -209,7 +209,7 @@ def main():
                         if tab=='account':
                             if width<760:
                                 expect(page.locator('.settings-navigation')).to_be_hidden()
-                                expect(page.locator('.reference-profile-options button:visible')).to_have_count(7)
+                                expect(page.locator('.reference-profile-options button:visible')).to_have_count(8)
                             else:
                                 expect(page.locator('.settings-navigation')).to_be_visible()
                             open_settings(page,'profile')
