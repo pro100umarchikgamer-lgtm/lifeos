@@ -40,10 +40,17 @@ class InboxScenarios:
             'PATH_INFO': ('/control/api/' if staff else '/account/api/') + action,
             'REQUEST_METHOD': 'POST' if body is not None else 'GET',
             'HTTP_USER_AGENT': 'fixture', 'HTTP_ORIGIN': 'https://control.getuladim.space' if staff else 'https://getuladim.space',
-            'HTTP_COOKIE': (CONTROL_COOKIE if staff else ACCOUNT_COOKIE) + '=' + raw,
+            'HTTP_COOKIE': (CONTROL_COOKIE if staff else ACCOUNT_COOKIE) + '=' + raw + ('; ' + self.admission_cookie if staff else ''),
             'HTTP_X_CSRF_TOKEN': self.web.csrf(raw)}
         env.update(extra)
         try:
+            if staff:
+                from http.cookies import SimpleCookie
+                from backend.control_admission import COOKIE
+                cookies = SimpleCookie()
+                cookies.load(env.get('HTTP_COOKIE', ''))
+                entry = cookies.get(COOKIE)
+                env['uladim.admitted'] = self.web.admission.authenticate(entry.value if entry else '', 'fixture')
             return 200, self.web.request(env, body or {})[0]
         except Failure as error:
             return error.status, {'error': error.code}
@@ -55,6 +62,13 @@ class InboxScenarios:
                 (token_hash('w' * 43), self.first['id'], device, self.now, self.now, self.now + 86400, token_hash('fixture')))
             db.execute('INSERT INTO control_sessions VALUES(?,?,?,?,?,?)',
                 (token_hash('s' * 43), self.sid, self.now, self.now, self.now + 3600, token_hash('fixture')))
+            owner_device = db.execute('SELECT id FROM devices WHERE user_id=?', (self.owner['id'],)).fetchone()['id']
+            db.execute('INSERT INTO web_sessions VALUES(?,?,?,?,?,?,?)',
+                (token_hash('o' * 43), self.owner['id'], owner_device, self.now, self.now, self.now + 86400, token_hash('fixture')))
+        from backend.control_admission import COOKIE
+        ticket = self.web.admission.issue('o' * 43, 'fixture')
+        admitted, _ = self.web.admission.redeem(ticket, 'fixture')
+        self.admission_cookie = COOKIE + '=' + admitted
 
     def user(self, verified=1, deleted=False):
         actor = {'id': uid(), 'email': uid() + '@example.test', 'verified': verified}
@@ -212,7 +226,8 @@ class InboxScenarios:
         self.assertEqual(self.web_request(False, 'inbox/read', {'id': item['id']}, HTTP_ORIGIN='https://evil.test')[0], 403)
         self.assertEqual(self.web_request(False, 'inbox/read', {'id': item['id']})[0], 200)
         self.assertEqual(self.customer()[1]['unread_count'], 0)
-        self.assertEqual(self.web_request(True, 'announcements', HTTP_COOKIE='')[0], 401)
+        self.assertEqual(self.web_request(True, 'announcements', HTTP_COOKIE='')[0], 404)
+        self.assertEqual(self.web_request(True, 'announcements', HTTP_COOKIE=self.admission_cookie)[0], 401)
         self.assertEqual(self.web_request(True, 'announcements/preview', {}, HTTP_X_CSRF_TOKEN='')[0], 403)
         self.assertEqual(self.web_request(True, 'announcements/preview', {}, HTTP_ORIGIN='https://evil.test')[0], 403)
         with self.backend.transaction() as db:
