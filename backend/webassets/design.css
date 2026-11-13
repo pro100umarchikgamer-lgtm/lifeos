@@ -1636,6 +1636,8 @@ body[data-control=true] .control-announcement-layout{display:grid;grid-template-
 
 .control-announcement-preview[data-format=fullscreen] .control-preview-frame{background:var(--card)}.control-announcement-preview[data-format=fullscreen] .control-preview-message{border:0;background:transparent}
 
+.control-recovery-list{display:grid;gap:18px;margin:22px 0}.control-recovery-card dl{display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,2fr);gap:8px 16px;font-size:.8125rem;margin:20px 0}.control-recovery-card dt{color:var(--muted)}.control-recovery-card dd{margin:0;overflow-wrap:anywhere}.control-recovery-review{border-top:1px solid var(--line);padding-top:20px;margin-top:20px}.control-recovery-card [hidden]{display:none!important}.control-recovery-filters button[aria-pressed=true]{background:var(--soft);color:var(--accent)}.control-recovery-status:empty{display:none}@media(max-width:480px){.control-recovery-card dl{grid-template-columns:1fr;gap:4px}.control-recovery-card dd{margin-bottom:10px}}
+
 /* FOCUS_VISUAL_LAYERS */
 /* app/focus.css */
 /* Focus workspace: one visual system; existing actions and record models stay intact. */

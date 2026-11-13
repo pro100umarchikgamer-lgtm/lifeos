@@ -437,7 +437,7 @@ function signoutPage(host){
  host.append(panel);
 }
 
-function clearIdentity(){inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function moneyParts(value,currency,prefix=''){
  const full=prefix+money(value,currency);
@@ -620,7 +620,9 @@ function shell(){
  const measure=()=>{frame=0;if(!nav.isConnected)return;document.body.style.setProperty('--nav-height',nav.getBoundingClientRect().height+'px');document.body.style.setProperty('--app-header-height',header.getBoundingClientRect().height+'px');document.body.style.setProperty('--header-controls-width',tools.getBoundingClientRect().width+'px');};
  inboxCenter().updateBell();measure();navObserver=new ResizeObserver(()=>{if(!frame)frame=requestAnimationFrame(measure);});navObserver.observe(nav);navObserver.observe(header);navObserver.observe(tools);return m;
 }
-let privateInbox;
+let privateInbox,privateRecovery;
+function recoveryCenter(){return privateRecovery||(privateRecovery=window.UladimRecovery?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,report,refresh,money}));}
+for(const [locale,label]of Object.entries({ru:'Корзина и восстановление',en:'Trash and recovery','uz-Latn':'Savat va tiklash','uz-Cyrl':'Сават ва тиклаш'}))WEB_COPY[locale].web_recovery=label;
 function inboxCenter(){return privateInbox||(privateInbox=window.UladimInbox.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,navigate:referenceNavigate,safe:()=>state.tab==='today'&&!state.busy&&!editingView()&&![...quickTasks.values()].some(draft=>draft.title?.trim()||draft.operation||draft.busy),report}));}
 for(const [locale,label]of Object.entries({ru:'Уведомления',en:'Notifications','uz-Latn':'Bildirishnomalar','uz-Cyrl':'Билдиришномалар'}))WEB_COPY[locale].web_inbox=label;
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
@@ -1868,7 +1870,7 @@ async function renderAccountPlan(content){
 }
 async function account(m){
  const section=state.settingsTab||'profile';
- const pageTitle={notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
+ const pageTitle={recovery:'web_recovery',notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
  title(m,pageTitle[section]||'account_manage');m.classList.add('settings-page');
  m.dataset.settingsDetail=String(Boolean(state.settingsTab));
  const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
@@ -1877,6 +1879,7 @@ async function account(m){
  const back=button(t('web_back_settings'),()=>openSettings(''),'settings-back text-button');
  back.prepend(icon('back'));append(layout,navigation,content);append(m,back,layout);
  const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['devices','account_devices'],['notifications','web_notifications'],['family','family_account'],['personal-import','web_personal_import'],['plan','account_access'],['support','account_support']];
+ if(state.session.record_recovery_available===true)sections.splice(6,0,['recovery','web_recovery']);
  for(const [key,label] of sections){
   const item=settingsRow(t(label),()=>openSettings(key),'settings-item');
   item.dataset.section=key;
@@ -1913,6 +1916,7 @@ async function account(m){
  if(section==='signout')signoutPage(content);
  if(section==='notifications'){inboxCenter().settings(content);await notificationPage(content);}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
+ if(section==='recovery'){if(state.session.record_recovery_available===true&&recoveryCenter())recoveryCenter().page(content);else content.append(E('p',t('web_server_error')));}
  if(section==='security')privacy(content);
  if(section==='devices')await devices(content).catch(error=>{if(error.code==='unauthorized'){report(error);return;}if(content.isConnected){content.replaceChildren(E('h2',t('account_devices')),E('p',errorText(error),'error'),button(t('retry'),()=>openSettings('devices'),'secondary'));}});
  if(section==='family'){familyPanel(content);familyPermissions(content);}
@@ -2102,6 +2106,7 @@ function privacy(m){
  const mfa=settingsRow(t('account_mfa'),()=>customerMfa(mfa));
  append(protection,mfa,settingsRow(t('account_devices'),()=>openSettings('devices')));
  const data=group('web_account_data');
+ if(state.session.record_recovery_available===true)data.append(settingsRow(t('web_recovery'),()=>openSettings('recovery')));
  data.append(settingsRow(t('account_delete'),deletion,'danger-text'));
  call('google').then(status=>{
   if(googleStatus.isConnected)googleStatus.textContent=t(status.google_linked?'account_google_linked':'account_google_unlinked');
