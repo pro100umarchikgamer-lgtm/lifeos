@@ -45,6 +45,7 @@ def erase_in(backend, db, uid, now):
         subjects.update(r['id'] for r in db.execute('SELECT id FROM early_access WHERE email=?', (email,)))
     for subject in subjects:
         db.execute('DELETE FROM control_audit_notes WHERE subject_id=? OR actor_id=? OR actor_id=?', (subject,subject,'user:'+subject))
+        db.execute('DELETE FROM flag_proposals WHERE actor_id=?', (subject,))
     # Block account-bound operations before erasing any payload. A failed outer
     # transaction rolls back every change; the independent ledger remains safe.
     db.execute('INSERT INTO account_state VALUES(?,0,?) ON CONFLICT(user_id) DO UPDATE SET disabled_until=0,deleted_at=excluded.deleted_at', (uid, max(1, now)))
@@ -265,6 +266,7 @@ def prune_ephemeral(backend):
     if now < getattr(backend, '_privacy_prune_at', 0): return
     with backend.transaction() as db:
         db.execute('DELETE FROM control_audit_notes WHERE expires_at<=?', (now,))
+        db.execute('DELETE FROM flag_proposals WHERE used_at>0 OR expires_at<=?', (now,))
         for table in ('auth_limits','early_access_limits'):
             db.execute('DELETE FROM '+table+' WHERE until_at<=?', (now,))
         for table in ('account_reauth_grants','oauth_challenges','oauth_web_results','login_challenges','verification','password_recovery','email_changes'):

@@ -108,7 +108,8 @@ erasure transaction commits. The acknowledgment roundtrip holds only the subject
 lock; it does not hold the global ordered-sync mutation lock. Reads use a shared lock and merge
 duplicate UUIDs by greatest timestamp. Failure prevents completion rather than
 silently losing suppression. A precommit ledger entry is conservatively reapplied
-if the database transaction later fails.
+if the database transaction later fails. Repeated acknowledgment failures reuse the
+existing UUID intent timestamp without appending duplicate journal lines.
 
 Both API and mail worker first ask the configured Unix service to synchronize
 off-host truth into the local ledger, then load and apply that ledger before
@@ -156,6 +157,10 @@ New immutable Control events contain structured action reason codes, pseudonymou
 UUIDs/timestamps and minimized diffs. Detailed staff rationale is separately
 redacted for emails, phone numbers, JWTs and opaque/labeled secrets, encrypted in
 `control_audit_notes`, and erased with a related subject/actor or after 90 days.
+Flag-change previews retain their rationale only as encrypted proposal content for
+a ten-minute approval window; committing consumes the proposal immediately, and
+used/expired proposals are physically removed by the same worker sweep. Erasing a
+former staff account also removes its proposals.
 The worker physically expires notes and auth/OAuth metadata at most every 15 minutes
 while healthy. Minimized immutable security events have no automatic expiry in this
 release. Support and financial bodies are not put in those events.

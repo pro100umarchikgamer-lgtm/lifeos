@@ -312,6 +312,8 @@ class Backend(AccountSessions):
         perms=self._permissions(db,space);audience=json.loads(row['audience']);own=space['profile_id'] in audience
         return ('view_shared' in perms and row['kind'] in ('task','event','shopping')) or own and ((row['kind'] in ('budget','account') and 'view_budget' in perms) or row['kind'] in ('transaction','request') or row['kind']=='task' and 'complete_tasks' in perms)
     def _editable(self,db,actor,space,row):
+        state=db.execute('SELECT deleted_at FROM account_state WHERE user_id=?',(row['owner_id'],)).fetchone()
+        if state and state['deleted_at']: return False
         if db.execute('SELECT 1 FROM erased_financial_stubs WHERE record_id=?', (row['id'],)).fetchone(): return False
         if row['visibility']=='private':
             grant=db.execute('SELECT can_edit FROM grants WHERE record_id=? AND user_id=?',(row['id'],actor['id'])).fetchone()

@@ -225,12 +225,19 @@ class AccountLifecycle:
                     # before acknowledging an irreversible restore-suppression
                     # entry, so no new personal/family data can race this phase.
                     db.execute("UPDATE deletion_jobs SET state='erasing',last_error=NULL WHERE id=?",(job['id'],))
-            from .account_erasure import append_ledger, acknowledge, erase_in
+            from .account_erasure import append_ledger, read_ledger, acknowledge, erase_in
             path = getattr(self.backend, 'erasure_ledger_path', '')
+            erased_at=max(1,now)
             if path:
-                append_ledger(path, uid, max(1, now))
+                existing=read_ledger(path).get(uid)
+                if existing is None:
+                    append_ledger(path, uid, erased_at)
+                else:
+                    # The durable intent is immutable across ACK outages. Do
+                    # not grow the journal with a new timestamp on every tick.
+                    erased_at=existing
                 ack_socket=getattr(self.backend,'erasure_ack_socket','')
-                if ack_socket:acknowledge(ack_socket,'acknowledge',uid,max(1,now))
+                if ack_socket:acknowledge(ack_socket,'acknowledge',uid,erased_at)
             with self.backend.transaction() as db:
-                erase_in(self.backend, db, uid, max(1, now))
+                erase_in(self.backend, db, uid, erased_at)
         return True

@@ -403,11 +403,13 @@ class Control:
     def preview_flag(self, actor, name, enabled, rollout, revision, reason):
         self.require(actor, 'flags.manage')
         require(name in SAFE_FLAGS and type(enabled) is bool and type(rollout) is int and 0 <= rollout <= 100 and type(revision) is int and revision >= 0)
-        value = {'name': name, 'enabled': enabled, 'rollout': rollout, 'revision': revision, 'reason': scrub(text(reason, 500))}
+        value = {'name': name, 'enabled': enabled, 'rollout': rollout, 'revision': revision, 'reason': scrub_security(text(reason, 500))}
         pid, now = str(uuid.uuid4()), int(self.backend.clock())
         digest = token_hash(canonical(value))
+        stored=dict(value)
+        stored['reason_encrypted']=self._cipher().encrypt(stored.pop('reason').encode()).decode()
         with self.backend.transaction() as db:
-            db.execute('INSERT INTO flag_proposals VALUES(?,?,?,?,?,0)', (pid, actor.id, canonical(value), digest, now + 600))
+            db.execute('INSERT INTO flag_proposals VALUES(?,?,?,?,?,0)', (pid, actor.id, canonical(stored), digest, now + 600))
         return {'proposal_id': pid, 'digest': digest, 'preview': value, 'expires_at': now + 600}
 
     def commit_flag(self, actor, pid, digest):
@@ -417,12 +419,13 @@ class Control:
             row = db.execute('SELECT * FROM flag_proposals WHERE id=?', (pid,)).fetchone()
             require(row and row['actor_id'] == actor.id and not row['used_at'] and row['expires_at'] > int(self.backend.clock()) and hmac.compare_digest(row['digest'], str(digest)), 'proposal_invalid', 409)
             value = json.loads(row['body'])
+            reason=self._cipher().decrypt(value['reason_encrypted'].encode()).decode() if 'reason_encrypted' in value else scrub_security(value.get('reason','Flag change confirmed'))
             prior = db.execute('SELECT body,revision FROM feature_flags WHERE name=?', (value['name'],)).fetchone()
             require((prior['revision'] if prior else 0) == value['revision'], 'revision_conflict', 409)
             after = {'enabled': value['enabled'], 'rollout': value['rollout']}
             db.execute('INSERT INTO feature_flags VALUES(?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET body=excluded.body,revision=excluded.revision,actor_id=excluded.actor_id,updated_at=excluded.updated_at', (value['name'], canonical(after), value['revision'] + 1, actor.id, int(self.backend.clock())))
-            db.execute('UPDATE flag_proposals SET used_at=? WHERE id=?', (max(1, int(self.backend.clock())), pid))
-            self.audit(db, actor, value['name'], 'flag.update', json.loads(prior['body']) if prior else {}, after, value['reason'])
+            db.execute('DELETE FROM flag_proposals WHERE id=?', (pid,))
+            self.audit(db, actor, value['name'], 'flag.update', json.loads(prior['body']) if prior else {}, after, reason)
         return {'revision': value['revision'] + 1}
 
     def recover_staff(self, email, password, recovery_code):
