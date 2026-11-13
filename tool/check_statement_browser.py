@@ -100,7 +100,7 @@ def run(browser, backend, actor, workspace, origin):
     page.get_by_role('button', name='Войти', exact=True).click()
     expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
     open_tab(page, 'Финансы')
-    launch = page.locator('#content').get_by_role('button', name='Импортировать выписку', exact=True)
+    launch = page.locator('.reference-finance-group button:visible,.finance-toolbar button:visible').filter(has_text='Импортировать выписку')
     launch.click()
     dialog = page.get_by_role('dialog')
     expect(dialog.get_by_text('Для импорта нужен счёт.', exact=False)).to_be_visible()

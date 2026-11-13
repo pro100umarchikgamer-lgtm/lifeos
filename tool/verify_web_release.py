@@ -9,6 +9,7 @@ ASSETS = {
     '/app/assets/app.js': 'backend/webassets/app/app.js',
     '/app/assets/import.js': 'backend/webassets/app/import.js',
     '/app/assets/statement-formats.js': 'backend/webassets/app/statement-formats.js',
+    '/app/assets/statement-worker.js': 'backend/webassets/app/statement-worker.js',
     '/app/sw.js': 'backend/webassets/app/sw.js',
     '/assets/design.css': 'backend/webassets/design.css',
     '/assets/web.js': 'backend/webassets/web.js',
