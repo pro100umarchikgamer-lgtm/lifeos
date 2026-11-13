@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Receber lembretes de orçamento",
     "inbox_budget_thresholds": "Lembrar ao atingir",
     "inbox_budget_every": "A cada {step}% e aos 100%",
-    "inbox_budget_custom": "Limites próprios: {values}"
+    "inbox_budget_custom": "Limites próprios: {values}",
+    "privacy_delete_impact": "O perfil na nuvem e as suas contribuições serão apagados após {hours} h. Os saldos familiares podem mudar; os outros mantêm os seus dados e transferências. Os dados locais ficam no dispositivo. Pode cancelar durante este prazo.",
+    "privacy_family_blocked": "Antes de apagar a conta, transfira a família para outro progenitor e aguarde a sua aceitação, ou feche-a explicitamente para todos.",
+    "privacy_close_impact": "Fechar «{name}» para todos? Todos os membros perderão o acesso. Os dados próprios dos outros ficam guardados. Não é possível desfazer o fecho.",
+    "privacy_transfer_impact": "Pedir a {recipient} para assumir a responsabilidade por «{name}». Deve aceitar separadamente. Até lá, continua a ser o proprietário.",
+    "privacy_accept_impact": "Aceitar a responsabilidade por «{name}»? Passará a ser proprietário da família. Este é o seu consentimento separado à transferência.",
+    "privacy_transfer_waiting": "A aguardar a aceitação do destinatário até",
+    "privacy_staff_blocked": "Esta conta tem acesso de pessoal. Um proprietário autorizado ou operador deve rever a passagem de responsabilidade e revogar o acesso antes de apagar. O administrador de emergência deve continuar disponível.",
+    "privacy_typed_confirmation": "Para confirmar, escreva {phrase} abaixo.",
+    "privacy_mfa_hint": "Introduza um novo código do autenticador. O Google não substitui a verificação em dois passos.",
+    "privacy_identity_changed": "A conta iniciada mudou. Volte atrás e abra esta página novamente.",
+    "privacy_request_pending": "Eliminação pedida. Pode cancelar antes de {date}.",
+    "privacy_google_unavailable": "A confirmação Google não está disponível. Tente novamente ou contacte o apoio; uma conta apenas Google não precisa de palavra-passe.",
+    "privacy_reference_transfer": "Uma conta associada foi removida. Os montantes e a data da transferência estão preservados. Este histórico é só de leitura.",
+    "privacy_record_unavailable": "Este registo foi removido ou já não está disponível. Não pode ser editado nem restaurado.",
+    "privacy_currency_unavailable": "Moeda indisponível. Montante registado em unidades mínimas:",
+    "privacy_cloud_erasing": "A eliminação na nuvem está a terminar. A conta já não pode alterar dados na nuvem. As cópias locais permanecem no dispositivo.",
+    "privacy_cloud_unavailable": "Esta conta na nuvem não está disponível. Uma eliminação pedida pode ainda estar em curso. Os dados pessoais no dispositivo permanecem.",
+    "privacy_action_unavailable": "Não foi possível concluir a ação. A conta atual e os dados locais foram mantidos. Verifique o destinatário ou tente novamente."
   },
   "plurals": {
     "record_count": {

@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Büdcə xatırlatmaları al",
     "inbox_budget_thresholds": "Bu həddə xatırlat",
     "inbox_budget_every": "Hər {step}% və 100%-də",
-    "inbox_budget_custom": "Fərdi hədlər: {values}"
+    "inbox_budget_custom": "Fərdi hədlər: {values}",
+    "privacy_delete_impact": "Bulud profili və töhfələriniz {hours} saatdan sonra silinəcək. Ailə qalıqları dəyişə bilər; başqaları öz qeydlərini və köçürmələrini saxlayır. Cihazdakı yerli qeydlər qalır. Bu müddətdə ləğv edə bilərsiniz.",
+    "privacy_family_blocked": "Hesabı silməzdən əvvəl ailəni başqa valideynə verin və onun razılığını gözləyin, yaxud hamı üçün açıq şəkildə bağlayın.",
+    "privacy_close_impact": "“{name}” hamı üçün bağlansın? Bütün üzvlər girişi itirəcək. Başqalarının öz qeydləri silinmir. Bağlanmanı geri qaytarmaq olmaz.",
+    "privacy_transfer_impact": "{recipient} şəxsinə “{name}” üçün məsuliyyəti təklif edin. O ayrıca razılaşmalıdır. O vaxta qədər sahib sizsiniz.",
+    "privacy_accept_impact": "“{name}” üçün məsuliyyəti qəbul edirsiniz? Ailənin sahibi olacaqsınız. Bu, ötürməyə ayrıca razılığınızdır.",
+    "privacy_transfer_waiting": "Alıcının razılığı bu vaxta qədər gözlənilir:",
+    "privacy_staff_blocked": "Bu hesabın əməkdaş girişi var. Səlahiyyətli sahib və ya operator silinmədən əvvəl məsuliyyəti yoxlanılmış qaydada təhvil verməli və girişi ləğv etməlidir. Fövqəladə administrator əlçatan qalmalıdır.",
+    "privacy_typed_confirmation": "Təsdiqləmək üçün aşağıya {phrase} yazın.",
+    "privacy_mfa_hint": "Autentifikatorun yeni kodunu daxil edin. Google təsdiqi ikiaddımlı yoxlamanı əvəz etmir.",
+    "privacy_identity_changed": "Daxil olunmuş hesab dəyişdi. Geri qayıdıb səhifəni yenidən açın.",
+    "privacy_request_pending": "Silinmə istənilib. {date} vaxtından əvvəl ləğv edə bilərsiniz.",
+    "privacy_google_unavailable": "Google təsdiqi əlçatan deyil. Yenidən cəhd edin və ya dəstəyə yazın; yalnız Google hesabına parol lazım deyil.",
+    "privacy_reference_transfer": "Əlaqəli hesab silinib. Köçürmənizin məbləğləri və tarixi saxlanıb. Bu tarixçə yalnız oxunur.",
+    "privacy_record_unavailable": "Qeyd silinib və ya artıq əlçatan deyil. Dəyişdirmək və bərpa etmək olmaz.",
+    "privacy_currency_unavailable": "Valyuta əlçatan deyil. Ən kiçik vahidlərlə saxlanmış məbləğ:",
+    "privacy_cloud_erasing": "Buludda silinmə tamamlanır. Hesab artıq bulud məlumatlarını dəyişə bilmir. Cihazdakı yerli nüsxələr qalır.",
+    "privacy_cloud_unavailable": "Bu bulud hesabı əlçatan deyil. Silinmə istənilibsə, proses davam edə bilər. Cihazdakı şəxsi qeydlər qalır.",
+    "privacy_action_unavailable": "Əməliyyat tamamlanmadı. Cari hesabınız və yerli qeydlər saxlanıb. Alıcını yoxlayın və ya yenidən cəhd edin."
   },
   "plurals": {
     "record_count": {

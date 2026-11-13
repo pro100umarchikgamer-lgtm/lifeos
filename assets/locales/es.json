@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Recibir recordatorios de presupuesto",
     "inbox_budget_thresholds": "Recordarme al llegar a",
     "inbox_budget_every": "Cada {step}% y al 100%",
-    "inbox_budget_custom": "Umbrales propios: {values}"
+    "inbox_budget_custom": "Umbrales propios: {values}",
+    "privacy_delete_impact": "Tu perfil en la nube y tus aportaciones se borrarán tras {hours} h. Los saldos familiares pueden cambiar; los demás conservan sus datos y transferencias. Los datos locales se quedan en el dispositivo. Puedes cancelar durante este plazo.",
+    "privacy_family_blocked": "Antes de borrar la cuenta, transfiere la familia a otro progenitor y espera su aceptación, o ciérrala explícitamente para todos.",
+    "privacy_close_impact": "¿Cerrar «{name}» para todos? Cada miembro perderá el acceso. Los datos propios de los demás se conservan. El cierre no se puede deshacer.",
+    "privacy_transfer_impact": "Pedir a {recipient} que asuma la responsabilidad de «{name}». Debe aceptar por separado. Tú sigues siendo propietario hasta entonces.",
+    "privacy_accept_impact": "¿Aceptar la responsabilidad de «{name}»? Serás propietario de la familia. Este es tu consentimiento separado a la transferencia.",
+    "privacy_transfer_waiting": "Esperando la aceptación del destinatario hasta",
+    "privacy_staff_blocked": "Esta cuenta tiene acceso de personal. Un propietario autorizado u operador debe revisar el traspaso y revocar el acceso antes de borrarla. El administrador de emergencia debe seguir disponible.",
+    "privacy_typed_confirmation": "Para confirmar, escribe {phrase} abajo.",
+    "privacy_mfa_hint": "Introduce un código nuevo del autenticador. Google no sustituye la verificación en dos pasos.",
+    "privacy_identity_changed": "La cuenta conectada cambió. Vuelve atrás y abre esta página de nuevo.",
+    "privacy_request_pending": "Borrado solicitado. Puedes cancelar antes del {date}.",
+    "privacy_google_unavailable": "La confirmación de Google no está disponible. Reintenta o contacta con soporte; una cuenta solo de Google no necesita contraseña.",
+    "privacy_reference_transfer": "Se eliminó una cuenta vinculada. Los importes y la fecha de tu transferencia se conservan. Este historial es de solo lectura.",
+    "privacy_record_unavailable": "Este registro se eliminó o ya no está disponible. No se puede editar ni restaurar.",
+    "privacy_currency_unavailable": "Moneda no disponible. Importe registrado en unidades mínimas:",
+    "privacy_cloud_erasing": "El borrado en la nube está terminando. La cuenta ya no puede cambiar datos en la nube. Las copias locales permanecen.",
+    "privacy_cloud_unavailable": "Esta cuenta en la nube no está disponible. Si solicitaste borrarla, el proceso puede seguir en curso. Los datos personales del dispositivo permanecen.",
+    "privacy_action_unavailable": "No se pudo completar la acción. Tu cuenta actual y los datos locales se conservan. Revisa el destinatario o reintenta."
   },
   "plurals": {
     "record_count": {

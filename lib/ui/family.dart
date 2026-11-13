@@ -4,11 +4,13 @@ import '../localization/language_pack.dart';
 import '../domain/models.dart';
 import '../sync/controller.dart';
 import '../sync/contracts.dart';
+import '../sync/record_projection.dart';
 import 'design.dart';
 import 'selection.dart';
 import 'account_center.dart';
 import 'settings_surfaces.dart';
 import 'preference_choices.dart';
+import 'family_financial_reference.dart';
 
 class FamilyPage extends StatefulWidget {
   const FamilyPage({super.key, required this.controller, required this.pack});
@@ -385,7 +387,11 @@ class _FamilyPageState extends State<FamilyPage> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      t('family_error_${c.error}'),
+                      t(c.error == 'account_unavailable'
+                          ? (c.account == null
+                              ? 'privacy_cloud_unavailable'
+                              : 'privacy_action_unavailable')
+                          : 'family_error_${c.error}'),
                       style:
                           TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
@@ -956,8 +962,35 @@ class FamilyRecordEditor extends StatefulWidget {
 }
 
 class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
+  late final String _scopeAtOpen;
+  String get _scopeNow =>
+      '${c.account?['user_id']}|${c.accountOrigin}|${c.workspace}';
+  bool get _unavailable =>
+      _scopeAtOpen != _scopeNow ||
+      widget.record != null &&
+          ((widget.record!['deleted'] ?? 0) == 1 ||
+              c.erasedRecordIds.contains(widget.record!['id']) ||
+              c.mirrorLoaded &&
+                  !c.records.any((row) => row['id'] == widget.record!['id']));
   void changed() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (_unavailable) {
+      for (final field in [
+        title,
+        amount,
+        received,
+        currency,
+        date,
+        end,
+        items,
+        start,
+        zone
+      ]) {
+        field.clear();
+      }
+      if (widget.record != null) widget.record!['data'] = <String, dynamic>{};
+    }
+    setState(() {});
   }
 
   String kind = 'note',
@@ -992,9 +1025,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       widget.record == null ||
       widget.record!['owner_id'] == c.account?['user_id'];
   bool get completionOnly => role == 'child' && !own;
-  bool get canEdit => widget.record?['editable'] != false;
-  List<Json> get accounts =>
-      c.records.where((r) => r['kind'] == 'account').toList();
+  bool get canEdit =>
+      !_unavailable &&
+      widget.record?['editable'] != false &&
+      (widget.record == null || !c.transferUsesErasedAccount(widget.record!));
+  List<Json> get accounts => c.records
+      .where((r) => r['kind'] == 'account' && isActiveSyncRecord(r))
+      .toList();
   int parseAmount(
     TextEditingController field,
     String code, {
@@ -1014,12 +1051,14 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   @override
   void initState() {
     super.initState();
+    _scopeAtOpen = _scopeNow;
     c.addListener(changed);
     kind = widget.initialKind ?? kind;
     flow = widget.initialFlow ?? flow;
     role = c.roster?['space']?['role'] as String? ?? 'adult';
     final r = widget.record;
     if (r != null) {
+      if (_unavailable) return;
       kind = r['kind'] as String;
       visibility = r['visibility'] as String;
       audience = (r['audience'] as List).cast<String>().toSet();
@@ -1056,11 +1095,10 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       rollover = d['rollover'] as String? ?? 'none';
       assignment = d['assignment'] as String? ?? 'any';
       if (kind == 'transfer') {
-        final target = accounts.where((r) => r['id'] == to).firstOrNull;
+        currency.text = c.accountCurrency(from) ?? currency.text;
+        amount.text = amountText(d['sent_minor'] as int, currency.text);
         received.text = amountText(
-          d['received_minor'] as int,
-          target?['data']?['currency'] as String? ?? currency.text,
-        );
+            d['received_minor'] as int, c.accountCurrency(to) ?? currency.text);
       }
       if (kind == 'shopping') {
         for (final item in d['items'] as List) {
@@ -1363,7 +1401,12 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   }
 
   Future<void> fulfill() async {
-    final transfers = c.records.where((r) => r['kind'] == 'transfer').toList();
+    final transfers = c.records
+        .where((r) =>
+            r['kind'] == 'transfer' &&
+            isActiveSyncRecord(r) &&
+            !c.transferUsesErasedAccount(r))
+        .toList();
     final target = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -1373,7 +1416,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, r['id'] as String),
               child: Text(
-                '${r['data']['date']} · ${Currency.fromCode(accounts.where((a) => a['id'] == r['data']['to_id']).firstOrNull?['data']?['currency'] as String? ?? 'RUB').format(r['data']['received_minor'] as int)}',
+                '${r['data']['date']} · ${referenceMoney(widget.pack, r['data']['received_minor'], c.accountCurrency(r['data']['to_id'] as String))}',
               ),
             ),
         ],
@@ -1462,6 +1505,26 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       );
   @override
   Widget build(BuildContext context) {
+    if (_unavailable) {
+      return Scaffold(
+          appBar: settingsAppBar(context, t('family_record_add')),
+          body: SafeArea(
+              child: Padding(
+                  padding: settingsPagePadding(context),
+                  child: Text(t('privacy_record_unavailable')))));
+    }
+    if (widget.record != null && c.transferUsesErasedAccount(widget.record!)) {
+      final latest = c.records
+              .where((row) => row['id'] == widget.record!['id'])
+              .firstOrNull ??
+          widget.record!;
+      return FamilyTransferReferencePage(
+          pack: widget.pack,
+          record: latest,
+          fromCurrency: c.accountCurrency(latest['data']['from_id'] as String),
+          toCurrency: c.accountCurrency(latest['data']['to_id'] as String));
+    }
+
     final choices = {for (final k in c.creatableKinds) k: t('family_kind_$k')};
     final accountChoices = {
       '': t('family_none'),

@@ -7,6 +7,7 @@ import '../sync/controller.dart';
 import 'design.dart';
 import 'settings_surfaces.dart';
 import 'subscription_access.dart';
+import 'privacy_lifecycle.dart';
 import '../platform/native_bridge.dart';
 
 import 'package:flutter/services.dart';
@@ -37,7 +38,8 @@ PreferredSizeWidget _accountBar(
     toolbarHeight: (titleLayout.height + 24)
         .clamp(kToolbarHeight, double.infinity)
         .toDouble(),
-    title: Text(title, softWrap: true, overflow: TextOverflow.visible),
+    title: Text(title,
+        softWrap: true, maxLines: 10, overflow: TextOverflow.visible),
     actions: actions,
   );
 }
@@ -122,7 +124,30 @@ class _AccountSectionPage extends StatefulWidget {
 class _AccountSectionState extends State<_AccountSectionPage> {
   Json? data;
   String? error;
-  bool busy = false;
+  bool busy = false, principalUnavailable = false;
+  late final Object? _apiAtOpen;
+  late final Object? _userAtOpen;
+  bool get _current =>
+      widget.controller.account != null &&
+      identical(_apiAtOpen, widget.controller.api) &&
+      _userAtOpen == widget.controller.account?['user_id'];
+  void _principalChanged() {
+    if (mounted && !_current) {
+      setState(() {
+        data = null;
+        error = t(principalUnavailable
+            ? 'privacy_cloud_unavailable'
+            : 'privacy_identity_changed');
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_principalChanged);
+    super.dispose();
+  }
+
   String t(String key) => widget.pack.t(key);
   AccountRequest get request =>
       widget.request ?? widget.controller.api!.request;
@@ -130,6 +155,9 @@ class _AccountSectionState extends State<_AccountSectionPage> {
   @override
   void initState() {
     super.initState();
+    _apiAtOpen = widget.controller.api;
+    _userAtOpen = widget.controller.account?['user_id'];
+    widget.controller.addListener(_principalChanged);
     load();
   }
 
@@ -141,7 +169,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
       };
 
   Future<void> run(Future<void> Function() action) async {
-    if (busy) return;
+    if (busy || !_current) return;
     setState(() {
       busy = true;
       error = null;
@@ -149,6 +177,20 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     try {
       await action();
     } on SyncFailure catch (failure) {
+      if (failure.code == 'account_unavailable') {
+        final restricted = await widget.controller
+            .recheckUnavailablePrincipal(request: request);
+        if (mounted) {
+          setState(() {
+            principalUnavailable = restricted;
+            data = restricted ? null : data;
+            error = t(restricted
+                ? 'privacy_cloud_unavailable'
+                : 'privacy_action_unavailable');
+          });
+        }
+        return;
+      }
       if (mounted) {
         setState(
           () => error = failure.code == 'ownership_transfer_required'
@@ -159,7 +201,17 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     } catch (_) {
       if (mounted) setState(() => error = t('family_error_offline'));
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() {
+          busy = false;
+          if (!_current) {
+            data = null;
+            error = t(principalUnavailable
+                ? 'privacy_cloud_unavailable'
+                : 'privacy_identity_changed');
+          }
+        });
+      }
     }
   }
 
@@ -327,41 +379,6 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     });
   }
 
-  Future<void> deletion(bool cancel) async {
-    if (!cancel) {
-      final approved = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(t('account_delete')),
-          content: SingleChildScrollView(
-            child: Text(t('account_delete_notice')),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t('cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t('confirm')),
-            ),
-          ],
-        ),
-      );
-      if (approved != true || !mounted) return;
-    }
-    final password = await ask(t('family_password'), secret: true);
-    if (password == null || !mounted) return;
-    await run(() async {
-      await request(
-        '/v1/account/lifecycle/${cancel ? 'cancel-deletion' : 'deletion'}',
-        body: {'password': password, if (!cancel) 'confirmation': 'DELETE'},
-      );
-      final result = await request(path);
-      if (mounted) setState(() => data = result);
-    });
-  }
-
   Future<void> emailChange() async {
     final email = await ask(t('family_email'));
     if (email == null || !mounted) return;
@@ -389,46 +406,6 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     if (!changed || !mounted) return;
     await widget.controller.signOut();
     if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-
-  Future<void> transferOwnership(Json transfer, {bool accept = false}) async {
-    final label = t(accept ? 'account_accept_transfer' : 'account_transfer');
-    final approved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(label),
-        content: Text(transfer['name'] as String),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(t('confirm')),
-          ),
-        ],
-      ),
-    );
-    if (approved != true || !mounted) return;
-    final password = await ask(t('family_password'), secret: true);
-    if (password == null || !mounted) return;
-    await run(() async {
-      await request(
-        '/v1/account/lifecycle/${accept ? 'accept-transfer' : 'transfer'}',
-        body: {
-          'password': password,
-          if (accept)
-            'transfer_id': transfer['id']
-          else ...{
-            'workspace_id': transfer['id'],
-            'user_id': transfer['eligible_parent_id'],
-          },
-        },
-      );
-      final result = await request(path);
-      if (mounted) setState(() => data = result);
-    });
   }
 
   Future<void> showPrivateMaterial(
@@ -729,47 +706,20 @@ class _AccountSectionState extends State<_AccountSectionPage> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Text(t('account_delete_notice')),
-                      for (final raw
-                          in data!['ownership_transfer_required'] as List? ??
-                              [])
-                        if (object(raw)['eligible_parent_id'] != null)
-                          ListTile(
-                            title: Text(object(raw)['name'] as String),
-                            subtitle: Text(t('account_transfer')),
-                            trailing: const Icon(Icons.swap_horiz),
-                            onTap: busy
-                                ? null
-                                : () => transferOwnership(object(raw)),
-                          ),
-                      for (final raw
-                          in data!['incoming_transfers'] as List? ?? [])
-                        ListTile(
-                          title: Text(object(raw)['name'] as String),
-                          subtitle: Text(t('account_accept_transfer')),
-                          trailing: const Icon(Icons.handshake_outlined),
-                          onTap: busy
-                              ? null
-                              : () =>
-                                  transferOwnership(object(raw), accept: true),
-                        ),
-                      if (data!['request'] != null)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Text(date(object(data!['request'])['due_at'])),
-                        ),
-                      const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        onPressed: busy ? null : () => deletion(false),
-                        icon: const Icon(Icons.person_remove_outlined),
-                        label: Text(t('account_delete')),
+                      AccountPrivacyLifecycle(
+                        controller: widget.controller,
+                        pack: widget.pack,
+                        request: request,
+                        initialData: data!,
+                        onSupport: () =>
+                            Navigator.of(context).push<void>(MaterialPageRoute(
+                          builder: (_) => _AccountSectionPage(
+                              controller: widget.controller,
+                              pack: widget.pack,
+                              section: _AccountSection.support,
+                              request: widget.request),
+                        )),
                       ),
-                      if (data!['request'] != null &&
-                          object(data!['request'])['state'] == 'pending')
-                        TextButton(
-                          onPressed: busy ? null : () => deletion(true),
-                          child: Text(t('account_cancel_delete')),
-                        ),
                     ],
                 },
             ],

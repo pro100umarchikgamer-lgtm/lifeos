@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Receive budget reminders",
     "inbox_budget_thresholds": "Remind me at",
     "inbox_budget_every": "Every {step}% and at 100%",
-    "inbox_budget_custom": "Custom: {values}"
+    "inbox_budget_custom": "Custom: {values}",
+    "privacy_delete_impact": "Your cloud profile and contributions will be erased after {hours} hours. Family balances may change; other members keep their own records and transfer history. Local records on this device remain. You can cancel during the waiting period.",
+    "privacy_family_blocked": "Before deleting your account, transfer family ownership to another parent and wait for their acceptance, or explicitly close the family for everyone.",
+    "privacy_close_impact": "Close “{name}” for every member? Everyone loses access to this family. Other members’ own records are not deleted. Closing a family cannot be undone.",
+    "privacy_transfer_impact": "Ask {recipient} to take responsibility for “{name}”. They must accept separately. You remain the owner until they accept.",
+    "privacy_accept_impact": "Accept responsibility for “{name}”? You will become the family owner. This is your separate consent to the transfer.",
+    "privacy_transfer_waiting": "Waiting for the recipient’s acceptance until",
+    "privacy_staff_blocked": "This account has staff access. An authorized owner or operator must complete a reviewed handover and revoke staff access before deletion. The emergency administrator must remain available.",
+    "privacy_typed_confirmation": "To confirm this action, type {phrase} below.",
+    "privacy_mfa_hint": "Enter a fresh authenticator code. Google confirmation does not replace two-step verification.",
+    "privacy_identity_changed": "The signed-in account changed. Go back and open this page again.",
+    "privacy_request_pending": "Deletion is requested. You can cancel before {date}.",
+    "privacy_google_unavailable": "Google confirmation is unavailable. Try again or contact support; a Google-only account does not need a password.",
+    "privacy_reference_transfer": "A linked account was removed. Your transfer’s recorded amounts and date are preserved. This historical transfer is read-only.",
+    "privacy_record_unavailable": "This record was removed or is no longer available. It cannot be edited or restored.",
+    "privacy_currency_unavailable": "Currency unavailable. Recorded amount in minor units:",
+    "privacy_cloud_erasing": "Cloud deletion is being completed. This account can no longer change cloud data. Local copies on this device remain.",
+    "privacy_cloud_unavailable": "This cloud account is unavailable. If deletion was requested, it may still be completing. Personal records on this device remain.",
+    "privacy_action_unavailable": "This action could not be completed. Your current account and local records have been kept. Check the recipient or try again."
   },
   "plurals": {
     "record_count": {

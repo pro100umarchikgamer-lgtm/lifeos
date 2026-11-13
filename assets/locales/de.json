@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Budget-Erinnerungen erhalten",
     "inbox_budget_thresholds": "Erinnern bei",
     "inbox_budget_every": "Alle {step}% und bei 100%",
-    "inbox_budget_custom": "Eigene Schwellen: {values}"
+    "inbox_budget_custom": "Eigene Schwellen: {values}",
+    "privacy_delete_impact": "Dein Cloud-Profil und deine Beiträge werden nach {hours} Stunden gelöscht. Familienkontostände können sich ändern; andere behalten eigene Einträge und Überweisungen. Lokale Einträge bleiben auf dem Gerät. In dieser Zeit kannst du abbrechen.",
+    "privacy_family_blocked": "Übertrage die Familie vor dem Löschen an einen anderen Elternteil und warte auf dessen Zustimmung, oder schließe sie ausdrücklich für alle.",
+    "privacy_close_impact": "„{name}“ für alle schließen? Alle verlieren den Zugriff. Eigene Einträge anderer Mitglieder bleiben erhalten. Das Schließen lässt sich nicht rückgängig machen.",
+    "privacy_transfer_impact": "Bitte {recipient}, die Verantwortung für „{name}“ zu übernehmen. Die Person muss separat zustimmen. Bis dahin bleibst du Eigentümer.",
+    "privacy_accept_impact": "Verantwortung für „{name}“ übernehmen? Du wirst Eigentümer der Familie. Dies ist deine separate Zustimmung zur Übertragung.",
+    "privacy_transfer_waiting": "Warten auf Zustimmung des Empfängers bis",
+    "privacy_staff_blocked": "Dieses Konto hat Mitarbeiterzugriff. Ein berechtigter Eigentümer oder Betreiber muss die Verantwortung geprüft übergeben und den Zugriff vor dem Löschen entziehen. Der Notfalladministrator muss erreichbar bleiben.",
+    "privacy_typed_confirmation": "Gib zur Bestätigung unten {phrase} ein.",
+    "privacy_mfa_hint": "Gib einen neuen Authenticator-Code ein. Google ersetzt die Bestätigung in zwei Schritten nicht.",
+    "privacy_identity_changed": "Das angemeldete Konto hat sich geändert. Gehe zurück und öffne die Seite erneut.",
+    "privacy_request_pending": "Löschung beantragt. Du kannst bis {date} abbrechen.",
+    "privacy_google_unavailable": "Google-Bestätigung nicht verfügbar. Versuche es erneut oder kontaktiere den Support. Ein reines Google-Konto benötigt kein Passwort.",
+    "privacy_reference_transfer": "Ein verknüpftes Konto wurde entfernt. Beträge und Datum deiner Überweisung bleiben erhalten. Dieser Verlaufseintrag ist schreibgeschützt.",
+    "privacy_record_unavailable": "Dieser Eintrag wurde entfernt oder ist nicht mehr verfügbar. Bearbeiten und Wiederherstellen sind gesperrt.",
+    "privacy_currency_unavailable": "Währung nicht verfügbar. Gespeicherter Betrag in kleinsten Einheiten:",
+    "privacy_cloud_erasing": "Die Cloud-Löschung wird abgeschlossen. Dieses Konto kann Cloud-Daten nicht mehr ändern. Lokale Kopien bleiben auf dem Gerät.",
+    "privacy_cloud_unavailable": "Dieses Cloud-Konto ist nicht verfügbar. Eine beantragte Löschung wird möglicherweise noch abgeschlossen. Persönliche Einträge auf dem Gerät bleiben erhalten.",
+    "privacy_action_unavailable": "Die Aktion konnte nicht abgeschlossen werden. Dein aktuelles Konto und lokale Einträge bleiben erhalten. Prüfe den Empfänger oder versuche es erneut."
   },
   "plurals": {
     "record_count": {

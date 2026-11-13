@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Recevoir les rappels de budget",
     "inbox_budget_thresholds": "Me rappeler à",
     "inbox_budget_every": "Tous les {step}% et à 100%",
-    "inbox_budget_custom": "Seuils personnalisés : {values}"
+    "inbox_budget_custom": "Seuils personnalisés : {values}",
+    "privacy_delete_impact": "Votre profil cloud et vos contributions seront effacés après {hours} h. Les soldes familiaux peuvent changer ; les autres conservent leurs données et virements. Les données locales restent sur l’appareil. Vous pouvez annuler durant ce délai.",
+    "privacy_family_blocked": "Avant de supprimer le compte, transférez la famille à un autre parent et attendez son accord, ou fermez-la explicitement pour tous.",
+    "privacy_close_impact": "Fermer « {name} » pour tous ? Chaque membre perdra l’accès. Les données personnelles des autres restent. La fermeture est irréversible.",
+    "privacy_transfer_impact": "Demander à {recipient} de prendre la responsabilité de « {name} ». Son accord séparé est nécessaire. Vous restez propriétaire jusque-là.",
+    "privacy_accept_impact": "Accepter la responsabilité de « {name} » ? Vous deviendrez propriétaire de la famille. Ceci est votre accord séparé au transfert.",
+    "privacy_transfer_waiting": "En attente de l’accord du destinataire jusqu’au",
+    "privacy_staff_blocked": "Ce compte dispose d’un accès personnel. Un propriétaire autorisé ou opérateur doit organiser une passation vérifiée et révoquer cet accès avant la suppression. L’administrateur d’urgence doit rester disponible.",
+    "privacy_typed_confirmation": "Pour confirmer, saisissez {phrase} ci-dessous.",
+    "privacy_mfa_hint": "Saisissez un nouveau code de l’authentificateur. Google ne remplace pas la validation en deux étapes.",
+    "privacy_identity_changed": "Le compte connecté a changé. Revenez en arrière et rouvrez cette page.",
+    "privacy_request_pending": "Suppression demandée. Vous pouvez annuler avant le {date}.",
+    "privacy_google_unavailable": "La confirmation Google est indisponible. Réessayez ou contactez l’assistance ; un compte Google seul n’a pas besoin de mot de passe.",
+    "privacy_reference_transfer": "Un compte lié a été supprimé. Les montants et la date du virement sont conservés. Cet historique est en lecture seule.",
+    "privacy_record_unavailable": "Cette donnée a été supprimée ou n’est plus accessible. Elle ne peut être modifiée ni restaurée.",
+    "privacy_currency_unavailable": "Devise indisponible. Montant enregistré en unités minimales :",
+    "privacy_cloud_erasing": "La suppression cloud se termine. Ce compte ne peut plus modifier les données cloud. Les copies locales restent sur l’appareil.",
+    "privacy_cloud_unavailable": "Ce compte cloud est indisponible. Une suppression demandée peut encore être en cours. Les données personnelles sur cet appareil restent.",
+    "privacy_action_unavailable": "L’action n’a pas abouti. Votre compte actuel et vos données locales sont conservés. Vérifiez le destinataire ou réessayez."
   },
   "plurals": {
     "record_count": {

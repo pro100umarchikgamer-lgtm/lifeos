@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Ricevi promemoria del budget",
     "inbox_budget_thresholds": "Ricordami al",
     "inbox_budget_every": "Ogni {step}% e al 100%",
-    "inbox_budget_custom": "Soglie personalizzate: {values}"
+    "inbox_budget_custom": "Soglie personalizzate: {values}",
+    "privacy_delete_impact": "Il profilo cloud e i tuoi contributi saranno cancellati dopo {hours} ore. I saldi familiari possono cambiare; gli altri conservano i propri dati e trasferimenti. I dati locali restano sul dispositivo. Puoi annullare entro questo periodo.",
+    "privacy_family_blocked": "Prima di eliminare il conto, trasferisci la famiglia a un altro genitore e attendi il suo consenso, oppure chiudila esplicitamente per tutti.",
+    "privacy_close_impact": "Chiudere «{name}» per tutti? Ogni membro perderà l’accesso. I dati personali degli altri restano. La chiusura è irreversibile.",
+    "privacy_transfer_impact": "Chiedi a {recipient} di assumere la responsabilità di «{name}». Deve accettare separatamente. Fino ad allora resti proprietario.",
+    "privacy_accept_impact": "Accettare la responsabilità di «{name}»? Diventerai proprietario della famiglia. Questo è il tuo consenso separato al trasferimento.",
+    "privacy_transfer_waiting": "In attesa del consenso del destinatario fino al",
+    "privacy_staff_blocked": "Questo account ha accesso come personale. Un proprietario autorizzato o operatore deve verificare il passaggio di responsabilità e revocare l’accesso prima dell’eliminazione. L’amministratore d’emergenza deve restare disponibile.",
+    "privacy_typed_confirmation": "Per confermare, scrivi {phrase} qui sotto.",
+    "privacy_mfa_hint": "Inserisci un nuovo codice dell’autenticatore. Google non sostituisce la verifica in due passaggi.",
+    "privacy_identity_changed": "L’account connesso è cambiato. Torna indietro e riapri la pagina.",
+    "privacy_request_pending": "Eliminazione richiesta. Puoi annullare prima del {date}.",
+    "privacy_google_unavailable": "La conferma Google non è disponibile. Riprova o contatta l’assistenza; un account solo Google non richiede una password.",
+    "privacy_reference_transfer": "Un conto collegato è stato rimosso. Gli importi e la data del trasferimento restano invariati. Questo storico è in sola lettura.",
+    "privacy_record_unavailable": "Questa voce è stata rimossa o non è più disponibile. Non può essere modificata né ripristinata.",
+    "privacy_currency_unavailable": "Valuta non disponibile. Importo registrato in unità minime:",
+    "privacy_cloud_erasing": "L’eliminazione cloud è in fase di completamento. L’account non può più modificare dati cloud. Le copie locali restano sul dispositivo.",
+    "privacy_cloud_unavailable": "Questo account cloud non è disponibile. Un’eliminazione richiesta potrebbe essere ancora in corso. I dati personali sul dispositivo restano.",
+    "privacy_action_unavailable": "Impossibile completare l’azione. L’account attuale e i dati locali sono conservati. Controlla il destinatario o riprova."
   },
   "plurals": {
     "record_count": {

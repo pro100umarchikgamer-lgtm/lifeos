@@ -785,7 +785,25 @@
     "inbox_budget_enabled": "Budjet eslatmalarini olish",
     "inbox_budget_thresholds": "Shu chegarada eslatish",
     "inbox_budget_every": "Har {step}% da va 100% da",
-    "inbox_budget_custom": "Shaxsiy chegaralar: {values}"
+    "inbox_budget_custom": "Shaxsiy chegaralar: {values}",
+    "privacy_delete_impact": "Bulutdagi profil va yozuvlaringiz {hours} soatdan keyin o‘chiriladi. Oila qoldiqlari o‘zgarishi mumkin; boshqalar o‘z yozuvlari va o‘tkazmalarini saqlaydi. Qurilmadagi mahalliy yozuvlar qoladi. Shu muddat ichida bekor qilishingiz mumkin.",
+    "privacy_family_blocked": "Hisobni o‘chirishdan avval oilani boshqa ota-onaga topshirib, roziligini kuting yoki barcha uchun aniq tarzda yoping.",
+    "privacy_close_impact": "“{name}” hamma uchun yopilsinmi? Barcha a’zolar kirish huquqini yo‘qotadi. Boshqalarning o‘z yozuvlari o‘chirilmaydi. Yopishni ortga qaytarib bo‘lmaydi.",
+    "privacy_transfer_impact": "{recipient}ga “{name}” uchun mas’uliyatni taklif qiling. U alohida rozi bo‘lishi kerak. Ungacha egasi siz bo‘lib qolasiz.",
+    "privacy_accept_impact": "“{name}” uchun mas’uliyatni qabul qilasizmi? Oila egasi bo‘lasiz. Bu topshirishga alohida roziligingizdir.",
+    "privacy_transfer_waiting": "Oluvchining roziligi shu vaqtgacha kutiladi:",
+    "privacy_staff_blocked": "Hisobda xodim huquqi bor. O‘chirishdan avval vakolatli ega yoki operator mas’uliyatni tekshirilgan tartibda topshirib, xizmat kirishini bekor qilishi kerak. Favqulodda administrator mavjud bo‘lib qolishi zarur.",
+    "privacy_typed_confirmation": "Tasdiqlash uchun pastga {phrase} yozing.",
+    "privacy_mfa_hint": "Autentifikatorning yangi kodini kiriting. Google tasdig‘i ikki bosqichli tekshiruv o‘rnini bosmaydi.",
+    "privacy_identity_changed": "Kirilgan hisob o‘zgardi. Orqaga qaytib, sahifani yana oching.",
+    "privacy_request_pending": "O‘chirish so‘raldi. {date}gacha bekor qilishingiz mumkin.",
+    "privacy_google_unavailable": "Google tasdig‘i mavjud emas. Qayta urining yoki yordamga murojaat qiling; faqat Google hisobiga parol kerak emas.",
+    "privacy_reference_transfer": "Bog‘langan hisob o‘chirildi. O‘tkazmangiz summalari va sanasi saqlangan. Bu tarix faqat o‘qish uchun.",
+    "privacy_record_unavailable": "Yozuv o‘chirildi yoki endi mavjud emas. Uni tahrirlab yoki tiklab bo‘lmaydi.",
+    "privacy_currency_unavailable": "Valyuta mavjud emas. Eng kichik birliklarda saqlangan summa:",
+    "privacy_cloud_erasing": "Bulutdagi o‘chirish yakunlanmoqda. Hisob endi bulut ma’lumotlarini o‘zgartira olmaydi. Qurilmadagi mahalliy nusxalar qoladi.",
+    "privacy_cloud_unavailable": "Bu bulut hisobi mavjud emas. O‘chirish so‘ralgan bo‘lsa, jarayon hali tugayotgan bo‘lishi mumkin. Qurilmadagi shaxsiy yozuvlar qoladi.",
+    "privacy_action_unavailable": "Amal tugallanmadi. Joriy hisob va mahalliy yozuvlar saqlandi. Oluvchini tekshiring yoki qayta urining."
   },
   "plurals": {
     "record_count": {

@@ -4,9 +4,11 @@ import '../app_controller.dart';
 import '../domain/models.dart';
 import '../domain/family_finance.dart';
 import '../sync/contracts.dart';
+import '../sync/record_projection.dart';
 import 'settings_surfaces.dart';
 import 'family.dart';
 import 'money_format.dart';
+import 'family_financial_reference.dart';
 
 class FamilyDashboard extends StatelessWidget {
   const FamilyDashboard(
@@ -21,7 +23,7 @@ class FamilyDashboard extends StatelessWidget {
     return ListenableBuilder(
       listenable: f,
       builder: (context, _) {
-        final rows = f.records;
+        final rows = f.records.where(isActiveSyncRecord).toList();
         final title = visibleKinds == null
             ? t(switch (tab) {
                 1 => 'plans',
@@ -79,6 +81,9 @@ class FamilyDashboard extends StatelessWidget {
           if (r['kind'] == 'transaction' || r['kind'] == 'request') {
             return Currency.fromCode(r['data']['currency'] as String)
                 .format(r['data']['amount_minor'] as int);
+          }
+          if (r['kind'] == 'transfer') {
+            return '${referenceMoney(c.pack, r['data']['sent_minor'], f.accountCurrency(r['data']['from_id'] as String))} → ${referenceMoney(c.pack, r['data']['received_minor'], f.accountCurrency(r['data']['to_id'] as String))}';
           }
           if (r['kind'] == 'task') {
             return t(
