@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lifeos/ui/account_center.dart';
 import 'package:lifeos/ui/family.dart';
+import 'package:lifeos/platform/native_bridge.dart';
 import 'package:lifeos/ui/privacy_lifecycle.dart';
 import 'privacy_lifecycle_ui_test.dart' show status;
 import 'package:lifeos/localization/language_pack.dart';
@@ -11,6 +12,16 @@ import 'package:lifeos/sync/controller.dart';
 import 'package:lifeos/sync/contracts.dart';
 import 'google_login_test.dart' show LoginApi;
 import 'support/sync_memory.dart';
+
+class PendingAccountGoogle extends NativeBridge {
+  final result = Completer<String>();
+  int calls = 0;
+  @override
+  Future<String> googleSignIn(String clientId, String nonce) {
+    calls++;
+    return result.future;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -259,5 +270,86 @@ void main() {
     await tester.tap(find.text(catalog.packs['en']!.t('confirm')));
     await tester.pumpAndSettle();
     expect(writes,isEmpty,reason:'Old Alice closure consent must not apply to Bob family');
+  });
+ for (final afterDisplay in [false,true]) {
+   testWidgets('Alice MFA material must stay hidden under Bob session; switchAfterDisplay=$afterDisplay',(tester) async {
+  final catalog=await tester.runAsync(PackCatalog.load);final pack=catalog!.packs['en']!;
+  final reply=Completer<Json>();
+  final alice=LoginApi('https://example.test',(path,body) async=>{})..token='alice';
+  final bob=LoginApi('https://example.test',(path,body) async=>{'user_id':'bob'})..token='bob';
+  final c=FamilyController(MemorySyncStore())..api=alice..account={'user_id':'alice'};
+  addTearDown(c.dispose);addTearDown(alice.close);
+  Future<Json> request(String path,{Json? body}) async {
+   if(path.endsWith('/mfa/begin')) return reply.future;
+   if(path.endsWith('/mfa')) return {'enabled':false};
+   return {'has_password':true,'google_linked':false,'mfa_required':false,'request':null,'ownership_transfer_required':[],'incoming_transfers':[]};
+  }
+  await tester.pumpWidget(MaterialApp(home:AccountCenter(controller:c,pack:pack,request:request)));
+  await tester.tap(find.text(pack.t('account_privacy')));await tester.pumpAndSettle();
+  await tester.tap(find.text(pack.t('account_mfa')));await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField),'alice-synthetic-password');await tester.pump();
+  await tester.tap(find.byType(FilledButton));await tester.pump();
+  if(!afterDisplay){c.api=bob;c.account={'user_id':'bob'};c.publish();}
+  reply.complete({'totp_secret':'ALICE-SYNTHETIC-MFA-SECRET','enrollment':'e'*43});
+  await tester.pumpAndSettle();
+  if(afterDisplay){
+   expect(find.text('ALICE-SYNTHETIC-MFA-SECRET'),findsOneWidget);
+   c.api=bob;c.account={'user_id':'bob'};c.publish();await tester.pumpAndSettle();
+  }
+  expect(c.account?['user_id'],'bob');
+  expect(find.text('ALICE-SYNTHETIC-MFA-SECRET'),findsNothing,reason:'A successful old response must not open private Alice material after principal switch');
+ });
+ }
+  testWidgets('Google SDK continuation cannot finish linking under a new principal',
+      (tester) async {
+    final catalog = await tester.runAsync(PackCatalog.load);
+    final pack = catalog!.packs['en']!;
+    final native = PendingAccountGoogle();
+    final alice = LoginApi('https://example.test', (path, body) async => {})
+      ..token = 'alice';
+    final bob = LoginApi('https://example.test', (path, body) async => {})
+      ..token = 'bob';
+    final c = FamilyController(MemorySyncStore())
+      ..api = alice
+      ..account = {'user_id': 'alice'};
+    addTearDown(c.dispose);
+    addTearDown(alice.close);
+    var finishes = 0;
+    Future<Json> request(String path, {Json? body}) async {
+      if (path == '/v1/account/google') {
+        return {
+        'has_password': true, 'google_linked': false, 'google_enabled': true};
+      }
+      if (path.endsWith('/mfa')) return {'enabled': false};
+      if (path.endsWith('/google/link')) {
+        return {
+        'client_id': 'client', 'nonce': 'nonce', 'challenge': 'challenge'};
+      }
+      if (path.endsWith('/google/finish')) finishes++;
+      return status();
+    }
+    await tester.pumpWidget(MaterialApp(home: AccountCenter(
+        controller: c, pack: pack, request: request, native: native)));
+    await tester.tap(find.text(pack.t('account_privacy')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(pack.t('account_google_methods')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(pack.t('account_google_connect')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'alice-password');
+    await tester.pump();
+    await tester.tap(find.byType(FilledButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(native.calls, 1);
+    c.api = bob;
+    c.account = {'user_id': 'bob'};
+    c.publish();
+    native.result.complete('synthetic-alice-provider-token');
+    await tester.pumpAndSettle();
+    expect(finishes, 0);
+    expect(c.account?['user_id'], 'bob');
+    expect(bob.token, 'bob');
+    expect(tester.takeException(), isNull);
   });
 }

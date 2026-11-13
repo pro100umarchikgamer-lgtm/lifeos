@@ -50,10 +50,12 @@ class AccountCenter extends StatelessWidget {
     required this.controller,
     required this.pack,
     this.request,
+    this.native,
   });
   final FamilyController controller;
   final LanguagePack pack;
   final AccountRequest? request;
+  final NativeBridge? native;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -83,6 +85,7 @@ class AccountCenter extends StatelessWidget {
                             pack: pack,
                             section: section,
                             request: request,
+                            native: native,
                           ),
                         ),
                       ),
@@ -112,11 +115,13 @@ class _AccountSectionPage extends StatefulWidget {
     required this.pack,
     required this.section,
     this.request,
+    this.native,
   });
   final FamilyController controller;
   final LanguagePack pack;
   final _AccountSection section;
   final AccountRequest? request;
+  final NativeBridge? native;
   @override
   State<_AccountSectionPage> createState() => _AccountSectionState();
 }
@@ -125,12 +130,10 @@ class _AccountSectionState extends State<_AccountSectionPage> {
   Json? data;
   String? error;
   bool busy = false, principalUnavailable = false;
-  late final Object? _apiAtOpen;
-  late final Object? _userAtOpen;
+  late final AccountPrincipal _principalAtOpen;
   bool get _current =>
-      widget.controller.account != null &&
-      identical(_apiAtOpen, widget.controller.api) &&
-      _userAtOpen == widget.controller.account?['user_id'];
+      mounted && widget.controller.account != null &&
+      widget.controller.isCurrentPrincipal(_principalAtOpen);
   void _principalChanged() {
     if (mounted && !_current) {
       setState(() {
@@ -149,14 +152,29 @@ class _AccountSectionState extends State<_AccountSectionPage> {
   }
 
   String t(String key) => widget.pack.t(key);
-  AccountRequest get request =>
-      widget.request ?? widget.controller.api!.request;
+  AccountRequest get request {
+    final delegate = widget.request;
+    final client = widget.controller.api;
+    return (String path, {Json? body}) async {
+      if (!_current) throw const SyncFailure('identity_mismatch');
+      final result = await (delegate ?? client!.request)(path, body: body);
+      if (!_current) throw const SyncFailure('identity_mismatch');
+      return result;
+    };
+  }
+
+  Widget _principalPage(Widget Function() build) => AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) => _current ? build() : Scaffold(
+          appBar: _accountBar(context, t('account_privacy')),
+          body: SafeArea(child: Padding(
+              padding: settingsPagePadding(context),
+              child: Text(t('privacy_identity_changed'))))));
 
   @override
   void initState() {
     super.initState();
-    _apiAtOpen = widget.controller.api;
-    _userAtOpen = widget.controller.account?['user_id'];
+    _principalAtOpen = widget.controller.capturePrincipal();
     widget.controller.addListener(_principalChanged);
     load();
   }
@@ -228,17 +246,19 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     bool secret = false,
     bool multiline = false,
   }) async {
-    return Navigator.of(context).push<String>(
+    if (!_current) return null;
+    final value = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (_) => AccountInputPage(
+        builder: (_) => _principalPage(() => AccountInputPage(
           title: label,
           confirm: t('confirm'),
           cancel: t('cancel'),
           secret: secret,
           multiline: multiline,
-        ),
+        )),
       ),
     );
+    return _current ? value : null;
   }
 
   Future<void> revoke(String id, {bool current = false}) async {
@@ -250,8 +270,11 @@ class _AccountSectionState extends State<_AccountSectionPage> {
         body: {'device_id': id, 'password': password},
       );
       if (current) {
+        if (!_current) return;
         await widget.controller.signOut();
-        if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+        if (mounted && widget.controller.account == null) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
         return;
       }
       final result = await request(path);
@@ -407,8 +430,11 @@ class _AccountSectionState extends State<_AccountSectionPage> {
       changed = true;
     });
     if (!changed || !mounted) return;
+    if (!_current) return;
     await widget.controller.signOut();
-    if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    if (mounted && widget.controller.account == null) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   Future<void> showPrivateMaterial(
@@ -416,8 +442,9 @@ class _AccountSectionState extends State<_AccountSectionPage> {
     String body,
     String material,
   ) async {
+    if (!_current) return;
     await Navigator.of(context).push<void>(MaterialPageRoute(
-        builder: (ctx) => Scaffold(
+        builder: (ctx) => _principalPage(() => Scaffold(
               appBar: _accountBar(ctx, title),
               body: SafeArea(
                   child: ListView(padding: settingsPagePadding(ctx), children: [
@@ -429,7 +456,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(t('account_done'))),
               ])),
-            )));
+            ))));
   }
 
   Future<void> manageGoogle() async {
@@ -513,6 +540,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
           '/v1/account/google/unlink',
           body: {'password': password, 'code': code},
         );
+        if (!_current) return;
         await widget.controller.signOut();
       } else {
         final grant = await request(
@@ -520,10 +548,11 @@ class _AccountSectionState extends State<_AccountSectionPage> {
           body: {'password': password, 'code': code},
         );
         try {
-          final token = await NativeBridge().googleSignIn(
+          final token = await (widget.native ?? NativeBridge()).googleSignIn(
             grant['client_id'] as String,
             grant['nonce'] as String,
           );
+          if (!_current) return;
           await request(
             '/v1/auth/google/finish',
             body: {'challenge': grant['challenge'], 'id_token': token},
@@ -604,8 +633,11 @@ class _AccountSectionState extends State<_AccountSectionPage> {
       );
       if (!mounted) return;
     }
+    if (!_current) return;
     await widget.controller.signOut();
-    if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    if (mounted && widget.controller.account == null) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   String date(Object? value) => value is int
@@ -713,6 +745,7 @@ class _AccountSectionState extends State<_AccountSectionPage> {
                         controller: widget.controller,
                         pack: widget.pack,
                         request: request,
+                        native: widget.native,
                         initialData: data!,
                         onSupport: () =>
                             Navigator.of(context).push<void>(MaterialPageRoute(
@@ -720,7 +753,8 @@ class _AccountSectionState extends State<_AccountSectionPage> {
                               controller: widget.controller,
                               pack: widget.pack,
                               section: _AccountSection.support,
-                              request: widget.request),
+                              request: widget.request,
+                              native: widget.native),
                         )),
                       ),
                     ],
