@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Bounded searchable dialogs resize naturally above the keyboard.
+/// Values stay in their field until the user opens a bounded, searchable picker.
 class LifeSelect<T> extends StatelessWidget {
   const LifeSelect({
     super.key,
@@ -23,98 +23,125 @@ class LifeSelect<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    button: true,
-    enabled: onChanged != null,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onChanged == null
-          ? null
-          : () async {
-              FocusScope.of(context).unfocus();
-              final T? selected;
-              if (choices.length <= 8 && !dialog) {
-                final box = context.findRenderObject() as RenderBox;
-                final overlay =
-                    Navigator.of(context).overlay!.context.findRenderObject()
-                        as RenderBox;
-                final origin = box.localToGlobal(
-                  Offset.zero,
-                  ancestor: overlay,
-                );
-                selected = await showMenu<T>(
-                  context: context,
-                  position: RelativeRect.fromRect(
-                    origin & box.size,
-                    Offset.zero & overlay.size,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 180,
-                    maxWidth: 320,
-                    maxHeight: 360,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  items: [
-                    for (final e in choices.entries)
-                      PopupMenuItem<T>(
-                        key: ValueKey('choice_${e.key}'),
-                        value: e.key,
-                        child: Text(e.value),
+        button: true,
+        enabled: onChanged != null,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onChanged == null
+              ? null
+              : () async {
+                  FocusScope.of(context).unfocus();
+                  final T? selected;
+                  if (choices.length <= 8 &&
+                      !dialog &&
+                      searchLabel == null &&
+                      queryChoices == null) {
+                    final box = context.findRenderObject() as RenderBox;
+                    final overlay = Navigator.of(context)
+                        .overlay!
+                        .context
+                        .findRenderObject() as RenderBox;
+                    final origin = box.localToGlobal(
+                      Offset.zero,
+                      ancestor: overlay,
+                    );
+                    selected = await showMenu<T>(
+                      context: context,
+                      position: RelativeRect.fromRect(
+                        origin & box.size,
+                        Offset.zero & overlay.size,
                       ),
-                  ],
-                );
-              } else {
-                selected = await showDialog<T>(
-                  context: context,
-                  builder: (_) => _ChoiceDialog<T>(
-                    label: label,
-                    value: value,
-                    choices: choices,
-                    searchLabel: searchLabel,
-                    queryChoices: queryChoices,
+                      constraints: const BoxConstraints(
+                        minWidth: 180,
+                        maxWidth: 320,
+                        maxHeight: 360,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      items: [
+                        for (final e in choices.entries)
+                          PopupMenuItem<T>(
+                            key: ValueKey('choice_${e.key}'),
+                            value: e.key,
+                            child: Row(children: [
+                              Expanded(child: Text(e.value)),
+                              if (e.key == value) ...[
+                                const SizedBox(width: 12),
+                                Icon(Icons.check_rounded,
+                                    size: 20,
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
+                              ],
+                            ]),
+                          ),
+                      ],
+                    );
+                  } else {
+                    final picker = _ChoiceDialog<T>(
+                      label: label,
+                      value: value,
+                      choices: choices,
+                      searchLabel: searchLabel,
+                      queryChoices: queryChoices,
+                    );
+                    selected = MediaQuery.sizeOf(context).width < 600
+                        ? await showModalBottomSheet<T>(
+                            context: context,
+                            isScrollControlled: true,
+                            useSafeArea: true,
+                            showDragHandle: true,
+                            builder: (_) => picker,
+                          )
+                        : await showDialog<T>(
+                            context: context,
+                            builder: (_) => Dialog(
+                              insetPadding: const EdgeInsets.all(24),
+                              child: picker,
+                            ),
+                          );
+                  }
+                  if (selected != null && context.mounted) {
+                    onChanged?.call(selected);
+                  }
+                },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showLabel)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 6),
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
-                );
-              }
-              if (selected != null && context.mounted) {
-                onChanged?.call(selected);
-              }
-            },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 48),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (showLabel)
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 6),
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                InputDecorator(
+                  decoration: InputDecoration(
+                    enabled: onChanged != null,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                          child: Text(choices[value] ?? '$value',
+                              maxLines: 2, overflow: TextOverflow.ellipsis)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.expand_more_rounded),
+                    ],
+                  ),
                 ),
-              ),
-            InputDecorator(
-              decoration: InputDecoration(
-                enabled: onChanged != null,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(child: Text(choices[value] ?? '$value')),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.expand_more_rounded),
-                ],
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _ChoiceDialog<T> extends StatefulWidget {
@@ -146,101 +173,101 @@ class _ChoiceDialogState<T> extends State<_ChoiceDialog<T>> {
     final entries = candidates.entries
         .where(
           (e) => '${e.value} ${e.key}'.toLowerCase().contains(
-            query.trim().toLowerCase(),
-          ),
+                query.trim().toLowerCase(),
+              ),
         )
         .toList();
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: LayoutBuilder(
-        builder: (context, box) => SizedBox(
-          key: const Key('selection_dialog_body'),
-          width: 440,
-          height: box.maxHeight.clamp(0.0, 480.0),
-          child: Column(
-            children: [
+    final size = MediaQuery.sizeOf(context);
+    final available = size.height - MediaQuery.viewInsetsOf(context).bottom;
+    final heightLimit = (available * .68).clamp(160.0, 480.0);
+    final maxHeight = (76.0 +
+            (widget.searchLabel != null || widget.queryChoices != null
+                ? 68
+                : 0) +
+            widget.choices.length.clamp(1, 6) * 56)
+        .clamp(0.0, heightLimit);
+    final colors = Theme.of(context).colorScheme;
+    return AnimatedPadding(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SizedBox(
+        key: const Key('selection_dialog_body'),
+        width: 440,
+        height: maxHeight,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 8, 12),
+              child: Row(children: [
+                Expanded(
+                    child: Text(widget.label,
+                        style: Theme.of(context).textTheme.titleMedium)),
+                IconButton(
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ]),
+            ),
+            if (widget.searchLabel != null || widget.queryChoices != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.label,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: MaterialLocalizations.of(context)
-                          .closeButtonTooltip,
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-              ),
-              if (widget.searchLabel != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (MediaQuery.textScalerOf(context).scale(1) > 1.3) ...[
-                        Text(widget.searchLabel!),
-                        const SizedBox(height: 8),
-                      ],
-                      Semantics(
-                        label: widget.searchLabel,
-                        child: TextField(
-                          key: const Key('selection_search'),
-                          textInputAction: TextInputAction.search,
-                          decoration: InputDecoration(
-                            labelText:
-                                MediaQuery.textScalerOf(context).scale(1) > 1.3
-                                ? null
-                                : widget.searchLabel,
-                            prefixIcon: const Icon(Icons.search_rounded),
-                          ),
-                          onChanged: (v) => setState(() => query = v),
-                        ),
-                      ),
-                    ],
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  key: const Key('selection_search'),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    labelText: widget.searchLabel ??
+                        MaterialLocalizations.of(context).searchFieldLabel,
+                    prefixIcon: const Icon(Icons.search_rounded),
                   ),
-                ),
-              Expanded(
-                child: ListView.builder(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  itemCount: entries.length,
-                  itemBuilder: (context, i) {
-                    final e = entries[i], selected = e.key == widget.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Material(
-                        color: selected
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                        child: ListTile(
-                          key: ValueKey('choice_${e.key}'),
-                          minTileHeight: 56,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          selected: selected,
-                          title: Text(e.value),
-                          trailing: selected
-                              ? const Icon(Icons.check_rounded)
-                              : null,
-                          onTap: () => Navigator.pop(context, e.key),
-                        ),
-                      ),
-                    );
-                  },
+                  onChanged: (v) => setState(() => query = v),
                 ),
               ),
-            ],
-          ),
+            Divider(height: 1, color: colors.outlineVariant),
+            Expanded(
+              child: entries.isEmpty
+                  ? Center(
+                      child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        Localizations.localeOf(context).languageCode == 'ru'
+                            ? 'Ничего не найдено'
+                            : 'No results',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: colors.onSurfaceVariant),
+                      ),
+                    ))
+                  : ListView.builder(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+                      itemCount: entries.length,
+                      itemBuilder: (context, i) {
+                        final e = entries[i], selected = e.key == widget.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: ListTile(
+                            key: ValueKey('choice_${e.key}'),
+                            minTileHeight: 52,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            selected: selected,
+                            selectedTileColor: colors.primaryContainer,
+                            title: Text(e.value),
+                            trailing: selected
+                                ? const Icon(Icons.check_rounded, size: 20)
+                                : null,
+                            onTap: () => Navigator.pop(context, e.key),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );

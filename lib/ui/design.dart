@@ -17,9 +17,9 @@ class LifePalette {
   static const cream = Color(0xfffff4e5);
   static const ink = Color(0xff25242d);
   static const muted = Color(0xff706d79);
-  static const background = Color(0xfff5f6f2);
-  static const darkBackground = Color(0xff1e1c27);
-  static const darkSurface = Color(0xff262431);
+  static const background = Color(0xfff7f8fa);
+  static const darkBackground = Color(0xff15171c);
+  static const darkSurface = Color(0xff1e2128);
 }
 
 Color lifeAccent(BuildContext context, Color color) {
@@ -80,19 +80,19 @@ ThemeData lifeTheme(
             : null,
   ).copyWith(
     surface: dark ? LifePalette.darkSurface : Colors.white,
-    onSurface: dark ? const Color(0xfff2f0f8) : LifePalette.ink,
-    onSurfaceVariant: dark ? const Color(0xffaaa6b6) : LifePalette.muted,
+    onSurface: dark ? const Color(0xfff0f1f4) : LifePalette.ink,
+    onSurfaceVariant: dark ? const Color(0xffa8adb8) : LifePalette.muted,
     surfaceContainerLowest:
         dark ? LifePalette.darkBackground : LifePalette.background,
     surfaceContainerLow:
-        dark ? const Color(0xff2b2937) : const Color(0xfffafafa),
-    surfaceContainer: dark ? const Color(0xff2d2a38) : const Color(0xfff5f4f7),
+        dark ? const Color(0xff24272f) : const Color(0xfffafafa),
+    surfaceContainer: dark ? const Color(0xff282b33) : const Color(0xfff3f4f7),
     surfaceContainerHigh:
-        dark ? const Color(0xff302d3b) : const Color(0xfff0eff3),
+        dark ? const Color(0xff2c3039) : const Color(0xffeef0f4),
     surfaceContainerHighest:
-        dark ? const Color(0xff373340) : const Color(0xffe9e8ed),
-    outline: dark ? const Color(0xff746f81) : const Color(0xff938e9d),
-    outlineVariant: dark ? const Color(0xff3a3746) : const Color(0xffe9e8ed),
+        dark ? const Color(0xff333741) : const Color(0xffe4e7ec),
+    outline: dark ? const Color(0xff7a8291) : const Color(0xff8c93a0),
+    outlineVariant: dark ? const Color(0xff343944) : const Color(0xffe4e7ec),
     primaryContainer: violet
         ? dark
             ? const Color(0xff373048)
@@ -107,14 +107,46 @@ ThemeData lifeTheme(
   final radius = switch (appearance.shape) {
     'subtle' => 8.0,
     'rounded' => 28.0,
-    _ => 12.0,
+    _ => 16.0,
   };
   final shape = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(radius),
   );
-  final textTheme = ThemeData(brightness: brightness).textTheme.apply(
+  final textTheme = ThemeData(brightness: brightness)
+      .textTheme
+      .copyWith(
+        headlineMedium: const TextStyle(
+            fontSize: 30,
+            height: 1.2,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -.8),
+        headlineSmall: const TextStyle(
+            fontSize: 26,
+            height: 1.25,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -.6),
+        titleLarge: const TextStyle(
+            fontSize: 20,
+            height: 1.3,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -.3),
+        titleMedium: const TextStyle(
+            fontSize: 18,
+            height: 1.35,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -.2),
+        bodyLarge: const TextStyle(fontSize: 16, height: 1.45),
+        bodyMedium: const TextStyle(fontSize: 15, height: 1.45),
+        bodySmall: const TextStyle(fontSize: 12, height: 1.4),
+        labelLarge: const TextStyle(
+            fontSize: 14, height: 1.3, fontWeight: FontWeight.w600),
+        labelMedium: const TextStyle(
+            fontSize: 12, height: 1.3, fontWeight: FontWeight.w500),
+      )
+      .apply(
     bodyColor: scheme.onSurface,
     displayColor: scheme.onSurface,
+    fontFamily: 'Roboto',
     fontFamilyFallback: const ['NotoSansGeorgian', 'NotoSansArmenian'],
   );
   return ThemeData(
@@ -126,8 +158,25 @@ ThemeData lifeTheme(
         dark ? LifePalette.darkBackground : LifePalette.background,
     textTheme: textTheme,
     dividerColor: scheme.outlineVariant,
-    appBarTheme: AppBarTheme(
+    splashFactory: InkSparkle.splashFactory,
+    iconTheme: IconThemeData(color: scheme.onSurfaceVariant, size: 22),
+    listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      minVerticalPadding: 12,
+      iconColor: scheme.onSurfaceVariant,
+      titleTextStyle:
+          textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      subtitleTextStyle:
+          textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+    ),
+    dialogTheme: DialogThemeData(
       backgroundColor: scheme.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: shape,
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor:
+          dark ? LifePalette.darkBackground : LifePalette.background,
       foregroundColor: scheme.onSurface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
@@ -142,14 +191,18 @@ ThemeData lifeTheme(
       unselectedIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
       selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
           color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
-      unselectedLabelTextStyle:
-          textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant, fontSize: 12),
+      unselectedLabelTextStyle: textTheme.labelMedium
+          ?.copyWith(color: scheme.onSurfaceVariant, fontSize: 12),
     ),
     bottomAppBarTheme: BottomAppBarThemeData(
         color: scheme.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0),
     inputDecorationTheme: InputDecorationTheme(
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      alignLabelWithHint: true,
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
+      hintStyle: TextStyle(color: scheme.onSurfaceVariant, fontSize: 15),
       filled: true,
       fillColor: scheme.surface,
       border: OutlineInputBorder(
@@ -169,17 +222,22 @@ ThemeData lifeTheme(
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: shape,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: shape,
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+      style: TextButton.styleFrom(
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
     ),
     chipTheme: ChipThemeData(
       shape: shape,
@@ -188,6 +246,8 @@ ThemeData lifeTheme(
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: scheme.surface,
+      surfaceTintColor: Colors.transparent,
+      modalBarrierColor: Colors.black.withValues(alpha: .32),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
       ),
@@ -212,7 +272,7 @@ class LifeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context), colors = theme.colorScheme;
     final surface =
-        theme.extension<LifeSurfaces>() ?? const LifeSurfaces(12, 'soft');
+        theme.extension<LifeSurfaces>() ?? const LifeSurfaces(16, 'soft');
     return Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -262,39 +322,32 @@ class LifeHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        border: Border.all(color: colors.outlineVariant),
         borderRadius: BorderRadius.circular(
-          Theme.of(context).extension<LifeSurfaces>()?.radius ?? 20,
-        ),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [colors.primaryContainer, colors.secondaryContainer],
+          Theme.of(context).extension<LifeSurfaces>()?.radius ?? 16,
         ),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ExcludeSemantics(
-            child: Icon(icon, size: 32, color: colors.onPrimaryContainer),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: colors.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: colors.onPrimaryContainer, height: 1.5),
-          ),
+          ExcludeSemantics(child: Icon(icon, size: 24, color: colors.primary)),
+          const SizedBox(width: 14),
+          Expanded(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              Text(body,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: colors.onSurfaceVariant)),
+            ],
+          )),
         ],
       ),
     );

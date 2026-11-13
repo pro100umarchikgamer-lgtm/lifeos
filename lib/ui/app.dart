@@ -106,6 +106,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _tab = 0;
   bool _profileOpen = false;
   bool _notesOpen = false;
+  bool _calendarOpen = false;
+  bool _modulesOpen = false;
   String _moduleQuery = '';
   DateTimeRange _period = DateTimeRange(
     start: DateTime(DateTime.now().year, DateTime.now().month),
@@ -193,13 +195,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   String? _summaryCurrency;
   AppController get c => widget.controller;
-  static const _tabs = ['today', 'plans', 'finances', 'modules'];
-  static const _icons = [
-    Icons.home_rounded,
-    Icons.format_list_bulleted_rounded,
-    Icons.bar_chart_rounded,
-    Icons.grid_view_rounded,
+  static const _tabs = [
+    'today',
+    'nav_tasks',
+    'nav_calendar',
+    'nav_notes',
+    'finances',
+    'profile'
   ];
+  static const _icons = [
+    Icons.space_dashboard_outlined,
+    Icons.checklist_rounded,
+    Icons.calendar_today_outlined,
+    Icons.notes_outlined,
+    Icons.account_balance_wallet_outlined,
+    Icons.person_outline_rounded,
+  ];
+  int get _destination => _profileOpen || _modulesOpen
+      ? 5
+      : _calendarOpen
+          ? 2
+          : _notesOpen
+              ? 3
+              : _tab == 2
+                  ? 4
+                  : _tab == 1
+                      ? 1
+                      : 0;
 
   void _message(String key) {
     if (mounted) LifeNoticeScope.of(context).show(c.pack.t(key));
@@ -299,35 +321,60 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     FocusScope.of(context).unfocus();
     showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
+      showDragHandle: true,
       isScrollControlled: true,
       sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
           ? AnimationStyle.noAnimation
           : null,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (sheetContext) => SafeArea(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * .85,
+            maxWidth: 560,
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .65,
           ),
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    c.pack.t('quick_add'),
-                    style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 4, 8),
+                  child: Row(children: [
+                    Expanded(
+                        child: Text(c.pack.t('quick_add'),
+                            style: Theme.of(context).textTheme.titleMedium)),
+                    IconButton(
+                      tooltip:
+                          MaterialLocalizations.of(context).closeButtonTooltip,
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ]),
+                ),
+                for (final kind in EntryKind.values.where((kind) =>
+                    !familyMode ||
+                    c.family!.roster?['space']?['role'] != 'child' ||
+                    kind != EntryKind.income &&
+                        c.family!.creatableKinds.contains(
+                            kind == EntryKind.expense
+                                ? 'transaction'
+                                : kind.name)))
+                  ListTile(
+                    key: Key('quick_${kind.name}'),
+                    leading: Icon(switch (kind) {
+                      EntryKind.expense => Icons.remove_circle_outline,
+                      EntryKind.income => Icons.add_circle_outline,
+                      EntryKind.task => Icons.check_circle_outline,
+                      EntryKind.note => Icons.notes_outlined,
+                    }),
+                    title: Text(c.pack.t(kind.name)),
+                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _add(kind);
+                    },
                   ),
-                  const SizedBox(height: 16),
-                  _actionGrid(detailed: false, sheetContext: sheetContext),
-                ],
-              ),
+              ]),
             ),
           ),
         ),
@@ -352,12 +399,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
   }
 
+  // Existing dashboard links use the legacy tab indices.
   void _navigate(int tab) {
     LifeNoticeScope.of(context).clear();
     setState(() {
       _tab = tab;
       _profileOpen = false;
       _notesOpen = false;
+      _calendarOpen = false;
+      _modulesOpen = false;
+    });
+  }
+
+  void _selectDestination(int index) {
+    LifeNoticeScope.of(context).clear();
+    setState(() {
+      _profileOpen = index == 5;
+      _calendarOpen = index == 2;
+      _notesOpen = index == 3;
+      _modulesOpen = false;
+      _tab = switch (index) { 1 || 2 => 1, 4 => 2, 3 => 3, _ => 0 };
     });
   }
 
@@ -365,327 +426,263 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= 720;
-    final wideHome = wide && _tab == 0 && !_profileOpen && !familyMode;
+    final wideHome = wide && _destination == 0 && !familyMode;
     final items = <Widget>[
-      _header(),
-      const SizedBox(height: 18),
-      if (_profileOpen)
-        ..._profile()
-      else if (familyMode)
+      if (_modulesOpen) ...[
+        Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => _selectDestination(5),
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: Text(c.pack.t('profile')),
+            )),
+        ..._modules(),
+      ] else if (_profileOpen) ...[
+        ..._profile(),
+        const SizedBox(height: 16),
+        LifeCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              key: const Key('nav_modules'),
+              leading: const Icon(Icons.grid_view_outlined),
+              title: Text(c.pack.t('all_sections')),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              onTap: () => setState(() {
+                _modulesOpen = true;
+                _profileOpen = false;
+              }),
+            )),
+      ] else if (familyMode)
         FamilyDashboard(controller: c, tab: _tab)
-      else if (_tab == 0)
-        ..._home()
-      else if (_tab == 1) ...[
-        CalendarPanel(controller: c),
-        const SizedBox(height: 18),
-        ..._entries(EntryKind.task),
-      ] else if (_tab == 2)
-        ..._finance()
+      else if (_calendarOpen)
+        CalendarPanel(controller: c)
       else if (_notesOpen)
         ..._entries(EntryKind.note)
+      else if (_tab == 0)
+        ..._home()
+      else if (_tab == 1)
+        ..._entries(EntryKind.task)
+      else if (_tab == 2)
+        ..._finance()
       else
         ..._modules(),
     ];
     final content = ListView.builder(
-      key: Key(_profileOpen ? 'profile_page' : _tabs[_tab]),
+      key: Key(_modulesOpen
+          ? 'modules_page'
+          : _profileOpen
+              ? 'profile_page'
+              : '${_tabs[_destination].replaceFirst('nav_', '')}_page'),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: EdgeInsets.fromLTRB(
-        wideHome ? 24 : width < 350 ? 14 : 18,
-        8,
-        wideHome ? 24 : width < 350 ? 14 : 18,
-        26,
-      ),
+      padding:
+          EdgeInsets.fromLTRB(wideHome ? 24 : 16, 20, wideHome ? 24 : 16, 28),
       itemCount: items.length,
       itemBuilder: (_, index) => items[index],
     );
     return PopScope(
-      canPop: _tab == 0 && !_profileOpen && !_notesOpen,
+      canPop: _destination == 0,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _navigate(0);
+        if (!didPop) {
+          if (_modulesOpen) {
+            _selectDestination(5);
+          } else {
+            _navigate(0);
+          }
+        }
       },
       child: Scaffold(
         body: SafeArea(
-          child: Row(
-            children: [
-              if (wide)
-                NavigationRail(
-                  minWidth: 96,
-                  selectedIndex: _tab,
-                  onDestinationSelected: _navigate,
-                  labelType: NavigationRailLabelType.all,
-                  backgroundColor: Theme.of(context).colorScheme.surface,
-                  destinations: [
-                    for (var i = 0; i < _tabs.length; i++)
-                      NavigationRailDestination(
-                        icon: Icon(_icons[i]),
-                        label: Text(c.pack.t(_tabs[i])),
-                      ),
-                  ],
-                ),
+          child: Row(children: [
+            if (wide) _sideNavigation(width >= 1080),
+            Expanded(
+                child: Column(children: [
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 12, 8),
+                  child: _header()),
+              Divider(
+                  height: 1,
+                  color: Theme.of(context).colorScheme.outlineVariant),
               Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: wideHome ? 1120 : 560),
-                    child: AnimatedSwitcher(
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 180),
-                      child: content,
-                    ),
-                  ),
+                  child: Center(
+                      child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxWidth: wideHome
+                        ? 1120
+                        : wide
+                            ? 800
+                            : 560),
+                child: AnimatedSwitcher(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 160),
+                  child: content,
                 ),
-              ),
-            ],
-          ),
+              ))),
+            ])),
+          ]),
         ),
         bottomNavigationBar: wide ? null : _bottomBar(),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        floatingActionButton: wide ? _addButton() : null,
       ),
     );
   }
 
-  Widget _header() => Row(
-    children: [
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            GestureDetector(
-              onTap: () => _navigate(0),
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'ULA',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    TextSpan(
-                      text: 'DIM',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -.8,
-                ),
-              ),
-            ),
-            if (c.family == null)
-              Text(
-                c.pack.t('personal_space'),
-                style: Theme.of(context).textTheme.bodySmall,
-              )
-            else
-              TextButton.icon(
-                key: const Key('workspace_switcher'),
-                onPressed: _workspace,
-                icon: Icon(
-                  familyMode ? Icons.people_outline : Icons.person_outline,
-                  size: 16,
-                ),
-                label: Text(
-                  familyMode
-                      ? (c.family!.spaces
-                                    .where(
-                                      (s) => s['id'] == c.family!.workspace,
-                                    )
-                                    .firstOrNull?['name']
-                                as String? ??
-                            c.pack.t('family_account'))
-                      : c.pack.t('personal_space'),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ],
-        ),
-      ),
-      IconButton(
-        tooltip: c.pack.t('search'),
-        onPressed: _showSearch,
-        icon: const Icon(Icons.search_rounded),
-      ),
-      const SizedBox(width: 3),
-      IconButton(
-        key: const Key('profile_button'),
-        tooltip: c.pack.t('profile'),
-        onPressed: () {
-          LifeNoticeScope.of(context).clear();
-          setState(() => _profileOpen = true);
-        },
-        icon: CircleAvatar(
-          radius: 19,
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(
-            Icons.person_rounded,
-            size: 23,
-            color: Theme.of(context).colorScheme.primary,
+  Widget _sideNavigation(bool extended) => Container(
+        decoration: BoxDecoration(
+            border: Border(
+                right: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant))),
+        child: NavigationRail(
+          minWidth: 88,
+          minExtendedWidth: 192,
+          extended: extended,
+          selectedIndex: _destination,
+          onDestinationSelected: _selectDestination,
+          labelType: extended
+              ? NavigationRailLabelType.none
+              : NavigationRailLabelType.all,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          leading: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 24),
+            child: Text('ULADIM',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: .5)),
           ),
-        ),
-      ),
-    ],
-  );
-
-  Widget _addButton() => Container(
-    width: 58,
-    height: 58,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      boxShadow: [
-        BoxShadow(
-          color: LifePalette.darkGreen.withValues(alpha: .16),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
-        ),
-      ],
-    ),
-    child: FloatingActionButton(
-      key: const Key('add_button'),
-      tooltip: c.pack.t('add'),
-      onPressed: _chooseAdd,
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      shape: const CircleBorder(side: BorderSide.none),
-      elevation: 0,
-      focusElevation: 0,
-      hoverElevation: 0,
-      highlightElevation: 0,
-      child: const Icon(Icons.add, size: 32),
-    ),
-  );
-
-  Widget _bottomBar() {
-    final surface = Theme.of(context).colorScheme.surface;
-    final inactive = Theme.of(context).colorScheme.onSurfaceVariant;
-    final width = MediaQuery.sizeOf(context).width;
-    final scaler = MediaQuery.textScalerOf(context);
-    double labelWidth = 0;
-    double labelHeight = 0;
-    for (final tab in _tabs) {
-      final painter = TextPainter(
-        text: TextSpan(
-          text: c.pack.t(tab),
-          style: Theme.of(context).textTheme.labelMedium
-              ?.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
-        ),
-        textDirection: Directionality.of(context),
-        textScaler: scaler,
-      )..layout();
-      if (painter.width > labelWidth) labelWidth = painter.width;
-      if (painter.height > labelHeight) labelHeight = painter.height;
-      painter.dispose();
-    }
-    // Give labels a whole row before they would wrap inside a single word.
-    final roomy = labelWidth + 12 > (width - 64) / 4;
-    final rowHeight = (labelHeight + 41).clamp(64.0, 160.0);
-    if (roomy && labelWidth + 44 <= (width - 64) / 2) {
-      final compactHeight = (labelHeight + 24).clamp(48.0, 140.0);
-      return BottomAppBar(
-        height: compactHeight * 2,
-        padding: EdgeInsets.zero,
-        color: surface,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  for (var row = 0; row < 2; row++)
-                    SizedBox(
-                      height: compactHeight,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = row * 2; i < row * 2 + 2; i++)
-                            Expanded(
-                              child: _navItem(i, inactive, horizontal: true),
-                            ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(width: 64, child: Center(child: _addButton())),
+          destinations: [
+            for (var i = 0; i < _tabs.length; i++)
+              NavigationRailDestination(
+                  icon: Icon(_icons[i], size: 22),
+                  label: Text(c.pack.t(_tabs[i]))),
           ],
         ),
       );
+
+  Widget _header() {
+    final colors = Theme.of(context).colorScheme;
+    final name = familyMode
+        ? (c.family!.spaces.where((s) => s['id'] == c.family!.workspace)
+            .firstOrNull?['name'] as String? ?? c.pack.t('family_account'))
+        : c.pack.t(MediaQuery.sizeOf(context).width < 600
+            ? 'workspace_personal_short' : 'personal_space');
+    final workspace = TextButton(
+      key: const Key('workspace_switcher'),
+      onPressed: _workspace,
+      style: TextButton.styleFrom(
+        alignment: Alignment.centerLeft, foregroundColor: colors.onSurface,
+        padding: const EdgeInsets.symmetric(horizontal: 8)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(familyMode ? Icons.people_outline : Icons.person_outline,
+          size: 20, color: colors.primary),
+        const SizedBox(width: 8),
+        Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelLarge)),
+        const SizedBox(width: 4),
+        Icon(Icons.expand_more_rounded, size: 18, color: colors.onSurfaceVariant),
+      ]),
+    );
+    final compact = MediaQuery.textScalerOf(context).scale(1) <= 1.3 ||
+        MediaQuery.sizeOf(context).width >= 600;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Row(children: [
+        Expanded(child: workspace),
+        IconButton(key: const Key('search_button'), tooltip: c.pack.t('search'),
+          onPressed: _showSearch, icon: const Icon(Icons.search_rounded)),
+        if (_destination == 0 && compact) ...[
+          const SizedBox(width: 4), _addButton(),
+        ],
+      ]),
+      if (_destination == 0 && !compact)
+        Align(alignment: Alignment.centerRight, child: _addButton()),
+    ]);
+  }
+
+  Widget _addButton() => FilledButton.icon(
+        key: const Key('add_button'),
+        onPressed: _chooseAdd,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(44, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: Text(c.pack.t('add')),
+      );
+
+  Widget _bottomBar() {
+    final colors = Theme.of(context).colorScheme;
+    final width = MediaQuery.sizeOf(context).width;
+    final scaler = MediaQuery.textScalerOf(context);
+    double requiredWidth = 48;
+    double labelHeight = 16;
+    for (final key in _tabs) {
+      final p = TextPainter(
+        text: TextSpan(
+            text: c.pack.t(key),
+            style: Theme.of(context).textTheme.labelMedium),
+        textDirection: Directionality.of(context),
+        textScaler: scaler,
+      )..layout();
+      if (p.width + 12 > requiredWidth) requiredWidth = p.width + 12;
+      if (p.height > labelHeight) labelHeight = p.height;
+      p.dispose();
     }
-    return BottomAppBar(
-      height: roomy ? rowHeight * 2 + 64 : 80,
-      padding: EdgeInsets.zero,
-      color: surface,
-      child: roomy
-          ? Column(
-              children: [
-                for (var row = 0; row < 2; row++)
-                  SizedBox(
-                    height: rowHeight,
-                    child: Row(
-                      children: [
-                        for (var i = row * 2; i < row * 2 + 2; i++)
-                          Expanded(child: _navItem(i, inactive)),
-                      ],
-                    ),
-                  ),
-                SizedBox(height: 64, child: Center(child: _addButton())),
-              ],
-            )
-          : Row(
-              children: [
-                for (var i = 0; i < 2; i++)
-                  Expanded(child: _navItem(i, inactive)),
-                SizedBox(width: 64, child: Center(child: _addButton())),
-                for (var i = 2; i < 4; i++)
-                  Expanded(child: _navItem(i, inactive)),
-              ],
-            ),
+    final enlarged = scaler.scale(1) > 1.2;
+    final itemWidth = enlarged && requiredWidth > width / 6
+        ? requiredWidth : width / 6;
+    final height = (labelHeight + 42).clamp(64.0, 112.0);
+    final children = <Widget>[
+      for (var i = 0; i < _tabs.length; i++)
+        SizedBox(width: itemWidth, height: height, child: _navItem(i)),
+    ];
+    return DecoratedBox(
+      decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border(top: BorderSide(color: colors.outlineVariant))),
+      child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: height,
+            child: itemWidth * 6 > width + 1
+                ? SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(children: children))
+                : Row(children: children),
+          )),
     );
   }
 
-  Widget _navItem(int i, Color inactive, {bool horizontal = false}) {
-    final active = !_profileOpen && _tab == i;
-    final color = active ? Theme.of(context).colorScheme.primary : inactive;
-    final label = Text(
-      c.pack.t(_tabs[i]),
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-        color: color,
-        fontSize: 12,
-        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-      ),
-    );
+  Widget _navItem(int index) {
+    final active = _destination == index;
+    final colors = Theme.of(context).colorScheme;
+    final color = active ? colors.primary : colors.onSurfaceVariant;
     return Semantics(
       selected: active,
       button: true,
       child: InkWell(
-        key: Key('nav_${_tabs[i]}'),
-        onTap: () => _navigate(i),
-        child: horizontal
-            ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    Icon(_icons[i], size: 22, color: color),
-                    const SizedBox(width: 6),
-                    Expanded(child: label),
-                  ],
-                ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(_icons[i], size: 22, color: color),
-                  const SizedBox(height: 3),
-                  label,
-                ],
-              ),
+        key: Key('nav_${_tabs[index].replaceFirst('nav_', '')}'),
+        onTap: () => _selectDestination(index),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          AnimatedContainer(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 160),
+            width: 44,
+            height: 28,
+            decoration: BoxDecoration(
+                color: active ? colors.primaryContainer : Colors.transparent,
+                borderRadius: BorderRadius.circular(10)),
+            child: Icon(_icons[index], size: 21, color: color),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text(c.pack.t(_tabs[index]),
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: color,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500))),
+          ),
+        ]),
       ),
     );
   }
@@ -1647,6 +1644,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     LifeNoticeScope.of(context).clear();
     setState(() {
       _profileOpen = false;
+      _calendarOpen = false;
+      _modulesOpen = false;
       _tab = kind == EntryKind.note ? 3 : 1;
       _notesOpen = kind == EntryKind.note;
     });
