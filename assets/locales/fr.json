@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Reporté",
     "inbox_status_dismissed": "Fermé",
     "legal_privacy": "Confidentialité",
-    "legal_terms": "Conditions d’utilisation"
+    "legal_terms": "Conditions d’utilisation",
+    "inbox_budget_title": "Rappels de budget",
+    "inbox_budget_scope": "Les dépenses sont vérifiées à l’actualisation de la boîte de réception. Les rappels concernent les budgets synchronisés. Les budgets stockés uniquement sur cet appareil sont exclus. Ce sont des messages dans l’application, sans alerte système.",
+    "inbox_budget_enabled": "Recevoir les rappels de budget",
+    "inbox_budget_thresholds": "Me rappeler à",
+    "inbox_budget_every": "Tous les {step}% et à 100%",
+    "inbox_budget_custom": "Seuils personnalisés : {values}"
   },
   "plurals": {
     "record_count": {

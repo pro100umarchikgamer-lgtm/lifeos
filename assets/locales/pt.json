@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Adiado",
     "inbox_status_dismissed": "Fechado",
     "legal_privacy": "Privacidade",
-    "legal_terms": "Termos de utilização"
+    "legal_terms": "Termos de utilização",
+    "inbox_budget_title": "Lembretes de orçamento",
+    "inbox_budget_scope": "As despesas são verificadas ao atualizar a caixa de entrada. Os lembretes aparecem aqui para orçamentos sincronizados. Os guardados apenas neste dispositivo não são incluídos. São mensagens na aplicação, sem alertas do sistema.",
+    "inbox_budget_enabled": "Receber lembretes de orçamento",
+    "inbox_budget_thresholds": "Lembrar ao atingir",
+    "inbox_budget_every": "A cada {step}% e aos 100%",
+    "inbox_budget_custom": "Limites próprios: {values}"
   },
   "plurals": {
     "record_count": {

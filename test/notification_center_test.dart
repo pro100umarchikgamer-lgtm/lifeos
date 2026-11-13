@@ -49,7 +49,9 @@ class InboxApi implements SyncTransport {
       if (delayed != null) return delayed!.future;
       return {
         'notifications': messages,
-        'unread_count': messages.where((m) => m['read_at'] == 0).length,
+        'unread_count': messages
+            .where((m) => m['read_at'] == 0 && m['active'] != false)
+            .length,
         'next_before': null
       };
     }
@@ -65,6 +67,24 @@ class InboxApi implements SyncTransport {
       }
     }
     return {'updated': true};
+  }
+}
+
+class RetainedInboxApi extends InboxApi {
+  bool expired = false;
+  @override
+  Future<Json> request(String path, {Json? body}) async {
+    if (expired && body != null) throw const SyncFailure('not_found', 404);
+    final result = await super.request(path, body: body);
+    if (expired && body == null) {
+      return {
+        ...result,
+        'retention_days': 90,
+        'history_limit': 1000,
+        'announcement_retention_days_after_expiry': 90
+      };
+    }
+    return result;
   }
 }
 
@@ -208,6 +228,45 @@ void main() {
     await expectLater(c.recordReminders([message('new')]), throwsStateError);
     expect(cache.data[cache.localNotificationScope]!['messages'][0]['id'],
         'preserved');
+    c.dispose();
+  });
+  test(
+      'expired queued state cannot block refresh and remote retention keeps private history',
+      () async {
+    final api = RetainedInboxApi()
+      ..messages = [
+        {...message('old'), 'kind': 'reminder'}
+      ];
+    final c = NotificationCenter(cache: InboxCache());
+    await c.initialize();
+    await c.recordReminders([
+      {...message('personal'), 'kind': 'reminder'}
+    ]);
+    await c.attachAccount('https://a.test|alice', api);
+    api.offline = true;
+    await c.markRead(c.messages.firstWhere((m) => !m.local));
+    await c.refresh();
+    api.offline = false;
+    api.expired = true;
+    api.messages = [message('active-announcement')];
+    await c.refresh();
+    expect(c.error, isNull);
+    expect(c.messages.map((m) => m.id).toSet(),
+        {'personal', 'active-announcement'});
+    c.dispose();
+  });
+  test('expired announcements remain history and never count as new', () async {
+    final api = InboxApi()
+      ..messages = [
+        {...message('expired'), 'active': false},
+        message('active')
+      ];
+    final c = NotificationCenter(cache: InboxCache());
+    await c.initialize();
+    await c.attachAccount('https://a.test|alice', api);
+    expect(c.messages, hasLength(2));
+    expect(c.messages.where(c.isUnread).map((m) => m.id), ['active']);
+    expect(c.unreadCount, 1);
     c.dispose();
   });
 }

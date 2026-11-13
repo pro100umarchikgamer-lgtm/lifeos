@@ -11,6 +11,8 @@ import 'package:lifeos/domain/models.dart';
 import 'package:timezone/data/latest.dart' as timezone;
 import 'notification_center_test.dart' show InboxApi, message;
 import 'widget_test.dart' show UIStore;
+import 'notification_budget_preferences_test.dart' show BudgetInboxApi;
+import 'package:lifeos/ui/notification_budget_settings.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -88,6 +90,7 @@ void main() {
             matchesGoldenFile(
                 'native_inbox_goldens/${config.$1.toInt()}_inbox.png'));
       }
+      await tester.ensureVisible(find.text('Обновление ULADIM'));
       await tester.tap(find.text('Обновление ULADIM'));
       await tester.pumpAndSettle();
       expect(find.byType(SelectableText), findsOneWidget);
@@ -103,6 +106,10 @@ void main() {
   testWidgets(
       'startup fullscreen waits for an active draft and shows only once',
       (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final c = AppController(UIStore(), catalog, 'ru');
     await c.load();
     addTearDown(c.dispose);
@@ -114,7 +121,16 @@ void main() {
     await tester.enterText(
         find.byKey(const Key('entry_text')), 'My draft survives');
     final api = InboxApi()
-      ..messages = [message('startup', presentation: 'fullscreen')];
+      ..messages = [
+        {
+          ...message('startup', presentation: 'fullscreen'),
+          'title': 'Важные новости всегда под рукой',
+          'body':
+              'Новости приложения и важные сообщения теперь сохраняются здесь. Вы сможете вернуться к ним в разделе «Уведомления».',
+          'created_at':
+              DateTime(2026, 11, 13, 12).millisecondsSinceEpoch ~/ 1000
+        }
+      ];
     await c.inbox.attachAccount('https://a.test|alice', api);
     await tester.pumpAndSettle();
     expect(find.text('My draft survives'), findsOneWidget);
@@ -153,5 +169,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Full details stay available in your history.'),
         findsNothing);
+  });
+  testWidgets(
+      'budget preferences remain readable and selectable at 320px with large text',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final c = AppController(UIStore(), catalog, 'ru');
+    await c.load();
+    addTearDown(c.dispose);
+    final api = BudgetInboxApi();
+    await c.inbox.attachAccount('https://a.test|alice', api);
+    await tester.pumpWidget(LifeOSApp(
+        controller: c,
+        builder: (ctx, child) => MediaQuery(
+            data: MediaQuery.of(ctx)
+                .copyWith(textScaler: const TextScaler.linear(1.6)),
+            child: child!)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notification_bell')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('inbox_budget_settings')));
+    await tester.pumpAndSettle();
+    expect(find.byType(NotificationBudgetSettingsPage), findsOneWidget);
+    expect(c.inbox.budgetEnabled, isFalse);
+    if (const bool.fromEnvironment('ULADIM_CAPTURE')) {
+      await expectLater(
+          find.byType(MaterialApp),
+          matchesGoldenFile(
+              'native_inbox_goldens/320_budget_preferences_top.png'));
+    }
+    final toggle = find.byKey(const Key('budget_reminders_enabled'));
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(c.inbox.budgetEnabled, isTrue);
+    final thresholds = find.byKey(const Key('budget_reminder_thresholds'));
+    await tester.ensureVisible(thresholds);
+    await tester.tap(thresholds);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('choice_10')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('choice_10')));
+    await tester.pumpAndSettle();
+    expect(api.settings['budget_thresholds'],
+        [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+    expect(tester.takeException(), isNull);
+    if (const bool.fromEnvironment('ULADIM_CAPTURE')) {
+      await expectLater(find.byType(MaterialApp),
+          matchesGoldenFile('native_inbox_goldens/320_budget_preferences.png'));
+    }
   });
 }

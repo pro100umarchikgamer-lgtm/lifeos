@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Snoozed",
     "inbox_status_dismissed": "Dismissed",
     "legal_privacy": "Privacy policy",
-    "legal_terms": "Terms of use"
+    "legal_terms": "Terms of use",
+    "inbox_budget_title": "Budget reminders",
+    "inbox_budget_scope": "Budget spending is checked when the inbox refreshes. Reminders appear here for synchronized budgets. Budgets stored only on this device are not included. These are in-app messages, without system alerts.",
+    "inbox_budget_enabled": "Receive budget reminders",
+    "inbox_budget_thresholds": "Remind me at",
+    "inbox_budget_every": "Every {step}% and at 100%",
+    "inbox_budget_custom": "Custom: {values}"
   },
   "plurals": {
     "record_count": {

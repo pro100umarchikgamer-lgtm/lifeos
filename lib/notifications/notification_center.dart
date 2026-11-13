@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../sync/contracts.dart';
+import '../domain/public_links.dart';
 
 /// The production adapter stores this metadata in the existing SQLCipher DB.
 /// Personal history and each authenticated origin/user use separate scopes.
@@ -38,15 +40,7 @@ class InboxMessage {
   bool get read => number('read_at') > 0;
   bool get dismissed => number('dismissed_at') > 0;
   String? get status => data['status'] as String?;
-  Uri? get link {
-    final uri = Uri.tryParse(data['link'] as String? ?? '');
-    return uri != null &&
-            uri.scheme == 'https' &&
-            uri.host.isNotEmpty &&
-            uri.userInfo.isEmpty
-        ? uri
-        : null;
-  }
+  Uri? get link => notificationMessageLink(data['link']);
 
   bool activeAt(int now) =>
       data['active'] != false &&
@@ -75,7 +69,43 @@ class NotificationCenter extends ChangeNotifier {
   int _generation = 0, _serverUnread = 0;
   bool _disposed = false, loading = false;
   bool _localReady = false, _accountCacheReady = false;
-  String? error, nextBefore;
+  String? error, nextBefore, budgetError;
+  bool budgetBusy = false;
+  Json _budgetSettings = _defaultBudgetSettings();
+  static Json _defaultBudgetSettings() => {
+        'budget_enabled': false,
+        'budget_thresholds': [50, 80, 100],
+        'timezone': 'UTC'
+      };
+  bool get budgetEnabled => _budgetSettings['budget_enabled'] == true;
+  List<int> get budgetThresholds =>
+      List<int>.from(_budgetSettings['budget_thresholds'] as List);
+  bool get budgetPending =>
+      _pending.any((operation) => operation['action'] == 'settings');
+  Json _decodeBudgetSettings(Json raw) {
+    final thresholds = raw['budget_thresholds'];
+    if (raw['budget_enabled'] is! bool ||
+        raw['timezone'] is! String ||
+        thresholds is! List ||
+        thresholds.isEmpty ||
+        thresholds.length > 20 ||
+        thresholds.any((v) => v is! int || v < 1 || v > 100)) {
+      throw const SyncFailure('invalid_sync_response');
+    }
+    final sorted = thresholds.cast<int>().toSet().toList()..sort();
+    return {
+      'budget_enabled': raw['budget_enabled'],
+      'budget_thresholds': sorted,
+      'timezone': raw['timezone']
+    };
+  }
+
+  void _loadCachedBudget(Json? saved) {
+    _budgetSettings = saved?['budget_settings'] is Map
+        ? _decodeBudgetSettings(object(saved!['budget_settings']))
+        : _defaultBudgetSettings();
+  }
+
   Future<void> _mutations = Future<void>.value();
   Future<void>? _refreshing;
   final Map<String, Future<void>> _writes = {};
@@ -84,11 +114,12 @@ class NotificationCenter extends ChangeNotifier {
   int get _seconds => _clock().millisecondsSinceEpoch ~/ 1000;
   List<InboxMessage> get messages => [..._personal, ..._remote]
     ..sort((a, b) => b.number('created_at').compareTo(a.number('created_at')));
-  int get unreadCount =>
-      _personal.where((m) => !m.read).length +
-      (_serverUnread > _remote.where((m) => !m.read).length
-          ? _serverUnread
-          : _remote.where((m) => !m.read).length);
+  bool isUnread(InboxMessage message) =>
+      !message.read &&
+      !message.dismissed &&
+      (message.local || message.activeAt(_seconds));
+  int get unreadCount => _personal.where((m) => !m.read).length + _serverUnread;
+
   List<InboxMessage> get announcements => _remote
       .where((m) =>
           m.kind == 'announcement' &&
@@ -134,12 +165,16 @@ class NotificationCenter extends ChangeNotifier {
   }
 
   Json _remoteData(
-          {List<InboxMessage>? messages, List<Json>? pending, int? unread}) =>
+          {List<InboxMessage>? messages,
+          List<Json>? pending,
+          int? unread,
+          Json? budget}) =>
       {
         'messages': (messages ?? _remote).map((m) => m.data).toList(),
         'pending': pending ?? _pending,
         'unread_count': unread ?? _serverUnread,
         'next_before': nextBefore,
+        'budget_settings': budget ?? _budgetSettings,
       };
 
   Future<void> attachAccount(String? scope, SyncTransport? api) async {
@@ -150,17 +185,23 @@ class NotificationCenter extends ChangeNotifier {
     _remote = [];
     _pending = [];
     _accountCacheReady = false;
+    _budgetSettings = _defaultBudgetSettings();
+    budgetError = null;
+    budgetBusy = false;
     _serverUnread = 0;
     nextBefore = null;
-    error = null;
+    error = _localReady ? null : 'inbox_storage_failed';
     loading = false;
     _refreshing = null;
     _publish(); // Detach account content synchronously, before any awaited IO.
     if (scope == null || api == null) return;
     try {
+      await _writes[scope]?.catchError((Object _) {});
+      if (_generation != generation) return;
       final saved = await cache.readNotificationCache(scope);
       if (_generation != generation) return;
       _remote = _decode(saved?['messages']);
+      _loadCachedBudget(saved);
       _pending = (saved?['pending'] as List? ?? []).map(object).toList();
       _serverUnread = (saved?['unread_count'] as num?)?.toInt() ?? 0;
       nextBefore = saved?['next_before'] as String?;
@@ -201,6 +242,7 @@ class NotificationCenter extends ChangeNotifier {
         final saved = await cache.readNotificationCache(scope);
         if (_generation != generation) return;
         _remote = _decode(saved?['messages']);
+        _loadCachedBudget(saved);
         _pending = (saved?['pending'] as List? ?? []).map(object).toList();
         _serverUnread = (saved?['unread_count'] as num?)?.toInt() ?? 0;
         nextBefore = saved?['next_before'] as String?;
@@ -208,11 +250,22 @@ class NotificationCenter extends ChangeNotifier {
       }
       // Mutations are persisted before they can be sent. Failed requests stay queued.
       for (final operation in List<Json>.from(_pending)) {
-        await api.request('/v1/account/inbox/${operation['action']}',
-            body: object(operation['body']));
+        try {
+          await api.request('/v1/account/inbox/${operation['action']}',
+              body: object(operation['body']));
+        } on SyncFailure catch (failure) {
+          final terminalMessageState = operation['action'] != 'settings' &&
+              (failure.code == 'not_found' ||
+                  operation['action'] == 'presented' &&
+                      failure.code == 'notification_inactive');
+          if (!terminalMessageState) rethrow;
+        }
+        await _serialize(() async {
+          if (_generation != generation) return;
+          _pending.removeWhere((p) => p['key'] == operation['key']);
+          await _write(scope, _remoteData());
+        });
         if (_generation != generation) return;
-        _pending.removeWhere((p) => p['key'] == operation['key']);
-        await _write(scope, _remoteData());
       }
       final before = loadMore ? nextBefore : null;
       final result = await api.request(
@@ -222,43 +275,75 @@ class NotificationCenter extends ChangeNotifier {
         throw const SyncFailure('invalid_sync_response');
       }
       final incoming = _decode(result['notifications']);
-      final merged = {
-        for (final m in _remote) m.id: m,
-        for (final m in incoming) m.id: m
-      };
-      for (final operation in _pending) {
-        final body = object(operation['body']);
-        for (final id in merged.keys.toList()) {
-          if (body['all'] == true || body['id'] == id) {
-            merged[id] = merged[id]!
-                .changed(operation['action'] as String, operation['at'] as int);
+      await _serialize(() async {
+        if (_generation != generation) return;
+        final merged = {
+          for (final m in _remote) m.id: m,
+          for (final m in incoming) m.id: m
+        };
+        for (final operation in _pending) {
+          final body = object(operation['body']);
+          for (final id in merged.keys.toList()) {
+            if (body['all'] == true || body['id'] == id) {
+              merged[id] = merged[id]!.changed(
+                  operation['action'] as String, operation['at'] as int);
+            }
           }
         }
-      }
-      final remote = merged.values.toList()
-        ..sort(
-            (a, b) => b.number('created_at').compareTo(a.number('created_at')));
-      var unread = (result['unread_count'] as num).toInt();
-      final pendingReads = <String>{};
-      for (final operation in _pending
-          .where((p) => p['action'] == 'read' || p['action'] == 'dismiss')) {
-        final body = object(operation['body']);
-        if (body['all'] == true) {
-          unread = 0;
-          break;
+        var remote = merged.values.toList()
+          ..sort((a, b) =>
+              b.number('created_at').compareTo(a.number('created_at')));
+        var unread = (result['unread_count'] as num).toInt();
+        final pendingReads = <String>{};
+        for (final operation in _pending
+            .where((p) => p['action'] == 'read' || p['action'] == 'dismiss')) {
+          final body = object(operation['body']);
+          if (body['all'] == true) {
+            unread = 0;
+            break;
+          }
+          final id = body['id'] as String?;
+          if (id != null && incoming.any((m) => m.id == id && !m.read)) {
+            pendingReads.add(id);
+          }
         }
-        final id = body['id'] as String?;
-        if (id != null && incoming.any((m) => m.id == id && !m.read)) {
-          pendingReads.add(id);
+        unread = (unread - pendingReads.length).clamp(0, 1 << 30);
+        // Honour the server's bounded account history without pruning private reminders.
+        if (result['retention_days'] case final num days) {
+          final cutoff = _seconds - days.toInt() * 86400;
+          final announcementDays =
+              (result['announcement_retention_days_after_expiry'] as num?)
+                      ?.toInt() ??
+                  days.toInt();
+          remote = remote
+              .where((m) => m.kind == 'announcement'
+                  ? m.activeAt(_seconds) ||
+                      m.number('expires_at') > 0 &&
+                          m.number('expires_at') + announcementDays * 86400 >=
+                              _seconds ||
+                      m.number('created_at') >= cutoff
+                  : m.number('created_at') >= cutoff)
+              .toList();
+          final limit = (result['history_limit'] as num?)?.toInt() ?? 1000;
+          var retained = 0;
+          remote = remote
+              .where((m) =>
+                  m.kind == 'announcement' && m.activeAt(_seconds) ||
+                  retained++ < limit)
+              .toList();
         }
-      }
-      unread = (unread - pendingReads.length).clamp(0, 1 << 30);
-      nextBefore = result['next_before'] as String?;
-      await _write(scope, _remoteData(messages: remote, unread: unread));
-      if (_generation != generation) return;
-      _remote = remote;
-      _serverUnread = unread;
-      error = null;
+        if (unread == 0) {
+          remote = remote
+              .map((m) => m.read ? m : m.changed('read', _seconds))
+              .toList();
+        }
+        nextBefore = result['next_before'] as String?;
+        await _write(scope, _remoteData(messages: remote, unread: unread));
+        if (_generation != generation) return;
+        _remote = remote;
+        _serverUnread = unread;
+        error = _localReady ? null : 'inbox_storage_failed';
+      });
     } on SyncFailure catch (failure) {
       if (_generation == generation) {
         error = failure.code == 'offline'
@@ -308,6 +393,97 @@ class NotificationCenter extends ChangeNotifier {
           rethrow;
         }
       });
+
+  Future<void> loadBudgetSettings() async {
+    if (_scope == null || _api == null || budgetBusy) return;
+    final generation = _generation, scope = _scope!, api = _api!;
+    budgetBusy = true;
+    budgetError = null;
+    _publish();
+    try {
+      await refresh();
+      if (_generation != generation) return;
+      if (budgetPending) {
+        budgetError = error ?? 'inbox_offline';
+        return;
+      }
+      final result = _decodeBudgetSettings(
+          await api.request('/v1/account/inbox/settings'));
+      await _serialize(() async {
+        if (_generation != generation || budgetPending) return;
+        await _write(scope, _remoteData(budget: result));
+        if (_generation == generation) _budgetSettings = result;
+      });
+    } on SyncFailure catch (failure) {
+      if (_generation == generation) {
+        budgetError = failure.code == 'offline'
+            ? 'inbox_offline'
+            : 'inbox_refresh_failed';
+      }
+    } catch (_) {
+      if (_generation == generation) budgetError = 'inbox_storage_failed';
+    } finally {
+      if (_generation == generation) {
+        budgetBusy = false;
+        _publish();
+      }
+    }
+  }
+
+  Future<void> saveBudgetSettings(
+      {required bool enabled,
+      required List<int> thresholds,
+      required String timezone}) {
+    final generation = _generation;
+    return _serialize(() async {
+      if (_scope == null || generation != _generation || !_accountCacheReady) {
+        return;
+      }
+      final settings = _decodeBudgetSettings({
+        'budget_enabled': enabled,
+        'budget_thresholds': thresholds,
+        'timezone': timezone
+      });
+      final operation = {
+        'key': const Uuid().v4(),
+        'action': 'settings',
+        'body': settings,
+        'at': _seconds
+      };
+      final pending = [
+        ..._pending.where((p) => p['action'] != 'settings'),
+        operation
+      ];
+      budgetBusy = true;
+      budgetError = null;
+      _publish();
+      try {
+        await _write(_scope!, _remoteData(pending: pending, budget: settings));
+        if (_generation != generation) return;
+        _pending = pending;
+        _budgetSettings = settings;
+        unawaited(_syncQueued());
+      } catch (_) {
+        if (_generation == generation) budgetError = 'inbox_storage_failed';
+      } finally {
+        if (_generation == generation) {
+          budgetBusy = false;
+          _publish();
+        }
+      }
+    });
+  }
+
+  Future<void> _syncQueued() async {
+    final generation = _generation, active = _refreshing;
+    if (active != null) {
+      await active;
+      if (error != null) return;
+    }
+    if (!_disposed && generation == _generation && _pending.isNotEmpty) {
+      await refresh();
+    }
+  }
 
   Future<void> _serialize(Future<void> Function() action) {
     final next = _mutations.catchError((Object _) {}).then((_) => action());
@@ -369,47 +545,51 @@ class NotificationCenter extends ChangeNotifier {
         _publish();
         return;
       }
-      if (!message.local) unawaited(refresh());
+      if (!message.local) unawaited(_syncQueued());
     });
   }
 
-  Future<void> markAllRead() => _serialize(() async {
-        final generation = _generation, at = _seconds;
-        if (!_localReady) {
-          error = 'inbox_storage_failed';
-          _publish();
-          return;
+  Future<void> markAllRead() {
+    final generation = _generation;
+    return _serialize(() async {
+      final at = _seconds;
+      if (!_localReady) {
+        error = 'inbox_storage_failed';
+        _publish();
+        return;
+      }
+      final personal = _personal.map((m) => m.changed('read', at)).toList();
+      try {
+        await _write(cache.localNotificationScope,
+            {'messages': personal.map((m) => m.data).toList()});
+        _personal = personal;
+        if (_scope != null && generation == _generation && _accountCacheReady) {
+          final remote = _remote.map((m) => m.changed('read', at)).toList();
+          final pending = [
+            ..._pending.where((p) => p['key'] != 'all:read'),
+            {
+              'key': 'all:read',
+              'action': 'read',
+              'body': {'all': true},
+              'at': at
+            }
+          ];
+          await _write(_scope!,
+              _remoteData(messages: remote, pending: pending, unread: 0));
+          if (generation != _generation) return;
+          _remote = remote;
+          _pending = pending;
+          _serverUnread = 0;
+          unawaited(_syncQueued());
         }
-        final personal = _personal.map((m) => m.changed('read', at)).toList();
-        try {
-          await _write(cache.localNotificationScope,
-              {'messages': personal.map((m) => m.data).toList()});
-          _personal = personal;
-          if (_scope != null && generation == _generation) {
-            final remote = _remote.map((m) => m.changed('read', at)).toList();
-            final pending = [
-              ..._pending.where((p) => p['key'] != 'all:read'),
-              {
-                'key': 'all:read',
-                'action': 'read',
-                'body': {'all': true},
-                'at': at
-              }
-            ];
-            await _write(_scope!,
-                _remoteData(messages: remote, pending: pending, unread: 0));
-            if (generation != _generation) return;
-            _remote = remote;
-            _pending = pending;
-            _serverUnread = 0;
-            unawaited(refresh());
-          }
-          _publish();
-        } catch (_) {
-          error = 'inbox_storage_failed';
-          _publish();
-        }
-      });
+        _publish();
+      } catch (_) {
+        error = 'inbox_storage_failed';
+        _publish();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _disposed = true;

@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Təxirə salındı",
     "inbox_status_dismissed": "Bağlandı",
     "legal_privacy": "Məxfilik",
-    "legal_terms": "İstifadə şərtləri"
+    "legal_terms": "İstifadə şərtləri",
+    "inbox_budget_title": "Büdcə xatırlatmaları",
+    "inbox_budget_scope": "Büdcə xərcləri gələnlər yeniləndikdə yoxlanılır. Xatırlatmalar burada sinxronlaşdırılmış büdcələr üçün görünür. Yalnız bu cihazda saxlanan büdcələr daxil deyil. Bunlar sistem bildirişi olmadan tətbiqdaxili mesajlardır.",
+    "inbox_budget_enabled": "Büdcə xatırlatmaları al",
+    "inbox_budget_thresholds": "Bu həddə xatırlat",
+    "inbox_budget_every": "Hər {step}% və 100%-də",
+    "inbox_budget_custom": "Fərdi hədlər: {values}"
   },
   "plurals": {
     "record_count": {

@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Pospuesto",
     "inbox_status_dismissed": "Cerrado",
     "legal_privacy": "Privacidad",
-    "legal_terms": "Condiciones de uso"
+    "legal_terms": "Condiciones de uso",
+    "inbox_budget_title": "Recordatorios de presupuesto",
+    "inbox_budget_scope": "El gasto se comprueba al actualizar la bandeja. Los recordatorios aparecen aquí para presupuestos sincronizados. Los guardados solo en este dispositivo no se incluyen. Son mensajes dentro de la app, sin alertas del sistema.",
+    "inbox_budget_enabled": "Recibir recordatorios de presupuesto",
+    "inbox_budget_thresholds": "Recordarme al llegar a",
+    "inbox_budget_every": "Cada {step}% y al 100%",
+    "inbox_budget_custom": "Umbrales propios: {values}"
   },
   "plurals": {
     "record_count": {

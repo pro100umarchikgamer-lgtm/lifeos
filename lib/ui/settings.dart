@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../app_controller.dart';
 import '../domain/action_engine.dart';
 import '../domain/models.dart';
+import '../domain/public_links.dart';
 import '../services/backup_service.dart';
 import '../platform/native_bridge.dart';
 import 'design.dart';
@@ -44,13 +45,8 @@ class _PersonalSettingsState extends State<PersonalSettings> {
   }
 
   Future<void> legalLink(String path) async {
-    final origin = c.family?.accountOrigin ??
-        const String.fromEnvironment('LIFEOS_API_ORIGIN',
-            defaultValue: 'https://api.getuladim.space');
     try {
-      await c.native.openExternalLink(
-          Uri.parse(origin.isEmpty ? 'https://api.getuladim.space' : origin)
-              .resolve(path));
+      await c.native.openExternalLink(publicSitePage(path));
     } catch (_) {
       message('inbox_link_failed');
     }

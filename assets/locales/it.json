@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Rimandato",
     "inbox_status_dismissed": "Chiuso",
     "legal_privacy": "Privacy",
-    "legal_terms": "Condizioni d’uso"
+    "legal_terms": "Condizioni d’uso",
+    "inbox_budget_title": "Promemoria del budget",
+    "inbox_budget_scope": "Le spese vengono controllate aggiornando la posta in arrivo. I promemoria riguardano i budget sincronizzati. I budget salvati solo su questo dispositivo sono esclusi. Sono messaggi nell’app, senza avvisi di sistema.",
+    "inbox_budget_enabled": "Ricevi promemoria del budget",
+    "inbox_budget_thresholds": "Ricordami al",
+    "inbox_budget_every": "Ogni {step}% e al 100%",
+    "inbox_budget_custom": "Soglie personalizzate: {values}"
   },
   "plurals": {
     "record_count": {

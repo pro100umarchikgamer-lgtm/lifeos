@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Verschoben",
     "inbox_status_dismissed": "Geschlossen",
     "legal_privacy": "Datenschutz",
-    "legal_terms": "Nutzungsbedingungen"
+    "legal_terms": "Nutzungsbedingungen",
+    "inbox_budget_title": "Budget-Erinnerungen",
+    "inbox_budget_scope": "Budgetausgaben werden beim Aktualisieren des Posteingangs geprüft. Erinnerungen erscheinen hier für synchronisierte Budgets. Nur auf diesem Gerät gespeicherte Budgets werden nicht geprüft. Es gibt keine Systembenachrichtigungen.",
+    "inbox_budget_enabled": "Budget-Erinnerungen erhalten",
+    "inbox_budget_thresholds": "Erinnern bei",
+    "inbox_budget_every": "Alle {step}% und bei 100%",
+    "inbox_budget_custom": "Eigene Schwellen: {values}"
   },
   "plurals": {
     "record_count": {

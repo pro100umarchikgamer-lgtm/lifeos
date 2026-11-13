@@ -99,7 +99,8 @@ PreferredSizeWidget settingsAppBar(BuildContext context, String title) {
       textScaler: media.textScaler)
     ..layout(maxWidth: width.clamp(1, double.infinity).toDouble());
   return AppBar(
-      title: Text(title, softWrap: true),
+      title: Text(title,
+          softWrap: true, maxLines: 10, overflow: TextOverflow.visible),
       toolbarHeight:
           (text.height + 24).clamp(kToolbarHeight, double.infinity).toDouble());
 }

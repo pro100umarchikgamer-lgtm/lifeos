@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Keyinga qoldirildi",
     "inbox_status_dismissed": "Yopildi",
     "legal_privacy": "Maxfiylik",
-    "legal_terms": "Foydalanish shartlari"
+    "legal_terms": "Foydalanish shartlari",
+    "inbox_budget_title": "Budjet eslatmalari",
+    "inbox_budget_scope": "Budjet xarajatlari kiruvchi xabarlar yangilanganda tekshiriladi. Sinxronlangan budjetlar eslatmalari shu yerda chiqadi. Faqat shu qurilmada saqlangan budjetlar hisobga olinmaydi. Bular tizim bildirishnomalarisiz ilova ichidagi xabarlardir.",
+    "inbox_budget_enabled": "Budjet eslatmalarini olish",
+    "inbox_budget_thresholds": "Shu chegarada eslatish",
+    "inbox_budget_every": "Har {step}% da va 100% da",
+    "inbox_budget_custom": "Shaxsiy chegaralar: {values}"
   },
   "plurals": {
     "record_count": {

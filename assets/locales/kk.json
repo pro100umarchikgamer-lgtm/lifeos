@@ -772,7 +772,13 @@
     "inbox_status_snoozed": "Кейінге қалдырылды",
     "inbox_status_dismissed": "Жабылды",
     "legal_privacy": "Құпиялық",
-    "legal_terms": "Пайдалану шарттары"
+    "legal_terms": "Пайдалану шарттары",
+    "inbox_budget_title": "Бюджет еске салғыштары",
+    "inbox_budget_scope": "Бюджет шығындары кіріс жәшігі жаңарғанда тексеріледі. Синхрондалған бюджеттердің еске салғыштары осында көрсетіледі. Тек осы құрылғыдағы бюджеттер есептелмейді. Бұл жүйелік ескертусіз қолданба ішіндегі хабарлар.",
+    "inbox_budget_enabled": "Бюджет еске салғыштарын алу",
+    "inbox_budget_thresholds": "Мына шекте еске салу",
+    "inbox_budget_every": "Әр {step}% және 100% кезінде",
+    "inbox_budget_custom": "Жеке шектер: {values}"
   },
   "plurals": {
     "record_count": {

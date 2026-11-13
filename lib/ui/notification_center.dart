@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../app_controller.dart';
 import '../notifications/notification_center.dart';
 import 'design.dart';
+import 'notification_budget_settings.dart';
 
 String _time(AppController c, InboxMessage message) =>
     DateFormat.yMMMd(c.pack.locale.languageCode)
@@ -59,8 +60,9 @@ class _NotificationInboxPageState extends State<NotificationInboxPage> {
         listenable: c.inbox,
         builder: (context, _) {
           final center = c.inbox;
-          final messages =
-              center.messages.where((m) => !_unreadOnly || !m.read).toList();
+          final messages = center.messages
+              .where((m) => !_unreadOnly || center.isUnread(m))
+              .toList();
           return Scaffold(
             appBar: AppBar(title: Text(c.pack.t('inbox_title'))),
             body: SafeArea(
@@ -76,6 +78,20 @@ class _NotificationInboxPageState extends State<NotificationInboxPage> {
                   children: [
                     Text(c.pack.t('inbox_description'),
                         style: Theme.of(context).textTheme.bodyMedium),
+                    if (center.hasAccount)
+                      Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            key: const Key('inbox_budget_settings'),
+                            onPressed: () => Navigator.push<void>(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        NotificationBudgetSettingsPage(
+                                            controller: c))),
+                            icon: const Icon(Icons.tune_rounded, size: 18),
+                            label: Text(c.pack.t('inbox_budget_title')),
+                          )),
                     const SizedBox(height: 16),
                     Wrap(spacing: 8, runSpacing: 8, children: [
                       ChoiceChip(
@@ -184,8 +200,9 @@ class _InboxTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = controller, theme = Theme.of(context);
+    final fresh = c.inbox.isUnread(message);
     return Material(
-      color: message.read
+      color: !fresh
           ? theme.colorScheme.surfaceContainerLow
           : theme.colorScheme.primaryContainer.withValues(alpha: .35),
       shape: RoundedRectangleBorder(
@@ -217,7 +234,7 @@ class _InboxTile extends StatelessWidget {
                             : 'inbox_from_app'),
                         style: theme.textTheme.labelMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant))),
-                if (!message.read)
+                if (fresh)
                   Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: Text(c.pack.t('inbox_new'),
@@ -230,8 +247,7 @@ class _InboxTile extends StatelessWidget {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight:
-                          message.read ? FontWeight.w500 : FontWeight.w700)),
+                      fontWeight: fresh ? FontWeight.w700 : FontWeight.w500)),
               const SizedBox(height: 6),
               Text(message.body,
                   maxLines: 2,
