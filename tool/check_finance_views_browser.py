@@ -79,10 +79,12 @@ def main():
                 expect(page.locator('.finance-metric.expense')).to_contain_text('5,50 USD')
                 assert page.locator('.finance-accounts,.finance-budgets').count()==0
                 assert page.locator('.finance-content>.card').count()==2
+                page.locator('.finance-chart-options>summary').click()
                 for mode in ['bar','line','smooth','donut','compact','categories']:
                     page.locator('select[name=chart-mode]').select_option(mode)
-                    if mode=='compact':expect(page.locator('.finance-analysis canvas')).to_be_hidden()
+                    if mode in ('compact','categories'):expect(page.locator('.finance-analysis canvas')).to_be_hidden()
                     else:expect(page.locator('.finance-analysis canvas')).to_be_visible()
+                    if mode=='categories':expect(page.locator('.finance-category-visual')).to_be_visible()
                 checks.append('overview has currency-separated true totals, chart and recent ledger; no duplicate management cards')
                 expect(page.locator('.chart-category-legend')).to_contain_text('Питание')
                 groups=page.evaluate("financeExpenseGroups(records('transaction'),'RUB').map(group=>[group.id,String(group.amount)])")

@@ -129,6 +129,8 @@ function calendar(m){
   date.toLocaleDateString(state.lang,{day:'numeric',month:'long'});
  const periodNavigation=E('div',undefined,'calendar-period');
  append(periodNavigation,previous,E('h2',period),next);
+ const returnToday=button(t('today'),()=>showDate(localDate(),'.calendar-date[aria-pressed=true]'),'secondary calendar-today');
+ periodNavigation.append(returnToday);
  append(toolbar,periodNavigation,modes);
  const grid=E('div',undefined,'calendar-grid');
  append(monthPanel,toolbar,grid);
@@ -159,6 +161,7 @@ function calendar(m){
    const dots=E('span',undefined,'calendar-event-dots');dots.setAttribute('aria-hidden','true');
    for(const o of items.slice(0,3)){const dot=E('span');dot.dataset.visibility=o.record.visibility;dots.append(dot);}
    b.append(dots);
+   const preview=E('span',items[0].record.data.title,'calendar-date-preview');preview.setAttribute('aria-hidden','true');b.append(preview);
   }
   grid.append(b);
  }
@@ -973,10 +976,10 @@ function listTasks(m){
   for(const [name,completed] of [['open_tasks',false],['completed',true]]){
    const groupRows=rows.filter(r=>Boolean(r.data.completed)===completed);
    if(!groupRows.length)continue;
-   const group=E('section',undefined,'task-group');
+   const group=E(completed&&status.value!=='done'?'details':'section',undefined,'task-group');
    const heading=E('h2',t(name));heading.id='tasks-'+name;
    group.setAttribute('aria-labelledby',heading.id);
-   group.append(append(E('div',undefined,'task-group-head'),heading,E('span',String(groupRows.length),'task-group-count')));
+   group.append(append(E(group.tagName==='DETAILS'?'summary':'div',undefined,'task-group-head'),heading,E('span',String(groupRows.length),'task-group-count')));
    for(const record of groupRows)group.append(taskRow(record));
    c.append(group);
   }
@@ -1171,6 +1174,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    return row;
   };
   if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',pendingTask?.operation.data.title||data.title||data.name||'');
+  if(kind==='task')fields.name.placeholder=({ru:'Например, купить продукты',en:'For example, buy groceries','uz-Latn':'Masalan, oziq-ovqat xarid qilish','uz-Cyrl':'Масалан, озиқ-овқат харид қилиш'})[state.lang]||'For example, buy groceries';
   if(kind==='event'){
    const schedule=data.schedule||{};
    fields.localStart=input(f,'localStart',t('web_event_start'),'datetime-local',schedule.localStart?.slice(0,16)||eventDay+'T09:00');
@@ -1197,6 +1201,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   if(kind==='note')fields.body=input(f,'body',t('note_text'),'textarea',draft?.body??data.body??'');
   if(kind==='task'){
    fields.completed=input(f,'completed',t('completed'),'checkbox');fields.completed.checked=!!(pendingTask?.operation.data.completed??data.completed);fields.completed.disabled=!!data.assignees?.length;
+   const status=E('div',undefined,'task-editor-status'),statusLabel=fields.completed.previousElementSibling;append(status,fields.completed,statusLabel);f.append(status);
    if(data.assignees?.length){f.append(E('p',t('family_review_pending')));for(const pid of data.assignees){const profile=state.roster.profiles.find(p=>p.id===pid);f.append(button(t('complete')+' · '+(profile?.name||pid),async()=>{await saveOperation({id:crypto.randomUUID(),action:'task.complete',record_id:r.id,revision:r.revision,profile_id:pid,completed:true});d.close();await refresh();render();}));}}
   }
   if(['account','transaction'].includes(kind))fields.currency=input(f,'currency',t('currency'),'text',data.currency||'RUB');
@@ -1208,9 +1213,9 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   if(kind==='transaction'){
    fields.direction=select(f,'direction',t('family_kind_transaction'),[['expense',t('expense')],['income',t('income')]],data.kind||'expense');
    fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());fields.label=input(f,'label',t('family_name'),'text',data.label||'',false);
-   fields.category=select(f,'category',({ru:'Категория расходов',en:'Expense category','uz-Latn':'Xarajat toifasi','uz-Cyrl':'Харажат тоифаси'}[state.lang]||'Expense category'),transactionCategoryChoices(),data.category||'');
+   fields.category=select(f,'category',({ru:'Категория',en:'Category','uz-Latn':'Toifa','uz-Cyrl':'Тоифа'}[state.lang]||'Category'),transactionCategoryChoices(),data.category||'');
    const categoryLabel=fields.category.previousElementSibling;
-   const categoryVisibility=()=>{const hidden=fields.direction.value!=='expense';fields.category.hidden=hidden;categoryLabel.hidden=hidden;};
+   const categoryVisibility=()=>{fields.category.hidden=false;categoryLabel.hidden=false;};
    categoryVisibility();fields.direction.addEventListener('change',categoryVisibility);
    const accounts=records('account'),selected=r?data.account_id:defaultTransactionAccount(accountKey,accounts)?.id;
    fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...accounts.map(a=>[a.id,a.data.name+' · '+a.data.currency])],selected||'');
@@ -1276,6 +1281,11 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   if(!accessOptions){accessOptions=E('details',undefined,'record-options');accessOptions.append(E('summary',t('family_visibility')));f.append(accessOptions);}
   fields.visibility=select(accessOptions,'visibility',t('family_visibility'),[['private',t('family_private')],['shared',t('family_shared')]],r?.visibility||(currentSpace()?.role==='child'?'shared':'private'));
   if(pendingTask)fields.visibility.value=pendingTask.operation.visibility;
+  if(accessOptions.classList.contains('record-options')){
+   const summary=accessOptions.querySelector('summary');
+   const showAccess=()=>{summary.textContent=t('family_visibility')+' · '+t('family_'+fields.visibility.value);};
+   showAccess();fields.visibility.addEventListener('change',showAccess);
+  }
   if(draftNotice){
    if(draft){fields.visibility.value=draft.visibility;draftNotice.textContent=localDraft;}
    fields.body.addEventListener('input',keepDraft);
@@ -1301,7 +1311,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
    }
    if(kind==='task')data={title:v.name.value,completed:v.completed.checked?1:0,assignment:r?.data.assignment||'any',assignees:r?.data.assignees||[],review:r?.data.review||0};
    if(kind==='account')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),opening_minor:minor(v.amount.value||'0',true,v.currency.value)};
-   if(kind==='transaction')data={kind:v.direction.value,amount_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),currency:v.currency.value.trim().toUpperCase(),date:v.date.value,label:v.label.value,account_id:v.account.value||null,category:v.direction.value==='expense'?(v.category.value||null):null};
+   if(kind==='transaction')data={kind:v.direction.value,amount_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),currency:v.currency.value.trim().toUpperCase(),date:v.date.value,label:v.label.value,account_id:v.account.value||null,category:v.category.value||null};
    if(kind==='budget')data={name:v.name.value,currency:v.currency.value.trim().toUpperCase(),limit_minor:minor(v.amount.value,false,v.currency.value.trim().toUpperCase()),period:v.period.value,start_on:v.start.value,end_on:v.period.value==='custom'?v.end.value||null:r?.data.end_on||null,rollover:v.rollover.value,participants:r?.data.participants||[]};
    if(kind==='transfer')data={from_id:v.from.value,to_id:v.to.value,sent_minor:minor(v.amount.value,false,v.currency?.value||records('account').find(a=>a.id===v.from?.value)?.data.currency||'RUB'),received_minor:minor(v.received.value,false,records('account').find(a=>a.id===v.to.value)?.data.currency||'RUB'),date:v.date.value};
    ULADIMDomain.validateFinance(kind,data,records('account'));
@@ -1337,12 +1347,15 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved}={}){
   editor.querySelector('button[type=submit]').textContent=t('retry');
   editor.querySelector('.error').textContent=pendingTask?pendingTaskMessage(accepted):t(accepted?'web_saved_refresh':'web_uncertain');
  }
- if(r)container.append(button(t('family_use_server'),async()=>{
+ const secondary=E('div',undefined,'editor-secondary-actions');
+ secondary.append(button(({ru:'Отмена',en:'Cancel','uz-Latn':'Bekor qilish','uz-Cyrl':'Бекор қилиш'})[state.lang]||'Cancel',()=>d.close(),'secondary editor-cancel'));
+ if(r){const more=E('details',undefined,'editor-more');more.append(E('summary',({ru:'Другие действия',en:'More actions','uz-Latn':'Boshqa amallar','uz-Cyrl':'Бошқа амаллар'})[state.lang]||'More actions'));more.append(button(t('family_use_server'),async()=>{
   await refresh();
   if(draftKey)writeNoteDraft(draftKey,null);
   d.close();render();
- }));
- if(r?.editable)container.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));
+ },'secondary'));
+ if(r.editable)more.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));secondary.append(more);}
+ container.append(secondary);
  });
  if(taskKey)d.addEventListener('close',()=>{
   if(epoch===privateEpoch&&workspace===state.space&&['today','tasks'].includes(state.tab)&&readTaskAction(taskKey))render();
@@ -1428,10 +1441,10 @@ function renderFinanceBudgets(m){
  }).catch(error=>{if(m.isConnected)budgets.append(E('p',errorText(error),'error'));});
  return budgets;
 }
-function financeExpenseGroups(rows,currency){
+function financeExpenseGroups(rows,currency,kind='expense'){
  const labels=new Map(transactionCategoryChoices()),totals=new Map();
  for(const row of rows){
-  if(row.kind!=='transaction'||row.data.kind!=='expense'||row.data.currency!==currency)continue;
+  if(row.kind!=='transaction'||row.data.kind!==kind||row.data.currency!==currency)continue;
   const category=labels.has(row.data.category)?row.data.category:'';
   totals.set(category,(totals.get(category)||0n)+BigInt(row.data.amount_minor));
  }
@@ -1462,8 +1475,8 @@ function finance(m){
   'uz-Latn':{overview:'Moliya sharhi',history:'Barcha vaqt',balance:'Hisoblar balansi',recent:'Oxirgi operatsiyalar',report:'Hisob bo‘yicha hisobot',back:'Barcha hisoblar',open:'Hisobotni ochish',separate:'Summalar valyuta bo‘yicha alohida ko‘rsatilgan.',noAccount:'Hisob endi mavjud emas',period:'Hisobot davri'},
   'uz-Cyrl':{overview:'Молия шарҳи',history:'Барча вақт',balance:'Ҳисоблар баланси',recent:'Охирги операциялар',report:'Ҳисоб бўйича ҳисобот',back:'Барча ҳисоблар',open:'Ҳисоботни очиш',separate:'Суммалар валюта бўйича алоҳида кўрсатилган.',noAccount:'Ҳисоб энди мавжуд эмас',period:'Ҳисобот даври'}
  }[state.lang]||{overview:'Financial overview',history:'All time',balance:'Account balances',recent:'Recent transactions',report:'Account report',back:'All accounts',open:'Open report',separate:'Amounts are shown separately by currency.',noAccount:'Account is no longer available',period:'Report period'};
- const categoriesTitle=({ru:'Расходы по категориям',en:'Expenses by category','uz-Latn':'Xarajatlar toifalar bo‘yicha','uz-Cyrl':'Харажатлар тоифалар бўйича'})[state.lang]||'Expenses by category';
- const categoriesHint=({ru:'Выберите категорию при добавлении или изменении операции. Прежние операции остаются без категории, пока вы её не укажете.',en:'Choose a category when adding or editing a transaction. Existing transactions remain uncategorized until you assign one.','uz-Latn':'Operatsiyani qo‘shish yoki tahrirlashda toifani tanlang. Avvalgi operatsiyalar toifa tanlanmaguncha toifasiz qoladi.','uz-Cyrl':'Операцияни қўшиш ёки таҳрирлашда тоифани танланг. Аввалги операциялар тоифа танланмагунча тоифасиз қолади.'})[state.lang]||'Choose a category when adding or editing a transaction. Existing transactions remain uncategorized until you assign one.';
+ const categoriesTitle=({ru:'По категориям',en:'By category','uz-Latn':'Toifalar bo‘yicha','uz-Cyrl':'Тоифалар бўйича'})[state.lang]||'By category';
+ const categoriesHint=({ru:'Нажмите категорию, чтобы увидеть операции.',en:'Choose a category to see its transactions.','uz-Latn':'Operatsiyalarni ko‘rish uchun toifani tanlang.','uz-Cyrl':'Операцияларни кўриш учун тоифани танланг.'})[state.lang]||'Choose a category to see its transactions.';
  const view=['accounts','budgets','ledger','analysis','report'].includes(state.referenceSection)?state.referenceSection:'overview';
  const accountRecords=records('account'),reportAccount=view==='report'?accountRecords.find(a=>a.id===state.financeFilters.account):null;
  title(m,'finances');m.classList.add('finance-page');m.dataset.financeView=view;
@@ -1500,7 +1513,7 @@ function finance(m){
  const ledgerRows=E('div',undefined,'ledger-rows');ledger.append(ledgerRows);
  let ledgerLimit=25,ledgerFilterKey='';
  const pagination=E('div',undefined,'ledger-pagination'),pageStatus=E('p',undefined,'small');pageStatus.setAttribute('role','status');
- const showMore=button('',()=>{ledgerLimit+=25;draw();},'secondary');append(pagination,pageStatus,showMore);if(view!=='overview')ledger.append(pagination);
+ const showMore=button('',()=>{ledgerLimit+=25;draw();},'secondary');append(pagination,pageStatus,showMore);ledger.append(pagination);pagination.hidden=view==='overview';
  if(view==='overview')ledger.append(button(t('web_all_operations'),()=>referenceNavigate('money','ledger'),'text-button finance-ledger-all'));
  const accounts=card();accounts.classList.add('finance-accounts');accounts.id='finance-accounts';
  for(const a of accountRecords){
@@ -1516,10 +1529,23 @@ function finance(m){
  const currencies=[...new Set([...records('transaction'),...accountRecords].map(r=>r.data.currency))];
  const currency=select(chartCurrency,'chart-currency',t('currency'),currencies.map(c=>[c,c]),reportAccount?.data.currency||currencies[0]);
  const mode=select(chartMode,'chart-mode',t('web_chart_type'),[['categories',categoriesTitle],['bar',t('web_bar')],['line',t('web_line')],['smooth',t('web_smooth')],['donut',t('web_donut')],['compact',t('web_compact')]],state.financeChartMode||'categories');
+ const breakdownWrap=E('div',undefined,'finance-breakdown-control');
+ const breakdownKind=select(breakdownWrap,'breakdown-kind',categoriesTitle,[['expense',t('expense')],['income',t('income')]],state.financeBreakdownKind||'expense');
+ chart.insertBefore(breakdownWrap,chartControls);
+ const chartOptions=E('details',undefined,'finance-chart-options');chartOptions.append(E('summary',t('web_chart_type')));chart.insertBefore(chartOptions,chartControls);chartOptions.append(chartControls);
+ breakdownWrap.append(chartCurrency);chartCurrency.classList.add('finance-chart-currency');chartCurrency.hidden=currencies.length<2;
+ breakdownWrap.classList.toggle('has-currencies',currencies.length>1);
+ let drilldown=false,categoryFilter=null;
+ const clearDrill=button(({ru:'Все категории',en:'All categories','uz-Latn':'Barcha toifalar','uz-Cyrl':'Барча тоифалар'})[state.lang]||'All categories',()=>{categoryFilter=null;drilldown=false;draw();},'text-button finance-clear-drill');
+ clearDrill.hidden=true;ledger.insertBefore(clearDrill,ledgerRows);
+ const drill=(kind,category=null)=>{breakdownKind.value=kind;mode.value='categories';drilldown=true;categoryFilter=category;ledgerLimit=25;draw();};
  currency.disabled=mode.disabled=!currencies.length;
  if(reportAccount)currency.disabled=true;
  const legend=E('div',undefined,'chart-legend');chart.append(legend);
  const canvas=E('canvas');canvas.width=720;canvas.height=320;canvas.setAttribute('role','img');chart.append(canvas);
+ const categoryVisual=E('div',undefined,'finance-category-visual'),categoryRing=E('div',undefined,'finance-category-ring'),categoryTotal=E('div',undefined,'finance-category-total');
+ categoryRing.setAttribute('aria-hidden','true');append(categoryVisual,categoryRing,categoryTotal);chart.insertBefore(categoryVisual,legend);
+ const categoryLargeTotal=E('div',undefined,'finance-category-large-total');categoryLargeTotal.hidden=true;chart.insertBefore(categoryLargeTotal,legend);
  const categoryHint=E('p',categoriesHint,'small finance-category-hint');chart.append(categoryHint);
  const budgets=view==='budgets'?renderFinanceBudgets(m):null;
  if(['overview','ledger','analysis','report'].includes(view)){
@@ -1542,35 +1568,48 @@ function finance(m){
   const balanceByCurrency=new Map();
   for(const a of accountRecords.filter(a=>!accountFilter.value||a.id===accountFilter.value))balanceByCurrency.set(a.data.currency,(balanceByCurrency.get(a.data.currency)||0n)+balance(a));
   for(const [kind,label] of [['balance',copy.balance],['income',t('income')],['expense',t('expense')]]){
-   const tile=E('div',undefined,'card finance-metric '+kind);tile.append(E('span',label,'small'));
+   const tile=button('',()=>kind==='balance'?referenceNavigate('money','accounts'):drill(kind),'card finance-metric '+kind);tile.append(E('span',label,'small'));
    const values=kind==='balance'?[...balanceByCurrency.entries()]:currencies.filter(code=>!accountFilter.value||accountRecords.find(a=>a.id===accountFilter.value)?.data.currency===code).map(code=>[code,financeTotals(filtered,code)[kind]]);
    for(const [code,amount]of values)tile.append(moneyElement(amount,code));
    if(!values.length)tile.append(E('strong','—'));
+   tile.append(E('span',({ru:'Подробнее',en:'View details','uz-Latn':'Batafsil','uz-Cyrl':'Батафсил'})[state.lang]||'View details','finance-metric-link'));
    metricGrid.append(tile);
   }
   const values=financeTotals(filtered,currency.value),categories=mode.value==='categories';legend.replaceChildren();
   legend.classList.toggle('chart-category-legend',categories);categoryHint.hidden=!categories;chart.classList.toggle('finance-category-analysis',categories);
-  if(categories){
-   const groups=financeExpenseGroups(filtered,currency.value),sum=groups.reduce((total,group)=>total+group.amount,0n);
+  if(categories&&currency.value){
+   const groups=financeExpenseGroups(filtered,currency.value,breakdownKind.value),sum=groups.reduce((total,group)=>total+group.amount,0n);
    for(const group of groups){
-    const item=E('div',undefined,'chart-category-row'),label=E('span'),swatch=E('span',undefined,'chart-category-swatch');
+    const item=button('',()=>drill(breakdownKind.value,group.id),'chart-category-row'),label=E('span'),swatch=E('span',undefined,'chart-category-swatch');
+    item.setAttribute('aria-pressed',String(drilldown&&categoryFilter===group.id));
     swatch.style.backgroundColor=group.color;swatch.setAttribute('aria-hidden','true');
     append(label,swatch,E('span',group.label));
-    const percent=sum?new Intl.NumberFormat(state.lang,{style:'percent',maximumFractionDigits:1}).format(Number(group.amount*1000000n/sum)/1000000):'0%';
+    const part=sum?Number(group.amount*1000000n/sum)/1000000:0;
+    const percent=part>0&&part<.001?'<'+new Intl.NumberFormat(state.lang,{style:'percent',maximumFractionDigits:1}).format(.001):new Intl.NumberFormat(state.lang,{style:'percent',maximumFractionDigits:1}).format(part);
     append(item,label,moneyElement(group.amount,currency.value),E('small',percent));legend.append(item);
    }
    if(!groups.length)legend.append(emptyPanel('money',t('empty_money')));
-   if(chart.isConnected)drawExpenseCategories(canvas,currency.value,groups);
+   let cursor=0;const stops=[];for(const group of groups){const start=cursor;cursor+=sum?Number(group.amount*1000000n/sum)/10000:0;stops.push(group.color+' '+start+'% '+cursor+'%');}
+   categoryRing.style.background=sum?'conic-gradient('+stops.join(',')+')':'var(--ux-border)';
+   const outsideTotal=moneyParts(sum,currency.value).number.length>13;
+   categoryTotal.replaceChildren(E('span',t(breakdownKind.value),'small'),outsideTotal?E('span',currency.value,'small'):moneyElement(sum,currency.value));
+   categoryLargeTotal.hidden=!outsideTotal;categoryLargeTotal.replaceChildren();if(outsideTotal)categoryLargeTotal.append(moneyElement(sum,currency.value));
   }else if(currency.value){
    for(const kind of ['income','expense']){const item=E('div',undefined,'chart-legend-row '+kind);append(item,E('span',t(kind)),moneyElement(values[kind],currency.value));legend.append(item);}
   }else legend.append(emptyPanel('money',t('empty_money')));
   state.financeChartMode=mode.value;if(!categories){state.chart=mode.value;preferences();}
-  canvas.hidden=mode.value==='compact'||!currency.value;if(chart.isConnected&&!categories)drawChart(canvas,currency.value,filtered,mode.value);
+  state.financeBreakdownKind=breakdownKind.value;categoryVisual.hidden=!categories||!currency.value;categoryLargeTotal.hidden=!categories||!currency.value||moneyParts(financeTotals(filtered,currency.value)[breakdownKind.value],currency.value).number.length<=13;breakdownKind.hidden=!categories;
+  canvas.hidden=categories||mode.value==='compact'||!currency.value;if(chart.isConnected&&!categories)drawChart(canvas,currency.value,filtered,mode.value);
   const transfers=records('transfer').filter(r=>(!accountFilter.value||[r.data.from_id,r.data.to_id].includes(accountFilter.value))&&(!from.value||r.data.date>=from.value)&&(!to.value||r.data.date<=to.value)&&(!search.value||(t('family_kind_transfer')+' '+r.data.date).toLocaleLowerCase(state.lang).includes(search.value.toLocaleLowerCase(state.lang))));
-  const entries=[...filtered,...transfers].sort((a,b)=>b.data.date.localeCompare(a.data.date)||(b.seq||0)-(a.seq||0)||b.id.localeCompare(a.id));
+  const categoryIds=new Set(transactionCategoryChoices().map(([id])=>id));
+  const drillRows=drilldown?filtered.filter(r=>r.data.kind===breakdownKind.value&&r.data.currency===currency.value&&(categoryFilter===null||(categoryIds.has(r.data.category)?r.data.category:'')===categoryFilter)):filtered;
+  const entries=[...drillRows,...(drilldown?[]:transfers)].sort((a,b)=>b.data.date.localeCompare(a.data.date)||(b.seq||0)-(a.seq||0)||b.id.localeCompare(a.id));
+  clearDrill.hidden=!drilldown;pagination.hidden=view==='overview'&&!drilldown;
+  const ledgerHeading=ledger.querySelector('h2');ledgerHeading.textContent=drilldown?t(breakdownKind.value)+(categoryFilter===null?'':' · '+new Map(transactionCategoryChoices()).get(categoryFilter)):view==='overview'?copy.recent:t('web_history');
+  const allOperations=ledger.querySelector('.finance-ledger-all');if(allOperations)allOperations.hidden=drilldown;
   const accountsById=new Map(accountRecords.map(account=>[account.id,account.data]));ledgerRows.replaceChildren();
   const filterKey=JSON.stringify(state.financeFilters);if(filterKey!==ledgerFilterKey){ledgerLimit=25;ledgerFilterKey=filterKey;}
-  const displayed=entries.slice(0,view==='overview'?5:ledgerLimit);
+  const displayed=entries.slice(0,view==='overview'&&!drilldown?5:ledgerLimit);
   for(const [index,entry]of displayed.entries()){
    const data=entry.data,isTransfer=entry.kind==='transfer',kind=isTransfer?'transfer':data.kind;
    const row=E('div',undefined,'row ledger-row'),text=E('div',undefined,'text'),label=isTransfer?t('family_kind_transfer'):data.label||t(kind);
@@ -1589,7 +1628,7 @@ function finance(m){
   if(!entries.length)ledgerRows.append(E('p',t(active?'web_no_results':'empty_money'),'empty'));
  }
  redrawFinance=draw;
- for(const field of [search,from,to,accountFilter,currency,mode])field.addEventListener(field===search?'input':'change',draw);
+ for(const field of [search,from,to,accountFilter,currency,mode,breakdownKind])field.addEventListener(field===search?'input':'change',()=>{if(field===breakdownKind){categoryFilter=null;if(drilldown)ledgerLimit=25;}draw();});
  requestAnimationFrame(draw);
 }
 function financeTotals(rows,currency){let income=0n,expense=0n;for(const r of rows.filter(r=>r.data.currency===currency)){if(r.data.kind==='income')income+=BigInt(r.data.amount_minor);else expense+=BigInt(r.data.amount_minor);}return {income,expense};}
