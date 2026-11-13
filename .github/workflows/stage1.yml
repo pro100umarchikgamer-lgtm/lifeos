@@ -273,6 +273,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tool/reuse_signed_apk.py
+      - name: Record dependencies resolved for this signed release
+        if: steps.validation.outputs.build == 'true' && inputs.reuse_signed_apk != true
+        run: |
+          mkdir -p release-dependencies
+          flutter pub deps --json > release-dependencies/flutter-dependencies.json
+          flutter --version --machine > release-dependencies/flutter-toolchain.json
+          cp pubspec.lock release-dependencies/pubspec.lock
+          (cd android && ./gradlew :app:dependencies --configuration releaseRuntimeClasspath --no-daemon --console=plain) > release-dependencies/android-release-runtime.txt
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('release-dependencies')
+          inventory={'source':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),
+                     'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+                     'files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.iterdir()) if p.is_file()}}
+          (root/'provenance.json').write_text(json.dumps(inventory,indent=2)+'\n')
+          PY
       - name: Build and verify one APK with the persistent test identity
         id: signing
         if: steps.validation.outputs.build == 'true' && inputs.reuse_signed_apk != true
@@ -324,6 +341,7 @@ jobs:
           name: lifeos-release-test-apk-${{ inputs.reuse_signed_apk && '6acbde34f499d7c740322687416abc3aa542f9ac' || steps.validation.outputs.sha }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
+            release-dependencies/
             apk-identity.txt
             apk-certificate.txt
             apk-manifest.txt
