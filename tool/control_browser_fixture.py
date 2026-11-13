@@ -48,8 +48,10 @@ def control_fixture():
         if os.environ.get('ULADIM_CHROMIUM'):
             launch['executable_path'] = os.environ['ULADIM_CHROMIUM']
         if os.environ.get('HTTPS_PROXY'):
+            # Keep Chromium's subtractive token before the explicit local rules;
+            # Playwright otherwise appends it last and proxies the HTTP fixture.
             launch['proxy'] = {'server': os.environ['HTTPS_PROXY'],
-                               'bypass': '.uladim.test,localhost,127.0.0.1'}
+                               'bypass': '<-loopback>,.uladim.test,localhost,127.0.0.1'}
         try:
             yield customer_origin, origin, control, backend, actor, wid, launch
         finally:
