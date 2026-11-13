@@ -6,6 +6,7 @@ import '../app_controller.dart';
 import '../domain/action_engine.dart';
 import '../domain/models.dart';
 import '../services/backup_service.dart';
+import '../platform/native_bridge.dart';
 import 'design.dart';
 import 'appearance_editor.dart';
 import 'selection.dart';
@@ -25,10 +26,12 @@ class _PersonalSettingsState extends State<PersonalSettings> {
   bool busy = false;
   final backupStatus = ValueNotifier<String>('backup_steps');
   final backupBusy = ValueNotifier<bool>(false);
+  final notificationBusy = ValueNotifier<bool>(false);
   @override
   void dispose() {
     backupStatus.dispose();
     backupBusy.dispose();
+    notificationBusy.dispose();
     super.dispose();
   }
 
@@ -80,6 +83,42 @@ class _PersonalSettingsState extends State<PersonalSettings> {
     } catch (_) {
       message('native_unavailable');
     }
+  }
+
+  Future<void> testNotification() async {
+    if (busy || notificationBusy.value) return;
+    notificationBusy.value = true;
+    try {
+      final result = await c.native.testNotification({
+        'title': 'ULADIM',
+        'message': c.pack.t('test_message'),
+      });
+      await c.refresh(forceReminders: true);
+      message(switch (result.status) {
+        NotificationTestStatus.posted => 'test_notification_posted',
+        NotificationTestStatus.blocked => result.channelBlocked
+            ? 'notification_channel_blocked'
+            : 'notifications_disabled',
+        NotificationTestStatus.unconfirmed => 'test_notification_not_posted',
+      });
+    } catch (_) {
+      message('native_unavailable');
+    } finally {
+      if (mounted) notificationBusy.value = false;
+    }
+  }
+
+  String notificationChannelDetails(Map? channel) {
+    final importance = channel?['importance'] as int? ?? 0;
+    final priority = switch (importance) {
+      >= 4 => 'notification_priority_high',
+      3 => 'notification_priority_standard',
+      > 0 => 'notification_priority_silent',
+      _ => 'notification_channel_blocked',
+    };
+    final audible = c.notificationStatus['enabled'] == true &&
+        importance >= 3 && channel?['sound'] == true;
+    return '${c.pack.t(priority)}\n${c.pack.t(audible ? 'audible_enabled' : 'audible_restricted')}';
   }
 
   Future<String?> password({required bool create}) async {
@@ -315,7 +354,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
         appBar: AppBar(title: Text(c.pack.t('permissions_diagnostics'))),
         body: SafeArea(
           child: ListenableBuilder(
-            listenable: c,
+            listenable: Listenable.merge([c, notificationBusy]),
             builder: (context, _) => ListView(
               padding: const EdgeInsets.all(20),
               children: [
@@ -394,16 +433,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
                             contentPadding: EdgeInsets.zero,
                             title: Text(c.pack.t('mode_${mode.name}')),
                             subtitle: Text(
-                              c.pack.t(
-                                channels[mode.name] is Map &&
-                                        (channels[mode.name]
-                                                as Map)['importance'] !=
-                                            0 &&
-                                        (channels[mode.name] as Map)['sound'] ==
-                                            true
-                                    ? 'audible_enabled'
-                                    : 'audible_restricted',
-                              ),
+                              notificationChannelDetails(channels[mode.name] as Map?),
                             ),
                             leading: Icon(
                               mode == ReminderMode.alarm
@@ -417,7 +447,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
                 ],
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: busy || !c.native.supported
+                  onPressed: busy || notificationBusy.value || !c.native.supported
                       ? null
                       : () => native('notificationSettings'),
                   icon: const Icon(Icons.settings_outlined),
@@ -425,21 +455,9 @@ class _PersonalSettingsState extends State<PersonalSettings> {
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
-                  onPressed: busy || !c.native.supported
+                  onPressed: busy || notificationBusy.value || !c.native.supported
                       ? null
-                      : () async {
-                          try {
-                            await c.native.testNotification({
-                              'title': 'ULADIM',
-                              'message': c.pack.t('test_message'),
-                              'doneLabel': c.pack.t('complete'),
-                              'dismissLabel': c.pack.t('dismiss'),
-                              'snoozeLabel': c.pack.t('snooze'),
-                            });
-                          } catch (_) {
-                            message('native_unavailable');
-                          }
-                        },
+                      : testNotification,
                   icon: const Icon(Icons.send_outlined),
                   label: Text(c.pack.t('test_notification')),
                 ),
@@ -521,7 +539,7 @@ class _PersonalSettingsState extends State<PersonalSettings> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: c,
+    listenable: Listenable.merge([c, notificationBusy]),
     builder: (context, _) {
       final sections = <Widget>[
         LifeCard(
@@ -631,21 +649,9 @@ class _PersonalSettingsState extends State<PersonalSettings> {
                 },
               ),
               FilledButton.icon(
-                onPressed: busy || !c.native.supported
+                onPressed: busy || notificationBusy.value || !c.native.supported
                     ? null
-                    : () async {
-                        try {
-                          await c.native.testNotification({
-                            'title': 'ULADIM',
-                            'message': c.pack.t('test_message'),
-                            'doneLabel': c.pack.t('complete'),
-                            'dismissLabel': c.pack.t('dismiss'),
-                            'snoozeLabel': c.pack.t('snooze'),
-                          });
-                        } catch (_) {
-                          message('native_unavailable');
-                        }
-                      },
+                    : testNotification,
                 icon: const Icon(Icons.notifications_outlined),
                 label: Text(c.pack.t('test_notification')),
               ),

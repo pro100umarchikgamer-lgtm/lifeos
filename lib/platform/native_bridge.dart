@@ -2,6 +2,24 @@ import 'dart:io';
 import 'dart:typed_data' as typed;
 import 'package:flutter/services.dart';
 
+enum NotificationTestStatus { posted, blocked, unconfirmed }
+
+class NotificationTestResult {
+  const NotificationTestResult(this.status, {this.channelBlocked = false});
+  final NotificationTestStatus status;
+  final bool channelBlocked;
+
+  factory NotificationTestResult.fromMap(Map<String, Object?>? value) =>
+      NotificationTestResult(
+        switch (value?['status']) {
+          'posted' => NotificationTestStatus.posted,
+          'blocked' => NotificationTestStatus.blocked,
+          _ => NotificationTestStatus.unconfirmed,
+        },
+        channelBlocked: value?['reason'] == 'channel',
+      );
+}
+
 class NativeBridge {
   static const channel = MethodChannel('lifeos/native');
   bool get supported => Platform.isAndroid;
@@ -59,9 +77,11 @@ class NativeBridge {
     if (supported) await channel.invokeMethod<void>(permission);
   }
 
-  Future<void> testNotification(Map<String, Object?> labels) async {
+  Future<NotificationTestResult> testNotification(
+      Map<String, Object?> labels) async {
     if (!supported) throw PlatformException(code: 'unsupported');
-    await channel.invokeMethod<void>('testNotification', labels);
+    return NotificationTestResult.fromMap(await channel
+        .invokeMapMethod<String, Object?>('testNotification', labels));
   }
 
   Future<bool> saveBackup(typed.Uint8List bytes) async {

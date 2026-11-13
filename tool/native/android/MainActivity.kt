@@ -41,7 +41,7 @@ class MainActivity : FlutterActivity() {
                             "enabled" to (enabled && permission), "exact" to ReminderRuntime.exact(this),
                             "channels" to if (Build.VERSION.SDK_INT >= 26) listOf("standard", "important", "alarm").associateWith { name ->
                                 val channel = manager.getNotificationChannel("lifeos.$name")
-                                mapOf("importance" to channel.importance, "sound" to (channel.sound != null))
+                                mapOf("importance" to channel.importance, "sound" to (channel.sound != null), "vibration" to channel.shouldVibrate())
                             } else emptyMap<String, Any>()))
                     }
                     "reconcile" -> { ReminderRuntime.reconcile(this, JSONArray(call.argument<List<Any>>("entries"))); result.success(null) }
@@ -60,8 +60,8 @@ class MainActivity : FlutterActivity() {
                     "notificationSettings" -> { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)); result.success(null) }
                     "testNotification" -> {
                         val e = JSONObject(call.arguments as Map<*, *>).put("id", "test").put("revision", 1)
-                            .put("schedule", JSONObject().put("mode", "standard"))
-                        ReminderRuntime.show(this, e, System.currentTimeMillis()); result.success(null)
+                            .put("test", true).put("schedule", JSONObject().put("mode", "important"))
+                        ReminderRuntime.testNotification(this, e) { result.success(it) }
                     }
                     "decodeStatement" -> {
                         val bytes = call.argument<ByteArray>("bytes") ?: error("Missing bytes")
