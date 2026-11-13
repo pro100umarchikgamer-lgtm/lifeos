@@ -1,22 +1,19 @@
-"""Control composer rendered from real local assets with synthetic staff API.
-No staff credentials, actual staff access, broadcasts, or real recipients.
+"""Control composer after real disposable admission, with synthetic staff API.
+No production credentials, staff API writes, broadcasts, or real recipients.
 """
 from pathlib import Path
 from urllib.parse import urlsplit
 import json, os, time, uuid
 from playwright.sync_api import sync_playwright, expect
-from tool.check_web_platform import fixture
+from tool.control_browser_fixture import control_fixture,admit_control
 
 OUT=Path('web_evidence/inbox')
 
 def main():
  OUT.mkdir(parents=True,exist_ok=True);writes=[];checks=[];drafts=[];permissions=['dashboard.read','users.read','applications.manage','staff.manage','support.read','audit.read','flags.manage','announcements.manage','users.recover'];self_id=str(uuid.uuid4());count={'value':12}
- with fixture() as (origin,_,actor,wid),sync_playwright() as p:
-  browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}));context=browser.new_context(viewport={'width':1440,'height':1024},service_workers='block',reduced_motion='reduce');page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
-  # Fixture-only root response: production admission is separately enforced by backend tests.
-  control=origin.replace('localhost','control.localhost')
-  def document(route):route.fulfill(body=Path('backend/webassets/index.html').read_text().replace('__SURFACE__','control'),content_type='text/html')
-  page.route(control+'/',document)
+ with control_fixture() as (_,origin,control,_,actor,wid,launch),sync_playwright() as p:
+  browser=p.chromium.launch(**launch);context=browser.new_context(viewport={'width':1440,'height':1024},service_workers='block',reduced_motion='reduce');page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+  admit_control(page,origin,control);checks.append('real_owner_handoff_admits_assets_but_still_requires_staff_mfa')
   def api(route):
    path=urlsplit(route.request.url).path.removeprefix('/control/api/');body=route.request.post_data_json if route.request.method=='POST' else None
    if body is not None:writes.append((path,body))
@@ -47,5 +44,5 @@ def main():
   for width in [390,834,1440]:
    page.set_viewport_size({'width':width,'height':1000});page.screenshot(path=str(OUT/f'control-composer-{width}.png'),full_page=True);assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
   checks.append('responsive_control_composer_without_overflow');page.evaluate("id=>staffUser(id)",actor['id']);page.get_by_role('button',name='Отправить письмо восстановления',exact=True).click();expect(page.locator('main')).to_contain_text('защита MFA сохраняется');page.get_by_label('Причина для журнала аудита',exact=True).fill('Обращение владельца аккаунта');page.get_by_role('button',name='Отправить письмо',exact=True).click();expect(page.get_by_role('heading',name='Письмо восстановления запрошено',exact=True)).to_be_visible();assert any(path=='user/recovery' and body['user_id']==actor['id'] for path,body in writes);checks.append('staff_recovery_requires_reason_and_owner_completes_email_flow');page.get_by_label('Раздел Control',exact=True).select_option('dashboard');expect(page.get_by_role('heading',name='Обзор сервиса',exact=True)).to_be_visible();expect(page.get_by_label('Раздел Control',exact=True)).to_have_count(1);checks.append('return_to_control_overview_keeps_one_navigation');permissions.remove('announcements.manage');page.reload();expect(page.get_by_role('heading',name='Обзор сервиса',exact=True)).to_be_visible();assert page.get_by_label('Раздел Control',exact=True).locator('option[value=announcements]').count()==0;expect(page.locator('.control-overview-links').get_by_role('button',name='Уведомления',exact=False)).to_have_count(0);checks.append('notification_management_hidden_without_server_permission');assert not errors,errors;context.close();browser.close()
- summary={'checks':checks,'transport':'Synthetic staff API and locally rendered Control assets. No real staff session or real recipients.'};(OUT/'control-checks.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+ summary={'checks':checks,'transport':'Real disposable owner browser admission and WSGI assets; synthetic staff API. No authenticated staff session or real recipients.'};(OUT/'control-checks.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
 if __name__=='__main__':main()

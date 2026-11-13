@@ -1,21 +1,22 @@
 """Owned trash consent and opaque Control approval UI with synthetic API only.
 Actual backend restore and authorization are separately tested by backend suite.
-No production records, staff credentials or real user recovery requests.
+No production records, production credentials or real user recovery requests.
 """
 from pathlib import Path
 from urllib.parse import urlsplit,parse_qs
 import json,os,time,uuid
 from playwright.sync_api import sync_playwright,expect
-from tool.check_web_platform import fixture,login
+from tool.check_web_platform import login
+from tool.control_browser_fixture import control_fixture,admit_control
 
 OUT=Path('web_evidence/recovery')
 
 def main():
  OUT.mkdir(parents=True,exist_ok=True);now=int(time.time());checks=[];writes=[];requests=[];retry={'fail':True};enabled={'value':False}
- with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
+ with control_fixture() as (origin,control_parent,staff,backend,actor,wid,launch),sync_playwright() as p:
   record=dict(id=str(uuid.uuid4()),workspace_id=wid,owner_id=actor['id'],kind='note',visibility='private',audience=[],revision=2,deleted=True,seq=50,data={'body':'Личная удалённая заметка\nСодержимое видно только владельцу.'},consent_hash='a'*64,restorable=True,restore_error=None)
   foreign={**record,'id':str(uuid.uuid4()),'owner_id':str(uuid.uuid4()),'data':{'body':'Чужой секрет'}}
-  browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}));context=browser.new_context(viewport={'width':390,'height':844},service_workers='block',reduced_motion='reduce');page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+  browser=p.chromium.launch(**launch);context=browser.new_context(viewport={'width':390,'height':844},service_workers='block',reduced_motion='reduce');page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
   def asset_handler(name,mime):
    def handle(route):route.fulfill(path=str(Path('backend/webassets/app')/name),content_type=mime)
    return handle
@@ -49,8 +50,8 @@ def main():
    page.set_viewport_size({'width':width,'height':900});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');page.screenshot(path=str(OUT/f'owner-recovery-{width}.png'),full_page=True)
   page.evaluate("referenceNavigate('account','signout')");page.locator('main').get_by_role('button',name='Выйти',exact=True).click();expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible();assert page.evaluate('recoveryCenter().snapshot().records.length')==0;assert page.evaluate('recoveryCenter().snapshot().pending')==0;checks.append('signout_clears_record_previews_and_one_use_grants')
   # A separate fixture Control page receives metadata only; private content never renders.
-  staff=origin.replace('localhost','control.localhost');staff_page=context.new_page();staff_page.on('pageerror',lambda error:errors.append(str(error)))
-  staff_page.route(staff+'/',lambda route:route.fulfill(body=Path('backend/webassets/index.html').read_text().replace('__SURFACE__','control'),content_type='text/html'))
+  staff_page=context.new_page();staff_page.on('pageerror',lambda error:errors.append(str(error)))
+  admit_control(staff_page,control_parent,staff);checks.append('real_owner_handoff_admits_assets_but_still_requires_staff_mfa')
   permissions=['dashboard.read','records.recover'];requests[0].update(state='pending',revision=1)
   def control_api(route):
    path=urlsplit(route.request.url).path.removeprefix('/control/api/');body=route.request.post_data_json if route.request.method=='POST' else None
