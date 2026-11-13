@@ -1,16 +1,18 @@
 """Actual rendered browser acceptance against a loopback-only synthetic backend.
 
-HTTP localhost is used only for this disposable development fixture. Production
-HTTPS checks remain enabled and no certificate verification is disabled.
+TLS uses an ephemeral pinned certificate for two same-site names mapped to
+loopback. No production credentials, global TLS bypass, or real audience is used.
 """
 from dataclasses import replace
 import json
+import os
 import tempfile
 import threading
 from pathlib import Path
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 from cryptography.fernet import Fernet
 from tool.web_browser_navigation import open_tab, open_settings
+from tool.web_test_tls import enable_test_tls
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.control import Control, totp
@@ -50,15 +52,16 @@ def main():
         control=Control(backend);enrollment=control.bootstrap('owner@example.test')
         settings=Settings.load({'DATABASE_URL':'postgresql://example/db','EMAIL_QUEUE_KEY':Fernet.generate_key().decode(),'RATE_LIMIT_KEY':'synthetic-browser-rate-key-'+'x'*32,'SMTP_HOST':'127.0.0.1','SMTP_TLS':'none','EMAIL_FROM':'fixture@example.test'})
         server=make_server('127.0.0.1',0,lambda e,s:[],handler_class=Quiet)
-        site='http://localhost:'+str(server.server_port)
-        staff='http://control.localhost:'+str(server.server_port)
+        pin=enable_test_tls(server,folder,('app.uladim.test','control.uladim.test'))
+        site='https://app.uladim.test:'+str(server.server_port)
+        staff='https://control.uladim.test:'+str(server.server_port)
         # No user/service data or credentials from the runner enter this fixture.
         app=Application(backend,replace(settings,site_origin=site,control_origin=staff,require_https=False,registration_allowlist=('new@example.test',)))
         server.set_app(app)
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             with sync_playwright() as p:
-                browser=p.chromium.launch()
+                browser=p.chromium.launch(proxy={'server':os.environ['HTTPS_PROXY'],'bypass':'.uladim.test'} if os.environ.get('HTTPS_PROXY') else None,args=['--host-resolver-rules=MAP *.uladim.test 127.0.0.1','--proxy-bypass-list=*.uladim.test','--ignore-certificate-errors-spki-list='+pin])
                 for theme in ('light','dark'):
                     context=browser.new_context(viewport={'width':390,'height':844},color_scheme=theme)
                     page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
@@ -90,7 +93,20 @@ def main():
                     expect(page.get_by_role('heading',name='Synthetic browser support '+theme,exact=True)).to_be_visible()
                     expect(page.get_by_text('A synthetic fixture, no personal records.',exact=True)).to_be_visible()
                     page.screenshot(path=str(OUT/('support_'+theme+'.png')),full_page=True)
-                    page.goto(staff+'/')
+                    # Control is hidden until this same browser signs into its
+                    # own staff-linked customer account and admits one use.
+                    anonymous= context.new_page()
+                    assert anonymous.goto(staff+'/').status==404
+                    anonymous.close()
+                    page.evaluate("referenceNavigate('account','signout')")
+                    page.locator('main').get_by_role('button',name='Выйти',exact=True).click()
+                    expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible()
+                    page.get_by_label('Электронная почта',exact=True).fill('owner@example.test')
+                    page.locator('input[name=password]').fill(PASSWORD)
+                    page.get_by_role('button',name='Войти',exact=True).click()
+                    expect(page.locator('.nav')).to_be_visible()
+                    page.locator('header').get_by_role('button',name='Профиль',exact=True).click()
+                    page.get_by_role('button',name='ULADIM Control',exact=True).click()
                     expect(page.get_by_role('heading',name='ULADIM Control',exact=True)).to_be_visible()
                     page.screenshot(path=str(OUT/('control_login_'+theme+'.png')),full_page=True)
                     # TOTP counters are replay-protected; use a fresh context/counter
