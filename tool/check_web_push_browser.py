@@ -17,11 +17,11 @@ OUT=Path('web_evidence/notifications')
 KEY='BOfjSvBlV87t2wZatd2QHZO4boIt-qSLdAoFW_t5U3DU6UcxDqEybIgsW7jLSwoKVNi-NnmJ1Aq2LxyXrM8F2Qc'
 SUBSCRIPTION=str(uuid.uuid4())
 FAKE_SUBSCRIPTION="""(() => {
- window.__permissionRequests=0;window.__unsubscribeCalls=0;window.__subscribeCalls=0;const request=Notification.requestPermission.bind(Notification);
+ window.__permissionRequests=0;window.__unsubscribeCalls=0;window.__subscribeCalls=0;window.__subscriptionReads=0;const request=Notification.requestPermission.bind(Notification);
  Notification.requestPermission=(...args)=>{window.__permissionRequests++;return request(...args);};
  let current=null;
  const make=()=>({endpoint:'https://push.invalid/synthetic',toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'synthetic',auth:'synthetic'}};},async unsubscribe(){window.__unsubscribeCalls++;current=null;return true;}});
- Object.defineProperty(PushManager.prototype,'getSubscription',{value:async()=>current});
+ Object.defineProperty(PushManager.prototype,'getSubscription',{value:async()=>{window.__subscriptionReads++;return current;}});
  Object.defineProperty(PushManager.prototype,'subscribe',{value:async()=>{window.__subscribeCalls++;current=make();return current;}});
  window.__existingPushSubscription=()=>{current=make();};
 })();"""
@@ -108,9 +108,28 @@ def main():
   page.evaluate("(async()=>{const s=await (await fetch('/account/api/session')).json();await fetch('/account/api/logout',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':s.csrf},body:'{}'});})()")
   delivery=push();wait_receipt(delivery,'suppressed');assert count_notifications()==0;checks.append('real_logged_out_session_suppresses_push')
   login(page,origin)
+  # login() observes the rendered shell before start() finishes its background
+  # timezone refresh. Let that refresh read the fixture's empty subscription
+  # before injecting one, so it cannot race this explicit refresh and also write.
+  page.wait_for_function('window.__subscriptionReads>0')
   page.evaluate('window.__existingPushSubscription()');before=len([item for item in writes if item[0]=='/subscribe'])
-  page.evaluate('refreshNotificationTimezone()');page.wait_for_timeout(500)
+  page.evaluate('refreshNotificationTimezone()')
   assert len([item for item in writes if item[0]=='/subscribe'])==before+1 and writes[-1][1]['lead_minutes']==30 and writes[-1][1]['priority']=='normal';assert page.evaluate('window.__permissionRequests')==0;checks.append('existing_optin_timezone_refresh_no_permission_prompt')
+  before=len([item for item in writes if item[0]=='/subscribe'])
+  switched=page.evaluate("""async () => {
+   const saved={...state},worker=notificationWorker,epoch=privateEpoch;
+   let release,started;
+   const gate=new Promise(resolve=>{release=resolve;}),ready=new Promise(resolve=>{started=resolve;});
+   notificationWorker=async()=>{started();await gate;return worker();};
+   try {
+    const pending=refreshNotificationTimezone();await ready;
+    clearIdentity();state.session={user_id:crypto.randomUUID()};
+    release();await pending;
+    return {before:epoch,after:privateEpoch,user:state.session.user_id,previous:saved.session.user_id};
+   }finally{notificationWorker=worker;Object.assign(state,saved);}
+  }""")
+  assert switched['after']==switched['before']+1 and switched['user']!=switched['previous']
+  assert len([item for item in writes if item[0]=='/subscribe'])==before and page.evaluate('window.__permissionRequests')==0;checks.append('pending_timezone_refresh_cancelled_on_account_switch')
   open_tab(page,'Профиль');open_settings(page,'notifications');expect(page.get_by_text('Включены на этом устройстве',exact=True)).to_be_visible(timeout=20000);page.get_by_role('button',name='Выключить на устройстве',exact=True).click();expect(page.get_by_text('Выключены на этом устройстве',exact=True)).to_be_visible();assert page.evaluate('window.__unsubscribeCalls')==1 and not status['enabled'];checks.append('explicit_disable_server_and_browser')
   page.get_by_role('button',name='Включить уведомления',exact=True).click();expect(page.get_by_text('Включены на этом устройстве',exact=True)).to_be_visible()
   before_subscriptions=page.evaluate('window.__subscribeCalls');before_unsubscribe=page.evaluate('window.__unsubscribeCalls');status['enabled']=False;status['last_delivery']={'id':str(uuid.uuid4()),'state':'failed','error_code':'subscription_gone'}
