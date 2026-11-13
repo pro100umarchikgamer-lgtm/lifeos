@@ -1752,8 +1752,15 @@ async function refreshNotificationTimezone(){
   if(subscription&&epoch===privateEpoch&&state.session)await call('notifications/subscribe',notificationSettings(subscription,settings));
  }catch{} // Existing opt-in only; startup must never show a permission dialog.
 }
+const NOTIFICATION_CONNECTION_COPY={
+ ru:{retry:'Повторить подключение',partial:'Разрешение получено, но подключение доставки не подтверждено. Повторите подключение.',status:'Подключение уведомлений не подтверждено',support:'Сведения для поддержки',stage:'Этап',code:'Код'},
+ en:{retry:'Retry connection',partial:'Permission was granted, but the delivery connection was not confirmed. Retry connecting.',status:'Notification connection is unconfirmed',support:'Support details',stage:'Stage',code:'Code'},
+ 'uz-Latn':{retry:'Ulanishni takrorlash',partial:'Ruxsat berilgan, ammo yetkazish ulanishi tasdiqlanmadi. Ulanishni takrorlang.',status:'Bildirishnoma ulanishi tasdiqlanmadi',support:'Yordam uchun ma’lumot',stage:'Bosqich',code:'Kod'},
+ 'uz-Cyrl':{retry:'Уланишни такрорлаш',partial:'Рухсат берилган, аммо етказиш уланиши тасдиқланмади. Уланишни такрорланг.',status:'Билдиришнома уланиши тасдиқланмади',support:'Ёрдам учун маълумот',stage:'Босқич',code:'Код'}
+};
+function notificationFailureCode(error){const known=new Set(['offline','server_error','server_unavailable','service_unavailable','push_unavailable','push_subscription_invalid','push_endpoint_invalid','push_preferences_invalid','push_timezone_invalid','rate_limited','csrf_invalid','notification_timeout']);if(known.has(error?.code))return error.code;const names=new Set(['NotAllowedError','AbortError','InvalidStateError','NotSupportedError','SecurityError','TypeError','TimeoutError']);return names.has(error?.name)?error.name:'unknown_error';}
 async function notificationPage(content){
- const copy=NOTIFICATION_COPY[state.lang]||NOTIFICATION_COPY.en,epoch=privateEpoch;
+ const copy=NOTIFICATION_COPY[state.lang]||NOTIFICATION_COPY.en,connectionCopy=NOTIFICATION_CONNECTION_COPY[state.lang]||NOTIFICATION_CONNECTION_COPY.en,epoch=privateEpoch;
  const active=()=>epoch===privateEpoch&&content.isConnected&&state.tab==='account'&&state.settingsTab==='notifications';
  const panel=card(copy.title);panel.classList.add('notification-panel');content.append(panel);
  append(panel,E('p',copy.intro,'notification-intro'));
@@ -1761,22 +1768,23 @@ async function notificationPage(content){
  const support=notificationSupport();
  if(support!=='supported'){status.textContent=copy[support];status.dataset.state='attention';return;}
  const controls=E('div',undefined,'notification-actions'),feedback=E('p','','notification-feedback');feedback.setAttribute('role','status');
+ const diagnostics=E('details',undefined,'notification-diagnostics');diagnostics.hidden=true;
  const delivery=E('section',undefined,'notification-delivery');delivery.setAttribute('aria-live','polite');
- append(panel,controls,feedback,E('p',copy.enabledHelp,'small'),delivery);
+ append(panel,controls,feedback,diagnostics,E('p',copy.enabledHelp,'small'),delivery);
  const details=E('details',undefined,'notification-options');details.append(E('summary',copy.options));
  const fields=E('div',undefined,'notification-option-fields');
  const lead=select(fields,'notification-lead',copy.lead,[5,15,30,60].map(n=>[String(n),n+' '+copy.minutes]),'15');
  const priority=select(fields,'notification-priority',copy.priority,[['high',copy.high],['normal',copy.normal]],'high');
  const save=button(copy.save,()=>execute(async()=>{settings=await call('notifications/subscribe',notificationSettings(subscription,{lead_minutes:Number(lead.value),priority:priority.value}));feedback.textContent=copy.saved;await draw();}),'secondary');
  fields.append(save);append(details,fields,E('p',copy.schedule,'small'));append(panel,details,E('p',copy.privacy,'small notification-privacy'));
- let settings=null,worker=null,subscription=null,busy=false;
- const failure=error=>{if(!active())return;feedback.textContent=['rate_limited','notification_test_rate_limited','notification_test_cooldown'].includes(error.code)?copy.cooldown:copy.error;if(error.code==='unauthorized')report(error);};
- async function execute(run){if(busy||!active())return;busy=true;panel.setAttribute('aria-busy','true');controls.querySelectorAll('button').forEach(b=>b.disabled=true);save.disabled=true;try{await run();}catch(error){failure(error);}finally{busy=false;if(active()){panel.removeAttribute('aria-busy');await draw();}}}
+ let settings=null,worker=null,subscription=null,busy=false,connectionFailed=false,connectionStage='device-permission';
+ const failure=(error,connecting=false)=>{if(!active())return;if(error.code==='unauthorized'){report(error);return;}if(connecting){connectionFailed=true;feedback.textContent=Notification.permission==='granted'?connectionCopy.partial:copy.error;diagnostics.hidden=false;diagnostics.open=false;diagnostics.dataset.stage=connectionStage;diagnostics.replaceChildren(E('summary',connectionCopy.support),E('p',connectionCopy.stage+': '+connectionStage),E('p',connectionCopy.code+': '+notificationFailureCode(error)));}else feedback.textContent=['rate_limited','notification_test_rate_limited','notification_test_cooldown'].includes(error.code)?copy.cooldown:copy.error;};
+ async function execute(run,connecting=false){if(busy||!active())return;busy=true;panel.setAttribute('aria-busy','true');controls.querySelectorAll('button').forEach(b=>b.disabled=true);save.disabled=true;try{await run();}catch(error){failure(error,connecting);}finally{busy=false;if(active()){panel.removeAttribute('aria-busy');await draw();}}}
  function showDelivery(value,pending=false){delivery.replaceChildren();if(!value)return;append(delivery,E('h3',copy.delivery),E('p',copy[value.state]||copy.pending));if(pending)delivery.append(E('p',copy.pending,'small'));}
  async function draw(){
   if(!active())return;
-  const permission=Notification.permission,on=Boolean(settings?.enabled&&subscription&&permission==='granted');
-  status.textContent=permission==='denied'?copy.denied:!worker?.supported?copy.update:on?copy.on:copy.off;status.dataset.state=on?'enabled':'attention';
+  const permission=Notification.permission,on=Boolean(settings?.enabled&&subscription&&permission==='granted'&&!connectionFailed);
+  status.textContent=permission==='denied'?copy.denied:!worker?.supported?copy.update:on?copy.on:connectionFailed&&permission==='granted'?connectionCopy.status:copy.off;status.dataset.state=on?'enabled':'attention';
   controls.replaceChildren();save.disabled=!on||busy;lead.disabled=priority.disabled=busy;
   if(on){
    controls.append(button(copy.test,()=>execute(async()=>{
@@ -1795,25 +1803,27 @@ async function notificationPage(content){
     settings=results[0].value;subscription=await worker.registration.pushManager.getSubscription();feedback.textContent='';
    }),'secondary'));
   }else{
-   const enable=button(copy.enable,()=>{
+   const enable=button(connectionFailed?connectionCopy.retry:copy.enable,()=>{
     // requestPermission must run synchronously inside this explicit click.
-    const permissionResult=Notification.permission==='default'?Notification.requestPermission():Promise.resolve(Notification.permission);
+    connectionStage='device-permission';feedback.textContent='';diagnostics.hidden=true;let permissionResult;
+    try{permissionResult=Notification.permission==='default'?Notification.requestPermission():Promise.resolve(Notification.permission);}catch(error){failure(error,true);draw();return;}
     return execute(async()=>{
      const permission=await permissionResult;if(!active())return;
      if(permission!=='granted'){feedback.textContent=copy.permission;return;}
-     const prepared=await call('notifications/prepare');if(!active())return;
-     subscription=await worker.registration.pushManager.getSubscription();
+     connectionStage='prepare';const prepared=await call('notifications/prepare');if(!active())return;
+     connectionStage='browser-registration';
+     subscription=await worker.registration.pushManager.getSubscription();if(!active())return;
      if(subscription&&settings?.last_delivery?.error_code==='subscription_gone'){
       // A provider can expire an endpoint before the browser removes it.
       // Explicit reconnection must obtain a fresh subscription instead of
       // registering the same dead endpoint again and repeating a 410 loop.
       if(!await subscription.unsubscribe())throw new Error('notification_reconnect');
-      subscription=null;
+      subscription=null;if(!active())return;
      }
      subscription=subscription||await worker.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:notificationKey(prepared.application_server_key)});
      if(!active())return;
-     settings=await call('notifications/subscribe',notificationSettings(subscription,{lead_minutes:Number(lead.value),priority:priority.value}));feedback.textContent='';
-    });
+     connectionStage='save';settings=await call('notifications/subscribe',notificationSettings(subscription,{lead_minutes:Number(lead.value),priority:priority.value}));if(!active())return;connectionFailed=false;diagnostics.hidden=true;feedback.textContent='';
+    },true);
    },'primary');enable.disabled=permission==='denied'||!worker?.supported||busy;controls.append(enable);
    // Revocation may have removed the local subscription while the server still
    // has opt-in state. Keep a way to turn that server registration off.
