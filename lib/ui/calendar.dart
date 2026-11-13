@@ -48,7 +48,7 @@ class CalendarGrid extends StatelessWidget {
               child: Container(height: 48, margin: const EdgeInsets.all(1), decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12), color: active ? color : inside ? color.withValues(alpha: .12) : null),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text('$day', style: TextStyle(color: active ? Theme.of(context).colorScheme.onPrimary : null, fontWeight: active ? FontWeight.bold : null)),
+                  SizedBox(height: 28, child: FittedBox(fit: BoxFit.scaleDown, child: Text('$day', maxLines: 1, softWrap: false, style: TextStyle(color: active ? Theme.of(context).colorScheme.onPrimary : null, fontWeight: active ? FontWeight.bold : null)))),
                   SizedBox(height: 5, child: marked.contains(dateOnly(date)) ? Icon(Icons.circle, size: 4, color: active ? Theme.of(context).colorScheme.onPrimary : color) : null),
                 ]))));
         })),
