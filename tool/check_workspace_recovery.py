@@ -62,7 +62,12 @@ def run(browser, origin, output, name, width, height):
         expect(page.locator('.reference-finance-legend')).to_contain_text('Доход · 150 000,00 RUB')
         expect(page.locator('.reference-finance-legend')).to_contain_text('Расход · 3 520,00 RUB')
         if width < 760:
-            assert page.locator('.today-finance').bounding_box()['y'] < timeline.bounding_box()['y']
+            # The compact dashboard gives tasks and the day's schedule priority.
+            tasks = page.locator('.today-tasks').bounding_box()
+            schedule = page.locator('.today-schedule').bounding_box()
+            finance = page.locator('.today-finance').bounding_box()
+            assert tasks['y'] + tasks['height'] <= schedule['y'] + 1, (name, 'tasks overlap the schedule')
+            assert schedule['y'] + schedule['height'] <= finance['y'] + 1, (name, 'finance overlaps the schedule')
         capture('today')
         timeline.get_by_role('button', name='Встреча с семьёй', exact=True).click()
         event_dialog = page.get_by_role('dialog')
