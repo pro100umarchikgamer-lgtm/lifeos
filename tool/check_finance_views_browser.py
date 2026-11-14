@@ -20,13 +20,20 @@ OUT=Path(os.environ.get('ULADIM_FINANCE_VIEWS_EVIDENCE','web_evidence/finance-vi
 
 
 def assert_money_lines(page,label):
-    failures=page.locator('main .money-number:visible').evaluate_all("""items=>items.map(e=>{
-        const range=document.createRange();range.selectNodeContents(e);
-        const rect=e.getBoundingClientRect(),parent=e.parentElement.getBoundingClientRect();
-        return {text:e.textContent,lines:range.getClientRects().length,
-                contained:rect.left>=parent.left-1&&rect.right<=parent.right+1,
-                exact:e.parentElement.textContent===e.parentElement.getAttribute('aria-label')};
-    }).filter(value=>value.lines!==1||!value.contained||!value.exact)""")
+    failures=page.wait_for_function("""()=>{
+        const items=[...document.querySelectorAll('main .money-number')].filter(e=>{
+            const rect=e.getBoundingClientRect();
+            return e.checkVisibility()&&getComputedStyle(e).visibility==='visible'&&rect.width>0&&rect.height>0;
+        });
+        if(!items.length)return false;
+        return {failures:items.map(e=>{
+            const range=document.createRange();range.selectNodeContents(e);
+            const rect=e.getBoundingClientRect(),parent=e.parentElement.getBoundingClientRect();
+            return {text:e.textContent,lines:range.getClientRects().length,
+                    contained:rect.left>=parent.left-1&&rect.right<=parent.right+1,
+                    exact:e.parentElement.textContent===e.parentElement.getAttribute('aria-label')};
+        }).filter(value=>value.lines!==1||!value.contained||!value.exact)};
+    }""").json_value()['failures']
     if failures:
         page.screenshot(path=str(OUT/('money-failure-'+label+'.png')),full_page=True)
         raise AssertionError((label,failures))

@@ -386,7 +386,8 @@ def run(browser, backend, actor, workspace, origin):
     page.unroute('**/account/api/sync*', lose_reply)
     close()
     context.close()
-    with browser.new_context(locale='ru-RU', ignore_https_errors=origin.startswith('https:')) as second_context:
+    with browser.new_context(locale='ru-RU', service_workers='block',
+                             ignore_https_errors=origin.startswith('https:')) as second_context:
         second = second_context.new_page()
         second.goto(origin + '/app/')
         second.locator('input[name=email]').fill(actor['email'])
