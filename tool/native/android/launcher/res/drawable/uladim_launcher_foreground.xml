@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Existing ULADIM web brand; 92dp within the 108dp adaptive canvas keeps the U inside the mask safe area. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:width="92dp" android:height="92dp" android:gravity="center" android:drawable="@drawable/uladim_brand" />
+</layer-list>

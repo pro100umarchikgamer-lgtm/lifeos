@@ -2,11 +2,11 @@ import 'dart:convert';
 
 /// One versioned value makes Apply atomic; previews never write preferences.
 class Appearance {
-  const Appearance({this.palette = 'emerald', this.shape = 'balanced',
+  const Appearance({this.palette = 'violet', this.shape = 'balanced',
     this.surface = 'soft', this.mode = 'system', this.dynamic = false});
   final String palette, shape, surface, mode;
   final bool dynamic;
-  static const palettes = ['emerald', 'pistachio', 'sky', 'sand'];
+  static const palettes = ['violet', 'emerald', 'pistachio', 'sky', 'sand'];
   static const shapes = ['subtle', 'balanced', 'rounded'];
   static const surfaces = ['soft', 'tonal', 'outlined'];
   String encode() => jsonEncode({'version': 1, 'palette': palette, 'shape': shape,

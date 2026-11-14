@@ -1,6 +1,8 @@
 name: Offline Core validation and final signed test APK
 on:
   push:
+    # This release branch has the mandatory PR run; avoid running it twice.
+    branches-ignore: [work/uladim-web-platform]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -26,21 +28,107 @@ on:
         default: false
 concurrency:
   group: lifeos-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  # Superseded PR checks can stop; a signed manual build remains uninterrupted.
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 permissions:
   contents: read
   actions: read
 jobs:
+  release_mode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select retained publication only for exact release infrastructure changes
+        id: mode
+        env:
+          BUILD_APK: ${{ inputs.build_apk || false }}
+          UPGRADE_PROBE: ${{ inputs.upgrade_probe || false }}
+          FOCUSED: ${{ inputs.focused || false }}
+          REUSE_SIGNED_APK: ${{ inputs.reuse_signed_apk || false }}
+          FORCE_FULL_VALIDATION: ${{ inputs.force_full_validation || false }}
+        run: python3 -m tool.native_release_mode
+
+  publish_retained:
+    needs: release_mode
+    if: github.event_name == 'workflow_dispatch' && inputs.build_apk == true && github.repository == 'pro100umarchikgamer-lgtm/lifeos' && github.ref == 'refs/heads/work/uladim-web-platform' && needs.release_mode.outputs.mode == 'publish-retained'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check retained release gate and draft publication logic
+        run: python3 -m unittest tool.tests.test_retained_native_release -v
+      - name: Verify and publish the already built APK without rebuilding or app tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_APK: ${{ inputs.build_apk || false }}
+          UPGRADE_PROBE: ${{ inputs.upgrade_probe || false }}
+          FOCUSED: ${{ inputs.focused || false }}
+          REUSE_SIGNED_APK: ${{ inputs.reuse_signed_apk || false }}
+          FORCE_FULL_VALIDATION: ${{ inputs.force_full_validation || false }}
+        run: python3 -m tool.publish_retained_apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uladim-native-publication-receipt
+          path: native-release-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+
+  publish_signed:
+    needs: [release_mode, production_backend, checks]
+    if: github.event_name == 'workflow_dispatch' && inputs.build_apk == true && inputs.focused != true && inputs.upgrade_probe != true && inputs.reuse_signed_apk != true && github.repository == 'pro100umarchikgamer-lgtm/lifeos' && github.ref == 'refs/heads/work/uladim-web-platform' && needs.release_mode.outputs.mode == 'validate' && needs.production_backend.result == 'success' && needs.checks.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify automatic and retained publication guards
+        run: python3 -m unittest tool.tests.test_current_native_release tool.tests.test_retained_native_release -v
+      - name: Publish this run's verified signed APK after all mandatory checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m tool.publish_current_apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uladim-native-publication-receipt
+          path: |
+            native-release-declaration.json
+            native-release-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+
   production_backend:
-    if: inputs.upgrade_probe != true
+    needs: release_mode
+    if: needs.release_mode.outputs.mode == 'validate' && inputs.upgrade_probe != true
     uses: ./.github/workflows/backend-production.yml
   focused:
-    needs: production_backend
-    if: inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-control-release' || github.ref == 'refs/heads/feature/uladim-ux-recovery-launch' || github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true)
+    needs: [release_mode, production_backend]
+    if: needs.release_mode.outputs.mode == 'validate' && (inputs.focused == true || ((github.ref == 'refs/heads/feature/uladim-control-release' || github.ref == 'refs/heads/feature/uladim-ux-recovery-launch' || github.ref == 'refs/heads/feature/uladim-brand' || github.ref == 'refs/heads/feature/family-sync' || github.ref == 'refs/heads/feature/lifeos-3-ux-recovery') && github.event_name != 'workflow_dispatch' && inputs.build_apk != true))
     uses: ./.github/workflows/family-focused.yml
   checks:
-    needs: production_backend
-    if: inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-control-release' && github.ref != 'refs/heads/feature/uladim-ux-recovery-launch' && github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
+    needs: [release_mode, production_backend]
+    if: needs.release_mode.outputs.mode == 'validate' && inputs.focused != true && (github.event_name == 'workflow_dispatch' || (github.ref != 'refs/heads/feature/uladim-control-release' && github.ref != 'refs/heads/feature/uladim-ux-recovery-launch' && github.ref != 'refs/heads/feature/uladim-brand' && github.ref != 'refs/heads/feature/family-sync' && github.ref != 'refs/heads/feature/lifeos-3-ux-recovery') || inputs.build_apk == true)
     runs-on: ubuntu-latest
     timeout-minutes: 55
     services:
@@ -122,7 +210,7 @@ jobs:
         if: steps.validation.outputs.full == 'true'
       - run: flutter analyze
         if: steps.validation.outputs.full == 'true'
-      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart test/session_rotation_test.dart test/account_center_test.dart test/google_login_test.dart
+      - run: flutter test test/domain_test.dart test/calendar_test.dart test/financial_period_test.dart test/backup_test.dart test/appearance_test.dart test/controller_test.dart test/widget_test.dart test/offline_finance_test.dart test/wealth_test.dart test/statement_import_test.dart test/personal_modules_test.dart test/ux_recovery_test.dart test/family_ux_test.dart test/ux31_test.dart test/launch_locales_test.dart test/finance_ux31_test.dart test/session_rotation_test.dart test/account_center_test.dart test/google_login_test.dart test/notification_delivery_test.dart test/native_shell_redesign_test.dart test/native_finance_design_test.dart test/native_account_design_test.dart test/native_planning_design_test.dart test/statement_timestamp_test.dart test/native_account_availability_test.dart test/native_api_availability_test.dart test/native_finance_navigation_test.dart test/native_inbox_ui_test.dart test/native_shell_polish_test.dart test/notification_center_test.dart test/notification_budget_preferences_test.dart test/notification_queue_race_test.dart test/public_links_test.dart test/help_center_test.dart test/subscription_access_test.dart test/lifecycle_authorizer_test.dart test/privacy_lifecycle_ui_test.dart test/privacy_financial_projection_test.dart test/privacy_financial_ui_test.dart test/privacy_principal_restriction_test.dart
         if: steps.validation.outputs.full == 'true'
       - run: flutter test --update-goldens test/visual_snapshot_test.dart test/offline_visual_test.dart test/account_center_visual_test.dart test/ux_recovery_visual_test.dart test/family_completion_visual_test.dart test/ux31_visual_test.dart
         if: steps.validation.outputs.full == 'true'
@@ -144,8 +232,8 @@ jobs:
         if: steps.validation.outputs.full == 'true'
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin --no-daemon
-      - name: Enable KVM for encrypted storage integration tests
-        if: steps.validation.outputs.full == 'true'
+      - name: Enable KVM for Android integration and signed upgrade
+        if: steps.validation.outputs.full == 'true' || steps.validation.outputs.build == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -166,7 +254,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-integration-diagnostics-${{ github.run_number }}
-          path: web_evidence/android-*
+          path: |
+            web_evidence/android-*
+            web_evidence/native-*
           if-no-files-found: warn
           retention-days: 14
       - name: Save evidence after all mandatory validation succeeds
@@ -183,19 +273,37 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tool/reuse_signed_apk.py
+      - name: Record dependencies resolved for this signed release
+        if: steps.validation.outputs.build == 'true' && inputs.reuse_signed_apk != true
+        run: |
+          mkdir -p release-dependencies
+          flutter pub deps --json > release-dependencies/flutter-dependencies.json
+          flutter --version --machine > release-dependencies/flutter-toolchain.json
+          cp pubspec.lock release-dependencies/pubspec.lock
+          (cd android && ./gradlew :app:dependencies --configuration releaseRuntimeClasspath --no-daemon --console=plain) > release-dependencies/android-release-runtime.txt
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('release-dependencies')
+          inventory={'source':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),
+                     'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+                     'files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.iterdir()) if p.is_file()}}
+          (root/'provenance.json').write_text(json.dumps(inventory,indent=2)+'\n')
+          PY
       - name: Build and verify one APK with the persistent test identity
         id: signing
         if: steps.validation.outputs.build == 'true' && inputs.reuse_signed_apk != true
         env:
           LIFEOS_TEST_KEYSTORE_BASE64: ${{ secrets.LIFEOS_TEST_KEYSTORE_BASE64 }}
           LIFEOS_API_ORIGIN: https://api.getuladim.space
+          LIFEOS_MIN_VERSION_CODE: 312001
         run: bash tool/ci_signing.sh
       - name: Download retained signed release for update verification
         if: steps.validation.outputs.build == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tool/check_release_upgrade.py --download --baseline 134001
-      - name: Install over signed 134001 and retain encrypted user data
+        run: python3 tool/check_release_upgrade.py --download --baseline 134001 --through-version 303001 --accepted-version 312001
+      - name: Upgrade signed 134001 through 303001 and 312001 and verify OS notifications
         if: steps.validation.outputs.build == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 12
@@ -206,7 +314,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim
-          script: python3 tool/check_release_upgrade.py --baseline 134001 --candidate build/app/outputs/flutter-apk/app-release.apk
+          script: python3 tool/check_release_upgrade.py --baseline 134001 --through-version 303001 --accepted-version 312001 --candidate build/app/outputs/flutter-apk/app-release.apk
       - name: Save Android upgrade evidence
         if: always() && steps.validation.outputs.build == 'true'
         uses: actions/upload-artifact@v4
@@ -233,6 +341,7 @@ jobs:
           name: lifeos-release-test-apk-${{ inputs.reuse_signed_apk && '6acbde34f499d7c740322687416abc3aa542f9ac' || steps.validation.outputs.sha }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
+            release-dependencies/
             apk-identity.txt
             apk-certificate.txt
             apk-manifest.txt

@@ -15,6 +15,7 @@ import uuid
 from .account_sessions import AccountSessions
 
 MAX_MINOR = 999999999999999
+TRANSACTION_CATEGORIES = frozenset({'food', 'transport', 'shopping', 'housing', 'health', 'leisure', 'education', 'transfers', 'other'})
 PERMISSIONS = {'view_budget', 'record_spending', 'edit_own', 'request_money', 'view_shared', 'create_tasks', 'complete_tasks'}
 TABLES = {'task':'tasks','note':'notes','account':'accounts','transaction':'transactions','transfer':'transfers','budget':'budgets','event':'events','shopping':'shopping','request':'requests'}
 FIELDS = {
@@ -66,18 +67,29 @@ class ManagedConnection(sqlite3.Connection):
 class Backend(AccountSessions):
     def __init__(self,path,deliver=None,clock=time.time):
         self.path,self.deliver,self.clock=str(path),deliver,clock
-        with self.connect() as db: db.executescript(Path(__file__).with_name('schema.sql').read_text())
+        with self.connect() as db:
+            db.executescript(Path(__file__).with_name('schema.sql').read_text())
+            # Existing development databases predate the optional category. A
+            # nullable additive column preserves all prior transaction values.
+            if 'category' not in {row['name'] for row in db.execute('PRAGMA table_info(transactions)')}:
+                db.execute("ALTER TABLE transactions ADD COLUMN category TEXT CHECK(category IS NULL OR category IN ('food','transport','shopping','housing','health','leisure','education','transfers','other'))")
+            if 'format_version' not in {row['name'] for row in db.execute('PRAGMA table_info(control_audit)')}:
+                db.execute('ALTER TABLE control_audit ADD COLUMN format_version BIGINT NOT NULL DEFAULT 1')
         os.chmod(self.path,0o600)
     def connect(self):
         db=sqlite3.connect(self.path,timeout=10,factory=ManagedConnection);db.row_factory=sqlite3.Row
         db.execute('PRAGMA foreign_keys=ON');return db
     @contextlib.contextmanager
-    def transaction(self):
+    def transaction(self, account_id=None):
         db=self.connect()
         try:
             db.execute('BEGIN IMMEDIATE');yield db;db.commit()
         except Exception: db.rollback();raise
         finally: db.close()
+    def delivery_transaction(self, account_id):
+        return self.transaction(account_id=account_id)
+    def privacy_guard(self, account_id):
+        return contextlib.nullcontext()
     def _session(self,db,uid):
         token=secrets.token_urlsafe(32);db.execute('INSERT INTO sessions VALUES(?,?,?)',(token_hash(token),uid,int(self.clock())+86400));return token
     def _deliver(self,db,email,code,purpose):
@@ -144,7 +156,7 @@ class Backend(AccountSessions):
             limit=db.execute('SELECT * FROM auth_limits WHERE key=?',(key,)).fetchone()
             require(limit is None or limit['until_at']<=now,'rate_limited',429)
             db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at',(key,now+60))
-            row=db.execute('SELECT id FROM users WHERE email=?',(email.casefold(),)).fetchone()
+            row=db.execute("SELECT u.id FROM users u LEFT JOIN account_state a ON a.user_id=u.id WHERE u.email=? AND COALESCE(a.deleted_at,0)=0 AND NOT EXISTS(SELECT 1 FROM deletion_jobs j WHERE j.user_id=u.id AND j.state='erasing')",(email.casefold(),)).fetchone()
             if row:
                 code=secrets.token_urlsafe(32);db.execute('DELETE FROM password_recovery WHERE user_id=?',(row['id'],))
                 db.execute('INSERT INTO password_recovery VALUES(?,?,?)',(token_hash(code),row['id'],now+900))
@@ -156,6 +168,7 @@ class Backend(AccountSessions):
         with self.transaction() as db:
             row=db.execute('SELECT u.id FROM password_recovery r JOIN users u ON u.id=r.user_id WHERE r.hash=? AND u.email=? AND r.expires_at>?',(token_hash(code),email.casefold(),int(self.clock()))).fetchone()
             require(row is not None,'verification_invalid')
+            self._account_available(db,row['id'])
             salt=secrets.token_hex(16);encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
             db.execute('UPDATE users SET salt=?,password_hash=?,verified=1 WHERE id=?',(salt,encoded,row['id']))
             db.execute('INSERT INTO account_credentials VALUES(?,1) ON CONFLICT(user_id) DO UPDATE SET has_password=1', (row['id'],))
@@ -175,6 +188,7 @@ class Backend(AccountSessions):
         return {'signed_out':True}
     def _workspace(self,db,actor,wid,parent=False):
         require(actor['verified']==1,'verify_email',403)
+        self._account_available(db,actor['id'])
         row=db.execute('SELECT w.*,m.role,m.profile_id,m.revision AS member_revision FROM workspaces w JOIN memberships m ON m.workspace_id=w.id WHERE w.id=? AND m.user_id=? AND m.active=1 AND w.dissolved=0',(wid,actor['id'])).fetchone()
         require(row is not None,'workspace_forbidden',403)
         if row['kind']=='family':
@@ -195,6 +209,7 @@ class Backend(AccountSessions):
         """Every family mutation is a UUID operation with audited revision checks."""
         require(actor['verified']==1,'verify_email',403);kind=op.get('action')
         with self.transaction() as db:
+            self._account_available(db,actor['id'])
             wid=identifier(op.get('workspace_id'))
             space=None if kind=='workspace.create' else self._workspace(db,actor,wid,parent=kind not in ('workspace.leave',))
             if (space and space['kind']=='family') or (kind=='workspace.create' and op.get('kind')=='family'):
@@ -251,6 +266,7 @@ class Backend(AccountSessions):
         require(actor['verified']==1,'verify_email',403);identifier(op.get('id'))
         code=op.get('invitation');require(isinstance(code,str) and len(code)==43)
         with self.transaction() as db:
+            self._account_available(db,actor['id'])
             prior=self._idempotent(db,actor,op)
             if prior:
                 self._workspace(db,actor,prior['workspace_id']);return prior
@@ -284,6 +300,11 @@ class Backend(AccountSessions):
         row=db.execute('SELECT permissions FROM profiles WHERE id=? AND workspace_id=? AND archived=0',(space['profile_id'],space['id'])).fetchone()
         require(row is not None,'profile_forbidden',403);return set(json.loads(row['permissions']))
     def _readable(self,db,actor,space,row):
+        if db.execute('SELECT 1 FROM erased_financial_stubs WHERE record_id=?', (row['id'],)).fetchone():
+            # A child may own an old transfer even after its audience changed.
+            # Expose only the generic structural shell needed by that history.
+            links = db.execute('SELECT r.* FROM transfers t JOIN records r ON r.id=t.id WHERE (r.deleted=0 OR r.owner_id=?) AND (t.from_id=? OR t.to_id=?)', (actor['id'], row['id'], row['id'])).fetchall()
+            if any(self._readable(db,actor,space,link) for link in links): return True
         if row['owner_id']==actor['id']:return True
         grant=db.execute('SELECT can_edit FROM grants WHERE record_id=? AND user_id=?',(row['id'],actor['id'])).fetchone()
         if row['visibility']=='private':return grant is not None
@@ -291,6 +312,9 @@ class Backend(AccountSessions):
         perms=self._permissions(db,space);audience=json.loads(row['audience']);own=space['profile_id'] in audience
         return ('view_shared' in perms and row['kind'] in ('task','event','shopping')) or own and ((row['kind'] in ('budget','account') and 'view_budget' in perms) or row['kind'] in ('transaction','request') or row['kind']=='task' and 'complete_tasks' in perms)
     def _editable(self,db,actor,space,row):
+        state=db.execute('SELECT deleted_at FROM account_state WHERE user_id=?',(row['owner_id'],)).fetchone()
+        if state and state['deleted_at']: return False
+        if db.execute('SELECT 1 FROM erased_financial_stubs WHERE record_id=?', (row['id'],)).fetchone(): return False
         if row['visibility']=='private':
             grant=db.execute('SELECT can_edit FROM grants WHERE record_id=? AND user_id=?',(row['id'],actor['id'])).fetchone()
             return row['owner_id']==actor['id'] or grant is not None and grant['can_edit']==1
@@ -300,15 +324,25 @@ class Backend(AccountSessions):
     def _data(self,db,row):
         if row['deleted']:
             result=dict(row);result['audience']=json.loads(result['audience']);result['data']={}
+            state=db.execute('SELECT deleted_at FROM account_state WHERE user_id=?',(row['owner_id'],)).fetchone()
+            if state and state['deleted_at']: result['privacy_erased']=True
+            if db.execute('SELECT 1 FROM erased_financial_stubs WHERE record_id=?', (row['id'],)).fetchone():
+                stub=db.execute('SELECT currency FROM accounts WHERE id=?', (row['id'],)).fetchone()
+                if stub:
+                    result['structural_reference']=True
+                    result['reference_currency']=stub['currency']
             if row['kind']=='task':result['progress']=[]
             return result
         result=dict(row);result['audience']=json.loads(result['audience']);data=dict(db.execute('SELECT * FROM '+TABLES[row['kind']]+' WHERE id=?',(row['id'],)).fetchone());data.pop('id')
         for key in JSON_FIELDS & data.keys(): data[key]=json.loads(data[key])
+        # Keep the legacy response shape for records without a selected category.
+        if row['kind']=='transaction' and data.get('category') is None:data.pop('category',None)
         result['data']=data
         if row['kind']=='task':result['progress']=[dict(p) for p in db.execute('SELECT profile_id,completed,approved FROM task_progress WHERE task_id=?',(row['id'],))]
         return result
     def _validate_data(self,db,wid,kind,data,audience,actor,space):
-        require(isinstance(data,dict) and set(data)==FIELDS[kind],'invalid_fields')
+        optional={'category'} if kind=='transaction' else set()
+        require(isinstance(data,dict) and FIELDS[kind]<=set(data)<=FIELDS[kind]|optional,'invalid_fields')
         for pid in audience: require(db.execute('SELECT id FROM profiles WHERE id=? AND workspace_id=? AND archived=0',(pid,wid)).fetchone() is not None,'invalid_participant')
         for key in ('name','title','body'):
             if key in data:text(data[key],20000 if key=='body' else 2000)
@@ -321,6 +355,9 @@ class Backend(AccountSessions):
             if data.get(key) is not None:civil(data[key])
         if 'label' in data:require(isinstance(data['label'],str) and len(data['label'])<=2000)
         if kind=='transaction':
+            if 'category' in data:
+                category=data['category']
+                require(category is None or isinstance(category,str) and category in TRANSACTION_CATEGORIES,'invalid_category')
             require(data['kind'] in ('income','expense'));aid=data['account_id']
             if aid is not None:self._reference(db,wid,aid,'account',currency=data['currency'],actor=actor,space=space)
         if kind=='transfer':
@@ -367,13 +404,15 @@ class Backend(AccountSessions):
             except Failure as error: results.append({'id':op.get('id'),'status':'rejected','error':error.code})
         return {'results':results}
     def _record_operation(self,actor,wid,op):
-        require(isinstance(op,dict));action=op.get('action');require(action in ('record.put','record.delete','record.grant','request.fulfill','task.complete','task.review'))
+        require(isinstance(op,dict));action=op.get('action');require(action in ('record.restore','record.put','record.delete','record.grant','request.fulfill','task.complete','task.review'))
         identifier(op.get('id'))
         rid=identifier(op.get('record_id'))
         with self.transaction() as db:
             space=self._workspace(db,actor,wid)
             if space['kind']=='family':self.check_service(db,actor['id'],'family_write')
             row=db.execute('SELECT * FROM records WHERE id=?',(rid,)).fetchone()
+            if action=='record.restore':
+                require(row is not None and row['owner_id']==actor['id'],'not_found',404)
             if row:
                 require(row['workspace_id']==wid and self._readable(db,actor,space,row),'record_forbidden',403)
                 require(self._editable(db,actor,space,row),'record_forbidden',403)
@@ -382,7 +421,12 @@ class Backend(AccountSessions):
             expected=op.get('revision');require(type(expected) is int and expected>=0)
             if (row['revision'] if row else 0)!=expected:
                 return {'id':op['id'],'status':'conflict','record_id':rid,'server':self._data(db,row) if row else None}
-            if action in ('task.complete','task.review'):
+            if action=='record.restore':
+                from .record_recovery import RecordRecovery
+                RecordRecovery(self).restore_in(db,actor,space,row,op)
+                seq=self._audit(db,wid,actor,op['id'],action,rid)
+                db.execute('UPDATE records SET revision=revision+1,seq=? WHERE id=?',(seq,rid))
+            elif action in ('task.complete','task.review'):
                 require(row is not None and row['kind']=='task' and not row['deleted'],'record_missing')
                 task=self._data(db,row)['data'];assignees=task['assignees'];pid=op.get('profile_id')
                 require(pid in assignees,'invalid_participant');require(type(op.get('completed')) is bool)

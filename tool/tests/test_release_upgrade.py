@@ -1,3 +1,6 @@
+import hashlib
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 import xml.etree.ElementTree as ET
@@ -76,3 +79,29 @@ class ReleaseUpgradeHelpers(unittest.TestCase):
         with patch.object(upgrade, 'tap'), patch.object(upgrade, 'adb'), patch.object(upgrade, 'find', return_value=ET.fromstring('<node text="Yexpected" />')):
             with self.assertRaisesRegex(AssertionError, 'Fixture text mismatch'):
                 upgrade.enter_text('expected')
+
+
+class NativeNotificationEvidence(unittest.TestCase):
+    def report(self,package=upgrade.APP,channel='lifeos.important',tag='test',importance=4,active=True):
+        record=f"    NotificationRecord(0x123: pkg={package} user=UserHandle{{0}} id=1 tag={tag} importance={importance} key=0|{package}|1|{tag}|10123: Notification(channel={channel} shortcut=null))\n"
+        return 'Current Notification Manager state:\n  Notification List:\n'+(record if active else '')+'  Enqueued Notification List:\n  Historical notifications:\n'+record
+
+    def test_requires_active_high_priority_test_notification_from_exact_app(self):
+        upgrade.verify_active_test_notification(self.report())
+        for changes in ({'package':'other.app'},{'package':upgrade.APP+'.other'},{'channel':'lifeos.standard'},{'channel':'lifeos.important.other'},{'tag':'test.other'},{'importance':3},{'active':False}):
+            with self.subTest(changes=changes),self.assertRaises(AssertionError):
+                upgrade.verify_active_test_notification(self.report(**changes))
+
+    def test_missing_os_list_does_not_become_delivery_success(self):
+        with self.assertRaisesRegex(AssertionError,'active notification list'):
+            upgrade.verify_active_test_notification('Notification service unavailable')
+
+    def test_local_retained_apk_must_match_independently_pinned_signed_bytes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source=Path(folder)/'303001.apk';source.write_bytes(b'verified-signed-apk')
+            release=('source','run',hashlib.sha256(source.read_bytes()).hexdigest())
+            with patch.dict(upgrade.os.environ,{'RUNNER_TEMP':folder}),patch.dict(upgrade.RETAINED_RELEASES,{303001:release}):
+                self.assertEqual(upgrade.previous(303001,source).read_bytes(),source.read_bytes())
+                source.write_bytes(b'different-signed-apk')
+                with self.assertRaisesRegex(AssertionError,'bytes changed'):
+                    upgrade.previous(303001,source)

@@ -1,0 +1,79 @@
+# Candidate only: activate after migration015 + browser-admission acceptance.
+# No registration policy, DNS, database volume or secret change.
+{$ULADIM_CONTROL_DOMAIN} {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Cache-Control no-store
+        -Server
+    }
+    @private path /metrics /health/*
+    handle @private {
+        respond 404
+    }
+    handle {
+        request_body {
+            max_size 2MB
+        }
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
+    }
+}
+{$LIFEOS_DOMAIN} {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Cache-Control no-store
+        -Server
+    }
+    @native path /v1/*
+    handle @native {
+        request_body {
+            max_size 2MB
+        }
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
+    }
+    handle {
+        respond 404
+    }
+}
+{$ULADIM_SITE_DOMAIN} {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        -Server
+    }
+    @app_document path /app /app/
+    header @app_document >Referrer-Policy strict-origin
+    # BEGIN ULADIM VERIFIED ANDROID RELEASE
+    handle /download/release.json {
+        header Content-Type application/json
+        header Cache-Control no-store
+        respond "Release metadata is not activated." 503
+    }
+    # END ULADIM VERIFIED ANDROID RELEASE
+    @private path /metrics /health/* /control/*
+    handle @private {
+        respond 404
+    }
+    handle {
+        request_body {
+            max_size 2MB
+        }
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
+    }
+}

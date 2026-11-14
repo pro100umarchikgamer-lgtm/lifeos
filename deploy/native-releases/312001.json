@@ -1,0 +1,25 @@
+{
+  "source": "84b0bdf2c6d54132691d22323553496f6b3b1d43",
+  "repository_id": 1413453356,
+  "version_code": 312001,
+  "application_id": "app.lifeos.lifeos",
+  "display_name": "ULADIM",
+  "api_origin": "https://api.getuladim.space",
+  "certificate_sha256": "5fa37e4abf1ec90d5787bd0d7dc4cf0b3f49022172f9d25e91f4d8a76702a96e",
+  "apk_sha256": "66d123cef79f85b7b2665bdcad0e6309db4a694e9a5076ed871450154c762872",
+  "signed_run": {"id": 43367262708, "number": 312, "workflow": "stage1.yml", "event": "workflow_dispatch"},
+  "required_runs": [
+    {"id": 43363956858, "number": 62, "workflow": "web-platform.yml", "event": "pull_request"},
+    {"id": 43363956757, "number": 311, "workflow": "stage1.yml", "event": "pull_request"}
+  ],
+  "apk_artifact": {
+    "id": 14012500993,
+    "name": "lifeos-release-test-apk-84b0bdf2c6d54132691d22323553496f6b3b1d43",
+    "sha256": "50770099bdaa7771a940f2b622eca6db63cff3587d35c25628d2c26f5bcf7e4e"
+  },
+  "upgrade_artifact": {
+    "id": 14012450851,
+    "name": "uladim-upgrade-evidence-312",
+    "sha256": "e918522534341d3889a1db8a598cb3b6fa59b96e40674b8718d1452f0bf675d4"
+  }
+}

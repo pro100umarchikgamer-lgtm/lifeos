@@ -7,6 +7,11 @@ from .service import Failure
 
 OPTIONAL_TABLES={'owner_setup','early_access','early_access_limits','account_mfa','account_recovery','account_state','devices','session_devices','refresh_tokens','staff','control_sessions','staff_invitations','staff_recovery','control_audit','plan_catalog','entitlement_grants','entitlement_overrides','provider_purchases','provider_events','service_holds','support_tickets','support_messages','feature_flags','flag_proposals','web_sessions','email_changes','deletion_jobs','ownership_transfers'}
 TABLES=re.findall(r'CREATE TABLE IF NOT EXISTS (\w+)\s*\(',Path(__file__).with_name('schema.sql').read_text())
+OPTIONAL_TABLES |= {'record_recovery_requests', 'control_handoffs', 'control_admissions'}
+OPTIONAL_TABLES |= {'account_reauth_grants', 'account_erasure_ledger', 'erased_financial_stubs', 'control_audit_notes'}
+OPTIONAL_TABLES |= {'web_push_keys','web_push_subscriptions','web_push_deliveries'}
+OPTIONAL_TABLES |= {'inbox_notifications','announcements','announcement_recipients','announcement_states',
+                    'inbox_settings','budget_inbox_notifications','budget_inbox_sources'}
 
 def import_server(backend,source,apply=False):
     path=Path(source).resolve()

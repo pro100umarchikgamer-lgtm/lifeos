@@ -48,6 +48,33 @@ class DeletionUIStore extends UIStore {
   }
 }
 
+/// Follow the same six-destination navigation as a user, including large text.
+Future<void> openNativeProfile(WidgetTester tester) async {
+  final rail = find.byType(NavigationRail);
+  if (rail.evaluate().isNotEmpty) {
+    final navigation = tester.widget<NavigationRail>(rail);
+    await tester.tap(find.byWidget(navigation.destinations.last.label));
+  } else {
+    final target = find.byKey(const Key('nav_profile'));
+    await tester.ensureVisible(target);
+    await tester.tap(target);
+  }
+  await tester.pumpAndSettle();
+}
+
+Future<void> openNativeSections(WidgetTester tester) async {
+  await openNativeProfile(tester);
+  final target = find.byKey(const Key('nav_modules'));
+  await tester.scrollUntilVisible(target, 240,
+      scrollable: find
+          .descendant(
+              of: find.byKey(const Key('profile_page')),
+              matching: find.byType(Scrollable))
+          .first);
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   timezone.initializeTimeZones();
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -194,7 +221,10 @@ void main() {
     await tester.pumpWidget(LifeOSApp(controller: controller));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('nav_today')), findsOneWidget);
-    expect(find.byKey(const Key('nav_modules')), findsOneWidget);
+    expect(find.byKey(const Key('nav_profile')), findsOneWidget);
+    expect(find.byKey(const Key('nav_tasks')), findsOneWidget);
+    expect(find.byKey(const Key('nav_calendar')), findsOneWidget);
+    expect(find.byKey(const Key('nav_notes')), findsOneWidget);
     expect(find.byKey(const Key('add_button')), findsOneWidget);
     expect(tester.takeException(), isNull);
     tester.view.physicalSize = const Size(1100, 900);
@@ -274,7 +304,7 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.text(c.pack.t('cancel')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('nav_plans')));
+      await tester.tap(find.byKey(const Key('nav_calendar')));
       await tester.pumpAndSettle();
       final first = dateOnly(
         DateTime(DateTime.now().year, DateTime.now().month),
@@ -306,7 +336,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      await tester.tap(find.byKey(const Key('profile_button')));
+      await openNativeProfile(tester);
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.byKey(const Key('settings_0')).hitTestable(),
@@ -355,12 +385,11 @@ void main() {
       expect(store.actions.single, isA<DeleteRecord>());
       final bar = find.byType(SnackBar);
       expect(bar, findsOneWidget);
-      final surface = find
-          .descendant(of: bar, matching: find.byType(Material))
-          .first;
+      final surface =
+          find.descendant(of: bar, matching: find.byType(Material)).first;
       expect(
         tester.getRect(surface).bottom,
-        lessThan(tester.getRect(find.byType(BottomAppBar)).top),
+        lessThan(tester.getRect(find.byKey(const Key('nav_today'))).top),
       );
       await tester.tap(find.text(c.pack.t('undo')));
       await tester.pumpAndSettle();

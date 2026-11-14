@@ -62,11 +62,13 @@ object ReminderRuntime {
             })
         }
     }
-    fun canAlert(c: Context, mode: String): Boolean {
-        if (Build.VERSION.SDK_INT >= 33 && c.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) return false
-        if (Build.VERSION.SDK_INT >= 24 && !notifications(c).areNotificationsEnabled()) return false
-        return Build.VERSION.SDK_INT < 26 || notifications(c).getNotificationChannel("lifeos.$mode").importance > 0
+    private fun alertBlockReason(c: Context, mode: String): String? {
+        if (Build.VERSION.SDK_INT >= 33 && c.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) return "permission"
+        if (Build.VERSION.SDK_INT >= 24 && !notifications(c).areNotificationsEnabled()) return "permission"
+        if (Build.VERSION.SDK_INT >= 26 && (notifications(c).getNotificationChannel("lifeos.$mode")?.importance ?: 0) == 0) return "channel"
+        return null
     }
+    fun canAlert(c: Context, mode: String): Boolean = alertBlockReason(c, mode) == null
     fun canSound(c: Context): Boolean = canAlert(c,"alarm") &&
         (Build.VERSION.SDK_INT < 26 || notifications(c).getNotificationChannel("lifeos.alarm").sound != null)
     fun canVibrate(c: Context): Boolean = canAlert(c,"alarm") &&
@@ -190,7 +192,8 @@ object ReminderRuntime {
             for (i in 0 until snoozes.length()) if (snoozes.getJSONObject(i).getLong("epoch") != epoch) remaining.put(snoozes.getJSONObject(i))
             e.put("snoozes", remaining); write(c, state)
         }
-        show(c, e, epoch)
+        val posted = show(c, e, epoch)
+        recordHistory(c, e, epoch, if (posted) "delivered" else "blocked")
         if (e.getJSONObject("schedule").getString("mode") == "alarm" && (canSound(c) || canVibrate(c))) {
             try {
                 val service = Intent(c, AlarmService::class.java).putExtra("entry", e.toString()).putExtra("epoch", epoch)
@@ -208,19 +211,49 @@ object ReminderRuntime {
     fun notification(c: Context, e: JSONObject, epoch: Long): Notification {
         val mode = e.getJSONObject("schedule").getString("mode")
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(c, "lifeos.$mode") else Notification.Builder(c)
-        return builder.setSmallIcon(android.R.drawable.ic_lock_idle_alarm).setContentTitle(e.getString("title"))
+        builder.setSmallIcon(android.R.drawable.ic_lock_idle_alarm).setContentTitle(e.getString("title"))
             .setContentText(e.getString("message")).setContentIntent(open(c, e.getString("id"))).setAutoCancel(false)
             .setCategory(if (mode == "alarm") Notification.CATEGORY_ALARM else Notification.CATEGORY_REMINDER)
             .setPriority(if (mode == "standard") Notification.PRIORITY_DEFAULT else Notification.PRIORITY_HIGH)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
+        // A diagnostic has no calendar record to complete or snooze.
+        if (e.optBoolean("test")) return builder.setAutoCancel(true).build()
+        return builder
             .addAction(Notification.Action.Builder(null, e.getString("doneLabel"), action(c, e, epoch, "completed")).build())
             .addAction(Notification.Action.Builder(null, e.getString("snoozeLabel"), action(c, e, epoch, "snoozed")).build())
             .addAction(Notification.Action.Builder(null, e.getString("dismissLabel"), action(c, e, epoch, "dismissed")).build())
             .setDeleteIntent(action(c, e, epoch, "dismissed")).build()
     }
-    fun show(c: Context, e: JSONObject, epoch: Long) {
+    fun show(c: Context, e: JSONObject, epoch: Long): Boolean {
         channels(c)
-        try { notifications(c).notify(e.getString("id"), 1, notification(c, e, epoch)) } catch (_: SecurityException) { }
+        if (!canAlert(c, e.getJSONObject("schedule").getString("mode"))) return false
+        return try { notifications(c).notify(e.getString("id"), 1, notification(c, e, epoch)); true } catch (_: SecurityException) { false }
+    }
+    fun testNotification(c: Context, e: JSONObject, complete: (Map<String, String>) -> Unit) {
+        channels(c)
+        val mode = e.getJSONObject("schedule").getString("mode")
+        val blocked = alertBlockReason(c, mode)
+        if (blocked != null) { complete(mapOf("status" to "blocked", "reason" to blocked)); return }
+        val epoch = System.currentTimeMillis()
+        if (!show(c, e, epoch)) {
+            val reason = alertBlockReason(c, mode)
+            complete(if (reason == null) mapOf("status" to "unconfirmed") else mapOf("status" to "blocked", "reason" to reason))
+            return
+        }
+        // notify() enqueues asynchronously. Only confirm a fresh OS notification,
+        // never permission alone or an earlier test still in the notification shade.
+        val handler = Handler(Looper.getMainLooper())
+        fun inspect(attempt: Int) {
+            val reason = alertBlockReason(c, mode)
+            if (reason != null) { complete(mapOf("status" to "blocked", "reason" to reason)); return }
+            val posted = try {
+                notifications(c).activeNotifications.any { it.tag == e.getString("id") && it.id == 1 && it.postTime >= epoch }
+            } catch (_: SecurityException) { false }
+            if (posted) complete(mapOf("status" to "posted"))
+            else if (attempt >= 10) complete(mapOf("status" to "unconfirmed"))
+            else handler.postDelayed({ inspect(attempt + 1) }, 100)
+        }
+        inspect(0)
     }
     @Synchronized fun act(c: Context, input: Intent) {
         val state = read(c)
@@ -244,7 +277,29 @@ object ReminderRuntime {
         write(c, state) // Do not dismiss an alert until its durable action has been written.
         notifications(c).cancel(id, 1)
         if (AlarmService.activeId == id && AlarmService.activeEpoch == epoch) c.stopService(Intent(c, AlarmService::class.java))
+        recordHistory(c, e, epoch, status)
         recovery(c)
+    }
+    /** Durable handoff to the SQLCipher inbox; content never leaves this device. */
+    @Synchronized private fun recordHistory(c: Context, e: JSONObject, epoch: Long, status: String) {
+        val state = read(c)
+        val history = state.optJSONArray("history") ?: JSONArray()
+        val id = "reminder:${e.getString("id")}:${e.getInt("revision")}:$epoch"
+        val remaining = JSONArray()
+        for (i in 0 until history.length()) if (history.getJSONObject(i).getString("id") != id) remaining.put(history.getJSONObject(i))
+        remaining.put(JSONObject().put("id", id).put("event_id", UUID.randomUUID().toString()).put("entry_id", e.getString("id"))
+            .put("kind", "reminder").put("title", e.optString("historyTitle", e.getString("title")))
+            .put("body", e.getString("message")).put("created_at", epoch / 1000).put("status", status))
+        state.put("history", remaining)
+        write(c, state)
+    }
+    @Synchronized fun acknowledgeHistory(c: Context, ids: Set<String>) {
+        val state = read(c)
+        val history = state.optJSONArray("history") ?: JSONArray()
+        val remaining = JSONArray()
+        for (i in 0 until history.length()) if (!ids.contains(history.getJSONObject(i).optString("event_id", history.getJSONObject(i).getString("id")))) remaining.put(history.getJSONObject(i))
+        state.put("history", remaining)
+        write(c, state)
     }
     @Synchronized fun acknowledge(c: Context, ids: Set<String>) {
         val state = read(c)

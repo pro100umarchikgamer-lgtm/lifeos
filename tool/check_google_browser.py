@@ -68,7 +68,10 @@ def main():
                         page.screenshot(path=str(out/'google-mfa-834.png'),full_page=True)
                         page.locator('input[name=code]').fill(backup['recovery_codes'][0])
                         page.get_by_role('button',name='Войти',exact=True).click()
-                    expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                    expect(page.locator('.nav')).to_be_visible()
+                    if factor:
+                        session = page.request.get(origin+'/account/api/session')
+                        assert session.ok and session.json()['user_id']==actor['id']
                     assert urlsplit(page.url).query==''
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                     assert not page.evaluate("JSON.stringify(localStorage).includes('eyJ')")

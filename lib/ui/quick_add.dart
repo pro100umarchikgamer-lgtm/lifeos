@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 
 import '../app_controller.dart';
 import '../domain/models.dart';
-import 'design.dart';
 import 'calendar.dart';
 import 'entry_sheet.dart';
 import 'selection.dart';
@@ -112,14 +111,17 @@ class _QuickAddState extends State<QuickAdd> {
   }
 
   Map<String, String> _choices(OfflineTable table) => {
-    '': widget.controller.pack.t('unassigned'),
-    for (final row in widget.controller.offline[table] ?? [])
-      if ((row['archived'] != 1 ||
-              row['id'] ==
-                  (table == OfflineTable.accounts ? _account : _category)) &&
-          (table != OfflineTable.accounts || row['currency'] == _currency.text))
-        row['id'] as String: row['name'] as String,
-  };
+        '': widget.controller.pack.t('unassigned'),
+        for (final row in widget.controller.offline[table] ?? [])
+          if ((row['archived'] != 1 ||
+                  row['id'] ==
+                      (table == OfflineTable.accounts
+                          ? _account
+                          : _category)) &&
+              (table != OfflineTable.accounts ||
+                  row['currency'] == _currency.text))
+            row['id'] as String: row['name'] as String,
+      };
   @override
   void dispose() {
     _amount.dispose();
@@ -141,59 +143,59 @@ class _QuickAddState extends State<QuickAdd> {
       if (record == null) {
         action = switch (widget.kind) {
           EntryKind.expense || EntryKind.income => CreateMoney(
-            _operation,
-            kind: widget.kind,
-            amount: _amount.text,
-            currencyCode: _currency.text,
-            date: _date,
-            label: _text.text,
-            accountId: _account.isEmpty ? null : _account,
-            categoryId: _category.isEmpty ? null : _category,
-          ),
+              _operation,
+              kind: widget.kind,
+              amount: _amount.text,
+              currencyCode: _currency.text,
+              date: _date,
+              label: _text.text,
+              accountId: _account.isEmpty ? null : _account,
+              categoryId: _category.isEmpty ? null : _category,
+            ),
           EntryKind.task => CreateTask(
-            _operation,
-            _text.text,
-            schedule: _schedule,
-          ),
+              _operation,
+              _text.text,
+              schedule: _schedule,
+            ),
           EntryKind.note => CreateNote(
-            _operation,
-            _text.text,
-            schedule: _schedule,
-          ),
+              _operation,
+              _text.text,
+              schedule: _schedule,
+            ),
         };
       } else {
         action = switch (widget.kind) {
           EntryKind.expense || EntryKind.income => EditMoney(
-            _operation,
-            record.id,
-            record.kind,
-            record.revision,
-            amount: _amount.text,
-            currencyCode: _currency.text,
-            date: _date,
-            label: _text.text,
-            updateDetails: true,
-            accountId: _account.isEmpty ? null : _account,
-            categoryId: _category.isEmpty ? null : _category,
-          ),
+              _operation,
+              record.id,
+              record.kind,
+              record.revision,
+              amount: _amount.text,
+              currencyCode: _currency.text,
+              date: _date,
+              label: _text.text,
+              updateDetails: true,
+              accountId: _account.isEmpty ? null : _account,
+              categoryId: _category.isEmpty ? null : _category,
+            ),
           EntryKind.task => EditTask(
-            _operation,
-            record.id,
-            record.revision,
-            _text.text,
-            schedule: _schedule,
-            updateSchedule: true,
-            expectedScheduleRevision: _scheduleRevision,
-          ),
+              _operation,
+              record.id,
+              record.revision,
+              _text.text,
+              schedule: _schedule,
+              updateSchedule: true,
+              expectedScheduleRevision: _scheduleRevision,
+            ),
           EntryKind.note => EditNote(
-            _operation,
-            record.id,
-            record.revision,
-            _text.text,
-            schedule: _schedule,
-            updateSchedule: true,
-            expectedScheduleRevision: _scheduleRevision,
-          ),
+              _operation,
+              record.id,
+              record.revision,
+              _text.text,
+              schedule: _schedule,
+              updateSchedule: true,
+              expectedScheduleRevision: _scheduleRevision,
+            ),
         };
       }
       await widget.controller.execute(action);
@@ -211,18 +213,6 @@ class _QuickAddState extends State<QuickAdd> {
   @override
   Widget build(BuildContext context) {
     final pack = widget.controller.pack;
-    final accent = switch (widget.kind) {
-      EntryKind.expense => LifePalette.red,
-      EntryKind.income => LifePalette.green,
-      EntryKind.task => LifePalette.blue,
-      EntryKind.note => LifePalette.orange,
-    };
-    final icon = switch (widget.kind) {
-      EntryKind.expense => Icons.remove_circle_rounded,
-      EntryKind.income => Icons.add_circle_rounded,
-      EntryKind.task => Icons.check_box_rounded,
-      EntryKind.note => Icons.notes_rounded,
-    };
     if (widget.kind == EntryKind.note) {
       return PopScope(
         canPop: !_saving,
@@ -251,7 +241,9 @@ class _QuickAddState extends State<QuickAdd> {
                     maxLines: null,
                     keyboardType: TextInputType.multiline,
                     textCapitalization: TextCapitalization.sentences,
-                    style: Theme.of(context).textTheme.bodyLarge
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
                         ?.copyWith(height: 1.6),
                     decoration: InputDecoration(
                       hintText: pack.t('note_text'),
@@ -285,16 +277,16 @@ class _QuickAddState extends State<QuickAdd> {
                             builder: (_) => StatefulBuilder(
                               builder: (context, update) =>
                                   SingleChildScrollView(
-                                    padding: const EdgeInsets.all(20),
-                                    child: ScheduleEditor(
-                                      controller: widget.controller,
-                                      value: _schedule,
-                                      onChanged: (v) {
-                                        setState(() => _schedule = v);
-                                        update(() {});
-                                      },
-                                    ),
-                                  ),
+                                padding: const EdgeInsets.all(20),
+                                child: ScheduleEditor(
+                                  controller: widget.controller,
+                                  value: _schedule,
+                                  onChanged: (v) {
+                                    setState(() => _schedule = v);
+                                    update(() {});
+                                  },
+                                ),
+                              ),
                             ),
                           );
                         },
@@ -322,22 +314,14 @@ class _QuickAddState extends State<QuickAdd> {
       canSave: _valid,
       header: Row(
         children: [
-          if (MediaQuery.textScalerOf(context).scale(1) <= 1.3) ...[
-            CircleAvatar(
-              backgroundColor: lifeAccent(
-                context,
-                accent,
-              ).withValues(alpha: .12),
-              child: Icon(icon, color: lifeAccent(context, accent)),
-            ),
-            const SizedBox(width: 10),
-          ],
           Expanded(
             child: Text(
               pack.t(
                 widget.record == null ? 'create_${widget.kind.name}' : 'edit',
               ),
-              style: Theme.of(context).textTheme.titleLarge
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
                   ?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
@@ -355,7 +339,9 @@ class _QuickAddState extends State<QuickAdd> {
             controller: _amount,
             autofocus: true,
             enabled: !_saving,
-            style: Theme.of(context).textTheme.headlineMedium
+            style: Theme.of(context)
+                .textTheme
+                .headlineMedium
                 ?.copyWith(fontWeight: FontWeight.w700),
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => _descriptionFocus.requestFocus(),
@@ -384,12 +370,12 @@ class _QuickAddState extends State<QuickAdd> {
             onChanged: _saving
                 ? null
                 : (v) => setState(() {
-                    _currency.text = v;
-                    if (!_choices(OfflineTable.accounts)
-                        .containsKey(_account)) {
-                      _account = '';
-                    }
-                  }),
+                      _currency.text = v;
+                      if (!_choices(OfflineTable.accounts)
+                          .containsKey(_account)) {
+                        _account = '';
+                      }
+                    }),
           ),
           const SizedBox(height: 12),
         ],
@@ -452,25 +438,26 @@ class _QuickAddState extends State<QuickAdd> {
               MaterialLocalizations.of(context).formatMediumDate(_date),
             ),
           ),
-
           const SizedBox(height: 12),
-          LifeSelect<String>(
-            label: pack.t('account'),
-            value: _account,
-            choices: _choices(OfflineTable.accounts),
-            searchLabel: pack.t('search_options'),
-            dialog: true,
-            onChanged: _saving ? null : (v) => setState(() => _account = v),
-          ),
+          if (_choices(OfflineTable.accounts).length > 1)
+            LifeSelect<String>(
+              label: pack.t('account'),
+              value: _account,
+              choices: _choices(OfflineTable.accounts),
+              searchLabel: pack.t('search_options'),
+              dialog: true,
+              onChanged: _saving ? null : (v) => setState(() => _account = v),
+            ),
           const SizedBox(height: 12),
-          LifeSelect<String>(
-            label: pack.t('category'),
-            value: _category,
-            choices: _choices(OfflineTable.categories),
-            searchLabel: pack.t('search_options'),
-            dialog: true,
-            onChanged: _saving ? null : (v) => setState(() => _category = v),
-          ),
+          if (_choices(OfflineTable.categories).length > 1)
+            LifeSelect<String>(
+              label: pack.t('category'),
+              value: _category,
+              choices: _choices(OfflineTable.categories),
+              searchLabel: pack.t('search_options'),
+              dialog: true,
+              onChanged: _saving ? null : (v) => setState(() => _category = v),
+            ),
         ],
         if (!_money) ...[
           const SizedBox(height: 12),

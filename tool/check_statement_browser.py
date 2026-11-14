@@ -1,0 +1,406 @@
+"""User-facing statement acceptance against the WSGI app and a disposable database."""
+from contextlib import contextmanager
+from dataclasses import replace
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from threading import Thread
+from wsgiref.simple_server import make_server
+from uuid import uuid4
+import os
+
+from cryptography.fernet import Fernet
+from playwright.sync_api import expect, sync_playwright
+from backend.config import Settings
+from backend.production import Application
+from backend.service import Backend
+from tool.check_pwa_browser import Quiet
+from tool.check_statement_documents import statement_pdf, statement_xlsx
+from tool.web_test_tls import enable_test_tls
+from tool.web_browser_navigation import open_tab
+
+PASSWORD = 'synthetic-statement-acceptance-pass'
+OUT = Path('web_evidence/statement-import-' + os.environ.get('ULADIM_BROWSER', 'chromium'))
+
+
+@contextmanager
+def statement_backend(directory, codes):
+    dsn = os.environ.get('ULADIM_WEB_TEST_DATABASE_URL')
+    cipher = Fernet(Fernet.generate_key())
+    if not dsn:
+        backend = Backend(Path(directory) / 'bank.db', deliver=lambda e, c: codes.update({e: c}))
+        backend.cipher = cipher
+        yield backend
+        return
+    from urllib.parse import urlsplit
+    import psycopg
+    from psycopg import sql
+    from backend.postgres import PostgresBackend
+    if urlsplit(dsn).path != '/lifeos_test':
+        raise RuntimeError('Fixture refuses non-test database')
+    schema = 'statement_' + uuid4().hex
+    with psycopg.connect(dsn, autocommit=True) as db:
+        db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+    backend = None
+    try:
+        backend = PostgresBackend(dsn, cipher, schema=schema, migrate=True)
+        backend._deliver = lambda db, email, code, purpose: codes.update({email: code})
+        yield backend
+    finally:
+        if backend is not None:
+            backend.close()
+        with psycopg.connect(dsn, autocommit=True) as db:
+            db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    codes = {}
+    with TemporaryDirectory() as directory, statement_backend(directory, codes) as backend:
+        with backend.connect() as db:
+            db.execute('CREATE TABLE IF NOT EXISTS http_limits(key TEXT PRIMARY KEY,count BIGINT NOT NULL,until_at BIGINT NOT NULL)')
+        email = 'statement@example.test'
+        session = backend.register(email, PASSWORD)
+        actor = backend.authenticate(session['token'])
+        backend.verify(actor, codes[email])
+        actor = backend.authenticate(session['token'])
+        workspace = str(uuid4())
+        backend.family(actor, {'id': str(uuid4()), 'action': 'workspace.create', 'workspace_id': workspace,
+                               'kind': 'personal', 'name': 'Проверка выписок'})
+        settings = Settings.load({
+            'DATABASE_URL': 'postgresql://unused/test', 'EMAIL_QUEUE_KEY': Fernet.generate_key().decode(),
+            'RATE_LIMIT_KEY': 'statement-fixture-' + 'x' * 48, 'SMTP_HOST': 'localhost',
+            'SMTP_TLS': 'none', 'EMAIL_FROM': 'fixture@example.test',
+        })
+        server = make_server('127.0.0.1', 0, lambda e, s: [], handler_class=Quiet)
+        engine = os.environ.get('ULADIM_BROWSER', 'chromium')
+        if engine == 'webkit':
+            enable_test_tls(server, directory)
+        origin = ('https' if engine == 'webkit' else 'http') + '://localhost:' + str(server.server_port)
+        server.set_app(Application(backend, replace(settings, site_origin=origin, require_https=False)))
+        Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            with sync_playwright() as playwright:
+                executable = os.environ.get('ULADIM_CHROMIUM') if engine == 'chromium' else None
+                browser = getattr(playwright, engine).launch(**({'executable_path': executable} if executable else {}))
+                run(browser, backend, actor, workspace, origin)
+                browser.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+
+def run(browser, backend, actor, workspace, origin):
+    # Keep the 503 injection on the page's request path in WebKit. PWA caching has separate acceptance tests.
+    context = browser.new_context(viewport={'width': 1180, 'height': 820}, locale='ru-RU',
+                                  service_workers='block', ignore_https_errors=origin.startswith('https:'))
+    page = context.new_page()
+    page.goto(origin + '/app/')
+    page.locator('input[name=email]').fill(actor['email'])
+    page.locator('input[name=password]').fill(PASSWORD)
+    page.get_by_role('button', name='Войти', exact=True).click()
+    expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
+    open_tab(page, 'Финансы')
+    launch = page.locator('.reference-finance-group button:visible,.finance-toolbar button:visible').filter(has_text='Импортировать выписку')
+    launch.click()
+    dialog = page.get_by_role('dialog')
+    expect(dialog.get_by_text('Для импорта нужен счёт.', exact=False)).to_be_visible()
+    expect(dialog.locator('input[type=file]')).to_be_visible()
+    dialog.get_by_role('button', name='Создать счёт', exact=True).click()
+    editor = page.locator('dialog[open]').last
+    editor.locator('input[name=name]').fill('Основной счёт')
+    editor.get_by_role('button', name='Сохранить', exact=True).click()
+    expect(dialog.locator('input[type=file]')).to_be_visible()
+    expect(dialog.locator('.statement-steps [aria-current=step]')).to_have_text('Выбор файла', timeout=3500)
+    with page.expect_file_chooser():
+        dialog.locator('input[type=file]').click()
+    assert dialog.locator('input[type=file]').get_attribute('accept') is None
+
+    def upload(name, contents):
+        if isinstance(contents, str):
+            contents = contents.encode()
+        dialog.locator('input[type=file]').set_input_files({
+            'name': name, 'mimeType': 'application/octet-stream', 'buffer': contents,
+        })
+        expect(dialog.locator('tbody tr').first).to_be_visible()
+
+    def records():
+        result = []
+        cursor = 0
+        while True:
+            batch = backend.pull(actor, workspace, cursor)
+            result.extend(row for row in batch['records'] if row['kind'] == 'transaction')
+            if not batch['more']:
+                return result
+            cursor = batch['cursor']
+
+    def close():
+        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        expect(dialog).to_have_count(0)
+
+    def save(expected, select=False):
+        before = {row['id'] for row in records()}
+        if select:
+            for checkbox in dialog.locator('tbody input[type=checkbox]:enabled').all():
+                checkbox.check()
+        confirm = dialog.get_by_role('button', name='Импортировать выбранное', exact=True)
+        expect(confirm).to_be_enabled()
+        confirm.click()
+        expect(dialog.locator('.statement-receipt')).to_be_visible(timeout=15000)
+        expect(dialog.locator('.statement-receipt')).to_contain_text('Сохранено операций · ' + str(len(expected)))
+        actual = [(row['data']['currency'], row['data']['amount_minor']) for row in records() if row['id'] not in before]
+        assert sorted(actual) == sorted(expected), (len(actual), len(expected), set(actual), set(expected))
+
+    statement = 'Дата операции;Дата платежа;Сумма операции;Валюта операции;Описание\n' + '\n'.join(
+        f'11.11.2026 09:41:00;12.11.2026;-1 234,56;RUB;Покупка {i}' for i in range(145))
+    upload('statement.csv', statement.encode('cp1251'))
+    expect(dialog.locator('.statement-steps [aria-current=step]')).to_have_text('Проверка')
+    expect(dialog.get_by_text('145 выбрано', exact=False)).to_be_visible()
+    expect(dialog.locator('details[open]')).to_have_count(0)
+    dialog.get_by_role('button', name='Снять выбор', exact=True).click()
+    expect(dialog.get_by_text('0 выбрано', exact=False)).to_be_visible()
+    dialog.get_by_role('button', name='Выбрать все готовые', exact=True).click()
+    expect(dialog.get_by_text('145 выбрано', exact=False)).to_be_visible()
+    page.screenshot(path=str(OUT / 'import-tablet.png'))
+    for width,height,name in [(320,740,'compact'),(390,844,'phone'),(768,900,'foldable-open'),(1440,1000,'desktop')]:
+        page.set_viewport_size({'width':width,'height':height})
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        confirm_box = dialog.get_by_role('button', name='Импортировать выбранное', exact=True).bounding_box()
+        assert confirm_box and confirm_box['y'] + confirm_box['height'] <= height, (name, confirm_box)
+        page.screenshot(path=str(OUT / f'import-{name}.png'))
+    page.set_viewport_size({'width':1180,'height':820})
+    save([('RUB', 123456)] * 145)
+    expect(dialog.locator('.statement-steps [aria-current=step]')).to_have_text('Результат')
+    expect(dialog.locator('.statement-receipt')).to_contain_text('145')
+    dialog.get_by_role('button', name='Открыть историю операций').click()
+    expect(dialog).to_have_count(0)
+    expect(page.locator('.ledger')).to_contain_text('Покупка')
+    launch.click()
+    upload('renamed.txt', statement.encode('cp1251'))
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    close()
+
+    launch.click()
+    ambiguous = 'Date;Amount;Description\n' + '\n'.join(
+        f'04/05/2026;-2.25;Shared date correction {i}' for i in range(1000))
+    upload('ambiguous-dates.csv', ambiguous)
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    if not dialog.locator('.statement-advanced').evaluate('(node) => node.open'):
+        dialog.get_by_text('Исправить распознавание', exact=True).click()
+    dialog.locator('select[name=dateFormat]').select_option('dmy')
+    expect(dialog.get_by_text('1000 выбрано', exact=False)).to_be_visible()
+    dialog.get_by_role('button', name='Снять выбор', exact=True).click()
+    dialog.get_by_role('button', name='Выбрать все готовые', exact=True).click()
+    expect(dialog.get_by_text('1000 выбрано', exact=False)).to_be_visible()
+    dialog.get_by_text('Исправить распознавание', exact=True).click()
+    page.screenshot(path=str(OUT / '1000-rows-common-correction.png'))
+    # An obviously textual column cannot be assigned to the amount.
+    expect(dialog.locator('select[name=amount] option[value="2"]')).to_be_disabled()
+    save([('RUB',225)] * 1000)
+    corrected = [r for r in records() if r['data']['label'].startswith('Shared date correction')]
+    assert len(corrected) == 1000 and all(r['data']['date'] == '2026-05-04' for r in corrected)
+    close()
+    launch.click()
+    upload('ambiguous-dates.csv', ambiguous)
+    if not dialog.locator('.statement-advanced').evaluate('(node) => node.open'):
+        dialog.get_by_text('Исправить распознавание', exact=True).click()
+    dialog.locator('select[name=dateFormat]').select_option('dmy')
+    expect(dialog.get_by_text('1000 пропущено', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Выбрать все готовые', exact=True)).to_be_disabled()
+    close()
+
+    samples = [
+        ('statement.txt', 'Date\tAmount\tDescription\n2026-11-10T23:58:00-05:00\t+12.05\tIncome', 1205),
+        ('statement.json', '{"transactions":[{"bookingDate":"2026-11-11","amount":-1.23,"currency":"RUB","transactionId":"bank-42","description":"Coffee"}]}', 123),
+        ('statement.ofx', 'OFXHEADER:100\nDATA:OFXSGML\n\n<OFX><CURDEF>RUB<BANKTRANLIST><STMTTRN><DTPOSTED>20261111090000[-5:EST]<TRNAMT>-5.43<FITID>43<NAME>Shop</STMTTRN></BANKTRANLIST></OFX>', 543),
+        ('statement.qif', "!Type:Bank\nD11/21'26\nT-12.05\nPStore\n^\n", 1205),
+        ('bank-credit.tsv', 'Date\tDebit\tCredit\tDescription\n2026-11-22\t0,00\t13,21\tBank credit', 1321),
+        ('bank-debit.tsv', 'Date\tDebit\tCredit\tDescription\n2026-11-23\t16,54\t0,00\tBank debit', 1654),
+    ]
+    for name, text, amount in samples:
+        launch.click()
+        upload(name, text)
+        save([('RUB', amount)])
+        close()
+
+    directions = {r['data']['label']: r['data']['kind'] for r in records()}
+    assert directions['Bank credit'] == 'income' and directions['Bank debit'] == 'expense'
+
+    header = (710, [(30,'Date'),(125,'Description'),(320,'Amount'),(440,'Currency')])
+    page_one = [header, (686, [(30,'2026-11-09'),(125,'PDF merchant'),(320,'-42.19'),(440,'RUB')])]
+    page_two = [header, (686, [(30,'13/11/26'),(125,'PDF income'),(320,'+57.21'),(440,'RUB')]),
+                (640, [(125,'Total'),(320,'15.02'),(440,'RUB')])]
+    launch.click()
+    upload('statement.pdf', statement_pdf(page_one,page_two))
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    page.screenshot(path=str(OUT / 'pdf-preview.png'))
+    save([('RUB',4219),('RUB',5721)], select=True)
+    page.screenshot(path=str(OUT / 'pdf-saved.png'))
+    close()
+
+    launch.click()
+    upload('statement.xlsx', statement_xlsx(date_1904=True))
+    save([('RUB',123456)])
+    close()
+
+    usd_account = str(uuid4())
+    backend.batch(actor, workspace, [{
+        'id': str(uuid4()), 'action': 'record.put', 'record_id': usd_account, 'revision': 0, 'kind': 'account',
+        'visibility': 'private', 'audience': [], 'data': {'name': 'Доллары', 'currency': 'USD', 'opening_minor': 0},
+    }])
+    page.evaluate('async () => {await refresh();render()}')
+    launch.click()
+    upload('multi.csv', 'Date;Amount;Currency;Description\n2026-11-14;1.05;USD;USD income\n2026-11-14;-1.02;RUB;RUB expense')
+    expect(dialog.locator('.statement-currency')).to_have_count(2)
+    save([('USD', 105), ('RUB', 102)])
+    close()
+
+    launch.click()
+    upload('currency-conflict.json', '{"transactions":[{"bookingDate":"2026-11-14","transactionAmount":{"amount":"-4.20","currency":"USD"},"currency":"RUB","description":"Conflicting currency"}]}')
+    expect(dialog.get_by_text('В выписке указаны разные валюты.', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    dialog.get_by_role('button', name='Исправить строку', exact=True).click()
+    editor = dialog.locator('.statement-row-correction')
+    expect(page.locator('dialog[open]')).to_have_count(1)
+    currency = editor.locator('input[name=currency]')
+    expect(currency).to_have_value('')
+    currency.fill('USD')
+    editor.get_by_role('button', name='Сохранить', exact=True).click()
+    save([('USD', 420)])
+    close()
+
+    launch.click()
+    upload('repeated.csv', 'Date;Amount;Currency;Description\n2026-11-15;-1.02;RUB;Two real purchases\n2026-11-15;-1.02;RUB;Two real purchases')
+    save([('RUB', 102), ('RUB', 102)])
+    close()
+    launch.click()
+    upload('possible.csv', 'Date;Amount;Currency;Description;Transaction ID\n2026-11-15;-1.02;RUB;Two real purchases;another-id')
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    save([('RUB',102)], select=True)
+    close()
+    launch.click()
+    upload('overlap.csv', 'Date;Amount;Currency;Description;Transaction ID\n2026-11-15;-1.02;RUB;Renamed by bank;another-id')
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    close()
+    collision = 'Date;Amount;Currency;Description;Transaction ID\n2026-11-16;-3.14;RUB;Reused bank ID;another-id'
+    launch.click()
+    upload('collision.csv', collision)
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    save([('RUB',314)], select=True)
+    close()
+    launch.click()
+    upload('collision.csv', collision)
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    close()
+
+    mixed = ('Date;Amount;Currency;Description;Transaction ID\n'
+             '2026-11-16;-3.14;RUB;First payment;shared-bank-id\n'
+             '2026-11-17;-5.25;RUB;Second payment;shared-bank-id')
+    launch.click()
+    upload('bank-id-reused-in-one-file.csv', mixed)
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_have_count(2)
+    save([('RUB',314),('RUB',525)], select=True)
+    close()
+    launch.click()
+    upload('second-payment-only.csv', mixed.splitlines()[0] + '\n' + mixed.splitlines()[2])
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    expect(dialog.locator('tbody input[type=checkbox]')).to_be_disabled()
+    close()
+    launch.click()
+    upload('third-payment-only.csv', mixed.splitlines()[0] + '\n2026-11-18;-8.19;RUB;Third payment;shared-bank-id')
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('button', name='Импортировать выбранное', exact=True)).to_be_disabled()
+    save([('RUB',819)], select=True)
+    close()
+
+    other_account = str(uuid4())
+    backend.batch(actor, workspace, [{
+        'id': str(uuid4()), 'action': 'record.put', 'record_id': other_account, 'revision': 0, 'kind': 'account',
+        'visibility': 'private', 'audience': [], 'data': {'name': 'Другой счёт', 'currency': 'RUB', 'opening_minor': 0},
+    }, {
+        'id': str(uuid4()), 'action': 'record.put', 'record_id': str(uuid4()), 'revision': 0, 'kind': 'transaction',
+        'visibility': 'private', 'audience': [],
+        'data': {'kind': 'expense', 'amount_minor': 102, 'currency': 'RUB', 'date': '2026-11-18',
+                 'label': 'Already on other account', 'account_id': other_account},
+    }])
+    page.evaluate('async () => {await refresh();render()}')
+    launch.click()
+    upload('account-switch.csv', 'Date;Amount;Currency;Description\n2026-11-18;-1.02;RUB;Already on other account')
+    row = dialog.locator('tbody tr')
+    row.locator('select').select_option(label='Основной счёт')
+    checkbox = row.get_by_role('checkbox')
+    expect(checkbox).to_be_checked()
+    checkbox.uncheck()
+    checkbox.check()
+    row.locator('select').select_option(label='Другой счёт')
+    expect(dialog.get_by_text('Возможный дубль', exact=False)).to_be_visible()
+    expect(checkbox).not_to_be_checked()
+    close()
+
+    launch.click()
+    upload('invalid.csv', 'Date;Debit;Credit;Description\n04/05/2026;1.03;;Ambiguous day')
+    dialog.get_by_role('button', name='Исправить строку', exact=True).click()
+    editor = dialog.locator('.statement-row-correction')
+    expect(page.locator('dialog[open]')).to_have_count(1)
+    editor.locator('input[name=date]').fill('2026-05-04')
+    editor.get_by_role('button', name='Сохранить', exact=True).click()
+    save([('RUB', 103)])
+    assert next(row['data']['kind'] for row in records() if row['data']['label'] == 'Ambiguous day') == 'expense'
+    close()
+    launch.click()
+    upload('partially-invalid.csv', 'Date;Amount;Description\n2026-11-21;-7.23;Valid mixed row\nnot-a-date;-1.00;Broken date\n2026-11-21;not-money;Broken amount')
+    dialog.get_by_role('button', name='Снять выбор', exact=True).click()
+    dialog.get_by_role('button', name='Выбрать все готовые', exact=True).click()
+    expect(dialog.locator('tbody input[type=checkbox]:checked')).to_have_count(1)
+    dialog.get_by_role('button', name='Импортировать выбранное', exact=True).click()
+    expect(dialog.locator('.statement-receipt')).to_contain_text('Сохранено операций · 1')
+    expect(dialog.locator('.statement-receipt')).to_contain_text('2 пропущено')
+    expect(dialog.locator('.import-status')).to_contain_text('часть строк')
+    page.screenshot(path=str(OUT / 'partial-import-result.png'))
+    close()
+
+    launch.click()
+    upload('lost-reply.csv', 'Date;Amount;Currency;Description\n2026-11-21;-2.74;RUB;Lost reply')
+    operation_ids = []
+
+    def lose_reply(route):
+        if route.request.method != 'POST':
+            return route.continue_()
+        operation_ids.append(route.request.post_data_json['operations'][0]['id'])
+        if len(operation_ids) == 1:
+            response = route.fetch()
+            assert response.ok
+            return route.fulfill(status=503, json={'error': 'service_unavailable'})
+        return route.continue_()
+
+    page.route('**/account/api/sync*', lose_reply)
+    dialog.get_by_role('button', name='Импортировать выбранное', exact=True).click()
+    retry = dialog.get_by_role('button', name='Повторить', exact=True)
+    expect(retry).to_be_enabled()
+    expect(dialog.locator('.statement-receipt')).to_be_hidden()
+    retry.click()
+    expect(dialog.locator('.statement-receipt')).to_contain_text('Сохранено операций · 1')
+    assert len(operation_ids) == 2 and operation_ids[0] == operation_ids[1], operation_ids
+    assert sum(row['data']['label'] == 'Lost reply' for row in records()) == 1
+    page.unroute('**/account/api/sync*', lose_reply)
+    close()
+    context.close()
+    with browser.new_context(locale='ru-RU', service_workers='block',
+                             ignore_https_errors=origin.startswith('https:')) as second_context:
+        second = second_context.new_page()
+        second.goto(origin + '/app/')
+        second.locator('input[name=email]').fill(actor['email'])
+        second.locator('input[name=password]').fill(PASSWORD)
+        second.get_by_role('button', name='Войти', exact=True).click()
+        expect(second.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
+        open_tab(second, 'Финансы')
+        second.locator('.finance-filter-panel summary').click()
+        second.locator('input[name=finance-search]').fill('Lost reply')
+        expect(second.locator('.ledger-row')).to_have_count(1)
+        expect(second.locator('.ledger-row')).to_contain_text('Lost reply')
+    print('STATEMENT_BROWSER_OK', len(records()), 'transactions persisted')
+
+
+if __name__ == '__main__':
+    main()

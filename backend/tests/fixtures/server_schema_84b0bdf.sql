@@ -1,0 +1,125 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,salt TEXT NOT NULL,verified INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS verification(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS workspaces(id TEXT PRIMARY KEY,name TEXT NOT NULL,creator_id TEXT NOT NULL REFERENCES users(id),kind TEXT NOT NULL CHECK(kind IN ('personal','family')),revision INTEGER NOT NULL DEFAULT 1,dissolved INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS memberships(workspace_id TEXT NOT NULL REFERENCES workspaces(id),user_id TEXT NOT NULL REFERENCES users(id),role TEXT NOT NULL CHECK(role IN ('parent','adult','child','owner')),profile_id TEXT,revision INTEGER NOT NULL DEFAULT 1,active INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(workspace_id,user_id));
+CREATE TABLE IF NOT EXISTS profiles(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),name TEXT NOT NULL,permissions TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,archived INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS invitations(hash TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),email TEXT NOT NULL,role TEXT NOT NULL,profile_id TEXT REFERENCES profiles(id),issued_by TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL,used_by TEXT);
+CREATE TABLE IF NOT EXISTS parent_changes(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),target_id TEXT NOT NULL,new_role TEXT NOT NULL,requested_by TEXT NOT NULL,approved_by TEXT,revision INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),owner_id TEXT NOT NULL REFERENCES users(id),kind TEXT NOT NULL,visibility TEXT NOT NULL CHECK(visibility IN ('private','shared')),audience TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,deleted INTEGER NOT NULL DEFAULT 0,seq INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY REFERENCES records(id),title TEXT NOT NULL,completed INTEGER NOT NULL,assignment TEXT NOT NULL,assignees TEXT NOT NULL,review INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS notes(id TEXT PRIMARY KEY REFERENCES records(id),body TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY REFERENCES records(id),name TEXT NOT NULL,currency TEXT NOT NULL,opening_minor INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS transactions(id TEXT PRIMARY KEY REFERENCES records(id),kind TEXT NOT NULL,amount_minor INTEGER NOT NULL,currency TEXT NOT NULL,date TEXT NOT NULL,label TEXT NOT NULL,account_id TEXT,category TEXT CHECK(category IS NULL OR category IN ('food','transport','shopping','housing','health','leisure','education','transfers','other')));
+CREATE TABLE IF NOT EXISTS transfers(id TEXT PRIMARY KEY REFERENCES records(id),from_id TEXT NOT NULL,to_id TEXT NOT NULL,sent_minor INTEGER NOT NULL,received_minor INTEGER NOT NULL,date TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS budgets(id TEXT PRIMARY KEY REFERENCES records(id),name TEXT NOT NULL,currency TEXT NOT NULL,limit_minor INTEGER NOT NULL,period TEXT NOT NULL,start_on TEXT NOT NULL,end_on TEXT,rollover TEXT NOT NULL,participants TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY REFERENCES records(id),title TEXT NOT NULL,schedule TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS shopping(id TEXT PRIMARY KEY REFERENCES records(id),name TEXT NOT NULL,items TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS requests(id TEXT PRIMARY KEY REFERENCES records(id),profile_id TEXT NOT NULL REFERENCES profiles(id),amount_minor INTEGER NOT NULL,currency TEXT NOT NULL,label TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'pending',movement_id TEXT REFERENCES records(id));
+CREATE TABLE IF NOT EXISTS grants(record_id TEXT NOT NULL REFERENCES records(id),user_id TEXT NOT NULL REFERENCES users(id),can_edit INTEGER NOT NULL,PRIMARY KEY(record_id,user_id));
+CREATE TABLE IF NOT EXISTS operations(user_id TEXT NOT NULL REFERENCES users(id),id TEXT NOT NULL,digest TEXT NOT NULL,result TEXT NOT NULL,PRIMARY KEY(user_id,id));
+CREATE TABLE IF NOT EXISTS changes(seq INTEGER PRIMARY KEY AUTOINCREMENT,workspace_id TEXT NOT NULL REFERENCES workspaces(id),record_id TEXT,actor_id TEXT NOT NULL,operation_id TEXT NOT NULL,kind TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS auth_limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,until_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS scoped_records ON records(workspace_id,seq);
+CREATE TABLE IF NOT EXISTS task_progress(task_id TEXT NOT NULL REFERENCES tasks(id),profile_id TEXT NOT NULL REFERENCES profiles(id),completed INTEGER NOT NULL DEFAULT 0,approved INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(task_id,profile_id));
+CREATE TABLE IF NOT EXISTS password_recovery(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS account_state(user_id TEXT PRIMARY KEY REFERENCES users(id),disabled_until BIGINT NOT NULL DEFAULT 0,deleted_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),family_id TEXT NOT NULL UNIQUE,label TEXT NOT NULL,created_at BIGINT NOT NULL,last_seen_at BIGINT NOT NULL,revoked_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS session_devices(hash TEXT PRIMARY KEY REFERENCES sessions(hash) ON DELETE CASCADE,device_id TEXT NOT NULL REFERENCES devices(id));
+CREATE TABLE IF NOT EXISTS refresh_tokens(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),device_id TEXT NOT NULL REFERENCES devices(id),family_id TEXT NOT NULL,expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0,revoked_at BIGINT NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS device_user_active ON devices(user_id,revoked_at);
+CREATE INDEX IF NOT EXISTS refresh_family ON refresh_tokens(family_id);
+CREATE TABLE IF NOT EXISTS staff(id TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQUE REFERENCES users(id),roles TEXT NOT NULL,mfa_secret BYTEA NOT NULL,last_counter BIGINT NOT NULL DEFAULT -1,active BIGINT NOT NULL DEFAULT 1,revision BIGINT NOT NULL DEFAULT 1,created_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS control_sessions(hash TEXT PRIMARY KEY,staff_id TEXT NOT NULL REFERENCES staff(id),created_at BIGINT NOT NULL,last_seen_at BIGINT NOT NULL,expires_at BIGINT NOT NULL,agent_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS staff_invitations(hash TEXT PRIMARY KEY,email TEXT NOT NULL,roles TEXT NOT NULL,issued_by TEXT NOT NULL REFERENCES staff(id),expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS staff_recovery(hash TEXT PRIMARY KEY,staff_id TEXT NOT NULL REFERENCES staff(id),used_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS control_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,actor_id TEXT NOT NULL,subject_id TEXT,action TEXT NOT NULL,before_value TEXT NOT NULL,after_value TEXT NOT NULL,reason TEXT NOT NULL,created_at BIGINT NOT NULL,request_id TEXT NOT NULL,previous_hash TEXT NOT NULL,entry_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS plan_catalog(version BIGINT PRIMARY KEY,body TEXT NOT NULL,created_at BIGINT NOT NULL,actor_id TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS entitlement_grants(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),tier TEXT NOT NULL CHECK(tier IN ('Plus','Premium')),source TEXT NOT NULL CHECK(source IN ('manual','promo')),starts_at BIGINT NOT NULL,valid_until BIGINT,revoked_at BIGINT NOT NULL DEFAULT 0,reason TEXT NOT NULL,actor_id TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS user_grants ON entitlement_grants(user_id,revoked_at,valid_until);
+CREATE TABLE IF NOT EXISTS entitlement_overrides(user_id TEXT NOT NULL REFERENCES users(id),feature TEXT NOT NULL,enabled BIGINT NOT NULL,valid_until BIGINT,reason TEXT NOT NULL,actor_id TEXT NOT NULL,PRIMARY KEY(user_id,feature));
+CREATE TABLE IF NOT EXISTS provider_purchases(source TEXT NOT NULL,reference_hash TEXT NOT NULL,user_id TEXT NOT NULL REFERENCES users(id),product_id TEXT NOT NULL,tier TEXT NOT NULL CHECK(tier IN ('Plus','Premium')),state TEXT NOT NULL,valid_until BIGINT NOT NULL,revision BIGINT NOT NULL,trial_until BIGINT,updated_at BIGINT NOT NULL,PRIMARY KEY(source,reference_hash));
+CREATE TABLE IF NOT EXISTS provider_events(source TEXT NOT NULL,event_id TEXT NOT NULL,digest TEXT NOT NULL,reference_hash TEXT NOT NULL,received_at BIGINT NOT NULL,result TEXT NOT NULL,PRIMARY KEY(source,event_id));
+CREATE TABLE IF NOT EXISTS service_holds(user_id TEXT NOT NULL REFERENCES users(id),service TEXT NOT NULL,until_at BIGINT NOT NULL,reason TEXT NOT NULL,actor_id TEXT NOT NULL,PRIMARY KEY(user_id,service));
+CREATE TABLE IF NOT EXISTS support_tickets(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),category TEXT NOT NULL,subject TEXT NOT NULL,state TEXT NOT NULL,priority TEXT NOT NULL,created_at BIGINT NOT NULL,updated_at BIGINT NOT NULL,email_notify BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS support_messages(id TEXT PRIMARY KEY,ticket_id TEXT NOT NULL REFERENCES support_tickets(id),actor_id TEXT NOT NULL,is_staff BIGINT NOT NULL,body TEXT NOT NULL,created_at BIGINT NOT NULL);
+CREATE INDEX IF NOT EXISTS support_user ON support_tickets(user_id,updated_at);
+CREATE TABLE IF NOT EXISTS feature_flags(name TEXT PRIMARY KEY,body TEXT NOT NULL,revision BIGINT NOT NULL,actor_id TEXT NOT NULL,updated_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS flag_proposals(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,body TEXT NOT NULL,digest TEXT NOT NULL,expires_at BIGINT NOT NULL,used_at BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS web_sessions(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),device_id TEXT NOT NULL REFERENCES devices(id),created_at BIGINT NOT NULL,last_seen_at BIGINT NOT NULL,expires_at BIGINT NOT NULL,agent_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS email_changes(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),email TEXT NOT NULL,expires_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS deletion_jobs(id TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQUE REFERENCES users(id),requested_at BIGINT NOT NULL,due_at BIGINT NOT NULL,state TEXT NOT NULL,last_error TEXT);
+CREATE TABLE IF NOT EXISTS ownership_transfers(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),from_id TEXT NOT NULL REFERENCES users(id),to_id TEXT NOT NULL REFERENCES users(id),expires_at BIGINT NOT NULL,accepted_at BIGINT NOT NULL DEFAULT 0);
+
+CREATE TRIGGER IF NOT EXISTS control_audit_no_update BEFORE UPDATE ON control_audit BEGIN SELECT RAISE(ABORT,'control_audit is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS control_audit_no_delete BEFORE DELETE ON control_audit BEGIN SELECT RAISE(ABORT,'control_audit is append-only'); END;
+CREATE TABLE IF NOT EXISTS account_mfa(user_id TEXT PRIMARY KEY REFERENCES users(id),secret BYTEA NOT NULL,last_counter BIGINT NOT NULL DEFAULT -1);
+CREATE TABLE IF NOT EXISTS account_recovery(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),used_at BIGINT NOT NULL DEFAULT 0);
+
+
+CREATE TABLE IF NOT EXISTS early_access (
+ id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE,
+ state TEXT NOT NULL CHECK(state IN ('unverified','pending','approved','rejected','cancelled')),
+ created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL,
+ consent_version TEXT NOT NULL, verified_at BIGINT NOT NULL DEFAULT 0,
+ verification_hash TEXT, verification_until BIGINT NOT NULL DEFAULT 0,
+ management_hash TEXT, management_until BIGINT NOT NULL DEFAULT 0,
+ invitation_hash TEXT, invitation_until BIGINT NOT NULL DEFAULT 0,
+ revision INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS early_access_queue ON early_access(state,created_at,id);
+
+CREATE TABLE IF NOT EXISTS early_access_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, until_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS owner_setup (
+ hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at BIGINT NOT NULL,
+ used_at BIGINT NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS login_challenges(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),scope TEXT NOT NULL,agent_hash TEXT NOT NULL,credential_version TEXT NOT NULL,expires_at BIGINT NOT NULL,attempts BIGINT NOT NULL DEFAULT 0,used_at BIGINT NOT NULL DEFAULT 0);
+
+CREATE TABLE IF NOT EXISTS google_identities (
+ subject TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE REFERENCES users(id),
+ created_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS account_credentials (
+ user_id TEXT PRIMARY KEY REFERENCES users(id), has_password BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_challenges (
+ hash TEXT PRIMARY KEY, client TEXT NOT NULL, agent_hash TEXT NOT NULL,
+ binding_hash TEXT NOT NULL, payload BYTEA NOT NULL,
+ user_id TEXT REFERENCES users(id), expires_at BIGINT NOT NULL,
+ used_at BIGINT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS oauth_challenges_expiry ON oauth_challenges(expires_at);
+
+CREATE TABLE IF NOT EXISTS oauth_web_results (
+ hash TEXT PRIMARY KEY, agent_hash TEXT NOT NULL, binding_hash TEXT NOT NULL,
+ payload BYTEA NOT NULL, expires_at BIGINT NOT NULL
+);
+-- Additive, opt-in Web Push. Provider endpoints/keys and queued content are encrypted.
+CREATE TABLE IF NOT EXISTS web_push_keys (
+ id TEXT PRIMARY KEY CHECK(id='v1'), secret BYTEA NOT NULL,
+ public_key TEXT NOT NULL, created_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+ id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+ device_id TEXT NOT NULL REFERENCES devices(id), endpoint_hash TEXT NOT NULL,
+ secret BYTEA NOT NULL, created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL,
+ enabled BIGINT NOT NULL CHECK(enabled IN (0,1)), lead_minutes BIGINT NOT NULL CHECK(lead_minutes IN (5,15,30,60)),
+ priority TEXT NOT NULL CHECK(priority IN ('high','normal')), timezone TEXT NOT NULL, error_code TEXT,
+ scanned_until BIGINT NOT NULL DEFAULT 0,
+ enabled_at BIGINT NOT NULL DEFAULT 0,
+ UNIQUE(user_id,device_id,endpoint_hash)
+);
+CREATE INDEX IF NOT EXISTS web_push_active ON web_push_subscriptions(enabled,id);
+CREATE TABLE IF NOT EXISTS web_push_deliveries (
+ id TEXT PRIMARY KEY, subscription_id TEXT NOT NULL REFERENCES web_push_subscriptions(id) ON DELETE CASCADE,
+ event_id TEXT REFERENCES records(id), event_revision BIGINT, occurrence_at BIGINT,
+ created_at BIGINT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','sending','accepted','displayed','suppressed','failed','cancelled')),
+ attempts BIGINT NOT NULL DEFAULT 0, next_attempt BIGINT NOT NULL, leased_until BIGINT NOT NULL DEFAULT 0,
+ expires_at BIGINT NOT NULL, payload BYTEA NOT NULL, receipt_hash TEXT NOT NULL,
+ accepted_at BIGINT, displayed_at BIGINT, error_code TEXT,
+ UNIQUE(subscription_id,event_id,occurrence_at)
+);
+CREATE INDEX IF NOT EXISTS web_push_queue ON web_push_deliveries(state,next_attempt,leased_until);
+CREATE INDEX IF NOT EXISTS web_push_subscription_history ON web_push_deliveries(subscription_id,created_at);

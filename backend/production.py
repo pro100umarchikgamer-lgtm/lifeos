@@ -78,6 +78,9 @@ class Application:
             environ = dict(environ, REQUEST_METHOD='GET')
             method = 'GET'
         try:
+            control_redeem = self.web.is_control(environ) and path == '/admit' and method == 'POST'
+            if self.web.is_control(environ) and not control_redeem:
+                environ['uladim.admitted'] = self.web.admitted(environ)
             if head and path == '/account/api/google/callback':raise Failure('method_not_allowed',405)
             if method not in ('GET','POST'):raise Failure('method_not_allowed',405)
             if path=='/health/live' and method=='GET':value={'status':'ok'}
@@ -96,14 +99,29 @@ class Application:
                 if not is_web and not path.startswith('/v1/'):raise Failure('not_found',404)
                 self.limit(environ,path)
                 body={}
-                if method=='POST':
+                if control_redeem:
+                    from urllib.parse import parse_qs
+                    require_type = environ.get('CONTENT_TYPE', '').split(';')[0].strip().lower() == 'application/x-www-form-urlencoded'
+                    length = int(environ.get('CONTENT_LENGTH', '0'))
+                    if not require_type or not 0 < length <= 512: raise Failure('not_found', 404)
+                    try:
+                        values = parse_qs(environ['wsgi.input'].read(length).decode('ascii'), strict_parsing=True, max_num_fields=1)
+                    except (ValueError, UnicodeError): raise Failure('not_found', 404)
+                    if set(values) != {'ticket'} or len(values['ticket']) != 1: raise Failure('not_found', 404)
+                    value, web_headers = self.web.redeem_admission(environ, values['ticket'][0])
+                    cookies = [(key, value) for key, value in web_headers if key.lower() == 'set-cookie']
+                    headers.update({key: value for key, value in web_headers if key.lower() != 'set-cookie'})
+                    status = int(headers.pop('X-ULADIM-Status', '200'))
+                elif method=='POST':
                     if environ.get('CONTENT_TYPE','').split(';')[0].strip().lower()!='application/json':raise Failure('content_type',415)
                     length=int(environ.get('CONTENT_LENGTH','0'))
                     if not 0<length<=MAX_BODY:raise Failure('body_limit',413)
                     raw=environ['wsgi.input'].read(length)
                     if len(raw)!=length:raise Failure('invalid_input')
                     body=decode_json(raw)
-                if is_web:
+                if control_redeem:
+                    pass
+                elif is_web:
                     environ['uladim.client'] = self.client(environ)
                     value,web_headers=self.web.request(environ,body)
                     cookies=[(key,value) for key,value in web_headers if key.lower()=='set-cookie']
@@ -142,6 +160,10 @@ class Application:
         auth = env.get('HTTP_AUTHORIZATION', '')
         token = auth[7:] if auth.startswith('Bearer ') else ''
         actor = self.backend.authenticate(token)
+        if path == '/v1/auth/google/reauth/start' and method == 'POST':
+            from .service import token_hash
+            return self.google.start('android', env.get('HTTP_USER_AGENT','')[:500], actor=actor,
+                auth_hash=token_hash(token), purpose='reauth')
         if path == '/v1/account/google' and method == 'GET':
             return self.google.status(actor)
         if path == '/v1/account/google/link' and method == 'POST':
@@ -165,7 +187,10 @@ def create_app():
     from .config import Settings
     from .postgres import PostgresBackend
     settings=Settings.load()
-    return Application(PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()),pool_size=settings.pool_size),settings)
+    backend=PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()),pool_size=settings.pool_size)
+    from .account_erasure import initialize
+    initialize(backend, settings.account_erasure_ledger, settings.account_erasure_ack_socket)
+    return Application(backend,settings)
 
 def main():
     import sys

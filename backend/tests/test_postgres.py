@@ -13,6 +13,7 @@ from cryptography.fernet import Fernet
 import test_family_backend as fixtures
 from test_account_sessions import SessionScenarios
 from test_control import ControlScenarios
+from test_transaction_categories import TransactionCategoryScenarios
 from backend.postgres import PostgresBackend
 from backend.mail import deliver_one
 from backend.production import Application
@@ -23,7 +24,7 @@ from backend.service import Backend,Failure
 DSN=os.environ.get('LIFEOS_TEST_DATABASE_URL','')
 
 @unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
-class PostgresTests(SessionScenarios,fixtures.FamilyBackendTests):
+class PostgresTests(TransactionCategoryScenarios,SessionScenarios,fixtures.FamilyBackendTests):
     def setUp(self):
         if urlsplit(DSN).path!='/lifeos_test':raise RuntimeError('Tests refuse a non-test database')
         self.schema='test_'+uuid.uuid4().hex
@@ -49,6 +50,18 @@ class PostgresTests(SessionScenarios,fixtures.FamilyBackendTests):
         return Settings.load({'DATABASE_URL':DSN,'EMAIL_QUEUE_KEY':Fernet.generate_key().decode(),
             'RATE_LIMIT_KEY':'synthetic-test-only-key-123456789012345','SMTP_HOST':'127.0.0.1',
             'SMTP_TLS':'none','EMAIL_FROM':'LifeOS <test@example.test>'})
+    def test_category_postgres_upgrade_preserves_legacy_transaction_and_is_repeatable(self):
+        operation = self.category_operation()
+        operation['data'].pop('category')
+        self.assertEqual(self.category_write(operation)['status'], 'accepted')
+        with self.backend.transaction() as db:
+            db.execute('ALTER TABLE transactions DROP COLUMN category')
+            db.execute("DELETE FROM schema_migrations WHERE version='012_transaction_categories.sql'")
+        for _ in range(2):
+            self.backend.migrate()
+            self.assertEqual(self.category_record(operation['record_id'])['data'], operation['data'])
+            with self.backend.connect() as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) AS n FROM schema_migrations WHERE version='012_transaction_categories.sql'").fetchone()['n'], 1)
     def test_application_database_role_has_no_admin_privileges(self):
         with self.backend.connect() as db:
             row=db.execute('SELECT rolsuper,rolcreatedb,rolcreaterole FROM pg_roles WHERE rolname=current_user').fetchone()
@@ -169,6 +182,7 @@ class PostgresControlWebTests(webfixtures.WebControlTests):
         self.owner=self.control.authenticate(self.staff_login['token'],'fixture')
         self.settings=PostgresTests.settings(self)
         self.app=Application(self.backend,self.settings)
+        self.setup_admission()
 
 from test_account_lifecycle import LifecycleScenarios
 
@@ -300,3 +314,39 @@ class PostgresGoogleIdentityTests(GoogleIdentityScenarios, unittest.TestCase):
             self.assertEqual(db.execute('SELECT id FROM users WHERE email=?',(actor['email'],)).fetchone()['id'],actor['id'])
             self.assertEqual(db.execute('SELECT opening_minor FROM accounts WHERE id=?',(rid,)).fetchone()['opening_minor'],123456789012345)
             self.assertEqual(db.execute("SELECT COUNT(*) AS n FROM schema_migrations WHERE version='011_google_identity.sql'").fetchone()['n'],1)
+
+
+import test_control_admission as admissionfixtures
+import test_control_recovery as recoveryfixtures
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresControlAdmissionTests(admissionfixtures.ControlAdmissionTests):
+    drop_schema = PostgresEarlyAccessTests.drop_schema
+
+    def make_backend(self, path):
+        if urlsplit(DSN).path != '/lifeos_test': raise RuntimeError('Tests refuse a non-test database')
+        self.schema='admission_'+uuid.uuid4().hex
+        with psycopg.connect(DSN,autocommit=True) as db:
+            db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(self.schema)))
+        self.addCleanup(self.drop_schema)
+        backend=PostgresBackend(DSN,Fernet(Fernet.generate_key()),schema=self.schema,migrate=True,clock=lambda:self.now)
+        self.addCleanup(backend.close)
+        deliver=backend._deliver
+        def capture(db,email,code,purpose):
+            deliver(db,email,code,purpose);self.mail[email]=code
+        backend._deliver=capture
+        return backend
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresControlRecoveryTests(recoveryfixtures.ControlRecoveryTests):
+    def setUp(self):
+        self.fixture=PostgresControlWebTests(methodName='test_staff_cookie_is_not_a_customer_bearer_and_mfa_required')
+        self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+
+
+import test_record_recovery as recordrecoveryfixtures
+
+@unittest.skipUnless(DSN, 'Requires isolated lifeos_test PostgreSQL database')
+class PostgresRecordRecoveryTests(recordrecoveryfixtures.RecordRecoveryTests):
+    def make_fixture(self):
+        return PostgresControlWebTests(methodName='test_staff_cookie_is_not_a_customer_bearer_and_mfa_required')

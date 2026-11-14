@@ -16,6 +16,7 @@ import 'package:lifeos/ui/quick_add.dart';
 import 'package:lifeos/ui/calendar.dart';
 import 'package:lifeos/ui/notices.dart';
 import 'package:lifeos/ui/selection.dart';
+import 'widget_test.dart' show openNativeProfile;
 
 // Sample records exist only in this visual test; production always reads its store.
 class SnapshotStore implements ActionStore {
@@ -235,35 +236,15 @@ void main() {
       await tester.pumpWidget(LifeOSApp(controller: controller));
       await tester.pumpAndSettle();
       if (page == 'finances' || page == 'plans' || page == 'notes') {
-        await tester.tap(
-          find.byKey(Key('nav_${page == 'notes' ? 'modules' : page}')),
-        );
+        await tester.tap(find.byKey(Key('nav_${page == 'plans' ? 'calendar' : page}')));
         await tester.pumpAndSettle();
       }
       if (page == 'notes') {
-        await tester.scrollUntilVisible(
-          find.text(controller.pack.t('recent_notes')).hitTestable(),
-          200,
-          scrollable: find
-              .descendant(
-                of: find.byKey(const Key('modules')),
-                matching: find.byType(Scrollable),
-              )
-              .first,
-        );
-        expect(
-          find.text(controller.pack.t('recent_notes')).hitTestable(),
-          findsOneWidget,
-        );
-        await tester.tap(
-          find.text(controller.pack.t('recent_notes')).hitTestable(),
-        );
-        await tester.pumpAndSettle();
         await tester.tap(find.text('Идеи на выходные').first);
         await tester.pumpAndSettle();
       }
       if (page == 'profile') {
-        await tester.tap(find.byKey(const Key('profile_button')));
+        await openNativeProfile(tester);
         await tester.pumpAndSettle();
       }
       if (page == 'quick_expense') {
@@ -304,10 +285,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('122 500 ₽'), findsOneWidget);
         expect(tester.takeException(), isNull);
-        final button = tester.getRect(find.byKey(const Key('add_button')));
-        final bar = tester.getRect(find.byType(BottomAppBar));
-        expect(button.top, greaterThanOrEqualTo(bar.top));
-        expect(button.bottom, lessThanOrEqualTo(bar.bottom));
+        expect(find.byType(FloatingActionButton), findsNothing);
+        expect(find.byKey(const Key('nav_finances')).hitTestable(), findsOneWidget);
         await expectLater(
           find.byType(MaterialApp),
           matchesGoldenFile('goldens/$name.png'),
@@ -330,6 +309,10 @@ void main() {
     await tester.pumpWidget(LifeOSApp(controller: controller));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationRail), findsOneWidget);
+    final summary = tester.getRect(find.byKey(const Key('home_financial_summary')));
+    final tasks = tester.getRect(find.text(controller.pack.t('my_tasks')));
+    expect(tasks.left, greaterThan(summary.right),
+      reason: 'Tablet Today uses the available width for the saved card sequence');
     expect(tester.takeException(), isNull);
     await expectLater(
       find.byType(MaterialApp),
@@ -372,7 +355,7 @@ void main() {
           await tester.pumpAndSettle();
         }
         if (screen == 'language') {
-          await tester.tap(find.byKey(const Key('profile_button')));
+          await openNativeProfile(tester);
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(const Key('settings_0')));
           await tester.pumpAndSettle();

@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import urlencode
 from unittest.mock import patch
 from cryptography.fernet import Fernet
 from backend.service import Backend, Failure
@@ -24,19 +25,27 @@ class WebControlTests(unittest.TestCase):
         self.owner=self.control.authenticate(self.staff_login['token'],'fixture')
         self.settings=Settings.load({'DATABASE_URL':'postgresql://example/db','EMAIL_QUEUE_KEY':Fernet.generate_key().decode(),'RATE_LIMIT_KEY':'x'*48,'SMTP_HOST':'127.0.0.1','SMTP_TLS':'none','EMAIL_FROM':'test@example.test'})
         self.app=Application(self.backend,self.settings)
+        self.setup_admission()
+
+    def setup_admission(self):
+        _,headers,value=self.request('/account/api/login',{'email':self.owner_user['email'],'password':'a-valid-long-passphrase'},origin='https://getuladim.space')
+        _,_,handoff=self.request('/account/api/control/access',{},cookie=headers['Set-Cookie'].split(';')[0],csrf=value['csrf'],origin='https://getuladim.space')
+        status,headers,_=self.request('/admit',{'ticket':handoff['ticket']},host='control.getuladim.space',origin='https://getuladim.space',form=True)
+        self.assertEqual(status,303); self.admission=headers['Set-Cookie'].split(';')[0]
 
     def user(self,email):
         result=self.backend.register(email,'a-valid-long-passphrase');actor=self.backend.authenticate(result['token']);self.backend.verify(actor,self.mail[email]);return self.backend.authenticate(result['token'])
 
-    def request(self,path,body=None,host='getuladim.space',cookie='',csrf='',origin=None):
-        data=json.dumps(body).encode() if body is not None else b''
-        env={'HTTP_HOST':host,'REQUEST_METHOD':'POST' if body is not None else 'GET','PATH_INFO':path,'REMOTE_ADDR':'172.30.30.2','HTTP_X_FORWARDED_PROTO':'https','HTTP_USER_AGENT':'fixture','HTTP_COOKIE':cookie,'HTTP_X_CSRF_TOKEN':csrf,'CONTENT_TYPE':'application/json','CONTENT_LENGTH':str(len(data)),'wsgi.input':io.BytesIO(data)}
+    def request(self,path,body=None,host='getuladim.space',cookie='',csrf='',origin=None,form=False):
+        data=(urlencode(body).encode() if form else json.dumps(body).encode()) if body is not None else b''
+        if host=='control.getuladim.space' and getattr(self,'admission',''):cookie=(cookie+'; '+self.admission).strip('; ')
+        env={'HTTP_HOST':host,'REQUEST_METHOD':'POST' if body is not None else 'GET','PATH_INFO':path,'REMOTE_ADDR':'172.30.30.2','HTTP_X_FORWARDED_PROTO':'https','HTTP_USER_AGENT':'fixture','HTTP_COOKIE':cookie,'HTTP_X_CSRF_TOKEN':csrf,'CONTENT_TYPE':'application/x-www-form-urlencoded' if form else 'application/json','CONTENT_LENGTH':str(len(data)),'wsgi.input':io.BytesIO(data)}
         if origin is not None:env['HTTP_ORIGIN']=origin
         result=[]
         with patch.object(self.app,'limit'):
             chunks=self.app(env,lambda s,h:result.append((int(s.split()[0]),dict(h))))
         raw=b''.join(chunks);status,headers=result[0]
-        return status,headers,(json.loads(raw) if headers['Content-Type'].startswith('application/json') else raw.decode())
+        return status,headers,(json.loads(raw) if raw and headers['Content-Type'].startswith('application/json') else raw.decode())
 
     def login_customer(self):
         status,headers,body=self.request('/account/api/login',{'email':self.user2['email'],'password':'a-valid-long-passphrase'},origin='https://getuladim.space')
@@ -102,7 +111,7 @@ class WebControlTests(unittest.TestCase):
         self.assertEqual(status,200);self.assertEqual(body['roles'],['owner']);self.assertEqual(headers['X-Robots-Tag'],'noindex, nofollow')
         with self.assertRaises(Failure):self.backend.authenticate(cookie.split('=',1)[1])
         self.backend.revoke_all(self.owner_user,'a-valid-long-passphrase')
-        self.assertEqual(self.request('/control/api/session',host='control.getuladim.space',cookie=cookie)[0],401)
+        self.assertEqual(self.request('/control/api/session',host='control.getuladim.space',cookie=cookie)[0],404)
 
     def test_support_isolation_redaction_and_no_audit_message_body(self):
         support=Support(self.backend,self.control)

@@ -1,0 +1,391 @@
+/* Public ULADIM: a bright, calm product introduction and readable guidance.
+   This layer changes presentation only; controls and factual copy remain intact. */
+/* Keep the initial HTML placeholder from moving the whole page before JS paints. */
+html[data-surface="site"] body.surface-loading > :is(header, main, footer) { visibility:hidden; }
+html[data-surface="site"] body.surface-loading::before,
+html[data-surface="site"] body.surface-loading::after { position:fixed;left:24px;pointer-events:none; }
+html[data-surface="site"] body.surface-loading::before { content:"ULADIM";top:24px;font-size:24px;font-weight:750;letter-spacing:-.04em; }
+html[data-surface="site"] body.surface-loading::after { content:"Загрузка…";top:108px;font-size:15px;color:var(--muted); }
+body.product-site {
+  --public-canvas:#f7f8f4;
+  --public-surface:#fff;
+  --public-ink:#18342b;
+  --public-muted:#53675e;
+  --public-rule:#dce5dd;
+  --public-green:#125541;
+  --public-soft:#eaf1e7;
+  --public-shadow:0 20px 60px #183b2410;
+  --ux-bg:var(--public-canvas);--ux-surface:var(--public-surface);
+  --ux-ink:var(--public-ink);--ux-muted:var(--public-muted);
+  --ux-border:var(--public-rule);--ux-green:var(--public-green);--ux-soft:var(--public-soft);
+  --bg:var(--public-canvas);--card:var(--public-surface);--ink:var(--public-ink);
+  --muted:var(--public-muted);--line:var(--public-rule);--accent:var(--public-green);
+  background:var(--public-canvas);color:var(--public-ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+@media(prefers-color-scheme:dark){
+ body.product-site:not([data-theme=light]){
+  --public-canvas:#101d18;--public-surface:#172920;--public-ink:#edf4ee;
+  --public-muted:#b1c3b5;--public-rule:#334b3b;--public-green:#abe0bc;
+  --public-soft:#233c2c;--public-shadow:none;
+ }
+}
+body.product-site[data-theme=dark]{
+ --public-canvas:#101d18;--public-surface:#172920;--public-ink:#edf4ee;
+ --public-muted:#b1c3b5;--public-rule:#334b3b;--public-green:#abe0bc;
+ --public-soft:#233c2c;--public-shadow:none;
+}
+body.product-site > header.public-header{
+ max-width:1280px;min-height:88px;padding:18px 40px;
+ border-bottom:1px solid var(--public-rule);background:var(--public-canvas);
+}
+body.product-site > header.public-header .brand{font-size:26px;font-weight:800;letter-spacing:-.055em}
+body.product-site > header.public-header nav{gap:22px}
+body.product-site > header.public-header nav a{font-size:14px;font-weight:550}
+body.product-site > header.public-header nav a[href="/account"]{
+ border:1px solid var(--public-green);background:var(--public-green);
+ color:var(--public-surface);border-radius:100px;padding-inline:23px;
+}
+body.product-site :is(a.button,button){border-radius:12px;font-weight:650;min-height:48px;padding:12px 20px}
+body.product-site :is(a,button,input,select,summary):focus-visible{outline:3px solid var(--public-green);outline-offset:4px}
+body.product-site #app.landing{max-width:1280px;padding:42px 40px 72px;min-height:0}
+body.product-site.focus-home #app.landing .product-hero{
+ position:relative;display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.12fr);
+ align-items:center;gap:46px;padding:52px 0 70px;margin:0;border:0;
+}
+body.product-site.focus-home .hero-copy{position:relative;z-index:1;min-width:0}
+body.product-site.focus-home .hero-copy h1{
+ font:500 clamp(42px,5vw,70px)/1.03 Georgia,"Times New Roman",serif;
+ letter-spacing:-.055em;margin:0 0 26px;max-width:10.5em;
+}
+body.product-site.focus-home .hero-copy h1 span{display:block}
+body.product-site.focus-home .hero-description{font-size:18px;line-height:1.65;max-width:26em;margin:0 0 28px}
+body.product-site.focus-home .hero-copy .hero-actions{gap:12px;margin:0;align-items:center}
+body.product-site.focus-home .hero-copy .hero-actions .button{font-size:15px;min-height:52px;padding-inline:24px}
+body.product-site.focus-home .hero-caption{margin-top:14px;font-size:13px}
+body.product-site.focus-home .workspace-preview{
+ position:relative;transform:none;grid-template-columns:128px minmax(0,1fr);
+ border:1px solid var(--public-rule);border-radius:22px;
+ background:var(--public-surface);box-shadow:var(--public-shadow);
+ overflow:hidden;min-width:0;
+}
+body.product-site.focus-home .workspace-preview .preview-rail{
+ padding:24px 12px;background:var(--public-green);border:0;color:var(--public-surface);gap:7px;
+}
+body.product-site.focus-home .preview-rail>strong{font-size:17px;color:inherit;letter-spacing:-.04em;margin:0 8px 24px}
+body.product-site.focus-home .preview-view{display:flex;align-items:center;gap:8px;min-height:39px;padding:8px;border-radius:8px;font-size:11px;color:inherit}
+body.product-site.focus-home .preview-view:first-of-type{background:#ffffff20;color:inherit}
+body.product-site.focus-home .preview-view svg{width:17px;height:17px;flex:none}
+body.product-site.focus-home .preview-view span{padding:0;color:inherit;background:none}
+body.product-site.focus-home .preview-workspace{padding:26px 22px;background:var(--public-canvas)}
+body.product-site.focus-home .preview-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:20px}
+body.product-site.focus-home .preview-top h2{font:700 25px/1.2 Inter,system-ui,sans-serif;margin:0 0 5px;letter-spacing:-.04em}
+body.product-site.focus-home .preview-top p{font-size:11px;color:var(--public-muted);margin:0}
+body.product-site.focus-home .preview-label{font-size:9px;letter-spacing:0;padding:4px 8px;background:var(--public-surface);border:1px solid var(--public-rule);border-radius:30px;white-space:normal}
+body.product-site.focus-home .preview-tasks{padding:17px;background:var(--public-surface);border:1px solid var(--public-rule);border-radius:12px}
+body.product-site.focus-home .preview-task-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+body.product-site.focus-home .preview-task-heading h3{font-size:14px;margin:0;font-weight:700}
+body.product-site.focus-home .preview-task-heading>span{font-size:10px;color:var(--public-muted)}
+body.product-site.focus-home .preview-task-list{margin:6px 0 0;padding:0;list-style:none}
+body.product-site.focus-home .preview-task{padding:10px 0;font-size:11px;gap:9px;line-height:1.5}
+body.product-site.focus-home .preview-task:last-child{border:0;padding-bottom:0}
+body.product-site.focus-home .preview-check{border-radius:4px;width:15px;height:15px}
+body.product-site.focus-home .preview-event{display:flex;align-items:center;gap:9px;margin:12px 0;padding:12px 14px;border-radius:10px;border:1px solid var(--public-rule);background:var(--public-surface);font-size:10px}
+body.product-site.focus-home .preview-event svg{width:16px;height:16px;color:var(--public-green);flex:none}
+body.product-site.focus-home .preview-event time{padding:3px 6px;background:var(--public-soft);border-radius:5px;color:var(--public-green)}
+body.product-site.focus-home .preview-event strong{font-weight:650}
+body.product-site.focus-home .preview-finance{padding:16px;border:0;border-radius:12px;background:var(--public-soft)}
+body.product-site.focus-home .preview-finance h3{font-size:13px;font-weight:700;margin:0 0 10px}
+body.product-site.focus-home .preview-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;gap:14px}
+body.product-site.focus-home .preview-totals>div+div{padding-left:14px;border-left:1px solid var(--public-rule)}
+body.product-site.focus-home .preview-totals dt{font-size:10px;color:var(--public-muted)}
+body.product-site.focus-home .preview-totals dd{font-size:22px;font-weight:750;letter-spacing:-.04em;margin:3px 0 0;font-variant-numeric:tabular-nums;white-space:nowrap}
+body.product-site.focus-home #app.landing>.product-features{
+ display:block;border:0;margin:0 0 56px;padding:32px;background:var(--public-surface);border-radius:20px;
+}
+body.product-site.focus-home .product-features>h2,
+body.product-site.focus-home .product-platforms>h2,
+body.product-site.focus-home .plan-comparison>h2,
+body.product-site.focus-home .product-faq>h2{font:650 clamp(25px,3vw,36px)/1.2 Inter,system-ui,sans-serif;letter-spacing:-.04em;margin:0 0 26px;max-width:none}
+body.product-site.focus-home .home-feature-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px}
+body.product-site.focus-home .product-features .feature-row{display:block;padding:0;border:0;background:none;border-radius:0}
+body.product-site.focus-home .feature-row svg{height:25px;width:25px;padding:9px;box-sizing:content-box;background:var(--public-soft);color:var(--public-green);border-radius:12px;margin-bottom:18px}
+body.product-site.focus-home .feature-row h3{font-size:16px;margin:0 0 9px;font-weight:700;line-height:1.3}
+body.product-site.focus-home .feature-row p{font-size:14px;line-height:1.65;margin:0;color:var(--public-muted)}
+body.product-site.focus-home :is(.product-platforms,.plan-comparison,.product-faq){margin:56px 0}
+body.product-site .application-grid{gap:20px;margin-top:22px}
+body.product-site .application-grid .card{padding:28px;border:1px solid var(--public-rule);border-radius:16px;background:var(--public-surface)}
+body.product-site .application-grid .card h2{font:700 22px/1.25 Inter,system-ui,sans-serif;margin:0 0 12px;letter-spacing:-.03em}
+body.product-site .application-grid .card p{font-size:15px;line-height:1.65;margin:0 0 22px;max-width:36em}
+body.product-site .application-grid .button{font-size:13px;padding-inline:14px}
+body.product-site .plan-comparison>p{max-width:60em;font-size:15px;line-height:1.7;margin-bottom:22px}
+body.product-site .table-scroll{border:1px solid var(--public-rule);border-radius:14px;background:var(--public-surface)}
+body.product-site table{background:var(--public-surface);font-size:14px}
+body.product-site table :is(th,td){padding:18px;border-color:var(--public-rule)}
+body.product-site thead th{background:var(--public-soft);font-weight:700}
+body.product-site .product-faq details,
+body.product-site .import-faq details,
+body.product-site .install-guide details{border:1px solid var(--public-rule);border-radius:12px;background:var(--public-surface);padding:0 20px;margin:10px 0}
+body.product-site :is(.product-faq,.import-faq,.install-guide) summary{display:flex;justify-content:space-between;gap:20px;min-height:62px;font-size:15px;font-weight:650;padding-block:12px;line-height:1.5;list-style:none}
+body.product-site :is(.product-faq,.import-faq,.install-guide) summary::after{content:'+';font-size:23px;font-weight:400;line-height:1;color:var(--public-green);flex:none}
+body.product-site :is(.product-faq,.import-faq,.install-guide) details[open]>summary::after{content:'−'}
+body.product-site :is(.product-faq,.import-faq,.install-guide) details[open]>p{padding-bottom:6px;margin:0 0 18px;font-size:15px;line-height:1.7;max-width:66ch}
+body.product-site #app.landing>.hero-actions:last-child{margin:34px 0 0;padding:28px;border-radius:16px;background:var(--public-soft);gap:12px}
+body.product-site #app.product-content{max-width:1040px;padding:52px 40px 80px}
+body.product-site .product-content>.eyebrow{font-size:12px;font-weight:650;letter-spacing:.12em;color:var(--public-green);margin-bottom:18px}
+body.product-site .product-content>h1{font:550 clamp(34px,4.5vw,54px)/1.12 Georgia,"Times New Roman",serif;letter-spacing:-.045em;margin:0 0 18px;max-width:20ch}
+body.product-site .product-content>p{font-size:17px;line-height:1.7;margin:0 0 28px;max-width:65ch}
+body.product-site .product-content>.card{padding:28px;border-radius:16px;background:var(--public-surface);border:1px solid var(--public-rule);margin:24px 0}
+body.product-site .product-content>.card h2{font-size:21px;font-weight:700}
+body.product-site .product-content>.card p{font-size:15px;line-height:1.8}
+body.product-site .product-content .guide-navigation{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--public-surface);border:1px solid var(--public-rule);border-radius:12px;margin:28px 0}
+body.product-site .guide-navigation a{border-radius:8px;font-size:14px;padding:10px 14px;min-height:44px;color:var(--public-green)}
+body.product-site .guide-navigation a:hover{background:var(--public-soft)}
+body.product-site .product-content>.button{margin:8px 10px 20px 0}
+body.product-site .product-content .import-faq>.button,
+body.product-site .product-content .import-faq>.hero-actions,
+body.product-site .product-content .import-faq>.actions{margin-block:24px 16px}
+body.product-site .product-content .import-faq>a.button{display:inline-flex;margin-top:24px}
+body.product-site .product-content .install-guide,
+body.product-site .product-content .import-guide{margin:38px 0}
+body.product-site .product-content .import-guide li{padding:20px 4px 20px 8px;line-height:1.7}
+body.product-site .product-content .import-guide h3{font-size:17px;font-weight:700;margin-bottom:5px}
+body.product-site>.footer,body.product-site>footer:not([hidden]){max-width:1200px;margin:0 auto;padding:28px 16px 36px;border-top:1px solid var(--public-rule);font-size:13px;line-height:2.1}
+body.product-site>footer a{display:inline-block;min-height:32px;padding-inline:3px;text-decoration:underline;text-underline-offset:3px}
+body:has(main.focus-login)>main.focus-login{box-shadow:0 16px 60px #183b2408}
+body main.focus-login .focus-login-story{border-radius:18px}
+body main.focus-login .focus-login-links{padding-block:8px}
+@media(max-width:1099px){
+ body.product-site.focus-home #app.landing .product-hero{gap:26px;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
+ body.product-site.focus-home .workspace-preview{grid-template-columns:100px minmax(0,1fr)}
+ body.product-site.focus-home .preview-rail{padding-inline:8px}
+ body.product-site.focus-home .preview-workspace{padding:20px 16px}
+ body.product-site.focus-home .preview-totals dd{font-size:19px}
+ body.product-site.focus-home .home-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+}
+@media(max-width:759px){
+ body.product-site>header.public-header{padding:12px 18px;min-height:72px;gap:10px}
+ body.product-site>header.public-header .brand{font-size:24px}
+ body.product-site>header.public-header nav{background:var(--public-surface);border-radius:14px;padding:8px}
+ body.product-site>header.public-header nav a{min-height:48px;border-radius:8px}
+ body.product-site>header.public-header nav a[href="/account"]{margin-top:5px;justify-content:center}
+ body.product-site .public-header-controls>a{border-radius:100px;padding-inline:14px;background:var(--public-green);color:var(--public-surface)}
+ body.product-site #app.landing{padding:22px 18px 46px}
+ body.product-site.focus-home #app.landing .product-hero{grid-template-columns:minmax(0,1fr);gap:32px;padding:24px 0 36px}
+ body.product-site.focus-home .hero-copy h1{font-size:clamp(40px,10vw,58px);max-width:12em;margin-bottom:22px}
+ body.product-site.focus-home .hero-description{font-size:16px;max-width:30em;margin-bottom:24px}
+ body.product-site.focus-home .hero-copy .hero-actions{gap:9px}
+ body.product-site.focus-home .hero-copy .hero-actions .button{min-height:48px;font-size:14px;padding-inline:18px;flex:1 1 auto;width:auto}
+ body.product-site.focus-home .workspace-preview{grid-template-columns:87px minmax(0,1fr);border-radius:16px}
+ body.product-site.focus-home .preview-rail{padding:20px 7px}
+ body.product-site.focus-home .preview-rail>strong{font-size:13px;margin:0 2px 22px}
+ body.product-site.focus-home .preview-view{font-size:9px;gap:5px;padding:6px 3px;min-height:34px}
+ body.product-site.focus-home .preview-view svg{width:14px;height:14px}
+ body.product-site.focus-home .preview-workspace{padding:18px 12px}
+ body.product-site.focus-home .preview-top{display:block;margin-bottom:15px}
+ body.product-site.focus-home .preview-top h2{font-size:22px}
+ body.product-site.focus-home .preview-top p{font-size:10px}
+ body.product-site.focus-home .preview-label{display:inline-block;margin-top:8px;font-size:9px;padding:3px 6px}
+ body.product-site.focus-home .preview-tasks{padding:12px}
+ body.product-site.focus-home .preview-task-heading{align-items:flex-start}
+ body.product-site.focus-home .preview-task-heading h3{font-size:12px;line-height:1.3}
+ body.product-site.focus-home .preview-task-heading>span{font-size:9px;white-space:nowrap}
+ body.product-site.focus-home .preview-task{font-size:10px;gap:7px;padding-block:10px}
+ body.product-site.focus-home .preview-check{width:14px;height:14px}
+ body.product-site.focus-home .preview-event{padding:10px 9px;font-size:9px;gap:5px;flex-wrap:wrap}
+ body.product-site.focus-home .preview-event strong{flex-basis:100%;padding-left:21px}
+ body.product-site.focus-home .preview-finance{padding:12px}
+ body.product-site.focus-home .preview-finance h3{font-size:12px}
+ body.product-site.focus-home .preview-totals{gap:7px}
+ body.product-site.focus-home .preview-totals>div+div{padding-left:7px}
+ body.product-site.focus-home .preview-totals dd{font-size:17px}
+ body.product-site.focus-home #app.landing>.product-features{padding:24px 20px;margin-bottom:36px;border-radius:16px}
+ body.product-site.focus-home .home-feature-grid{grid-template-columns:minmax(0,1fr);gap:24px}
+ body.product-site.focus-home .product-features .feature-row{display:grid;grid-template-columns:42px minmax(0,1fr);gap:14px}
+ body.product-site.focus-home .feature-row svg{margin:0;padding:9px;width:24px;height:24px}
+ body.product-site.focus-home .feature-row h3{font-size:16px;margin-bottom:6px}
+ body.product-site.focus-home .feature-row p{font-size:14px}
+ body.product-site.focus-home :is(.product-platforms,.plan-comparison,.product-faq){margin:36px 0}
+ body.product-site.focus-home :is(.product-features,.product-platforms,.plan-comparison,.product-faq)>h2{font-size:25px;line-height:1.2;margin-bottom:20px}
+ body.product-site .application-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+ body.product-site .application-grid .card{padding:22px;border-radius:14px}
+ body.product-site .application-grid .card h2{font-size:20px}
+ body.product-site .application-grid .button{margin-right:0;display:flex;width:100%;min-height:46px}
+ body.product-site :is(.product-faq,.import-faq,.install-guide) details{padding-inline:15px}
+ body.product-site :is(.product-faq,.import-faq,.install-guide) summary{font-size:14px;min-height:60px;gap:15px}
+ body.product-site #app.landing>.hero-actions:last-child{padding:20px;gap:10px}
+ body.product-site #app.landing>.hero-actions:last-child .button{width:100%;margin:0}
+ body.product-site #app.product-content{padding:30px 18px 52px}
+ body.product-site .product-content>h1{font-size:36px;line-height:1.12;margin-bottom:16px;max-width:20ch}
+ body.product-site .product-content>p{font-size:16px;line-height:1.65;margin-bottom:24px}
+ body.product-site .product-content>.card{padding:22px;margin:20px 0}
+ body.product-site .product-content .guide-navigation{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:6px;margin:24px 0}
+ body.product-site .guide-navigation a{padding:10px;font-size:13px}
+ body.product-site .product-content .import-guide{margin:30px 0}
+ body.product-site .product-content .import-guide ol{padding-left:22px}
+ body.product-site>.footer,body.product-site>footer:not([hidden]){padding:24px 18px;font-size:12px}
+}
+@media(max-width:359px){
+ body.product-site.focus-home .workspace-preview{grid-template-columns:72px minmax(0,1fr)}
+ body.product-site.focus-home .preview-workspace{padding:15px 9px}
+ body.product-site.focus-home .preview-view{font-size:8px;gap:3px}
+ body.product-site.focus-home .preview-totals dd{font-size:15px}
+ body.product-site.focus-home .hero-copy h1{font-size:38px}
+}
+/* Explicitly finish the narrow preview as one readable canvas. */
+body.product-site.focus-home>header.public-header nav a[href="/account"],
+body.product-site>header.public-header .public-header-controls>a{
+ background:var(--public-green);color:var(--public-surface);border-color:var(--public-green);
+}
+body.product-site.focus-home .preview-view svg{color:inherit}
+body.product-site.focus-home .hero-copy .hero-description{margin-bottom:24px}
+@media(max-width:759px){
+ body.product-site.focus-home .workspace-preview{grid-template-columns:minmax(0,1fr)}
+ body.product-site.focus-home .workspace-preview .preview-rail{display:none}
+ body.product-site.focus-home .preview-workspace{grid-column:1;padding:20px}
+ body.product-site.focus-home .preview-top{display:flex}
+ body.product-site.focus-home .preview-label{margin-top:0}
+ body.product-site.focus-home .preview-task-heading h3{font-size:14px}
+ body.product-site.focus-home .preview-task{font-size:12px}
+ body.product-site.focus-home .preview-event{flex-wrap:nowrap;font-size:11px;padding:12px}
+ body.product-site.focus-home .preview-event strong{flex-basis:auto;padding:0}
+ body.product-site.focus-home .preview-finance h3{font-size:13px}
+ body.product-site.focus-home .preview-totals dd{font-size:22px}
+}
+body.product-site .product-content .import-guide>.card{margin-block:16px;padding:26px;border-radius:14px}
+body.product-site .product-content .import-guide>.card h2{font:700 20px/1.3 Inter,system-ui,sans-serif;margin-bottom:12px}
+body.product-site .product-content .import-guide>.button{margin:12px 10px 0 0}
+/* Editorial rhythm from the public reference, with ULADIM's own composition. */
+body.product-site{--public-canvas:#f7f7f2;--public-ink:#242d27;--public-muted:#626d63;--public-green:#204d3e;--public-secondary:#a4483c}
+body.product-site.focus-home .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--public-muted);margin:0 0 24px}
+body.product-site.focus-home .hero-eyebrow::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--public-green)}
+body.product-site.focus-home .hero-copy h1{font-size:clamp(42px,4.8vw,66px);line-height:1.08;letter-spacing:-.045em;max-width:11em}
+body.product-site.focus-home .hero-copy h1 span+span{color:var(--public-secondary)}
+body.product-site.focus-home .hero-copy .hero-description{font-size:16px;line-height:1.8;max-width:31em}
+body.product-site.focus-home .hero-platform-note{font-size:12px;line-height:1.6;margin:20px 0 0;color:var(--public-muted)}
+body.product-site.focus-home .hero-caption{margin-top:8px;font-size:12px}
+body.product-site.focus-home .hero-copy .hero-actions .button{min-height:46px;border-radius:100px;padding:12px 22px;font-size:13px}
+body.product-site.focus-home .hero-copy .hero-actions .button.secondary{background:transparent;border:1px solid var(--public-rule);color:var(--public-ink)}
+body.product-site.focus-home .workspace-preview{border-radius:16px;box-shadow:0 20px 50px #14231a0b}
+body.product-site.focus-home #app.landing>.product-features{border:1px solid var(--public-rule);background:transparent}
+body.product-site.focus-home .feature-row svg{background:transparent;color:var(--public-secondary);padding:0;margin-bottom:15px;width:24px;height:24px}
+body.product-site.focus-home .product-features>h2{font-size:25px;margin-bottom:30px}
+body.product-site.focus-home .application-grid .card{box-shadow:none}
+body.product-site .product-content .import-faq>.button{margin-top:30px;margin-bottom:12px}
+body.product-site .application-grid .button+.button{margin-inline-start:8px}
+body.product-site[data-theme=dark]{--public-canvas:#121a15;--public-ink:#eef1e9;--public-muted:#b4c0b2;--public-green:#b8d6bd;--public-secondary:#e49d8d}
+@media(prefers-color-scheme:dark){body.product-site:not([data-theme=light]){--public-canvas:#121a15;--public-ink:#eef1e9;--public-muted:#b4c0b2;--public-green:#b8d6bd;--public-secondary:#e49d8d}}
+@media(max-width:759px){
+ body.product-site.focus-home .hero-eyebrow{font-size:10px;margin-bottom:20px}
+ body.product-site.focus-home .hero-copy h1{font-size:clamp(40px,10.5vw,58px);max-width:12em}
+ body.product-site.focus-home .hero-copy .hero-description{font-size:15px;margin-bottom:24px}
+ body.product-site.focus-home .hero-platform-note{margin-top:18px}
+ body.product-site.focus-home .product-features .feature-row{grid-template-columns:24px minmax(0,1fr);gap:16px}
+ body.product-site.focus-home .feature-row svg{padding:0;margin:2px 0 0}
+ body.product-site .application-grid .button+.button{margin:10px 0 0}
+}
+/* Access plans describe the existing free catalog; there is no checkout. */
+.access-plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-block:24px}
+.access-plan-card{min-width:0;overflow-wrap:anywhere;display:flex;flex-direction:column;align-items:flex-start}
+.access-plan-card h3{margin:0 0 12px;font:700 22px/1.25 Inter,system-ui,sans-serif;letter-spacing:-.025em}
+.access-plan-card>strong{font-size:15px;line-height:1.5}
+.access-plan-card>p{font-size:14px;line-height:1.65}
+.access-plan-card .access-plan-label{font-size:11px;line-height:1.5;font-weight:650;letter-spacing:.04em;text-transform:uppercase;margin:0 0 14px;color:var(--muted)}
+.access-plan-card ul{padding-left:19px;margin-block:12px;flex:1;font-size:13px;line-height:1.65}
+.access-plan-card li+li{margin-top:8px}
+.access-included-features{padding-inline-start:19px;font-size:13px;line-height:1.7;margin-block:18px 0}
+.access-included-features li+li{margin-top:7px}
+.access-plan-card .access-plan-availability{font-size:12px;font-weight:650;margin-top:12px;margin-bottom:0}
+.access-free-note{font-weight:650;color:var(--accent);border-inline-start:3px solid currentColor;padding-inline-start:12px}
+.access-plan-tier{font-size:28px;line-height:1.3;letter-spacing:-.03em}
+.access-plan-boundary{font-size:13px;line-height:1.7;color:var(--muted);max-width:70ch}
+.access-plan-details{margin-block:24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.access-plan-details>summary{min-height:48px;padding-block:14px;cursor:pointer;font-size:14px;font-weight:600}
+body.product-site .access-plan-grid .card{margin:0;padding:24px;border:1px solid var(--public-rule);background:var(--public-surface);border-radius:14px;box-shadow:none}
+body.product-site .access-plan-label,body.product-site .access-plan-boundary{color:var(--public-muted)}
+body.product-site .access-free-note{color:var(--public-green)}
+body.product-site .access-plan-details{border-color:var(--public-rule)}
+.settings-content .access-plan-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:12px;margin-block:16px}
+.settings-content .access-plan-card h3{font-size:16px!important;line-height:1.4!important}
+.settings-content .access-plan-card>p,.settings-content .access-plan-card ul{font-size:13px}
+.settings-content .access-plan-status>h2{margin-bottom:18px}
+/* Existing permission-checked support and moderation, within the page. */
+.support-ticket-link{display:block;width:100%;text-align:start;min-height:44px;margin-block:8px}
+.support-message{min-width:0;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:12px;padding:16px;margin-block:12px;background:var(--card)}
+.support-message[data-staff=true]{border-inline-start:3px solid var(--accent)}
+.support-message>p{white-space:pre-wrap;font-size:14px;line-height:1.7;margin-bottom:0}
+.support-message>strong{font-size:12px;color:var(--muted)}
+.support-back{margin-bottom:12px}
+body[data-control=true] .control-queue-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-block:24px}
+body[data-control=true] .control-queue-filters label{display:block;margin-bottom:8px}
+body[data-control=true] .control-queue-filters select{width:100%;min-height:48px}
+body[data-control=true] .control-ticket{margin-block:16px}
+body[data-control=true] .control-ticket-meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+body[data-control=true] .control-triage,body[data-control=true] .control-moderation{border-top:1px solid var(--line);margin-top:28px;padding-top:24px}
+body[data-control=true] .control-moderation .notice[hidden]{display:none}
+body[data-control=true] .control-no-holds{padding-inline-start:12px;border-inline-start:3px solid var(--accent)}
+@media(max-width:759px){
+ .access-plan-grid{grid-template-columns:minmax(0,1fr)}
+ .access-plan-card h3{font-size:21px}
+ body[data-control=true] .control-queue-filters{grid-template-columns:minmax(0,1fr);gap:12px}
+}
+/* A short welcome: one entry, a workspace preview, and optional next steps. */
+body.product-site > header.public-header nav a.public-signin{
+ border:1px solid var(--public-green);border-radius:100px;padding-inline:20px;
+ background:var(--public-green);color:var(--public-surface);
+}
+body.product-site.focus-home #app.landing{padding-top:20px;padding-bottom:40px}
+body.product-site.focus-home #app.landing .product-hero{padding:46px 0 52px;gap:52px}
+body.product-site.focus-home .hero-copy h1{font-size:clamp(48px,5.4vw,74px);max-width:10em}
+body.product-site.focus-home .hero-copy .hero-description{max-width:28em;font-size:17px;line-height:1.75;margin-bottom:28px}
+body.product-site.focus-home .hero-copy .hero-actions .button{font-size:15px;min-height:50px;padding-inline:26px}
+body.product-site.focus-home .hero-copy .hero-caption{font-size:13px;line-height:1.6;margin:16px 0 0;color:var(--public-muted)}
+body.product-site.focus-home .welcome-overview{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;
+ border-top:1px solid var(--public-rule);border-bottom:1px solid var(--public-rule);padding:26px 0;
+}
+body.product-site.focus-home .welcome-capability{display:flex;align-items:flex-start;gap:14px;min-width:0}
+body.product-site.focus-home .welcome-capability>svg{width:23px;height:23px;flex:none;margin-top:3px;color:var(--public-secondary)}
+body.product-site.focus-home .welcome-capability h2{font:650 16px/1.5 Inter,system-ui,sans-serif;letter-spacing:-.02em;margin:0 0 4px}
+body.product-site.focus-home .welcome-capability p{font-size:13px;line-height:1.7;margin:0;color:var(--public-muted)}
+body.product-site.focus-home .welcome-resources{display:flex;flex-wrap:wrap;gap:8px 26px;margin:24px 0 0}
+body.product-site.focus-home .welcome-resources a{display:inline-flex;align-items:center;min-height:44px;font-size:13px;color:var(--public-muted);text-decoration:none;text-underline-offset:4px}
+body.product-site.focus-home .welcome-resources a:hover{text-decoration:underline;color:var(--public-green)}
+body.product-site :is(a.button,button){transition:background-color 160ms ease,color 160ms ease,box-shadow 160ms ease,transform 160ms ease}
+@media(hover:hover){body.product-site a.button:hover{transform:translateY(-1px);box-shadow:0 5px 16px #15231b10}}
+@media(prefers-reduced-motion:no-preference){
+ body.product-site.focus-home .product-hero{animation:welcome-arrive 280ms ease-out both}
+ @keyframes welcome-arrive{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+@media(max-width:1099px){
+ body.product-site.focus-home #app.landing .product-hero{gap:28px}
+ body.product-site.focus-home .hero-copy h1{font-size:clamp(44px,5.7vw,62px)}
+ body.product-site.focus-home .welcome-overview{gap:20px}
+}
+@media(max-width:759px){
+ body.product-site.focus-home #app.landing{padding-top:10px;padding-bottom:24px}
+ body.product-site.focus-home #app.landing .product-hero{padding:28px 0 30px;gap:30px}
+ body.product-site.focus-home .hero-eyebrow{font-size:9px;letter-spacing:.08em;margin-bottom:18px}
+ body.product-site.focus-home .hero-copy h1{font-size:clamp(44px,12vw,60px);margin-bottom:18px}
+ body.product-site.focus-home .hero-copy .hero-description{font-size:16px;line-height:1.7;margin-bottom:24px;max-width:30em}
+ body.product-site.focus-home .hero-copy .hero-actions .button{flex:none;width:auto;min-height:50px;padding-inline:24px}
+ body.product-site.focus-home .hero-copy .hero-caption{font-size:12px;margin-top:13px}
+ body.product-site.focus-home .workspace-preview{max-width:540px;width:100%;justify-self:center}
+ body.product-site.focus-home .welcome-overview{grid-template-columns:minmax(0,1fr);gap:21px;padding:24px 0}
+ body.product-site.focus-home .welcome-capability h2{font-size:15px}
+ body.product-site.focus-home .welcome-capability p{font-size:13px}
+ body.product-site.focus-home .welcome-resources{gap:4px 22px;margin-top:18px}
+ body.product-site.focus-home .welcome-resources a{font-size:12px}
+ body.product-site>header.public-header nav a.public-signin{margin-top:5px;justify-content:center}
+}
+@media(prefers-reduced-motion:reduce){body.product-site :is(a.button,button){transition:none}}
+/* Keep the hidden tablet rail from leaving an empty fixed-width grid track. */
+@media(max-width:1099px){
+ body.product-site.focus-home .workspace-preview{grid-template-columns:minmax(0,1fr)}
+ body.product-site.focus-home .workspace-preview .preview-rail{display:none}
+ body.product-site.focus-home .preview-workspace{grid-column:1}
+}
+@media(max-width:759px){
+ body.product-site.focus-home .hero-copy .hero-actions{display:flex;max-width:none}
+ body.product-site.focus-home .hero-copy .hero-actions .button{white-space:nowrap}
+}

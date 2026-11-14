@@ -13,7 +13,11 @@ void main() {
       {...invalid, 'dynamic': 'true'}, {...invalid, 'mode': 'unknown'}, {...invalid, 'extra': 1}]) {
       expect(() => Appearance.decode(jsonEncode(bad)), throwsFormatException);
     }
-    expect(Appearance.decode(null).palette, 'emerald');
+    expect(Appearance.decode(null).palette, 'violet');
+    for (final palette in ['emerald', 'pistachio', 'sky', 'sand']) {
+      final saved = Appearance(palette: palette, shape: 'rounded', surface: 'outlined');
+      expect(Appearance.decode(saved.encode()).encode(), saved.encode());
+    }
   });
   test('all palettes use accessible primary and surface text roles', () {
     double contrast(Color a, Color b) {

@@ -1,11 +1,15 @@
 {
-  "version": 1,
+  "version": 2,
+  "schema_version": 2,
   "sales_enabled": false,
-  "approval": "closed_test_catalog_for_owner_review",
-  "features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"],
+  "approval": "free_preview_release",
+  "phase": "free_preview",
+  "disabled_features": ["ai_assistant"],
+  "offers": [],
+  "features": ["personal_core", "family_sync", "custom_charts", "extended_personalization", "statement_import", "advanced_planning", "ai_assistant"],
   "tiers": {
-    "Free": {"features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"], "limits": {"shared_records": null}, "price": null},
-    "Plus": {"features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"], "limits": {"shared_records": null}, "price": null},
-    "Premium": {"features": ["personal_core", "family_sync", "custom_charts", "extended_personalization"], "limits": {"shared_records": null}, "price": null}
+    "Free": {"availability": "available", "features": ["personal_core", "family_sync", "custom_charts", "extended_personalization", "statement_import", "advanced_planning"], "limits": {"shared_records": null}, "price": null},
+    "Plus": {"availability": "preview", "features": ["personal_core", "family_sync", "custom_charts", "extended_personalization", "statement_import", "advanced_planning"], "limits": {"shared_records": null}, "price": null},
+    "Premium": {"availability": "unavailable", "features": ["personal_core", "family_sync", "custom_charts", "extended_personalization", "statement_import", "advanced_planning", "ai_assistant"], "limits": {"shared_records": null}, "price": null}
   }
 }

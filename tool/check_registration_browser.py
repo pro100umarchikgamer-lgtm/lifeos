@@ -9,6 +9,7 @@ import threading
 from pathlib import Path
 from wsgiref.simple_server import make_server
 from cryptography.fernet import Fernet
+from tool.web_browser_navigation import open_tab, open_finance_section
 from playwright.sync_api import sync_playwright, expect
 from backend.service import Backend
 from backend.config import Settings
@@ -49,7 +50,7 @@ def main():
                 for width, height in [(390,844),(834,1194),(1440,1000)]:
                     preview=browser.new_context(viewport={'width':width,'height':height},color_scheme='light')
                     public=preview.new_page();public.goto(origin+'/')
-                    expect(public.get_by_role('link',name='Начать бесплатно',exact=True)).to_have_attribute('href','/app?action=signup')
+                    expect(public.get_by_role('link',name='Создать аккаунт',exact=True)).to_have_attribute('href','/app?action=signup')
                     assert public.evaluate('document.documentElement.scrollWidth<=innerWidth')
                     public.screenshot(path=str(OUT/('product-home-'+str(width)+'.png')),full_page=True)
                     public.goto(origin+'/early-access')
@@ -81,7 +82,7 @@ def main():
                         assert not page.url.endswith(PASSWORD)
                         page.locator('input[name=code]').fill(totp(factor['totp_secret'],clock[0]//30))
                         page.get_by_role('button',name='Войти',exact=True).click()
-                        expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                        expect(page.locator('.nav')).to_be_visible()
                         assert not errors, errors
                         cases.append({'case':route+' password-first MFA '+str(width),'expected':'no password or session before factor; then authenticated','actual':'passed'})
                         context.close()
@@ -120,36 +121,40 @@ def main():
                     with page.expect_response('**/account/api/login') as login_response:
                         page.get_by_role('button',name='Войти',exact=True).click()
                     assert login_response.value.status == 200, (route, login_response.value.status, login_response.value.json())
-                    expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                    expect(page.locator('.nav')).to_be_visible()
                     expect(page.locator('input[name=code]')).to_have_count(0)
-                    expect(page.locator('select[name=workspace]')).to_have_count(0)
+                    expect(page.locator('select[name=workspace] option')).to_have_count(0)
+                    expect(page.locator('.quick-capture')).to_have_count(0)
                     # Both entry points now lead to the same PWA/account and setup.
                     page.get_by_role('button',name='Создать личное пространство',exact=True).click()
                     page.get_by_role('dialog').get_by_label('Название',exact=True).fill('First personal space')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
-                    expect(page.locator('.getting-started')).to_be_visible()
+                    expect(page.locator('.quick-capture')).to_be_visible()
                     expect(page.locator('select[name=workspace]')).to_have_count(1)
-                    page.get_by_role('button',name='Задача',exact=True).click()
+                    open_tab(page,'Задачи')
+                    page.get_by_role('button',name='Добавить',exact=True).click()
                     page.get_by_label('Название задачи',exact=True).fill('First verified task')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
                     expect(page.get_by_text('First verified task',exact=True)).to_be_visible()
-                    page.get_by_role('button',name='Заметки',exact=True).click()
-                    page.get_by_role('button',name='Добавить',exact=True).click()
+                    open_tab(page,'Заметки')
+                    page.get_by_role('button',name='Новая заметка',exact=True).click()
                     page.get_by_label('Текст заметки',exact=True).fill('First verified note')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
                     page.get_by_role('button',name='Редактировать',exact=True).click()
+                    page.get_by_role('dialog').locator('.editor-more > summary').click()
                     expect(page.get_by_role('dialog').get_by_role('button',name='Удалить',exact=True)).to_be_visible()
                     page.get_by_label('Текст заметки',exact=True).fill('Edited verified note')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
                     expect(page.get_by_text('Edited verified note',exact=True)).to_be_visible()
-                    page.get_by_role('button',name='Финансы',exact=True).click()
-                    page.get_by_role('button',name='Добавить',exact=True).click()
-                    page.get_by_role('dialog').get_by_role('button',name='Счёт',exact=True).click()
+                    open_tab(page,'Финансы')
+                    open_finance_section(page,'accounts')
+                    page.locator('.finance-toolbar').get_by_role('button',name='Счёт',exact=True).click()
                     page.get_by_role('dialog').get_by_label('Название',exact=True).fill('First account')
                     page.get_by_label('Начальный остаток',exact=True).fill('10000')
                     page.get_by_role('dialog').get_by_role('button',name='Сохранить',exact=True).click()
-                    page.get_by_role('button',name='Добавить',exact=True).click()
-                    page.get_by_role('dialog').get_by_role('button',name='Расход или доход',exact=True).click()
+                    expect(page.locator('.finance-accounts')).to_contain_text('First account')
+                    open_tab(page,'Финансы')
+                    page.get_by_role('button',name='Добавить операцию',exact=True).click()
                     page.get_by_label('Сумма',exact=True).fill('1250,50')
                     page.locator('select[name=account]').select_option(label='First account · RUB')
                     page.get_by_label('Название или описание',exact=True).fill('First expense')
@@ -168,16 +173,14 @@ def main():
                     cases.append({'case':route+' open signup/resend/confirmation/non-MFA login','expected':'verified account, no invitation, no automatic MFA','actual':'passed'})
                     context.close()
                 clock[0] += 901
-                context=browser.new_context();page=context.new_page();page.goto(staff+'/')
+                context=browser.new_context();page=context.new_page();response=page.goto(staff+'/')
+                assert response.status==404
                 expect(page.locator('input[name=code]')).to_have_count(0)
-                page.get_by_label('Электронная почта',exact=True).fill(actor['email'])
-                page.locator('input[name=password]').fill(PASSWORD)
-                page.get_by_role('button',name='Войти',exact=True).click()
-                expect(page.locator('input[type=password]')).to_have_count(0)
-                page.locator('input[name=code]').fill(totp(staff_factor['totp_secret'],clock[0]//30))
-                page.get_by_role('button',name='Войти',exact=True).click()
-                expect(page.get_by_role('heading',name='Обзор сервиса',exact=True)).to_be_visible()
-                cases.append({'case':'Control mandatory password-first MFA','expected':'no staff session until factor','actual':'passed'})
+                expect(page.get_by_label('Электронная почта',exact=True)).to_have_count(0)
+                assert page.request.get(staff+'/api/session').status==404
+                # Real admitted handoff + mandatory staff MFA is exercised by
+                # check_recovery_live_browser with actual same-site TLS.
+                cases.append({'case':'Control hidden from an unadmitted browser','expected':'root and API return404 without a sign-in form','actual':'passed'})
                 context.close();browser.close()
             except Exception:
                 diagnostic={'url':page.url,'body':page.locator('body').inner_text(),'errors':errors if 'errors' in locals() else []}

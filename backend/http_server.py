@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 import urllib.parse
-from .service import Backend, Failure
+from .service import Backend, Failure, token_hash
 
 MAX_BODY=2*1024*1024
 
@@ -27,6 +27,7 @@ def dispatch(backend,method,path,body,auth):
     elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'),body.get('code'))
     else:
         token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
+        actor['_auth_hash'] = token_hash(token)
         if route=='/v1/auth/verify' and method=='POST':result=backend.verify(actor,body.get('code'))
         elif route=='/v1/auth/verification/resend' and method=='POST':result=backend.resend_verification(actor)
         elif route=='/v1/auth/password' and method=='POST':result=backend.password(actor,body.get('old_password'),body.get('new_password'))
@@ -37,6 +38,16 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/account/features' and method=='GET':
             from .control import Control
             result={'flags':Control(backend).flags(actor['id'])}
+        elif route.startswith('/v1/account/inbox'):
+            from .inbox import Inbox
+            inbox = Inbox(backend)
+            if route == '/v1/account/inbox/settings' and method in ('GET', 'POST'):
+                result = inbox.settings(actor, body if method == 'POST' else None)
+            elif route == '/v1/account/inbox' and method == 'GET':
+                result = inbox.list(actor, query.get('before', [None])[0], int(query.get('limit', ['50'])[0]))
+            elif route in ('/v1/account/inbox/read', '/v1/account/inbox/dismiss', '/v1/account/inbox/presented') and method == 'POST':
+                result = inbox.mutate(actor, route.rsplit('/', 1)[-1], body)
+            else: raise Failure('not_found', 404)
         elif route=='/v1/account/entitlements' and method=='GET':
             from .entitlements import resolve
             with backend.connect() as db:result=resolve(db,actor['id'],int(backend.clock()))
@@ -67,12 +78,13 @@ def dispatch(backend,method,path,body,auth):
             from .account_lifecycle import AccountLifecycle
             lifecycle=AccountLifecycle(backend);action=route.rsplit('/',1)[-1]
             if action=='deletion' and method=='GET':result=lifecycle.deletion_status(actor)
-            elif action=='deletion' and method=='POST':result=lifecycle.request_deletion(actor,body.get('password'),body.get('confirmation'))
-            elif action=='cancel-deletion' and method=='POST':result=lifecycle.cancel_deletion(actor,body.get('password'))
+            elif action=='deletion' and method=='POST':result=lifecycle.request_deletion(actor,body.get('password'),body.get('confirmation'),body.get('reauth_token'),body.get('code'))
+            elif action=='cancel-deletion' and method=='POST':result=lifecycle.cancel_deletion(actor,body.get('password'),body.get('reauth_token'),body.get('code'))
+            elif action=='close-family' and method=='POST':result=lifecycle.close_family(actor,body.get('workspace_id'),body.get('revision'),body.get('password'),body.get('confirmation'),body.get('reauth_token'),body.get('code'))
             elif action=='email' and method=='POST':result=lifecycle.change_email(actor,body.get('email'),body.get('password'))
             elif action=='confirm-email' and method=='POST':result=lifecycle.confirm_email(actor,body.get('code'),body.get('password'))
-            elif action=='transfer' and method=='POST':result=lifecycle.transfer(actor,body.get('workspace_id'),body.get('user_id'),body.get('password'))
-            elif action=='accept-transfer' and method=='POST':result=lifecycle.accept_transfer(actor,body.get('transfer_id'),body.get('password'))
+            elif action=='transfer' and method=='POST':result=lifecycle.transfer(actor,body.get('workspace_id'),body.get('user_id'),body.get('password'),body.get('reauth_token'),body.get('code'))
+            elif action=='accept-transfer' and method=='POST':result=lifecycle.accept_transfer(actor,body.get('transfer_id'),body.get('password'),body.get('reauth_token'),body.get('code'))
             else:raise Failure('not_found',404)
         elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
         elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}

@@ -9,8 +9,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import 'contracts.dart';
+import 'record_projection.dart';
 import 'api.dart';
 import 'engine.dart';
+
+/// Identity and transport that originated an asynchronous account operation.
+class AccountPrincipal {
+  const AccountPrincipal._(this._api, this._user, this._generation);
+  final FamilyApi? _api;
+  final Object? _user;
+  final int _generation;
+}
 
 class FamilyController extends ChangeNotifier {
   FamilyController(this.store,
@@ -33,15 +42,37 @@ class FamilyController extends ChangeNotifier {
   FamilyApi? api;
   Json? account, roster;
   List<Json> spaces = [], records = [], pending = [], issues = [];
+  Map<String, String> referenceCurrencies = {};
+  Set<String> erasedRecordIds = {};
+  bool mirrorLoaded = false;
+  String? accountCurrency(String id) {
+    final live = records
+        .where((row) =>
+            row['id'] == id &&
+            row['kind'] == 'account' &&
+            isActiveSyncRecord(row))
+        .firstOrNull;
+    return live?['data']?['currency'] as String? ?? referenceCurrencies[id];
+  }
+
+  bool transferUsesErasedAccount(Json record) =>
+      record['kind'] == 'transfer' &&
+      referenceCurrencies.keys.any((id) =>
+          record['data']['from_id'] == id || record['data']['to_id'] == id);
+
   String? workspace, error, pendingRegistrationEmail;
   bool busy = false;
   bool loginMfaRequired = false, googleAvailable = false;
+  bool loginMethodsLoading = false, loginMethodsLoaded = false;
+  String? loginMethodsError;
   String? _loginChallenge, _loginEndpoint, _loginEmail;
   bool _disposed = false;
   Timer? _retry;
   int _recoveryFailures = 0;
   SyncEngine? _engine;
   int _generation = 0;
+  Future<void>? _clearingSession;
+  Future<bool>? _restrictionCheck;
   String get scope => '${api!.base.origin}|${account!['user_id']}';
   bool get verified => account?['verified'] == true;
   Set<String> get creatableKinds {
@@ -136,12 +167,20 @@ class FamilyController extends ChangeNotifier {
     });
   }
 
+  AccountPrincipal capturePrincipal() =>
+      AccountPrincipal._(api, account?['user_id'], _generation);
+  bool isCurrentPrincipal(AccountPrincipal principal) =>
+      principal._generation == _generation &&
+      identical(principal._api, api) &&
+      principal._user == account?['user_id'];
+
   Future<void> run(Future<void> Function() action) async {
-    if (busy) {
+    if (busy || _clearingSession != null || _restrictionCheck != null) {
       error = "client_busy";
       publish();
       return;
     }
+    final principal = capturePrincipal();
     busy = true;
     error = null;
     publish();
@@ -149,6 +188,9 @@ class FamilyController extends ChangeNotifier {
       await action();
     } on SyncFailure catch (e) {
       error = e.code;
+      if (e.code == 'account_unavailable' && e.status == 403) {
+        await recheckUnavailablePrincipal(expectedPrincipal: principal);
+      }
       if (e.code == 'workspace_forbidden' || e.code == 'profile_forbidden') {
         if (workspace != null && account != null) {
           await store.forgetAccess(scope, workspace!);
@@ -232,14 +274,24 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> refreshLoginMethods() async {
-    if (accountOrigin.isEmpty) return;
+    if (accountOrigin.isEmpty || loginMethodsLoading) return;
     final candidate = _apiFactory(accountOrigin);
+    loginMethodsLoading = true;
+    loginMethodsError = null;
+    publish();
     try {
       final result = await candidate.request('/v1/auth/google/config');
+      if (result['google_enabled'] is! bool) {
+        throw const SyncFailure('invalid_sync_response');
+      }
       googleAvailable = result['google_enabled'] == true;
+      loginMethodsLoaded = true;
+    } on SyncFailure catch (error) {
+      loginMethodsError = error.code;
     } catch (_) {
-      googleAvailable = false;
+      loginMethodsError = 'client_error';
     } finally {
+      loginMethodsLoading = false;
       candidate.close();
       publish();
     }
@@ -303,6 +355,9 @@ class FamilyController extends ChangeNotifier {
     roster = null;
     spaces = [];
     records = [];
+    referenceCurrencies = {};
+    erasedRecordIds = {};
+    mirrorLoaded = false;
     pending = [];
     issues = [];
     _engine = null;
@@ -384,6 +439,9 @@ class FamilyController extends ChangeNotifier {
       await store.forgetAccess(scope, workspace!);
       roster = null;
       records = [];
+      referenceCurrencies = {};
+      erasedRecordIds = {};
+      mirrorLoaded = true;
       pending = [];
       issues = await store.issues(scope, workspace!);
       _engine = null;
@@ -424,7 +482,17 @@ class FamilyController extends ChangeNotifier {
         p = await store.pending(s, w),
         i = await store.issues(s, w);
     if (version != _generation || w != workspace) return;
-    records = r;
+    referenceCurrencies = {
+      for (final row in r.where((row) =>
+          row['structural_reference'] == true && isImmutableSyncTombstone(row)))
+        row['id'] as String: row['reference_currency'] as String
+    };
+    erasedRecordIds = r
+        .where(isImmutableSyncTombstone)
+        .map((row) => row['id'] as String)
+        .toSet();
+    records = r.where(isActiveSyncRecord).toList();
+    mirrorLoaded = true;
     pending = p;
     issues = i;
     publish();
@@ -452,6 +520,12 @@ class FamilyController extends ChangeNotifier {
         await _refresh();
       });
   Future<void> enqueue(Json operation) => run(() async {
+        if (erasedRecordIds.contains(operation['record_id'])) {
+          throw const SyncFailure('record_forbidden');
+        }
+        if (queuedOperationReferencesErasure(operation, erasedRecordIds)) {
+          throw const SyncFailure('invalid_reference');
+        }
         if (workspace == null || !verified || roster == null) {
           throw const SyncFailure('verify_email');
         }
@@ -470,6 +544,13 @@ class FamilyController extends ChangeNotifier {
         final op = object(issue['operation']), result = object(issue['result']);
         Json? replacement;
         if (keepLocal) {
+          if (result['privacy_erased'] == true ||
+              erasedRecordIds.contains(op['record_id']) ||
+              queuedOperationReferencesErasure(op, erasedRecordIds) ||
+              result['server'] is Map &&
+                  isImmutableSyncTombstone(object(result['server']))) {
+            throw const SyncFailure('record_forbidden');
+          }
           if (result['status'] != 'conflict' || result['server'] == null) {
             throw const SyncFailure('record_forbidden');
           }
@@ -499,21 +580,46 @@ class FamilyController extends ChangeNotifier {
           await _clearSession();
         }
       });
-  Future<void> _clearSession() async {
+  Future<bool> recheckUnavailablePrincipal({
+    required AccountPrincipal expectedPrincipal,
+    Future<Json> Function(String path, {Json? body})? request,
+  }) {
+    if (!isCurrentPrincipal(expectedPrincipal)) return Future.value(false);
+    return _restrictionCheck ??=
+        _recheckUnavailablePrincipal(expectedPrincipal, request)
+            .whenComplete(() => _restrictionCheck = null);
+  }
+  Future<bool> _recheckUnavailablePrincipal(AccountPrincipal principal,
+      Future<Json> Function(String path, {Json? body})? request) async {
+    final fetch = request ?? principal._api?.request;
+    if (principal._user == null || fetch == null) return false;
+    try {
+      await fetch('/v1/me');
+      return false;
+    } on SyncFailure catch (failure) {
+      if (failure.code != 'account_unavailable' ||
+          failure.status != 403 ||
+          !isCurrentPrincipal(principal)) {
+        return false;
+      }
+      try {
+        await _clearSession();
+      } catch (_) {/* Cloud identity is already detached. */}
+      error = 'account_unavailable';
+      publish();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _clearSession() => _clearingSession ??=
+      _detachSession().whenComplete(() => _clearingSession = null);
+  Future<void> _detachSession() async {
     _generation++;
     pendingRegistrationEmail = null;
     cancelLogin();
-    try {
-      await _native.googleSignOut();
-    } catch (_) {}
-    api?.token = null;
-    api?.refreshToken = null;
-    api?.userId = null;
-    account = null;
-    await secure.delete(key: 'lifeos.sync.session');
-    await secure.delete(key: 'lifeos.sync.token');
-    await secure.delete(key: 'lifeos.sync.user');
-    await secure.delete(key: 'lifeos.sync.workspace');
+    // Detach cloud UI and writes before native or secure-storage IO can yield.
     api?.token = null;
     api?.refreshToken = null;
     api?.userId = null;
@@ -522,9 +628,20 @@ class FamilyController extends ChangeNotifier {
     roster = null;
     spaces = [];
     records = [];
+    referenceCurrencies = {};
+    erasedRecordIds = {};
+    mirrorLoaded = false;
     pending = [];
     issues = [];
     _engine = null;
+    publish();
+    try {
+      await _native.googleSignOut();
+    } catch (_) {}
+    await secure.delete(key: 'lifeos.sync.session');
+    await secure.delete(key: 'lifeos.sync.token');
+    await secure.delete(key: 'lifeos.sync.user');
+    await secure.delete(key: 'lifeos.sync.workspace');
   }
 
   @override

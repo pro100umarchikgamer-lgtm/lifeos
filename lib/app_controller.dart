@@ -1,4 +1,5 @@
 import 'domain/timezones.dart';
+import 'notifications/notification_center.dart';
 import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
@@ -23,9 +24,34 @@ class AppController extends ChangeNotifier {
     this.catalog,
     this.deviceLanguage, {
     NativeBridge? platform,
-  }) : native = platform ?? NativeBridge();
+  }) : native = platform ?? NativeBridge() {
+    inbox = NotificationCenter(
+        cache: store is NotificationCache
+            ? store as NotificationCache
+            : MemoryNotificationCache());
+  }
   final ActionStore store;
-  FamilyController? family;
+  late final NotificationCenter inbox;
+  FamilyController? _family;
+  FamilyController? get family => _family;
+  set family(FamilyController? value) {
+    _family?.removeListener(_accountChanged);
+    _family = value;
+    _family?.addListener(_accountChanged);
+    _accountChanged();
+  }
+
+  void _accountChanged() {
+    final account = _family;
+    final attached = account?.api != null &&
+        account?.api?.token != null &&
+        account?.account?['user_id'] != null;
+    final scope = attached ? account!.scope : null;
+    final sameAccount = scope == inbox.accountScope;
+    inbox.attachAccount(scope, attached ? account!.api : null);
+    if (attached && sameAccount && !account!.busy) inbox.refresh();
+  }
+
   final PackCatalog catalog;
   final String deviceLanguage;
   List<Record> records = [];
@@ -61,7 +87,9 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _family?.removeListener(_accountChanged);
     family?.dispose();
+    inbox.dispose();
     _disposed = true;
     presentation.dispose();
     super.dispose();
@@ -76,14 +104,14 @@ class AppController extends ChangeNotifier {
   String get region => preferences['region'] ?? pack.locale.languageCode;
   String get timezone => preferences['timezone'] ?? 'device';
   DateTime get now => tz.TZDateTime.now(
-    calendarLocation(timezone == 'device' ? deviceZone : timezone),
-  );
+        calendarLocation(timezone == 'device' ? deviceZone : timezone),
+      );
   String civilDate(DateTime instant) => dateOnly(
-    tz.TZDateTime.from(
-      instant,
-      calendarLocation(timezone == 'device' ? deviceZone : timezone),
-    ),
-  );
+        tz.TZDateTime.from(
+          instant,
+          calendarLocation(timezone == 'device' ? deviceZone : timezone),
+        ),
+      );
   int get weekStart => int.tryParse(preferences['week_start'] ?? '') ?? 1;
   LanguagePack get pack =>
       catalog.resolve(preferences['language'] ?? deviceLanguage);
@@ -156,6 +184,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> load() async {
     preferences = await store.settings();
+    await inbox.initialize();
     if (native.supported) {
       try {
         wallpaperSeed = await native.wallpaperSeed();
@@ -211,6 +240,14 @@ class AppController extends ChangeNotifier {
         },
       );
       deviceZone = notificationStatus['zone'] as String? ?? 'UTC';
+      final history = await native.reminderHistory();
+      if (history.isNotEmpty) {
+        await inbox.recordReminders(history);
+        // Acknowledge only after the encrypted inbox write succeeds.
+        await native.acknowledgeReminderHistory(history
+            .map((row) => (row['event_id'] ?? row['id']) as String)
+            .toList());
+      }
       final pending = await native.pendingActions();
       final acknowledged = <String>[];
       for (final p in pending) {
@@ -244,10 +281,8 @@ class AppController extends ChangeNotifier {
       }
       final now = DateTime.now();
       final payload = <Map<String, Object?>>[];
-      final completedIds = records
-          .where((r) => r.completed)
-          .map((r) => r.id)
-          .toSet();
+      final completedIds =
+          records.where((r) => r.completed).map((r) => r.id).toSet();
       for (final entry in calendar.where((e) => e.schedule.reminder)) {
         if (entry.taskId != null && completedIds.contains(entry.taskId)) {
           continue;
@@ -272,6 +307,7 @@ class AppController extends ChangeNotifier {
               ? entry.title
               : 'ULADIM',
           'message': pack.t('reminder_message'),
+          'historyTitle': entry.title,
           'snoozeLabel': pack.t('snooze'),
           'dismissLabel': pack.t('dismiss'),
           'doneLabel': pack.t('complete'),
@@ -346,8 +382,7 @@ class AppController extends ChangeNotifier {
       _ => <OfflineTable>{},
     };
     // Metadata does not reload every record or reconcile OS alarms. Schedule/cash mutations still do.
-    final metadata =
-        action is OfflineAction &&
+    final metadata = action is OfflineAction &&
         action is! SaveProject &&
         action is! SaveMilestone &&
         action is! SaveHabit &&

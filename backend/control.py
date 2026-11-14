@@ -15,11 +15,11 @@ from . import entitlements
 
 ROLE_RANK = {'owner': 100, 'admin': 80, 'billing_manager': 40, 'moderator': 30, 'support': 20, 'auditor': 10}
 ROLE_PERMISSIONS = {
-    'owner': {'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
-    'admin': {'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'owner': {'announcements.manage', 'records.recover', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
+    'admin': {'announcements.manage', 'records.recover', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
     'billing_manager': {'users.read', 'plans.grant', 'audit.read'},
     'moderator': {'users.read', 'users.moderate', 'support.read', 'support.reply'},
-    'support': {'users.read', 'support.read', 'support.reply'},
+    'support': {'records.recover', 'users.recover', 'users.read', 'support.read', 'support.reply'},
     'auditor': {'dashboard.read', 'audit.read'},
 }
 SAFE_FLAGS = {'compact_onboarding', 'chart_styles', 'support_entry'}
@@ -33,7 +33,25 @@ def totp(secret, counter):
 
 
 def scrub(value):
-    return re.sub(r'(?i)(bearer\s+|(?:password|token|secret|authorization)\s*[:=]\s*)[^\s,;]+', r'\1[redacted]', value)
+    return re.sub(r'(?i)(bearer\s+|(?:password|token|secret|authorization|id_token|access_token|refresh_token|code|nonce|verifier)\s*[:=]\s*)[^\s,;]+', r'\1[redacted]', value)
+
+
+def scrub_security(value):
+    value = scrub(value)
+    value = re.sub(r'[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+', '[email redacted]', value)
+    value = re.sub(r'\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b', '[token redacted]', value)
+    value = re.sub(r'\b[A-Za-z0-9_-]{32,}\b', lambda match: match.group() if re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', match.group()) else '[secret redacted]', value)
+    value = re.sub(r'(?<![\w-])\+?\d[\d ()-]{8,}\d(?![\w-])', '[phone redacted]', value)
+    return value
+
+
+def audit_metadata(value):
+    """Immutable diffs contain structure, never staff-entered rationale/PII."""
+    if isinstance(value, dict):
+        return {key: audit_metadata(item) for key, item in value.items()
+                if key not in {'reason','email','name','label','subject','body','note','code','token','password','secret','salt','mfa_secret'}}
+    if isinstance(value, list): return [audit_metadata(item) for item in value]
+    return scrub_security(value) if isinstance(value, str) else value
 
 
 @dataclass(frozen=True)
@@ -64,14 +82,17 @@ class Control:
         # request body, credential structure, financial record or support message.
         for obj in [before, after]:
             require(isinstance(obj, dict) and not ({'password', 'token', 'secret', 'body', 'mfa_secret'} & set(obj)))
+        before, after = audit_metadata(before), audit_metadata(after)
         previous = db.execute('SELECT entry_hash FROM control_audit ORDER BY seq DESC LIMIT 1').fetchone()
         prior_hash = previous['entry_hash'] if previous else '0' * 64
         event = {'id': str(uuid.uuid4()), 'actor_id': actor.id if isinstance(actor, StaffPrincipal) else actor,
                  'subject_id': subject, 'action': action, 'before': before, 'after': after,
-                 'reason': scrub(reason), 'created_at': int(self.backend.clock()), 'request_id': str(uuid.uuid4())}
+                 'reason': 'event.' + action, 'created_at': int(self.backend.clock()), 'request_id': str(uuid.uuid4())}
         digest = token_hash(prior_hash + canonical(event))
-        db.execute('INSERT INTO control_audit(id,actor_id,subject_id,action,before_value,after_value,reason,created_at,request_id,previous_hash,entry_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+        db.execute('INSERT INTO control_audit(id,actor_id,subject_id,action,before_value,after_value,reason,created_at,request_id,previous_hash,entry_hash,format_version) VALUES(?,?,?,?,?,?,?,?,?,?,?,2)',
                    (event['id'], event['actor_id'], subject, action, canonical(before), canonical(after), event['reason'], event['created_at'], event['request_id'], prior_hash, digest))
+        if hasattr(self.backend, 'cipher'):
+            db.execute('INSERT INTO control_audit_notes VALUES(?,?,?,?,?)', (event['id'], subject, event['actor_id'], self.backend.cipher.encrypt(scrub_security(reason).encode()), event['created_at'] + 90*86400))
 
     def _cipher(self):
         require(hasattr(self.backend, 'cipher'), 'staff_encryption_unconfigured', 503)
@@ -168,16 +189,22 @@ class Control:
         self.require(actor, 'users.read')
         identifier(uid)
         with self.backend.connect() as db:
-            row = db.execute('SELECT id,email,verified,created_at FROM users WHERE id=?', (uid,)).fetchone()
+            row = db.execute('SELECT u.id,u.email,u.verified,u.created_at,COALESCE(a.disabled_until,0) AS disabled_until FROM users u LEFT JOIN account_state a ON a.user_id=u.id WHERE u.id=?', (uid,)).fetchone()
             require(row is not None, 'not_found', 404)
             devices = db.execute('SELECT id,label,created_at,last_seen_at,revoked_at FROM devices WHERE user_id=? ORDER BY created_at DESC LIMIT 30', (uid,)).fetchall()
             access = entitlements.resolve(db, uid, int(self.backend.clock()))
         return {'user': dict(row), 'devices': [dict(device) for device in devices], 'entitlements': access}
 
+    def _target_not_erased(self, db, uid):
+        state=db.execute('SELECT deleted_at FROM account_state WHERE user_id=?',(uid,)).fetchone()
+        erasing=db.execute("SELECT 1 FROM deletion_jobs WHERE user_id=? AND state='erasing'",(uid,)).fetchone()
+        require(not erasing and (not state or not state['deleted_at']), 'account_unavailable', 403)
+
     def _target_rank(self, db, actor, uid):
+        self._target_not_erased(db,uid)
         target = db.execute('SELECT roles FROM staff WHERE user_id=?', (uid,)).fetchone()
         if target:
-            require(uid != actor.user_id and max(ROLE_RANK[r] for r in json.loads(target['roles'])) < actor.rank, 'staff_hierarchy', 403)
+            require(uid != actor.user_id and max((ROLE_RANK[r] for r in json.loads(target['roles'])),default=0) < actor.rank, 'staff_hierarchy', 403)
 
     def moderate(self, actor, uid, service, until, reason):
         self.require(actor, 'users.moderate')
@@ -201,9 +228,38 @@ class Control:
             self.audit(db, actor, uid, 'user.moderate.' + service, before, {'until_at': until}, reason)
         return {'updated': True, 'records_deleted': False}
 
+    def request_recovery(self, actor, uid, reason):
+        """Queue recipient-owned recovery; staff never receives or sets credentials."""
+        self.require(actor, 'users.recover')
+        identifier(uid); reason = text(reason, 500)
+        require(self.backend.deliver is not None, 'verification_delivery_unconfigured', 503)
+        now = int(self.backend.clock())
+        with self.backend.transaction() as db:
+            row = db.execute('SELECT email,verified FROM users WHERE id=?', (uid,)).fetchone()
+            require(row is not None, 'not_found', 404)
+            require(row['verified'] == 1, 'verified_account_required', 409)
+            self.backend._account_available(db, uid)
+            self._target_rank(db, actor, uid)
+            key = 'recovery:' + token_hash(row['email'])
+            prior = db.execute('SELECT until_at FROM auth_limits WHERE key=?', (key,)).fetchone()
+            require(prior is None or prior['until_at'] <= now, 'rate_limited', 429)
+            staff_key = token_hash('staff-recovery-request:' + actor.id)
+            limit = db.execute('SELECT count,until_at FROM auth_limits WHERE key=?', (staff_key,)).fetchone()
+            require(limit is None or limit['until_at'] <= now or limit['count'] < 10, 'rate_limited', 429)
+            count = limit['count'] + 1 if limit and limit['until_at'] > now else 1
+            db.execute('INSERT INTO auth_limits VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (staff_key, count, now + 900))
+            db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (key, now + 60))
+            code = secrets.token_urlsafe(32)
+            db.execute('DELETE FROM password_recovery WHERE user_id=?', (uid,))
+            db.execute('INSERT INTO password_recovery VALUES(?,?,?)', (token_hash(code), uid, now + 900))
+            self.backend._deliver(db, row['email'], code, 'recovery')
+            self.audit(db, actor, uid, 'user.recovery.request', {}, {'recovery_requested': True}, reason)
+        return {'recovery_requested': True}
+
     def give_access(self, actor, uid, tier, source, until, reason):
         self.require(actor, 'plans.grant')
         with self.backend.transaction() as db:
+            self._target_not_erased(db,uid)
             result = entitlements.grant(db, uid, tier, source, until, scrub(text(reason, 500)), actor.id, int(self.backend.clock()))
             self.audit(db, actor, uid, 'entitlement.grant', {}, result, reason)
         return result
@@ -227,7 +283,9 @@ class Control:
         require(until is None or (type(until) is int and now < until <= now + 10 * 366 * 86400))
         text(reason, 500)
         with self.backend.transaction() as db:
-            require(feature in entitlements.catalog(db)['features'] and feature != 'personal_core', 'protected_feature', 403)
+            self._target_not_erased(db,uid)
+            require(feature in entitlements.catalog(db)['features'] and feature not in entitlements.FREE_FEATURES, 'protected_feature', 403)
+            require(feature not in entitlements.DISABLED_FEATURES, 'feature_unavailable', 409)
             prior = db.execute('SELECT enabled,valid_until FROM entitlement_overrides WHERE user_id=? AND feature=?', (uid, feature)).fetchone()
             db.execute('INSERT INTO entitlement_overrides VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,feature) DO UPDATE SET enabled=excluded.enabled,valid_until=excluded.valid_until,reason=excluded.reason,actor_id=excluded.actor_id', (uid, feature, int(enabled), until, scrub(reason), actor.id))
             self.audit(db, actor, uid, 'entitlement.override', dict(prior) if prior else {}, {'feature': feature, 'enabled': enabled, 'valid_until': until}, reason)
@@ -247,7 +305,14 @@ class Control:
         require(before is None or (type(before) is int and before > 0))
         with self.backend.connect() as db:
             rows = db.execute('SELECT * FROM control_audit WHERE seq<? ORDER BY seq DESC LIMIT 100', (before or 9223372036854775807,)).fetchall()
-        return {'events': [dict(row) for row in rows], 'next_before': rows[-1]['seq'] if rows else None}
+            events=[]
+            for row in rows:
+                item=dict(row)
+                note=db.execute('SELECT note FROM control_audit_notes WHERE entry_id=? AND expires_at>?', (row['id'],int(self.backend.clock()))).fetchone()
+                if note and hasattr(self.backend,'cipher'):
+                    item['reason_note']=self.backend.cipher.decrypt(bytes(note['note'])).decode()
+                events.append(item)
+        return {'events': events, 'next_before': rows[-1]['seq'] if rows else None}
 
     def staff_list(self, actor):
         self.require(actor, 'staff.manage')
@@ -338,11 +403,13 @@ class Control:
     def preview_flag(self, actor, name, enabled, rollout, revision, reason):
         self.require(actor, 'flags.manage')
         require(name in SAFE_FLAGS and type(enabled) is bool and type(rollout) is int and 0 <= rollout <= 100 and type(revision) is int and revision >= 0)
-        value = {'name': name, 'enabled': enabled, 'rollout': rollout, 'revision': revision, 'reason': scrub(text(reason, 500))}
+        value = {'name': name, 'enabled': enabled, 'rollout': rollout, 'revision': revision, 'reason': scrub_security(text(reason, 500))}
         pid, now = str(uuid.uuid4()), int(self.backend.clock())
         digest = token_hash(canonical(value))
+        stored=dict(value)
+        stored['reason_encrypted']=self._cipher().encrypt(stored.pop('reason').encode()).decode()
         with self.backend.transaction() as db:
-            db.execute('INSERT INTO flag_proposals VALUES(?,?,?,?,?,0)', (pid, actor.id, canonical(value), digest, now + 600))
+            db.execute('INSERT INTO flag_proposals VALUES(?,?,?,?,?,0)', (pid, actor.id, canonical(stored), digest, now + 600))
         return {'proposal_id': pid, 'digest': digest, 'preview': value, 'expires_at': now + 600}
 
     def commit_flag(self, actor, pid, digest):
@@ -352,12 +419,13 @@ class Control:
             row = db.execute('SELECT * FROM flag_proposals WHERE id=?', (pid,)).fetchone()
             require(row and row['actor_id'] == actor.id and not row['used_at'] and row['expires_at'] > int(self.backend.clock()) and hmac.compare_digest(row['digest'], str(digest)), 'proposal_invalid', 409)
             value = json.loads(row['body'])
+            reason=self._cipher().decrypt(value['reason_encrypted'].encode()).decode() if 'reason_encrypted' in value else scrub_security(value.get('reason','Flag change confirmed'))
             prior = db.execute('SELECT body,revision FROM feature_flags WHERE name=?', (value['name'],)).fetchone()
             require((prior['revision'] if prior else 0) == value['revision'], 'revision_conflict', 409)
             after = {'enabled': value['enabled'], 'rollout': value['rollout']}
             db.execute('INSERT INTO feature_flags VALUES(?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET body=excluded.body,revision=excluded.revision,actor_id=excluded.actor_id,updated_at=excluded.updated_at', (value['name'], canonical(after), value['revision'] + 1, actor.id, int(self.backend.clock())))
-            db.execute('UPDATE flag_proposals SET used_at=? WHERE id=?', (max(1, int(self.backend.clock())), pid))
-            self.audit(db, actor, value['name'], 'flag.update', json.loads(prior['body']) if prior else {}, after, value['reason'])
+            db.execute('DELETE FROM flag_proposals WHERE id=?', (pid,))
+            self.audit(db, actor, value['name'], 'flag.update', json.loads(prior['body']) if prior else {}, after, reason)
         return {'revision': value['revision'] + 1}
 
     def recover_staff(self, email, password, recovery_code):
