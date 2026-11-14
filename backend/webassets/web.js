@@ -728,7 +728,7 @@ function focusLoginStory(create,lang){
 // Do not infer legal identity, residency, retention or age rules from branding.
 const PUBLIC_RELEASE_FACTS=Object.freeze({
  version:'2026-11-13',updated:'13 ноября 2026 года',published:false,
- operatorName:'Usmonov U',operatorCountry:'Узбекистан',operatorPostalAddress:null,supportEmail:'support@getuladim.space',supportEmailReady:false,
+ operatorName:'Usmonov Umar',operatorCountry:'Узбекистан',operatorPostalAddress:null,supportEmail:'support@getuladim.space',supportEmailReady:false,
  processingRegion:null,processingVerified:false,privacyLifecycleReady:false,retentionVerified:false,agePolicyEnforced:false,
  minimumAgePolicy:'Самостоятельный аккаунт предназначен для пользователей от 18 лет. До появления подтверждаемого письменного согласия законного представителя не создавайте аккаунты несовершеннолетних и не добавляйте их персональные данные. Семейная роль сама по себе не подтверждает согласие родителя или опекуна.',
  legalBasis:'Необходимые данные аккаунта и ваши записи обрабатываются для предоставления запрошенных вами функций и исполнения условий использования. Отдельное согласие запрашивается там, где его требует закон. Необходимая обработка также допускается для исполнения законных обязанностей и защиты прав пользователей в пределах законодательства Узбекистана. Отзыв согласия не отменяет обработку, для которой сохраняется самостоятельное законное основание.',
