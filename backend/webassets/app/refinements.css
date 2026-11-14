@@ -123,6 +123,13 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .financ
 @media (max-width:1199px) {
  body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger-rows { max-height:56dvh;overflow:auto;overscroll-behavior:contain; }
 }
+@media (min-width:760px) and (max-width:1199px) {
+ /* Keep the dedicated ledger's first record visible without narrowing its totals. */
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] button.finance-metric { display:grid;align-items:center; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-metric>.small { grid-column:1;grid-row:1; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-metric>.finance-metric-link { grid-column:1;grid-row:2; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page[data-finance-view=ledger] .finance-metric>.money-display:only-of-type { grid-row:1 / span 2; }
+}
 @media (max-width:359px) {
  /* Give enlarged monetary text the full card width on narrow phones. */
  body[data-design=clarity][data-reference-layout=b12] #root .finance-page button.finance-metric { display:flex;align-items:flex-start; }
