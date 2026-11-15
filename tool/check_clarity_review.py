@@ -179,9 +179,12 @@ def main():
                 login(page, origin)
                 if not args.baseline:
                     side = page.locator('.today-side')
-                    if side.evaluate("element => getComputedStyle(element).display") == 'contents':
-                        side = page.locator('.today-grid')
                     content_width = side.evaluate("""element => {
+                        // Mobile flattens both wrappers to order the real cards.
+                        // display:contents has no box whose width can be measured.
+                        while (element && getComputedStyle(element).display === 'contents')
+                            element = element.parentElement;
+                        if (!element) throw new Error('Missing Today layout box');
                         const style = getComputedStyle(element);
                         return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
                     }""")

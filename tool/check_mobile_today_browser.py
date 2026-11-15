@@ -77,7 +77,8 @@ def main():
                         for caption in page.locator('.header-tool-label').all():
                             expect(caption).to_be_visible()
                             assert caption.evaluate('(e)=>e.getBoundingClientRect().height<=parseFloat(getComputedStyle(e).lineHeight)+1'),(width,caption.inner_text(),'wrapped header label')
-                        assert page.locator('.reference-summary-tile:visible').count()==2
+                        assert page.locator('.reference-summary-tile:visible').count()==1
+                        expect(page.locator('.reference-summary-tile[data-summary=tasks]')).to_be_hidden()
                         assert page.locator('.today-tasks>.task-row:visible').count()==3
                         assert page.locator('.today-timeline>li:visible').count()==3
                         quick=page.locator('input[name=quick-task]').bounding_box();assert quick and quick['y']+quick['height']<height-90,(width,theme,'quick capture below first screen',quick)
@@ -91,7 +92,7 @@ def main():
                         assert page.locator('.today-tasks>.task-row:visible').count()==6
                     page.screenshot(path=str(OUT/('today-'+str(width)+'-'+theme+'.png')),full_page=False)
             checks.append('populated Today fits 320/375/390/430/834 in both themes, with exact independent RUB/UZS/USD rows')
-            checks.append('phone first screen includes quick entry and two compact summaries; tasks and schedule previews are bounded without losing full destinations')
+            checks.append('phone first screen prioritizes quick entry and one expense summary; the duplicate task summary stays hidden and full destinations remain available')
             page.set_viewport_size({'width':390,'height':844})
             page.locator('.today-secondary-actions').get_by_role('button',name='Календарь',exact=True).click()
             expect(page.locator('.calendar-layout')).to_be_visible();open_tab(page,'Сегодня')
