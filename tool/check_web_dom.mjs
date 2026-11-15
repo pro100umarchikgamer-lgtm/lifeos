@@ -1,16 +1,20 @@
 // DOM integration with the actual disposable WSGI fixture. No mocked API data.
 // This is supplemental to Playwright; jsdom does not prove rendering or PWA.
 import {JSDOM} from 'jsdom';
-import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
-const origin=process.argv[2],dom=new JSDOM('<div id="root"></div><div id="alerts"></div>',{url:origin+'/app',runScripts:'outside-only',pretendToBeVisual:true});
+const origin=process.argv[2],documentURL=new URL('/app',origin);
+const documentResponse=await fetch(documentURL);
+assert.equal(documentResponse.status,200,'The real fixture serves the application document');
+assert.equal(new URL(documentResponse.url).origin,documentURL.origin,'The fixture document stays on its own origin');
+const dom=new JSDOM(await documentResponse.text(),{url:documentURL.href,runScripts:'outside-only',pretendToBeVisual:true});
 const w=dom.window;let cookie='';
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
 w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'));};
 w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
 w.ResizeObserver=class{observe(){} disconnect(){}};
 w.HTMLElement.prototype.scrollIntoView=function(){};
+w.scrollTo=function(){}; // jsdom has no viewport; real scrolling is checked by Playwright.
 w.HTMLCanvasElement.prototype.getContext=function(){return new Proxy({},{get:(_,key)=>key==='measureText'?()=>({width:40}):()=>{}});};
 Object.defineProperty(w.crypto,'randomUUID',{value:randomUUID});
 w.fetch=async(path,options={})=>{
@@ -19,7 +23,20 @@ w.fetch=async(path,options={})=>{
  if(!response.ok&&options.body)console.error('API failure',path,options.body,await response.clone().text());
  const set=response.headers.get('set-cookie');if(set)cookie=set.split(';')[0];return response;
 };
-w.eval(['domain.js','money.js','import.js','app.js'].map(file=>readFileSync('backend/webassets/app/'+file,'utf8')).join('\n')+'\nglobalThis.fixtureSpace=()=>state.space;');
+const scripts=[...w.document.querySelectorAll('script[src]')];
+assert(scripts.length,'The fixture application document declares its scripts');
+const sources=[];
+for(const script of scripts){
+ const url=new URL(script.getAttribute('src'),documentURL);
+ assert.equal(url.origin,documentURL.origin,'The fixture loads only actual same-origin application scripts');
+ assert(!script.type||['text/javascript','application/javascript'].includes(script.type),'The supplemental DOM fixture executes classic scripts; module coverage belongs to Playwright');
+ const response=await w.fetch(url.href);
+ assert.equal(response.status,200,'Application script is served: '+url.pathname);
+ sources.push(await response.text());
+}
+// Classic deferred scripts share one global lexical environment in a browser.
+// Separate window.eval calls would hide import.js's const bindings from app.js.
+w.eval(sources.join('\n;\n')+'\nglobalThis.fixtureSpace=()=>state.space;');
 const wait=async predicate=>{for(let n=0;n<100;n++){if(predicate())return;await new Promise(r=>setTimeout(r,30));}throw new Error('DOM timeout: '+w.document.body.textContent.slice(0,1000));};
 const button=(text,scope=w.document)=>{const b=[...scope.querySelectorAll('button')].find(b=>b.textContent===text);assert(b,'Missing button '+text);return b;};
 const change=(field,value)=>{field.value=value;field.dispatchEvent(new w.Event('change',{bubbles:true}));};

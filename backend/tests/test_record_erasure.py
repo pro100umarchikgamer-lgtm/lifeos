@@ -21,10 +21,12 @@ class IndependentJournal:
     """Synthetic root transport: remote bytes are separate from every DB backup."""
     def __init__(self, path):
         self.path, self.remote, self.local = path, {}, {}
+        self.calls = []
         self.offline = self.fail_ack = self.lose_ack = self.fail_before = False
         path.write_bytes(b''); path.chmod(0o600)
 
     def call(self, socket, action, record_id=None, erased_at=None):
+        self.calls.append((action, record_id))
         if self.offline: raise OSError('synthetic service offline')
         if action == 'acknowledge':
             if self.fail_before:raise OSError('synthetic crash before root append')
@@ -107,6 +109,60 @@ class RecordErasureTests(unittest.TestCase):
         with self.backend.transaction() as db:db.execute('UPDATE memberships SET active=0 WHERE workspace_id=? AND user_id=?',(self.wid,self.user['id']))
         with self.assertRaises(Failure):self.erasure.purge(self.user,body)
         self.assertNotIn(active,self.journal.remote)
+
+    def assert_denied_before_root_ipc(self, actor, rid, body, code):
+        for action in (lambda:self.erasure.preview(actor,rid), lambda:self.erasure.purge(actor,body)):
+            self.journal.calls.clear()
+            with self.assertRaises(Failure) as denied:action()
+            self.assertEqual(denied.exception.code,code)
+            self.assertEqual(self.journal.calls,[])
+        with self.backend.connect() as db:
+            self.assertIsNotNone(db.execute('SELECT body FROM notes WHERE id=?',(rid,)).fetchone())
+            self.assertIsNone(db.execute('SELECT 1 FROM record_erasure_intents WHERE record_id=?',(rid,)).fetchone())
+        self.assertNotIn(rid,self.journal.remote)
+
+    def test_unverified_actor_and_current_db_unverified_owner_do_not_call_root(self):
+        rid=self.put();self.deleted(rid);body=self.consent(rid)
+        self.assert_denied_before_root_ipc(dict(self.user,verified=0),rid,body,'verify_email')
+        with self.backend.transaction() as db:db.execute('UPDATE users SET verified=0 WHERE id=?',(self.user['id'],))
+        # A previously authenticated actor still says verified=1; current DB wins.
+        self.assertEqual(self.user['verified'],1)
+        self.assert_denied_before_root_ipc(self.user,rid,body,'verify_email')
+
+    def test_foreign_owner_does_not_call_root(self):
+        rid=self.put();self.deleted(rid);body=self.consent(rid)
+        self.assert_denied_before_root_ipc(self.other,rid,body,'not_found')
+
+    def test_revoked_membership_does_not_call_root(self):
+        rid=self.put();self.deleted(rid);body=self.consent(rid)
+        with self.backend.transaction() as db:db.execute('UPDATE memberships SET active=0 WHERE workspace_id=? AND user_id=?',(self.wid,self.user['id']))
+        self.assert_denied_before_root_ipc(self.user,rid,body,'not_found')
+
+    def test_current_read_only_owner_does_not_call_root(self):
+        rid=self.put();self.deleted(rid);body=self.consent(rid);profile=str(uuid.uuid4())
+        with self.backend.transaction() as db:
+            db.execute('INSERT INTO profiles(id,workspace_id,name,permissions) VALUES(?,?,?,?)',(profile,self.wid,'Synthetic restricted profile','[]'))
+            db.execute("UPDATE memberships SET role='child',profile_id=? WHERE workspace_id=? AND user_id=?",(profile,self.wid,self.user['id']))
+            db.execute("UPDATE records SET visibility='shared' WHERE id=?",(rid,))
+        self.assert_denied_before_root_ipc(self.user,rid,body,'record_forbidden')
+
+    def test_rights_revoked_during_sync_are_checked_again_before_intent_or_specific_ack(self):
+        rid=self.put();self.deleted(rid);body=self.consent(rid)
+        def revoke_during_sync(socket,action,record_id=None,erased_at=None):
+            response=self.journal.call(socket,action,record_id,erased_at)
+            if action=='synchronize':
+                with self.backend.transaction() as db:db.execute('UPDATE memberships SET active=0 WHERE workspace_id=? AND user_id=?',(self.wid,self.user['id']))
+            return response
+        for action in (lambda:self.erasure.preview(self.user,rid),lambda:self.erasure.purge(self.user,body)):
+            with self.backend.transaction() as db:db.execute('UPDATE memberships SET active=1 WHERE workspace_id=? AND user_id=?',(self.wid,self.user['id']))
+            self.journal.calls.clear()
+            with patch('backend.record_erasure.acknowledge',revoke_during_sync),self.assertRaises(Failure) as denied:action()
+            self.assertEqual(denied.exception.code,'not_found')
+            self.assertEqual(self.journal.calls,[('synchronize',None)])
+        with self.backend.connect() as db:
+            self.assertIsNotNone(db.execute('SELECT body FROM notes WHERE id=?',(rid,)).fetchone())
+            self.assertIsNone(db.execute('SELECT 1 FROM record_erasure_intents WHERE record_id=?',(rid,)).fetchone())
+        self.assertNotIn(rid,self.journal.remote)
 
     def test_failure_before_durable_ack_keeps_content_and_blocks_restore(self):
         rid=self.put();self.deleted(rid);body=self.consent(rid)

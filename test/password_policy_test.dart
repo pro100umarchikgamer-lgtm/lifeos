@@ -79,8 +79,9 @@ void main() {
 
   test('Unicode codepoint maximum does not count surrogate pairs twice',
       () async {
-    final password = 'Rivera7' +
+    final suffix =
         String.fromCharCodes(List.generate(249, (index) => 0x1f600 + index));
+    final password = 'Rivera7$suffix';
     var sent = 0;
     final c = FamilyController(MemorySyncStore(),
         apiFactory: (origin) => PasswordApi(origin, (path, body) async {

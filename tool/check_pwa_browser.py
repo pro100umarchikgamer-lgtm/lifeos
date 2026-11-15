@@ -47,7 +47,10 @@ def main():
         server.set_app(app);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             with sync_playwright() as p:
-                browser=getattr(p,ENGINE).launch(args=['--no-sandbox'] if ENGINE=='chromium' else [])
+                launch={'args':['--no-sandbox'] if ENGINE=='chromium' else []}
+                if ENGINE=='chromium' and os.environ.get('ULADIM_CHROMIUM'):
+                    launch['executable_path']=os.environ['ULADIM_CHROMIUM']
+                browser=getattr(p,ENGINE).launch(**launch)
                 context=browser.new_context(viewport={'width':390,'height':844},color_scheme='light')
                 page=context.new_page();errors=[];responses=[];page.on('pageerror',lambda e:errors.append(str(e)))
                 page.on('response',lambda r:responses.append({'path':r.url.split(origin)[-1].split('?')[0],'status':r.status}) if '/account/api/' in r.url else None)
@@ -141,10 +144,9 @@ def main():
                 open_tab(page,'Профиль')
                 expect(page.get_by_role('heading',name='Профиль',exact=True,level=1)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-account-light.png'),full_page=False)
-                def luminance(hex_color):
-                    if len(hex_color)==4:hex_color='#'+''.join(c*2 for c in hex_color[1:])
-                    assert len(hex_color)==7 and hex_color.startswith('#'),hex_color
-                    channels=[int(hex_color[i:i+2],16)/255 for i in (1,3,5)]
+                def luminance(rgb):
+                    assert len(rgb)==3 and all(isinstance(channel,(int,float)) and 0<=channel<=255 for channel in rgb),rgb
+                    channels=[channel/255 for channel in rgb]
                     return sum((c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4)*w for c,w in zip(channels,(.2126,.7152,.0722)))
                 open_settings(page,'appearance')
                 for scheme in ('light','dark'):
@@ -153,13 +155,26 @@ def main():
                         page.locator('select[name=theme]').select_option(theme)
                         for palette in ('violet','forest','ocean','pistachio','rose','sand'):
                             page.locator(f'button[data-palette-choice="{palette}"]').click()
-                            colors=page.evaluate('''()=>{const s=getComputedStyle(document.body);return Object.fromEntries(['ink','muted','income','expense','bg','card','soft'].map(k=>[k,s.getPropertyValue('--'+k).trim()]));}''')
+                            colors=page.evaluate('''()=>{
+                                const style=getComputedStyle(document.body);
+                                const resolve=css=>{
+                                    if(!CSS.supports('color',css))throw new Error('Unsupported contrast color: '+css);
+                                    const probe=document.createElement('span');probe.style.color=css;probe.style.position='fixed';probe.style.visibility='hidden';
+                                    document.body.append(probe);let computed;try{computed=getComputedStyle(probe).color;}finally{probe.remove();}
+                                    const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+                                    const context=canvas.getContext('2d');context.fillStyle=computed;context.fillRect(0,0,1,1);
+                                    const rgba=[...context.getImageData(0,0,1,1).data];
+                                    if(rgba[3]!==255)throw new Error('Contrast color requires explicit alpha compositing: '+css);
+                                    return rgba.slice(0,3);
+                                };
+                                return Object.fromEntries(['ink','muted','income','expense','bg','card','soft'].map(key=>[key,resolve(style.getPropertyValue('--'+key).trim())]));
+                            }''')
                             backgrounds=['bg','card']+(['soft'] if DESIGN else [])
                             for fg in ('ink','muted','income','expense'):
                                 for bg in backgrounds:
                                     low,high=sorted((luminance(colors[fg]),luminance(colors[bg])))
                                     ratio=(high+.05)/(low+.05)
-                                    contrast_evidence.append({'scheme':scheme,'theme':theme,'palette':palette,'foreground':fg,'background':bg,'ratio':round(ratio,3),'minimum':4.5,'passed':ratio>=4.5})
+                                    contrast_evidence.append({'scheme':scheme,'theme':theme,'palette':palette,'foreground':fg,'background':bg,'foreground_rgb':colors[fg],'background_rgb':colors[bg],'ratio':round(ratio,3),'minimum':4.5,'passed':ratio>=4.5})
                                     assert ratio>=4.5,(scheme,theme,palette,fg,bg,colors[fg],colors[bg],ratio)
                 checks.append('financial_text_contrast_all_themes_and_palettes')
                 page.emulate_media(color_scheme='light')
