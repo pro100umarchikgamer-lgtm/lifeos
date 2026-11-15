@@ -351,6 +351,25 @@ body.product-site.focus-home .welcome-capability p{font-size:13px;line-height:1.
 body.product-site.focus-home .welcome-resources{display:flex;flex-wrap:wrap;gap:8px 26px;margin:24px 0 0}
 body.product-site.focus-home .welcome-resources a{display:inline-flex;align-items:center;min-height:44px;font-size:13px;color:var(--public-muted);text-decoration:none;text-underline-offset:4px}
 body.product-site.focus-home .welcome-resources a:hover{text-decoration:underline;color:var(--public-green)}
+/* Keep the language picker and entry controls on one stable touch-sized row. */
+body.product-site>header.public-header .public-header-controls{flex:none}
+body.product-site>header.public-header .public-header-controls>:is(a,button){white-space:nowrap;flex:none;width:auto}
+body.product-site>header.public-header .global-language{flex:0 0 128px;min-width:0;margin:0}
+body.product-site>header.public-header .global-language select{width:100%;min-width:0;margin:0;min-height:44px}
+body.product-site>header.public-header .global-language-code{display:none}
+@media(max-width:759px){
+ body.product-site>header.public-header{gap:4px;padding-inline:8px}
+ body.product-site>header.public-header .brand{font-size:20px;flex:none}
+ body.product-site>header.public-header .public-header-controls{gap:4px}
+ body.product-site>header.public-header .public-header-controls>a{display:none}
+ body.product-site>header.public-header .public-header-controls>:is(a,button){min-width:44px;min-height:44px;padding:8px 6px;font-size:12px;line-height:1.5}
+ body.product-site>header.public-header .public-menu-toggle::after{display:none}
+ body.product-site>header.public-header .global-language{position:relative;display:flex;align-items:center;justify-content:center;flex-basis:46px;min-height:46px;border:1px solid var(--public-rule);border-radius:10px;color:var(--public-ink)}
+ body.product-site>header.public-header .global-language-code{display:block;padding-inline-end:10px;font-size:12px;font-weight:600;line-height:1.5;pointer-events:none}
+ body.product-site>header.public-header .global-language::after{content:"";position:absolute;right:7px;top:16px;width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);pointer-events:none}
+ body.product-site>header.public-header .global-language select{position:absolute;inset:0;height:100%;padding:0;font-size:12px;opacity:0}
+ body.product-site>header.public-header .global-language:focus-within{outline:3px solid var(--public-green);outline-offset:3px}
+}
 body.product-site :is(a.button,button){transition:background-color 160ms ease,color 160ms ease,box-shadow 160ms ease,transform 160ms ease}
 @media(hover:hover){body.product-site a.button:hover{transform:translateY(-1px);box-shadow:0 5px 16px #15231b10}}
 @media(prefers-reduced-motion:no-preference){

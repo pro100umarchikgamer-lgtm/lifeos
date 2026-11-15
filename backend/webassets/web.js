@@ -16,10 +16,13 @@ function globalLanguagePicker(){
  const header=document.querySelector('body > header');if(!header||header.querySelector('.global-language'))return;
  const label=el('label',undefined,'global-language'),select=el('select');select.setAttribute('aria-label',tr('language'));
  for(const[key,pack]of Object.entries(authPacks)){const option=el('option',pack.name);option.value=key;select.append(option);}select.value=authLanguage;
+ const languageCode=staff?null:el('span',authLanguage.split('-')[0].toUpperCase(),'global-language-code');
+ if(languageCode){languageCode.setAttribute('aria-hidden','true');label.append(languageCode);select.title=authPacks[authLanguage]?.name||authLanguage;}
  label.append(select);header.append(label);
  if(languageQuery.invalid){const warning=el('p',tr('language')+': '+tr('family_error_invalid_input'),'language-query-error');warning.setAttribute('role','alert');header.insertAdjacentElement('afterend',warning);}
  select.addEventListener('change',async()=>{
   authLanguage=select.value;document.querySelector('.language-query-error')?.remove();await globalThis.UladimI18n.load(authPacks);viewEpoch++;const displayURL=new URL(location.href);if(displayURL.searchParams.has('lang')){displayURL.searchParams.set('lang',authLanguage);history.replaceState(null,'',displayURL.pathname+displayURL.search+displayURL.hash);}globalThis.UladimI18n.setLanguage(authLanguage);select.setAttribute('aria-label',tr('language'));
+  if(languageCode){languageCode.textContent=authLanguage.split('-')[0].toUpperCase();select.title=authPacks[authLanguage]?.name||authLanguage;}
   try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');saved.lang=authLanguage;localStorage.setItem('uladim-interface',JSON.stringify(saved));}catch{}
   select.disabled=true;try{
    if(staff){const previous=controlSection;try{await dashboard();if(previous!=='dashboard'&&controlNavigation){const nav=controlNavigation.querySelector('select');nav.value=previous;nav.dispatchEvent(new Event('change'));}}catch(error){if(['unauthorized','staff_unauthorized'].includes(error.code))login();else throw error;}}
