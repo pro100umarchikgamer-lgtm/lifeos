@@ -177,7 +177,14 @@ class Backend(AccountSessions):
                 self._deliver(db,email.casefold(),code,'recovery')
         return {'recovery_requested':True}
     def reset_password(self,email,code,password):
-        require(isinstance(email,str) and isinstance(code,str) and len(code)==43)
+        require(isinstance(email,str) and len(email)<=254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email))
+        # Keep the address budget even when an invalid code rolls back its reset.
+        # Atomic UPSERT also covers parallel clients and unknown addresses equally.
+        now=int(self.clock());key=token_hash('password-reset:'+email.casefold())
+        with self.transaction() as db:
+            attempt=db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN auth_limits.until_at<=? THEN 1 ELSE auth_limits.count+1 END,until_at=CASE WHEN auth_limits.until_at<=? THEN excluded.until_at ELSE auth_limits.until_at END RETURNING count',(key,now+900,now,now)).fetchone()
+        require(attempt['count']<=10,'rate_limited',429)
+        require(isinstance(code,str) and len(code)==43)
         validate_password(password)
         with self.transaction() as db:
             row=db.execute('SELECT u.id FROM password_recovery r JOIN users u ON u.id=r.user_id WHERE r.hash=? AND u.email=? AND r.expires_at>?',(token_hash(code),email.casefold(),int(self.clock()))).fetchone()

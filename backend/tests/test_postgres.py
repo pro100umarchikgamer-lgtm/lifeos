@@ -220,6 +220,17 @@ class PostgresCustomerMFATests(MFAScenarios, unittest.TestCase):
         PostgresTests.setUp(self)
         self.setup_mfa()
 
+from test_auth_attempt_limits import AddressLimitScenarios
+
+@unittest.skipUnless(DSN,'Requires isolated lifeos_test PostgreSQL database')
+class PostgresAddressLimitTests(AddressLimitScenarios, unittest.TestCase):
+    drop_schema = PostgresTests.drop_schema
+    user = fixtures.FamilyBackendTests.user
+    op = fixtures.FamilyBackendTests.op
+    def setUp(self):
+        PostgresTests.setUp(self)
+        self.setup_limits()
+
 
 
 from test_early_access import EarlyAccessScenarios

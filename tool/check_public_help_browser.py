@@ -12,7 +12,7 @@ ANCHORS=('today','tasks','calendar','notes','finances','account','security','not
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
     results=[]
-    with fixture() as (origin,*_):
+    with fixture() as (origin,backend,*_):
         with sync_playwright() as playwright:
             browser=playwright.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}),headless=True,args=['--no-sandbox'])
             page=browser.new_page(viewport={'width':1440,'height':1100},device_scale_factor=1)
@@ -64,6 +64,10 @@ def main():
                 page.goto(origin+path);page.wait_for_selector(PAGES[path])
                 assert page.locator('h1').inner_text()!='Не удалось загрузить',path
             # Publication never follows from one filled operator field alone.
+            # These independent scenarios must not exhaust production's per-IP
+            # budget by visiting dozens of pages within one synthetic minute.
+            next_window=int(backend.clock())+61
+            backend.clock=lambda:next_window
             page.unroute('**/account/api/config')
             metadata={'published':True,'operatorName':'Synthetic fixture operator'}
             page.route('**/account/api/config',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps({'public_legal':metadata})))
@@ -74,7 +78,7 @@ def main():
             metadata['supportEmail']='support@example.test'
             page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_be_visible()
             metadata.update({key:True for key in ('supportEmailReady','processingVerified','privacyLifecycleReady','retentionVerified','agePolicyEnforced')})
-            page.goto(origin+'/terms');expect(page.locator('.help-draft')).to_have_count(0)
+            page.goto(origin+'/terms');expect(page.locator('.help-document')).to_be_visible();expect(page.locator('.help-draft')).to_have_count(0)
             assert 'будут окончательно указаны' not in page.locator('main').inner_text()
             page.goto(origin+'/support');expect(page.locator('a[href="mailto:support@example.test"]')).to_be_visible()
             assert not errors,errors
