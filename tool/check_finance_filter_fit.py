@@ -34,7 +34,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     checks = []
     failures = []
-    with fixture() as (origin, backend, actor, wid), sync_playwright() as p:
+    with fixture(https=True) as (origin, backend, actor, wid), sync_playwright() as p:
         account_id = str(uuid4())
         backend.batch(actor, wid, [{'id': str(uuid4()), 'action': 'record.put', 'record_id': account_id,
             'revision': 0, 'kind': 'account', 'visibility': 'private', 'audience': [],
@@ -43,7 +43,7 @@ def main():
         options = {'executable_path': os.environ['ULADIM_CHROMIUM']} if args.engine == 'chromium' and os.environ.get('ULADIM_CHROMIUM') else {}
         browser = getattr(p, args.engine).launch(**options)
         context = browser.new_context(viewport={'width': 1280, 'height': 960}, locale='ru-RU',
-                                      service_workers='block', reduced_motion='reduce')
+                                      service_workers='block', reduced_motion='reduce', ignore_https_errors=True)
         if not args.built_styles or args.intrinsic_stress:
             css = Path('backend/webassets/design.css').read_text() if args.built_styles else source_styles()
             if args.intrinsic_stress:
