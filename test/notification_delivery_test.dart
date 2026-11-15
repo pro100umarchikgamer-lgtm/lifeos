@@ -160,8 +160,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('legal_terms')));
     await tester.pumpAndSettle();
-    expect(opened,
-        ['https://getuladim.space/privacy', 'https://getuladim.space/terms']);
+    expect(opened, [
+      'https://getuladim.space/privacy?lang=ru',
+      'https://getuladim.space/terms?lang=ru',
+    ]);
     expect(tester.takeException(), isNull);
   });
 }

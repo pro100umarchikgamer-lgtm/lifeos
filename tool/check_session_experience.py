@@ -39,7 +39,8 @@ def main():
             assert identity.locator('dd').evaluate('(e)=>e.getBoundingClientRect().height<=parseFloat(getComputedStyle(e).lineHeight)*2+1'),(width,'vertical email')
             if width<760:
                 expect(page.locator('.settings-navigation')).to_be_hidden()
-                expect(page.locator('.reference-profile-options button:visible')).to_have_count(8)
+                expect(page.locator('.reference-profile-options button:visible')).to_have_count(9)
+                expect(page.locator('.reference-profile-options [data-settings-section=referrals]')).to_be_visible()
                 workspace_box=page.locator('.reference-workspace').bounding_box()
                 theme_box=page.locator('.header-theme').bounding_box()
                 assert workspace_box['x']+workspace_box['width']<=theme_box['x']-3,(width,'workspace covers theme')

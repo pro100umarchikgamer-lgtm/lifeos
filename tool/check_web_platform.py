@@ -210,7 +210,8 @@ def main():
                         if tab=='account':
                             if width<760:
                                 expect(page.locator('.settings-navigation')).to_be_hidden()
-                                expect(page.locator('.reference-profile-options button:visible')).to_have_count(8)
+                                expect(page.locator('.reference-profile-options button:visible')).to_have_count(9)
+                                expect(page.locator('.reference-profile-options [data-settings-section=referrals]')).to_be_visible()
                             else:
                                 expect(page.locator('.settings-navigation')).to_be_visible()
                             open_settings(page,'profile')

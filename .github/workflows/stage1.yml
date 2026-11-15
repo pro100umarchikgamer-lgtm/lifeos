@@ -202,8 +202,9 @@ jobs:
               db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-ci-only-password'")
               db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
           PY
-      - run: python3 -m unittest discover -s backend/tests -v
-        if: steps.validation.outputs.full == 'true'
+      # production_backend is a required dependency and already runs this exact
+      # full SQLite/PostgreSQL suite for this source via run_security_audit --all.
+      # Keep the native protocol checks below; do not repeat the backend suite.
       - run: PYTHONPATH=. python3 tool/check_sync_protocol.py
         if: steps.validation.outputs.full == 'true'
       - run: python3 tool/validate_packs.py --release
