@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: uladim-web-${{ github.ref }}
   cancel-in-progress: true
@@ -57,7 +58,13 @@ jobs:
               db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-web-ci-only'")
               db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
           PY
+      - name: Verify completed checks for identical backend bytes
+        id: backend_evidence
+        env:
+          ULADIM_READ_API_TOKEN: ${{ github.token }}
+        run: python3 tool/verify_backend_evidence.py
       - name: Full backend tests including PostgreSQL
+        if: steps.backend_evidence.outputs.reused != 'true'
         shell: bash
         run: |
           set -euo pipefail

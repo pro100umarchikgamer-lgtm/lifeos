@@ -25,7 +25,10 @@ def assert_fallback(page):
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
     results=[]
-    with fixture() as (origin,*_):
+    with fixture() as (origin,backend,*_):
+        clock=[int(backend.clock())]
+        backend.clock=lambda:clock[0]
+        def next_case():clock[0]+=61
         with sync_playwright() as playwright:
             browser=playwright.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}),headless=True,args=['--no-sandbox'])
             context=browser.new_context(viewport={'width':390,'height':844})
@@ -97,14 +100,17 @@ def main():
                 ('unexpected_key',{'extra':'ignored?'}),
             ]
             for label,change in invalid:
+                next_case()
                 state['body']=json.dumps({**NEXT,**change})
                 page.goto(origin+'/download');page.wait_for_selector('.help-android-release')
                 page.wait_for_function('()=>window.releaseFetches.length===1');page.wait_for_timeout(40)
                 assert_fallback(page);results.append({'invalid':label,'fallback':312001})
             for label,change in [('service_503',{'status':503}),('malformed_json',{'body':'{'}),('wrong_content_type',{'content_type':'text/html'}),('offline',{'abort':True}),('redirect',{'status':302,'headers':{'Location':'https://example.test/release.json'}})]:
+                next_case()
                 state.update(body=json.dumps(NEXT),status=200,content_type='application/json',abort=False,headers={});state.update(change)
                 page.goto(origin+'/download');page.wait_for_selector('.help-android-release');page.wait_for_timeout(40);assert_fallback(page);results.append({'unavailable':label,'fallback':312001})
             # A delayed response may not overwrite a new public route.
+            next_case()
             page.unroute('**/download/release.json');pending=[]
             page.route('**/download/release.json',lambda route:pending.append(route))
             page.goto(origin+'/download');page.wait_for_function('()=>window.releaseFetches.length===1')
