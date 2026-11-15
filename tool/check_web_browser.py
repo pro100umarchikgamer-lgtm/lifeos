@@ -59,10 +59,12 @@ def main():
         app=Application(backend,replace(settings,site_origin=site,control_origin=staff,require_https=False,registration_allowlist=('new@example.test',)))
         server.set_app(app)
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        scenario_clock=[int(backend.clock())];backend.clock=lambda:scenario_clock[0]
         try:
             with sync_playwright() as p:
                 browser=p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM','/usr/bin/chromium'),proxy={'server':os.environ['HTTPS_PROXY'],'bypass':'.uladim.test'} if os.environ.get('HTTPS_PROXY') else None,args=['--host-resolver-rules=MAP *.uladim.test 127.0.0.1','--proxy-bypass-list=*.uladim.test','--ignore-certificate-errors-spki-list='+pin])
                 for theme in ('light','dark'):
+                    scenario_clock[0]+=61
                     context=browser.new_context(viewport={'width':390,'height':844},color_scheme=theme)
                     page=context.new_page();errors=[];page.on('pageerror',lambda e:(errors.append(str(e)),print('SYNTHETIC_PAGE_ERROR',str(e),flush=True)))
                     for name,path in (('home','/'),('plans','/plans'),('privacy','/privacy'),('account_login','/account')):

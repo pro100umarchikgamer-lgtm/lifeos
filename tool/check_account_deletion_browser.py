@@ -10,9 +10,11 @@ OUT=Path('web_evidence/account-deletion');PROOF='R'*43
 
 def main():
  OUT.mkdir(parents=True,exist_ok=True);checks=[];now=int(time.time())
- with fixture() as (origin,_,actor,wid),sync_playwright() as p:
+ with fixture() as (origin,backend,actor,wid),sync_playwright() as p:
+  scenario_clock=[int(backend.clock())];backend.clock=lambda:scenario_clock[0]
   browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
   for mode in ['google','google-mismatch','google-cancelled','google-unavailable','family','transfer','staff','erasing']:
+   scenario_clock[0]+=61
    context=browser.new_context(viewport={'width':390,'height':844},service_workers='block',reduced_motion='reduce');page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)));writes=[];auth={'count':0};family_id=str(uuid.uuid4());target_id=str(uuid.uuid4());status={'request':None,'ownership_transfer_required':[],'incoming_transfers':[],'has_password':not mode.startswith('google'),'google_linked':mode.startswith('google'),'google_reauth_available':mode.startswith('google') and mode!='google-unavailable','mfa_required':mode.startswith('google'),'grace_seconds':86400,'cancel_available':False,'staff_offboarding_required':mode=='staff','local_data_deleted':False}
    if mode=='erasing':status.update(request={'state':'erasing','due_at':now},cancel_available=False)
    if mode in ('family','transfer'):status['ownership_transfer_required']=[{'id':family_id,'name':'Семья и общие планы','eligible_parent_id':target_id if mode=='transfer' else None,'eligible_parent_label':'partner@example.test' if mode=='transfer' else None,'pending_until':None,'workspace_revision':3,'close_family_available':True}]

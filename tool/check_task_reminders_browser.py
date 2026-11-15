@@ -25,6 +25,8 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     checks = []
     with synthetic_notification_api() as (push_status, receipts, _), fixture() as (origin, backend, actor, workspace), sync_playwright() as p:
+        scenario_clock=[int(backend.clock())]
+        backend.clock=lambda:scenario_clock[0]
         browser = p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
         context = browser.new_context(viewport={'width': 390, 'height': 844}, locale='ru-RU',
                                       timezone_id='Europe/Moscow', service_workers='block', reduced_motion='reduce')
@@ -189,6 +191,7 @@ def main():
         editor.get_by_role('button', name='Отмена', exact=True).click()
         checks.append('read_only_task_can_view_persisted_date_but_cannot_edit_it')
 
+        scenario_clock[0]+=61
         link = '/app?notification=task&workspace=' + workspace + '&task=' + task['id']
         page.goto(origin + link)
         editor = page.get_by_role('dialog')
@@ -212,6 +215,7 @@ def main():
 
         # A real worker/Notification API accepts the new link. The push and
         # provider consent status are synthetic, as in the existing push fixture.
+        scenario_clock[0]+=61
         notification_context = browser.new_context(storage_state=context.storage_state(), permissions=['notifications'])
         worker_page = notification_context.new_page()
         cdp = notification_context.new_cdp_session(worker_page)

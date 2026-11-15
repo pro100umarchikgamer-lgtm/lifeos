@@ -36,8 +36,14 @@ def api(endpoint):
 def evidence():
     assert sys.version_info[:2] == (3, 12)
     assert os.environ.get('GITHUB_REPOSITORY') == REPO
-    tree = subprocess.check_output(['git', 'rev-parse', 'HEAD:backend']).decode().strip()
+    # Container jobs mount this one worktree with the runner's UID. Trust only
+    # this exact directory for these commands; never change global Git config.
+    workspace = Path.cwd().resolve()
+    assert Path(os.environ.get('GITHUB_WORKSPACE', str(workspace))).resolve() == workspace
+    git = ['git', '-c', 'safe.directory=' + str(workspace)]
+    tree = subprocess.check_output(git + ['rev-parse', 'HEAD:backend'], stderr=subprocess.DEVNULL).decode().strip()
     assert tree == BACKEND_TREE
+    subprocess.run(git + ['diff', '--quiet', 'HEAD', '--', 'backend'], check=True, stderr=subprocess.DEVNULL)
     run = api('actions/runs/' + str(RUN))
     assert run['id'] == RUN and run['run_attempt'] == 1 and run['head_sha'] == SOURCE
     assert run['repository']['id'] == run['head_repository']['id'] == 1413453356
@@ -66,8 +72,8 @@ def main():
         folder = Path('web_evidence'); folder.mkdir(exist_ok=True)
         (folder / 'reused-backend-proof.json').write_text(json.dumps(value, indent=2) + '\n')
         reused = True
-    except Exception:
-        pass
+    except Exception as error:
+        print('BACKEND_REUSE_FALLBACK_' + type(error).__name__)
     output = os.environ.get('GITHUB_OUTPUT')
     if output:
         with open(output, 'a') as target:
