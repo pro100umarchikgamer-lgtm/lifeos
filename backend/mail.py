@@ -2,35 +2,74 @@
 import datetime as dt
 import json
 import logging
+import re
 import smtplib
 import ssl
 import time
 from email.message import EmailMessage
+from .notification_copy import packs
+from .request_locale import normalize_locale
 
 log = logging.getLogger('lifeos.mail')
+
+# Exact legacy Russian copy also keeps old queued jobs readable if a pack is incomplete.
+_MAIL_RU = {'mail_subject_verify': 'ULADIM: подтверждение почты',
+ 'mail_subject_recovery': 'ULADIM: восстановление аккаунта',
+ 'mail_subject_email_change': 'ULADIM: подтверждение нового адреса',
+ 'mail_subject_early_verify': 'ULADIM: подтвердите заявку',
+ 'mail_subject_early_invite': 'ULADIM: приглашение в закрытый тест',
+ 'mail_subject_early_rejected': 'ULADIM: решение по заявке',
+ 'mail_body_verify': 'Введите этот код в ULADIM для подтверждения почты:\n{code}',
+ 'mail_body_recovery': 'Введите этот код в ULADIM для восстановления аккаунта:\n{code}',
+ 'mail_body_email_change': 'Введите этот код в ULADIM для подтверждения почты:\n{code}',
+ 'mail_body_early_verify': 'Подтвердите заявку на https://getuladim.space/early-access, введя этот '
+                           'одноразовый код (15 минут):\n'
+                           '{code}\n'
+                           'После подтверждения можно проверить статус и отменить заявку. Заявка не создаёт '
+                           'аккаунт.',
+ 'mail_body_early_invite': 'Ваша заявка одобрена. Создайте аккаунт на https://getuladim.space/account с этим '
+                           'приглашением (7 дней):\n'
+                           '{code}',
+ 'mail_body_early_rejected': 'Сейчас мы не можем включить вас в закрытый тест ULADIM. Аккаунт не создан. '
+                             'Статус и отмена заявки: https://getuladim.space/early-access',
+ 'mail_code_single_use': 'Код одноразовый.',
+ 'mail_unrequested': 'Если вы не запрашивали это действие, проигнорируйте письмо.'}
+
+
+def _copy(key, locale):
+    # Only fixed mail keys are accepted; no user content is translated.
+    fallback = _MAIL_RU[key]
+    value = packs().get(locale, {}).get('strings', {}).get(key, fallback)
+    if not isinstance(value, str) or not value.strip():
+        return fallback
+    if value.count('{code}') != fallback.count('{code}') or re.findall(r'\{[^{}]+\}', value) != re.findall(r'\{[^{}]+\}', fallback):
+        return fallback
+    if '{' in value.replace('{code}', '') or '}' in value.replace('{code}', ''):
+        return fallback
+    if sorted(url.rstrip('.,;:!?)]') for url in re.findall(r'https?://[^\s]+', value)) != sorted(url.rstrip('.,;:!?)]') for url in re.findall(r'https?://[^\s]+', fallback)):
+        return fallback
+    if key.startswith('mail_subject_') and ('\n' in value or '\r' in value):
+        return fallback
+    return value
+
 
 def message(settings, job_id, payload):
     value = EmailMessage()
     value['From'] = settings.email_from
     value['To'] = payload['email']
     value['Message-ID'] = '<'+job_id+'@lifeos-mail>'
-    if payload['purpose'].startswith('early_'):
-        purpose = payload['purpose']
-        subjects = {'early_verify': 'ULADIM: подтвердите заявку', 'early_invite': 'ULADIM: приглашение в закрытый тест', 'early_rejected': 'ULADIM: решение по заявке'}
-        value['Subject'] = subjects[purpose]
-        if purpose == 'early_verify':
-            content = 'Подтвердите заявку на https://getuladim.space/early-access, введя этот одноразовый код (15 минут):\n' + payload['code'] + '\nПосле подтверждения можно проверить статус и отменить заявку. Заявка не создаёт аккаунт.'
-        elif purpose == 'early_invite':
-            content = 'Ваша заявка одобрена. Создайте аккаунт на https://getuladim.space/account с этим приглашением (7 дней):\n' + payload['code']
-        else:
-            content = 'Сейчас мы не можем включить вас в закрытый тест ULADIM. Аккаунт не создан. Статус и отмена заявки: https://getuladim.space/early-access'
-        value.set_content(content + '\n\nЕсли вы не запрашивали это действие, проигнорируйте письмо.')
-        return value
-    recovery = payload['purpose']=='recovery'
-    email_change = payload['purpose']=='email_change'
-    value['Subject'] = 'ULADIM: восстановление аккаунта' if recovery else 'ULADIM: подтверждение почты'
-    if email_change:value.replace_header('Subject','ULADIM: подтверждение нового адреса')
-    value.set_content(('Введите этот код в ULADIM для восстановления аккаунта:\n' if recovery else 'Введите этот код в ULADIM для подтверждения почты:\n')+payload['code']+'\n\nКод одноразовый. Если вы не запрашивали это действие, проигнорируйте письмо.')
+    locale = normalize_locale(payload.get('locale'))
+    purpose = payload['purpose']
+    early = purpose.startswith('early_')
+    suffix = purpose if early else 'recovery' if purpose == 'recovery' else 'email_change' if purpose == 'email_change' else 'verify'
+    value['Subject'] = _copy('mail_subject_' + suffix, locale)
+    content = _copy('mail_body_' + suffix, locale)
+    if '{code}' in content:
+        content = content.replace('{code}', payload['code'])
+    footer = _copy('mail_unrequested', locale)
+    if not early:
+        footer = _copy('mail_code_single_use', locale) + ' ' + footer
+    value.set_content(content + '\n\n' + footer)
     return value
 
 def smtp_send(settings, email):
@@ -86,6 +125,8 @@ def main():
     backend=PostgresBackend(config.database_url,Fernet(config.email_queue_key.encode()),pool_size=2)
     from .account_erasure import initialize
     initialize(backend, config.account_erasure_ledger, config.account_erasure_ack_socket)
+    from .record_erasure import initialize as initialize_record_erasure
+    initialize_record_erasure(backend,config.record_erasure_ledger,config.record_erasure_ack_socket,config.record_erasure_required)
     from .web_push import WebPush
     push=WebPush(backend,config.site_origin)
     try:
@@ -96,6 +137,15 @@ def main():
                 db.execute("INSERT INTO worker_health VALUES('mail',?) ON CONFLICT(name) DO UPDATE SET last_seen=excluded.last_seen",(int(backend.clock()),))
             from .account_lifecycle import AccountLifecycle
             AccountLifecycle(backend).process_one_deletion()
+            # One bounded retry also closes a crash between committed consent
+            # and the first root IPC; it never accepts a new deletion request.
+            if int(backend.clock())>=getattr(backend,'_record_erasure_retry_at',0):
+                try:
+                    from .record_erasure import resume_pending
+                    resume_pending(backend)
+                except Exception as error:
+                    backend._record_erasure_retry_at=int(backend.clock())+30
+                    log.warning('record_erasure_retry_failed class=%s',type(error).__name__)
             from pathlib import Path
             Path('/tmp/lifeos-mail.heartbeat').touch()
             mail_work=deliver_one(backend,config)

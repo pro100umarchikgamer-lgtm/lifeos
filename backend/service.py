@@ -54,10 +54,24 @@ def canonical(value): return json.dumps(value,sort_keys=True,separators=(',',':'
 def token_hash(value): return hashlib.sha256(value.encode()).hexdigest()
 
 def validate_password(password):
-    require(isinstance(password,str) and 7<=len(password)<=256,'password_length')
-    value=password.casefold().strip()
-    common={'password','password1','password123','qwerty1','qwerty123','letmein','welcome','welcome1','1234567','12345678','123456789','пароль123','uladim123','lifeos123','abcdefg','abcdefgh','qwertyuiop','iloveyou','welcome123','letmein1','admin123','test123','testing','123456a','sunshine','football','monkey123','dragon123','princess'}
-    require(len(value)>=7 and len(set(value))>=3 and not value.isdecimal() and value not in common,'password_weak')
+    """New secrets only: Unicode length, mixed characters or a long passphrase."""
+    require(isinstance(password,str) and 8<=len(password)<=256,'password_length')
+    value=password.lower().strip()
+    letters={char for char in value if char.isalpha()}
+    require(letters and (any(char.isdecimal() for char in value) or len(password.strip())>=16 and len(letters)>=3),'password_weak')
+    common={'password','password1','password123','qwerty','qwerty1','qwerty123','letmein','welcome','welcome1','1234567','12345678','123456789','пароль','пароль123','uladim','uladim123','lifeos','lifeos123','abcdefg','abcdefgh','qwertyuiop','iloveyou','welcome123','letmein1','admin','admin123','test','test123','testing','123456a','sunshine','football','monkey','monkey123','dragon','dragon123','princess','a1b2c3d4'}
+    plain=''.join(char for char in value if char.isalpha() or char.isdecimal())
+    stem=re.sub(r'\d+$','',plain)
+    def repeated(part):
+        return any(len(part)%width==0 and part==part[:width]*(len(part)//width) for width in range(1,len(part)//2+1))
+    def simple_run(part):
+        if len(part)<2:return False
+        steps={ord(b)-ord(a) for a,b in zip(part,part[1:])}
+        return len(set(part))==1 or steps in ({1},{-1}) or any(part in row or part in row[::-1] for row in ('qwertyuiop','asdfghjkl','zxcvbnm'))
+    runs=re.findall(r'[^\W\d_]+|\d+',plain)
+    require(len(set(value))>=3 and plain not in common and stem not in common
+            and not repeated(value) and not repeated(plain) and not (stem!=plain and repeated(stem))
+            and not all(simple_run(part) for part in runs),'password_weak')
 
 class ManagedConnection(sqlite3.Connection):
     def __exit__(self,*args):
@@ -200,7 +214,10 @@ class Backend(AccountSessions):
         return db.execute('INSERT INTO changes(workspace_id,record_id,actor_id,operation_id,kind) VALUES(?,?,?,?,?)',(wid,rid,actor['id'],op,kind)).lastrowid
     def _revision(self,row,expected): require(type(expected) is int and row['revision']==expected,'revision_conflict',409)
     def _idempotent(self,db,actor,op):
-        identifier(op['id']);digest=token_hash(canonical(op));row=db.execute('SELECT * FROM operations WHERE user_id=? AND id=?',(actor['id'],op['id'])).fetchone()
+        identifier(op['id']);digest=token_hash(canonical(op))
+        pending=db.execute('SELECT operation_digest FROM record_erasure_intents WHERE user_id=? AND operation_id=?',(actor['id'],op['id'])).fetchone()
+        if pending:require(op.get('action')=='record.purge' and pending['operation_digest']==digest,'operation_conflict',409)
+        row=db.execute('SELECT * FROM operations WHERE user_id=? AND id=?',(actor['id'],op['id'])).fetchone()
         if row: require(row['digest']==digest,'operation_conflict',409);return json.loads(row['result'])
         return None
     def _remember(self,db,actor,op,result):
@@ -416,6 +433,8 @@ class Backend(AccountSessions):
             if row:
                 require(row['workspace_id']==wid and self._readable(db,actor,space,row),'record_forbidden',403)
                 require(self._editable(db,actor,space,row),'record_forbidden',403)
+            from .record_erasure import block_in as block_erasure
+            block_erasure(db,rid)
             prior=self._idempotent(db,actor,op)
             if prior:return prior
             expected=op.get('revision');require(type(expected) is int and expected>=0)

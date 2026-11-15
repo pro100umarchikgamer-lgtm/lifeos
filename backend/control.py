@@ -23,6 +23,8 @@ ROLE_PERMISSIONS = {
     'auditor': {'dashboard.read', 'audit.read'},
 }
 SAFE_FLAGS = {'compact_onboarding', 'chart_styles', 'support_entry'}
+ROLE_PERMISSIONS['owner'].add('referrals.read')
+ROLE_PERMISSIONS['admin'].add('referrals.read')
 
 
 def totp(secret, counter):

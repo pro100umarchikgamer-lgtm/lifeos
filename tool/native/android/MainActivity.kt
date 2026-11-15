@@ -54,6 +54,19 @@ class MainActivity : FlutterActivity() {
                         startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
                         result.success(null)
                     }
+                    "shareText" -> {
+                        val uri = Uri.parse(call.arguments as String)
+                        val code = uri.getQueryParameters("ref")
+                        require(uri.scheme == "https" && uri.host == "getuladim.space" &&
+                            uri.port in listOf(-1, 443) && uri.userInfo == null &&
+                            uri.path == "/app" && uri.fragment == null &&
+                            uri.queryParameterNames == setOf("ref") && code.size == 1 &&
+                            Regex("[A-Za-z0-9_-]{43}").matches(code.single()))
+                        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+                            .putExtra(Intent.EXTRA_TEXT, uri.toString())
+                        startActivity(Intent.createChooser(send, null))
+                        result.success(null)
+                    }
                     "ackActions" -> { ReminderRuntime.acknowledge(this, (call.arguments as List<*>).map { it as String }.toSet()); result.success(null) }
                     "launchTarget" -> { result.success(launchId); launchId = null }
                     "requestNotifications" -> {

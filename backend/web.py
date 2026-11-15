@@ -87,6 +87,10 @@ class Web:
             headers = [(key, value.replace("form-action 'self'", "form-action 'self' " + self.staff) if key == 'Content-Security-Policy' else value) for key, value in headers]
         if not staff and method == 'GET' and (path in ('/app', '/app/') or path.startswith('/app/assets/') or path == '/app/sw.js'):
             return self.app_asset(path, headers)
+        # The Control document uses only these shared UI assets. Admission above
+        # still gates every Control-host request, including these static files.
+        if staff and method == 'GET' and path in {'/app/assets/' + name for name in ('i18n.js', 'translations.json', 'referrals.js', 'referrals.css', 'password-policy.js')}:
+            return self.app_asset(path, headers)
         if method == 'GET' and path == '/assets/locales.json':
             return (ASSETS / 'app' / 'locales.json').read_bytes(), headers
         if method == 'GET' and path in ('/assets/web.js', '/assets/web.css', '/assets/design.css'):
@@ -198,7 +202,7 @@ class Web:
                     if row: self.backend._revoke_device(db, actor['id'], row['device_id'])
                     db.execute('DELETE FROM web_sessions WHERE hash=?', (token_hash(token),))
             return {'logged_out': True}, headers + [self.cookie('', staff, True)]
-        query = parse_qs(env.get('QUERY_STRING', ''))
+        query = parse_qs(env.get('QUERY_STRING', ''), keep_blank_values=action in ('layout-order', 'recovery/purge-preview', 'recovery/purge'))
         if staff: value = self.staff_action(actor, action, method, body, query)
         else: value = self.account_action(actor, action, method, body, query)
         return value, headers
@@ -271,6 +275,9 @@ class Web:
 
     def staff_action(self, actor, action, method, b, q):
         c = self.control
+        if action == 'referrals' and method == 'GET':
+            from .referrals import Referrals
+            return Referrals(self.backend, self.site).graph(actor, q)
         if action.startswith('announcements'):
             from .inbox import Inbox
             inbox = Inbox(self.backend)
@@ -324,6 +331,38 @@ class Web:
         raise Failure('not_found', 404)
 
     def account_action(self, actor, action, method, b, q):
+        if action == 'layout-order':
+            from .layout_preferences import LayoutPreferences
+            layouts = LayoutPreferences(self.backend)
+            if method == 'GET':
+                require(set(q) == {'workspace', 'kind'} and all(len(values) == 1 for values in q.values()), 'invalid_fields')
+                return layouts.get(actor, q['workspace'][0], q['kind'][0])
+            if method == 'POST':
+                require(not q and isinstance(b, dict) and {'workspace_id', 'kind', 'order'} <= set(b) <= {'workspace_id', 'kind', 'order', 'revision'}, 'invalid_fields')
+                return layouts.put(actor, b['workspace_id'], b['kind'], b['order'], b.get('revision'))
+            raise Failure('not_found', 404)
+        if action == 'task-reminders':
+            from .task_reminders import TaskReminders
+            reminders = TaskReminders(self.backend)
+            if method == 'GET':
+                require('workspace' in q and set(q) <= {'workspace', 'task_id'} and all(len(values) == 1 for values in q.values()), 'invalid_fields')
+                workspace = q['workspace'][0]
+                return reminders.get(actor, workspace, q['task_id'][0]) if 'task_id' in q else reminders.list(actor, workspace)
+            if method == 'POST':
+                require(not q, 'invalid_fields')
+                return reminders.save(actor, b)
+            raise Failure('not_found', 404)
+        if action.startswith('referrals'):
+            from .referrals import Referrals
+            referrals = Referrals(self.backend, self.site)
+            if action == 'referrals' and method == 'GET': return referrals.summary(actor, q)
+            require(not q, 'invalid_fields')
+            if action == 'referrals/alias' and method == 'GET': return referrals.alias(actor)
+            if method == 'POST':
+                if action == 'referrals/code': return referrals.create_code(actor, b)
+                if action == 'referrals/claim': return referrals.claim(actor, b)
+                if action == 'referrals/alias': return referrals.alias(actor, b)
+            raise Failure('not_found', 404)
         from .account_lifecycle import AccountLifecycle
         lifecycle = AccountLifecycle(self.backend)
         from .customer_mfa import CustomerMFA
@@ -341,6 +380,16 @@ class Web:
             from .record_recovery import RecordRecovery
             return RecordRecovery(self.backend).trash(actor, q.get('workspace', [''])[0], q.get('before', [None])[0], q.get('record', [None])[0])
         if action.startswith('recovery/'):
+            if action in ('recovery/purge-preview', 'recovery/purge'):
+                from .record_erasure import RecordErasure
+                erasure = RecordErasure(self.backend)
+                if action == 'recovery/purge-preview' and method == 'GET':
+                    require(set(q) == {'record'} and len(q['record']) == 1, 'invalid_fields')
+                    return erasure.preview(actor, q['record'][0])
+                if action == 'recovery/purge' and method == 'POST':
+                    require(not q, 'invalid_fields')
+                    return erasure.purge(actor, b)
+                raise Failure('not_found', 404)
             from .record_recovery import RecordRecovery
             recovery = RecordRecovery(self.backend)
             if action == 'recovery/requests' and method == 'GET': return recovery.requests(actor, q.get('before', [None])[0])
@@ -406,6 +455,9 @@ class Web:
         relative = 'index.html' if path in ('/app', '/app/') else ('sw.js' if path == '/app/sw.js' else path[len('/app/assets/'):])
         allowed = {'index.html', 'app.js', 'domain.js', 'money.js', 'statement-formats.js', 'statement-pdf.js', 'statement-xlsx.js', 'personal-import.js', 'pdf-lib.mjs', 'pdf-worker.mjs', 'import.js', 'statement-worker.js', 'app.css', 'auth-texture.webp', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
         allowed.update({'inbox.js', 'inbox.css'})
+        allowed.update({'password-policy.js', 'appearance-intensity.js'})
+        allowed.update({'task-reminders.js', 'layout-order.js', 'referrals.js', 'referrals.css'})
+        allowed.update({'i18n.js', 'translations.json', 'record-erasure.js'})
 
         allowed.update({'recovery.js', 'recovery.css'})
         allowed.update({'account-deletion.js', 'account-deletion.css'})

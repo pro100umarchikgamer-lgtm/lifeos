@@ -30,6 +30,8 @@ class Application:
         from .web import Web
         self.web=Web(backend,settings)
         self.google=self.web.google
+        from .native_download import NativeDownload
+        self.native_download=NativeDownload(getattr(settings, 'native_download_dir', ''))
         self.started=time.time()
         self.networks=[ipaddress.ip_network(v.strip()) for v in settings.trusted_proxy_cidrs.split(',')]
     def trusted(self,environ):
@@ -66,6 +68,10 @@ class Application:
         finally:db.close()
         if row['count']>maximum:raise Failure('rate_limited',429)
     def __call__(self,environ,start_response):
+        from .request_locale import request_locale
+        with request_locale(environ.get('HTTP_ACCEPT_LANGUAGE','')):
+            return self._request(environ,start_response)
+    def _request(self,environ,start_response):
         status=200
         headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
             'X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'X-Request-ID':str(uuid.uuid4())}
@@ -98,6 +104,15 @@ class Application:
                 is_web=self.web.handles(environ)
                 if not is_web and not path.startswith('/v1/'):raise Failure('not_found',404)
                 self.limit(environ,path)
+                if path.startswith('/download/android/'):
+                    from urllib.parse import urlsplit
+                    if environ.get('HTTP_HOST', '') != urlsplit(self.settings.site_origin).netloc:
+                        raise Failure('not_found', 404)
+                    download_env = dict(environ, REQUEST_METHOD='HEAD') if head else environ
+                    status, download_headers, body = self.native_download.response(download_env)
+                    headers.update(download_headers)
+                    start_response(str(status)+' '+HTTPStatus(status).phrase,list(headers.items()))
+                    return body
                 body={}
                 if control_redeem:
                     from urllib.parse import parse_qs
@@ -152,7 +167,8 @@ class Application:
     def google_request(self, env, body):
         path, method = env.get('PATH_INFO'), env.get('REQUEST_METHOD')
         if path == '/v1/auth/google/config' and method == 'GET':
-            return {'google_enabled': self.google.enabled}
+            return {'google_enabled': self.google.enabled,
+                    'google_android_clients_configured': bool(self.settings.google_android_client_ids)}
         if path == '/v1/auth/google/start' and method == 'POST':
             return self.google.start('android', env.get('HTTP_USER_AGENT','')[:500], invitation=body.get('invitation'))
         if path == '/v1/auth/google/finish' and method == 'POST':
@@ -190,6 +206,8 @@ def create_app():
     backend=PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()),pool_size=settings.pool_size)
     from .account_erasure import initialize
     initialize(backend, settings.account_erasure_ledger, settings.account_erasure_ack_socket)
+    from .record_erasure import initialize as initialize_record_erasure
+    initialize_record_erasure(backend,settings.record_erasure_ledger,settings.record_erasure_ack_socket,settings.record_erasure_required)
     return Application(backend,settings)
 
 def main():

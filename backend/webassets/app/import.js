@@ -22,18 +22,18 @@ async function statementID(value){
  return hex.slice(0,8)+'-'+hex.slice(8,12)+'-5'+hex.slice(13,16)+'-a'+hex.slice(17,20)+'-'+hex.slice(20,32);
 }
 function statementCopy(key){return STATEMENT_COPY[state.lang]?.[key]||STATEMENT_COPY.en[key]||t(key);}
-const STATEMENT_FLOW_COPY={
+const STATEMENT_FLOW_COPY=globalThis.UladimI18n.copy("grp_b274dcbbe674",{
  ru:['Выбор файла','Проверка','Результат','Сохранено операций','Не сохранено из выбранных','Открыть историю операций','Вернуться к проверке','Сервер подтвердил запись. Повторите загрузку истории.'],
  en:['Choose file','Review','Result','Transactions saved','Selected but not saved','Open transaction history','Back to review','The server accepted the write. Retry loading history.'],
  'uz-Latn':['Fayl tanlash','Tekshirish','Natija','Saqlangan amallar','Tanlangan, ammo saqlanmagan','Amallar tarixini ochish','Tekshirishga qaytish','Server yozuvni qabul qildi. Tarixni qayta yuklang.'],
  'uz-Cyrl':['Файл танлаш','Текшириш','Натижа','Сақланган амаллар','Танланган, аммо сақланмаган','Амаллар тарихини очиш','Текширишга қайтиш','Сервер ёзувни қабул қилди. Тарихни қайта юкланг.']
-};
-const STATEMENT_SOURCE_COPY={
+});
+const STATEMENT_SOURCE_COPY=globalThis.UladimI18n.copy("grp_1f96edcce431",{
  ru:['Счета в выписке','Использовать отдельные счета','Объединить в существующий счёт','Новый счёт','Использовать счета','Создать счета и использовать','Начальный остаток новых счетов — 0. Операции сохраняются следующим шагом.','Разные валюты нельзя объединить в один счёт. Выберите отдельные счета.','Сначала подтвердите счета выписки.','Счета не подтверждены. Повторите запрос — копии не создадутся.','Не удалось подтвердить счёт. Проверьте доступ и повторите.','Найден существующий счёт','Создать','Счёт из выписки'],
  en:['Statement accounts','Use separate accounts','Combine into an existing account','New account','Use accounts','Create accounts and use them','New accounts start at 0. Save transactions in the next step.','Different currencies cannot share one account. Use separate accounts.','Confirm statement accounts first.','Accounts are not confirmed. Retry the request; it will not create copies.','The account could not be confirmed. Check access and retry.','Existing account found','Create','Statement account'],
  'uz-Latn':['Ko‘chirmadagi hisoblar','Alohida hisoblardan foydalanish','Mavjud hisobga birlashtirish','Yangi hisob','Hisoblardan foydalanish','Hisoblarni yaratish va foydalanish','Yangi hisoblar 0 dan boshlanadi. Amallarni keyingi bosqichda saqlang.','Turli valyutalarni bir hisobga birlashtirib bo‘lmaydi. Alohida hisoblarni tanlang.','Avval ko‘chirma hisoblarini tasdiqlang.','Hisoblar tasdiqlanmadi. Qayta urining; nusxalar yaratilmaydi.','Hisob tasdiqlanmadi. Ruxsatni tekshiring va qayta urining.','Mavjud hisob topildi','Yaratish','Ko‘chirma hisobi'],
  'uz-Cyrl':['Кўчирмадаги ҳисоблар','Алоҳида ҳисоблардан фойдаланиш','Мавжуд ҳисобга бирлаштириш','Янги ҳисоб','Ҳисоблардан фойдаланиш','Ҳисобларни яратиш ва фойдаланиш','Янги ҳисоблар 0 дан бошланади. Амалларни кейинги босқичда сақланг.','Турли валюталарни бир ҳисобга бирлаштириб бўлмайди. Алоҳида ҳисобларни танланг.','Аввал кўчирма ҳисобларини тасдиқланг.','Ҳисоблар тасдиқланмади. Қайта урининг; нусхалар яратилмайди.','Ҳисоб тасдиқланмади. Рухсатни текширинг ва қайта урининг.','Мавжуд ҳисоб топилди','Яратиш','Кўчирма ҳисоби']
-};
+});
 function importStatement() {
  const workspace=state.space,user=state.session.user_id,epoch=privateEpoch;
  let accounts=records('account'), source=null, parsed=null, preview=[], pending=null, page=0;
@@ -648,7 +648,7 @@ function importStatement() {
  return d;
 }
 
-const STATEMENT_COPY={
+const STATEMENT_COPY=globalThis.UladimI18n.copy("grp_483a7f1d812d",{
  ru:{
   title:'Импортировать выписку',need_account:'Для импорта нужен счёт. Создайте его, чтобы связать операции с вашими финансами.',
   create_account:'Создать счёт',help:'CSV, TSV, TXT, JSON, OFX, QIF, PDF или XLSX · до 5 МБ. Выписка обрабатывается в браузере.',
@@ -726,4 +726,4 @@ const STATEMENT_COPY={
   import_xlsx_layout:'The Excel worksheet could not be read. Check the transaction sheet or save it as CSV.',
   import_xlsx_encrypted:'This Excel workbook is protected. Use an unencrypted statement.'
  }
-};
+});

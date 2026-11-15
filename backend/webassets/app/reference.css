@@ -20,6 +20,9 @@ body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .b
 body[data-design=clarity][data-reference-layout=b12] #root .reference-workspace{display:flex;gap:10px;align-items:center;padding:12px 10px;border:1px solid var(--ux-border);border-radius:10px;margin:0 0 22px;min-width:0}
 body[data-design=clarity][data-reference-layout=b12] #root .reference-avatar{display:inline-grid;place-items:center;flex:none;width:34px;height:34px;border-radius:10px;background:var(--ux-soft);color:var(--ux-green);font-size:14px;font-weight:650}
 body[data-design=clarity][data-reference-layout=b12] #root .reference-workspace select.workspace{min-width:0;flex:1;width:100%;max-width:100%;border:0;padding:0 18px 0 0;border-radius:0;min-height:34px;background-color:transparent;color:var(--ux-ink);font-size:13px;font-weight:650;text-overflow:ellipsis}
+/* Keep a rounded keyboard cue instead of the platform's square select ring. */
+body[data-design=clarity][data-reference-layout=b12] #root select.workspace:focus{outline:none;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root select.workspace:focus-visible{border-radius:6px;outline:2px solid var(--ux-green);outline-offset:3px}
 body[data-design=clarity][data-reference-layout=b12] #root .reference-nav-group{display:flex;flex-direction:column;gap:3px;margin-bottom:20px;flex:none}
 body[data-design=clarity][data-reference-layout=b12] #root .reference-nav-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:650;color:var(--ux-muted);padding:0 12px;margin:0 0 8px}
 body[data-design=clarity][data-reference-layout=b12] #root .reference-sidebar .reference-nav-item{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;text-align:start;gap:12px;padding:10px 12px;min-height:44px;border-radius:8px;background:transparent;border:0;color:var(--ux-muted);font-size:13px;font-weight:500;line-height:1.4;max-width:100%;width:100%}
@@ -207,6 +210,11 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .financ
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel{margin:0 0 14px;padding:0;border:0;background:transparent;max-width:100%}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel>summary{min-height:40px;display:list-item;align-content:center;width:fit-content;cursor:pointer;color:var(--ux-muted);font-size:12px}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters{padding:16px;margin:4px 0 0;border:1px solid var(--ux-border);border-radius:12px;background:var(--ux-surface);grid-template-columns:minmax(0,1.5fr) repeat(3,minmax(0,1fr));gap:14px}
+/* Native iPad date controls must fit the filter track, including padding. */
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters>div{min-width:0;min-inline-size:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters :is(input,select){box-sizing:border-box;min-width:0;min-inline-size:0;width:100%;inline-size:100%;max-width:100%;max-inline-size:100%}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel input[type=date]::-webkit-datetime-edit{min-inline-size:0;padding:0}
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel input[type=date]::-webkit-date-and-time-value{min-inline-size:0;text-align:start}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-overview{padding:0!important;margin:0 0 22px;background:transparent;border:0;box-shadow:none}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-summary-period{font-size:12px;margin:0 0 12px;color:var(--ux-muted)!important}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
@@ -403,3 +411,38 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .financ
 @media(max-width:359px){
  body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-metric>.money-display{--money-align:flex-start}
 }
+
+/* Keep the first phone screen focused on doing a task, with financial currencies
+   in separate compact rows below it. Desktop composition is unchanged. */
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root main.today-page{display:flex;flex-direction:column;gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page>.intro{order:0;margin:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page>.context-help{order:1;margin:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-grid{display:contents}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-tasks{order:2;margin:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page>.reference-summary{order:3;margin:0}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=tasks]{display:none}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-summary-tile[data-summary=expenses]{padding:12px 14px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .summary-currency-row{min-height:24px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-schedule{order:4}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-secondary-actions{order:5}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-agenda{order:6}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-notes{order:7}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-finance{order:8}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .today-transactions{order:9}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-balance{display:grid;gap:8px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-balance>div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--ux-border)}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-balance .money-display{font-size:17px}
+ body[data-design=clarity][data-reference-layout=b12] #root .today-page .reference-finance-chart{max-height:150px}
+}
+
+/* Intensity blends only palette backgrounds toward neutral colors. The maximum
+   is the existing palette; text, card surfaces and primary buttons stay fixed. */
+body[data-design=clarity][data-reference-layout=b12][data-palette][data-theme][data-appearance-intensity]{--appearance-page-base:var(--palette-bg,#f5f6f2);--appearance-soft-base:var(--palette-soft,#efebfa);--appearance-neutral-page:#f5f5f5;--appearance-neutral-soft:#ededed;--ux-bg:color-mix(in srgb,var(--appearance-page-base) var(--appearance-tint,60%),var(--appearance-neutral-page));--ux-soft:color-mix(in srgb,var(--appearance-soft-base) var(--appearance-tint,60%),var(--appearance-neutral-soft))}
+body[data-design=clarity][data-reference-layout=b12][data-palette][data-theme=dark][data-appearance-intensity]{--appearance-page-base:var(--palette-dark-bg,#1e1c27);--appearance-soft-base:var(--palette-dark-soft,#373048);--appearance-neutral-page:#202020;--appearance-neutral-soft:#353535}
+@media(prefers-color-scheme:dark){body[data-design=clarity][data-reference-layout=b12][data-palette][data-theme=system][data-appearance-intensity]{--appearance-page-base:var(--palette-dark-bg,#1e1c27);--appearance-soft-base:var(--palette-dark-soft,#373048);--appearance-neutral-page:#202020;--appearance-neutral-soft:#353535}}
+body[data-design=clarity][data-reference-layout=b12] #root .appearance-intensity{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .appearance-intensity>label{grid-column:1;grid-row:1;margin:0;font-size:13px}
+body[data-design=clarity][data-reference-layout=b12] #root .appearance-intensity>output{grid-column:2;grid-row:1;color:var(--ux-muted);font-size:13px;font-variant-numeric:tabular-nums}
+body[data-design=clarity][data-reference-layout=b12] #root .appearance-intensity>input[type=range]{grid-column:1/-1;grid-row:2;min-height:44px;min-width:0;width:100%;padding:0;border:0;background:transparent;accent-color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .appearance-intensity-ends{display:flex;justify-content:space-between;gap:12px;grid-column:1/-1;color:var(--ux-muted);font-size:11px}

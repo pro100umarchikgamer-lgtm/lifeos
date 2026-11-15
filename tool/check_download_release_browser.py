@@ -51,6 +51,27 @@ def main():
             assert page.evaluate('window.releaseFetches')==[{'url':'/download/release.json','method':'GET','credentials':'omit','cache':'no-store','redirect':'error'}]
             page.screenshot(path=str(OUT/'download-next-phone.png'),full_page=True)
             results.append({'valid':'all immutable fields replaced together','fetch':'same-origin GET, omit credentials, no-store, redirect error'})
+            # First-party delivery must prove the exact accepted manifest tuple;
+            # a cache entry for another binary must never replace the link.
+            native_headers={'Content-Length':str(NEXT['bytes']),
+                'Content-Type':'application/vnd.android.package-archive',
+                'ETag':'"sha256-'+NEXT['apk_sha256']+'"',
+                'X-ULADIM-Source':SOURCE,'X-ULADIM-Version-Code':str(NEXT['version_code']),
+                'X-ULADIM-APK-SHA256':NEXT['apk_sha256'],
+                'X-ULADIM-Certificate-SHA256':CERT}
+            page.route('**/download/android/**/ULADIM.apk',lambda route:route.fulfill(status=200,headers=native_headers,body=''))
+            page.goto(origin+'/download')
+            expect(page.locator('[data-release-download]')).to_have_attribute('data-delivery','same-origin')
+            value=snapshot(page)
+            assert value['url']==origin+'/download/android/'+SOURCE+'/ULADIM.apk',value
+            assert page.locator('[data-release-download]').get_attribute('download')
+            results.append({'same_origin':'exact HEAD source/version/bytes/SHA/cert accepted without redirect'})
+            native_headers['X-ULADIM-APK-SHA256']='c'*64
+            page.goto(origin+'/download')
+            expect(page.locator('.help-android-release')).to_have_attribute('data-version-code','400001')
+            assert snapshot(page)['url']==NEXT['apk_url']
+            results.append({'wrong_cache_digest':'verified external release remains available; mismatched cache rejected'})
+            page.unroute('**/download/android/**/ULADIM.apk')
             # Missing cosmetic versionName never reuses the old version or size.
             for name in (None,''):
                 state['body']=json.dumps({**NEXT,'version_name':name})
@@ -78,7 +99,7 @@ def main():
             for label,change in invalid:
                 state['body']=json.dumps({**NEXT,**change})
                 page.goto(origin+'/download');page.wait_for_selector('.help-android-release')
-                page.wait_for_function('window.releaseFetches.length===1');page.wait_for_timeout(40)
+                page.wait_for_function('()=>window.releaseFetches.length===1');page.wait_for_timeout(40)
                 assert_fallback(page);results.append({'invalid':label,'fallback':312001})
             for label,change in [('service_503',{'status':503}),('malformed_json',{'body':'{'}),('wrong_content_type',{'content_type':'text/html'}),('offline',{'abort':True}),('redirect',{'status':302,'headers':{'Location':'https://example.test/release.json'}})]:
                 state.update(body=json.dumps(NEXT),status=200,content_type='application/json',abort=False,headers={});state.update(change)
@@ -86,7 +107,7 @@ def main():
             # A delayed response may not overwrite a new public route.
             page.unroute('**/download/release.json');pending=[]
             page.route('**/download/release.json',lambda route:pending.append(route))
-            page.goto(origin+'/download');page.wait_for_function('window.releaseFetches.length===1')
+            page.goto(origin+'/download');page.wait_for_function('()=>window.releaseFetches.length===1')
             page.evaluate("history.pushState({},'', '/faq'); publicPage({});")
             expect(page.locator('.help-question')).to_have_count(21)
             pending.pop().fulfill(status=200,content_type='application/json',body=json.dumps(NEXT))
@@ -94,12 +115,12 @@ def main():
             expect(page.locator('h1')).to_have_text('Найдём ответ');results.append({'late_response':'cannot overwrite navigated FAQ'})
             # The time limit aborts a stalled manifest while the fallback remains
             # usable throughout; no metadata is applied after the deadline.
-            page.goto(origin+'/download');page.wait_for_function('window.releaseFetches.length===1')
-            page.wait_for_timeout(2700);assert_fallback(page)
+            page.goto(origin+'/download');page.wait_for_function('()=>window.releaseFetches.length===1')
+            page.wait_for_timeout(8300);assert_fallback(page)
             for route in pending:
                 try:route.abort()
                 except Error:pass
-            pending.clear();page.unroute('**/download/release.json');results.append({'timeout_ms':2500,'fallback':312001})
+            pending.clear();page.unroute('**/download/release.json');results.append({'timeout_ms':8000,'fallback':312001})
             page.route('**/account/api/config',lambda route:route.fulfill(status=503,body='unavailable'))
             page.goto(origin+'/privacy');expect(page.locator('.help-document')).to_be_visible();assert page.evaluate('window.releaseFetches.length')==0
             assert not errors,errors;assert not external,external;results.append({'external_requests':external});results.append({'config_outage':'public privacy loads; no manifest request outside download','page_errors':errors})

@@ -39,6 +39,11 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm test
+      - name: Verify all supported interface translations
+        run: |
+          python3 tool/build_web_translations.py --translations-dir assets/web-locales --require-complete --check
+          python3 -m unittest tool.test_web_translations -v
+          node --expose-internals tool/test_web_request_locale.cjs
       - run: npm audit --audit-level=high
       - uses: actions/setup-python@v5
         with:
@@ -103,6 +108,14 @@ jobs:
           python -m tool.check_workspace_switch_focus
           python -m tool.check_focus_auth
           python -m tool.check_import_simple
+      - name: November recorded feedback and private referrals
+        run: |
+          python -m tool.check_web_localization_browser
+          python -m tool.check_finance_filter_fit
+          python -m tool.check_finance_filter_fit --engine webkit
+          python -m tool.check_layout_referral_integration
+          python -m tool.check_task_reminders_browser
+          python -m tool.check_mobile_today_intensity
       - name: Align Firefox home ownership inside the test container
         run: |
           if [ "$HOME" = /github/home ] && [ "$(stat -c %u "$HOME")" != "$(id -u)" ]; then

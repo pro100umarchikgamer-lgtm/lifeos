@@ -95,7 +95,8 @@ class Inbox:
                 params + (stamp, stamp, last_id, limit + 1)).fetchall()
             unread = db.execute(retained + 'SELECT COUNT(*) AS n FROM retained WHERE active=1 AND read_at=0 AND dismissed_at=0', params).fetchone()['n']
         page = rows[:limit]
-        return {'notifications': [dict({field: row[field] for field in PUBLIC_FIELDS}, active=bool(row['active'])) for row in page],
+        from .notification_copy import inbox_template
+        return {'notifications': [dict({field: row[field] for field in PUBLIC_FIELDS}, active=bool(row['active']),**inbox_template(row)) for row in page],
             'unread_count': unread,
             'next_before': str(page[-1]['created_at']) + ':' + page[-1]['id'] if len(rows) > limit else None,
             'budget_evaluation': evaluation, 'retention_days': retention.HISTORY_DAYS,

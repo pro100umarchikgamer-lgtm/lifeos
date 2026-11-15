@@ -29,6 +29,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from .service import Failure, canonical, identifier, require, token_hash
+from .task_reminders import TaskReminders
 
 PROVIDERS = frozenset({'fcm.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com'})
 LEADS = frozenset({5, 15, 30, 60})
@@ -179,6 +180,12 @@ class WebPush:
 
     def subscribe(self, actor, body):
         subscription = validate_subscription(body.get('subscription'))
+        from .notification_copy import supported_locale
+        locale=body.get('locale','ru')
+        require(supported_locale(locale),'push_preferences_invalid')
+        # Refreshing a language replaces only encrypted preference/key material.
+        # It does not renew opt-in or discard pending reminders.
+        subscription['locale']=locale
         lead, priority, timezone = body.get('lead_minutes', 15), body.get('priority', 'high'), body.get('timezone')
         require(type(lead) is int and lead in LEADS and priority in ('high', 'normal'), 'push_preferences_invalid')
         require(isinstance(timezone, str) and len(timezone) <= 100, 'push_timezone_invalid')
@@ -222,6 +229,8 @@ class WebPush:
         return self.status(actor)
 
     def _enqueue(self, db, sub, now, event=None, occurrence=None, day=None):
+        from .notification_copy import message,subscription_locale
+        task = event is not None and event['kind'] == 'task'
         previous = db.execute('SELECT * FROM web_push_deliveries WHERE subscription_id=? AND event_id=? AND occurrence_at=?', (sub['id'], event['id'], occurrence)).fetchone() if event else None
         if previous:
             refresh = (previous['state'] == 'cancelled' and previous['error_code'] == 'settings_changed' or
@@ -230,11 +239,11 @@ class WebPush:
             if not refresh: return {'delivery_id':previous['id'], 'state':previous['state']}
         did, receipt = previous['id'] if previous else str(uuid.uuid4()), secrets.token_urlsafe(32)
         payload = {'v':1, 'delivery_id':did, 'subscription_id':sub['id'], 'receipt_token':receipt, 'recipient_user_id':sub['user_id'],
-                   'title':'ULADIM', 'body':'Напоминание о событии календаря' if event else 'Проверка уведомлений',
-                   'url':'/app?notification=calendar&workspace=' + event['workspace_id'] + '&day=' + day if event else '/app',
+                   'title':'ULADIM', 'body':message('system_task_reminder' if task else 'system_calendar_reminder' if event else 'system_test_notification',subscription_locale(self.backend,sub)),
+                   'url':TaskReminders.link(event) if task else '/app?notification=calendar&workspace=' + event['workspace_id'] + '&day=' + day if event else '/app',
                    'tag':'uladim-' + did, 'priority':sub['priority'], 'sent_at':now * 1000}
         encrypted = self._encrypt(canonical(payload).encode())
-        expiry = min(now + 3600, occurrence - (0 if json.loads(event['schedule'])['allDay'] else sub['lead_minutes'] * 60) + 3600) if event else now + 3600
+        expiry = min(now + 3600, occurrence - (0 if task or json.loads(event['schedule'])['allDay'] else sub['lead_minutes'] * 60) + 3600) if event else now + 3600
         if previous:
             # Recheck a changed event without losing its occurrence. An accepted
             # or displayed occurrence is never replayed after an ordinary edit.
@@ -242,7 +251,10 @@ class WebPush:
         else:
             db.execute("INSERT INTO web_push_deliveries(id,subscription_id,event_id,event_revision,occurrence_at,created_at,state,attempts,next_attempt,leased_until,expires_at,payload,receipt_hash) VALUES(?,?,?,?,?,?,'queued',0,?,0,?,?,?) ON CONFLICT(subscription_id,event_id,occurrence_at) DO NOTHING", (did, sub['id'], event['id'] if event else None, event['revision'] if event else None, occurrence, now, now, expiry, encrypted, token_hash(receipt)))
         from .inbox import Inbox
-        Inbox(self.backend).append_delivery(db, sub, now, did, event, occurrence, day)
+        if task:
+            TaskReminders(self.backend).append_delivery(db, sub, now, event, occurrence)
+        else:
+            Inbox(self.backend).append_delivery(db, sub, now, did, event, occurrence, day)
         return {'delivery_id':did, 'state':'queued'}
 
     def test(self, actor):
@@ -289,7 +301,7 @@ class WebPush:
                     # its new due times instead of continuing an old page.
                     self.event_cursors.pop(sub['id'], None)
                     self.scan_windows[sub['id']] = window = (now, signature)
-                rows = db.execute("SELECT r.*,e.schedule FROM records r JOIN events e ON e.id=r.id JOIN memberships m ON m.workspace_id=r.workspace_id AND m.user_id=? AND m.active=1 JOIN workspaces w ON w.id=r.workspace_id AND w.dissolved=0 WHERE r.kind='event' AND r.deleted=0 AND r.id>? ORDER BY r.id LIMIT 501", (sub['user_id'], self.event_cursors.get(sub['id'], ''))).fetchall()
+                rows = db.execute("SELECT r.*,COALESCE(e.schedule,tr.schedule) AS schedule,tr.revision AS task_reminder_revision FROM records r LEFT JOIN events e ON e.id=r.id AND r.kind='event' LEFT JOIN task_reminders tr ON tr.task_id=r.id AND r.kind='task' AND tr.reminder=1 LEFT JOIN tasks t ON t.id=r.id JOIN memberships m ON m.workspace_id=r.workspace_id AND m.user_id=? AND m.active=1 JOIN workspaces w ON w.id=r.workspace_id AND w.dissolved=0 WHERE (r.kind='event' OR (r.kind='task' AND tr.schedule IS NOT NULL AND t.completed=0)) AND r.deleted=0 AND r.id>? ORDER BY r.id LIMIT 501", (sub['user_id'], self.event_cursors.get(sub['id'], ''))).fetchall()
                 through = window[0]
                 lower = max(now - 3600, min(sub['scanned_until'], now - 300), sub['enabled_at'])
                 if len(rows) > 500: self.event_cursors[sub['id']] = rows[499]['id']
@@ -301,7 +313,10 @@ class WebPush:
                         if wid not in spaces: spaces[wid] = self.backend._workspace(db, actor, wid)
                         if not self.backend._readable(db, actor, spaces[wid], row): continue
                         schedule = json.loads(row['schedule'])
-                        lead = 0 if schedule['allDay'] else sub['lead_minutes'] * 60
+                        task = row['kind'] == 'task'
+                        lead = 0 if task or schedule['allDay'] else sub['lead_minutes'] * 60
+                        if task:
+                            row = dict(row, revision=row['task_reminder_revision'])
                         for at, day in occurrences(schedule, sub['timezone'], lower + lead, through + lead):
                             # Enabling notifications never triggers old reminders.
                             if at - lead < sub['enabled_at']: continue
@@ -324,7 +339,11 @@ class WebPush:
         require(sub['enabled'], 'disabled', 403)
         if job['event_id']:
             row = db.execute('SELECT * FROM records WHERE id=?', (job['event_id'],)).fetchone()
-            require(row and not row['deleted'] and row['revision'] == job['event_revision'], 'event_changed', 403)
+            require(row and not row['deleted'], 'event_changed', 403)
+            if row['kind'] == 'task':
+                TaskReminders(self.backend).authorize_delivery(db, actor, row, job)
+                return
+            require(row['kind'] == 'event' and row['revision'] == job['event_revision'], 'event_changed', 403)
             space = self.backend._workspace(db, actor, row['workspace_id'])
             require(self.backend._readable(db, actor, space, row), 'event_forbidden', 403)
 

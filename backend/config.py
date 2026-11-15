@@ -23,15 +23,21 @@ class Settings:
     control_origin: str = 'https://control.getuladim.space'
     google_client_id: str = ''
     google_client_secret: str = ''
+    google_android_client_ids: tuple[str, ...] = ()
+    native_download_dir: str = ''
     registration_mode: str = 'closed'
     registration_allowlist: tuple[str, ...] = ()
     account_erasure_ledger: str = ''
     account_erasure_ack_socket: str = ''
+    record_erasure_ledger: str = ''
+    record_erasure_ack_socket: str = ''
+    record_erasure_required: bool = False
 
     @classmethod
     def load(cls, env=None):
         e = os.environ if env is None else env
         if e.get('REQUIRE_HTTPS','true') not in ('true','false'):raise ValueError('Invalid REQUIRE_HTTPS')
+        if e.get('RECORD_ERASURE_REQUIRED','false') not in ('true','false'):raise ValueError('Invalid RECORD_ERASURE_REQUIRED')
         def required(name):
             value = e.get(name, '')
             if not value.strip(): raise ValueError('Missing configuration: '+name)
@@ -46,9 +52,14 @@ class Settings:
             control_origin=e.get('CONTROL_ORIGIN','https://control.getuladim.space'),
             google_client_id=e.get('GOOGLE_OAUTH_CLIENT_ID',''),
             google_client_secret=e.get('GOOGLE_OAUTH_CLIENT_SECRET',''),
+            google_android_client_ids=tuple(v.strip() for v in e.get('GOOGLE_OAUTH_ANDROID_CLIENT_IDS','').split(',') if v.strip()),
+            native_download_dir=e.get('NATIVE_DOWNLOAD_DIR',''),
             registration_mode=e.get('REGISTRATION_MODE','closed'),
             account_erasure_ledger=e.get('ACCOUNT_ERASURE_LEDGER',''),
             account_erasure_ack_socket=e.get('ACCOUNT_ERASURE_ACK_SOCKET',''),
+            record_erasure_ledger=e.get('RECORD_ERASURE_LEDGER',''),
+            record_erasure_ack_socket=e.get('RECORD_ERASURE_ACK_SOCKET',''),
+            record_erasure_required=e.get('RECORD_ERASURE_REQUIRED','false')=='true',
             registration_allowlist=tuple(v.strip().casefold() for v in e.get('REGISTRATION_ALLOWLIST','').split(',') if v.strip()))
         from urllib.parse import urlsplit
         for origin in (value.site_origin,value.control_origin):
@@ -60,6 +71,23 @@ class Settings:
             raise ValueError('Invalid GOOGLE_OAUTH_CLIENT_ID')
         if value.google_client_secret and not value.google_client_id:
             raise ValueError('Google OAuth secret requires client ID')
+        if (len(value.google_android_client_ids) > 8
+                or len(set(value.google_android_client_ids)) != len(value.google_android_client_ids)
+                or any(not re.fullmatch(r'[a-zA-Z0-9_-]{8,200}\.apps\.googleusercontent\.com', v) for v in value.google_android_client_ids)):
+            raise ValueError('GOOGLE_OAUTH_ANDROID_CLIENT_IDS requires up to eight exact client IDs')
+        if value.google_android_client_ids and (not value.google_client_id or value.google_client_id in value.google_android_client_ids):
+            raise ValueError('Android OAuth clients require a distinct Web client ID')
+        if value.native_download_dir:
+            from .native_download import safe_root
+            if not safe_root(value.native_download_dir): raise ValueError('NATIVE_DOWNLOAD_DIR requires a normalized absolute cache directory')
+        if bool(value.record_erasure_ledger) != bool(value.record_erasure_ack_socket) or value.record_erasure_required and not value.record_erasure_ledger:
+            raise ValueError('Record erasure requires its independent journal and root ACK socket')
+        if value.record_erasure_ledger:
+            from .native_download import safe_root
+            if (not safe_root(value.record_erasure_ledger) or not safe_root(value.record_erasure_ack_socket)
+                    or value.record_erasure_ledger==value.account_erasure_ledger
+                    or value.record_erasure_ack_socket==value.account_erasure_ack_socket):
+                raise ValueError('Record erasure paths must be separate from account erasure')
         if value.registration_mode not in ('closed','open'): raise ValueError('Invalid REGISTRATION_MODE')
         if any(len(v)>254 or not re.fullmatch(r'[^\s@,]+@[^\s@,]+\.[^\s@,]+',v) or '*' in v for v in value.registration_allowlist):
             raise ValueError('REGISTRATION_ALLOWLIST requires exact email addresses')

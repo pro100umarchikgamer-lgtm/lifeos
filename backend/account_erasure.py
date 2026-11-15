@@ -27,6 +27,13 @@ def mail_subject(db, email, code, purpose):
 
 def erase_in(backend, db, uid, now):
     """Erase one subject in the caller's serialized transaction; safe to repeat."""
+    from .referrals import erase_in as erase_referrals
+    erase_referrals(db, uid)
+    # Confirmed record UUID suppression survives account cleanup; pending owner
+    # consent metadata does not need to survive this whole-account erasure.
+    db.execute('DELETE FROM record_erasure_intents WHERE user_id=?', (uid,))
+    db.execute('DELETE FROM user_layout_preferences WHERE user_id=?', (uid,))
+    db.execute('DELETE FROM task_reminders WHERE task_id IN (SELECT id FROM records WHERE owner_id=?)', (uid,))
     user = db.execute('SELECT email FROM users WHERE id=?', (uid,)).fetchone()
     db.execute('INSERT INTO account_erasure_ledger VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET erased_at=excluded.erased_at', (uid, now))
     if user is None:

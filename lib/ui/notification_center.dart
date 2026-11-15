@@ -243,13 +243,13 @@ class _InboxTile extends StatelessWidget {
                               fontWeight: FontWeight.w700))),
               ]),
               const SizedBox(height: 10),
-              Text(message.title,
+              Text(message.localizedTitle(c.pack.t),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: fresh ? FontWeight.w700 : FontWeight.w500)),
               const SizedBox(height: 6),
-              Text(message.body,
+              Text(message.localizedBody(c.pack.t),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium
@@ -359,7 +359,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
                                   color:
                                       theme.colorScheme.onPrimaryContainer))),
                       const SizedBox(height: 24),
-                      Text(m.title,
+                      Text(m.localizedTitle(c.pack.t),
                           style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w700, height: 1.2)),
                       const SizedBox(height: 12),
@@ -372,7 +372,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
                             child: Text(c.pack.t('inbox_status_${m.status}'),
                                 style: theme.textTheme.labelMedium)),
                       const SizedBox(height: 24),
-                      SelectableText(m.body,
+                      SelectableText(m.localizedBody(c.pack.t),
                           style:
                               theme.textTheme.bodyLarge?.copyWith(height: 1.6)),
                       if (m.link != null)
@@ -467,7 +467,7 @@ class _AnnouncementBannerState extends State<AnnouncementBanner> {
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(message.title,
+                                  Text(message.localizedTitle(c.pack.t),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: Theme.of(context)

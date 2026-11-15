@@ -1,0 +1,26 @@
+# Normal Compose override. Merge AFTER the protected existing base/database/edge/
+# backend overrides. This file contains no protected environment values.
+# Existing account suppression, volumes, proxy and database settings are inherited.
+x-feedback-build: &feedback-build
+  context: https://github.com/pro100umarchikgamer-lgtm/lifeos.git#${ULADIM_FEEDBACK_SOURCE:?Set the accepted full source SHA}
+  dockerfile: backend/Dockerfile
+  labels:
+    org.opencontainers.image.revision: ${ULADIM_FEEDBACK_SOURCE:?Set the accepted full source SHA}
+x-feedback-environment: &feedback-environment
+  GOOGLE_OAUTH_ANDROID_CLIENT_IDS: 401575159167-5fgt1fjpsab43deo7qkb1o46fr07c6r4.apps.googleusercontent.com
+services:
+  api:
+    image: uladim-backend:${ULADIM_FEEDBACK_SOURCE:?Set the accepted full source SHA}
+    pull_policy: build
+    build: *feedback-build
+    environment: *feedback-environment
+  mail:
+    image: uladim-backend:${ULADIM_FEEDBACK_SOURCE:?Set the accepted full source SHA}
+    pull_policy: build
+    build: *feedback-build
+    environment: *feedback-environment
+  migrate:
+    image: uladim-backend:${ULADIM_FEEDBACK_SOURCE:?Set the accepted full source SHA}
+    pull_policy: build
+    build: *feedback-build
+    environment: *feedback-environment

@@ -3,3 +3,18 @@
 @media(max-width:480px){.recovery-tools{align-items:stretch}.recovery-filters{max-width:100%;min-width:0;flex:1}.recovery-filters button{flex:1;min-width:0;font-size:.8125rem!important;padding:8px!important;white-space:normal}.recovery-record-detail dl,.recovery-request-card dl{grid-template-columns:1fr;gap:4px}.recovery-record-detail dd,.recovery-request-card dd{margin-bottom:10px}.recovery-consent{font-size:.875rem}.recovery-record-row{gap:12px}}
 .recovery-shopping-preview{max-height:40dvh;overflow-y:auto;padding-left:22px;line-height:1.7}
 .recovery-record-source{margin-top:20px}.recovery-record-source summary{min-height:44px;cursor:pointer;font-size:.875rem}.recovery-record-source pre{max-height:45dvh;overflow:auto;font-size:.75rem;line-height:1.6;padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+
+/* Keep the explanation readable without competing with the deleted records. */
+.recovery-intro{max-width:68ch;line-height:1.55;margin:8px 0}
+.recovery-privacy{max-width:76ch;line-height:1.55;margin:8px 0 16px;color:var(--muted)}
+.recovery-record-source pre{max-width:100%;box-sizing:border-box}
+/* Irreversible deletion stays folded until the owner chooses to review it. */
+.record-erasure{border-top:1px solid var(--line);margin-top:24px;padding-top:16px;min-width:0}
+.record-erasure>summary{color:var(--expense);cursor:pointer;min-height:44px;line-height:1.5;padding:10px 0;box-sizing:border-box}
+.record-erasure-body{display:grid;gap:12px;min-width:0}
+.record-erasure-body form{display:flex;flex-wrap:wrap;gap:12px;min-width:0}
+.record-erasure-consent{display:flex;align-items:flex-start;gap:10px;width:100%;margin:0;min-width:0;line-height:1.5}
+.record-erasure-consent input{flex:0 0 20px;width:20px;height:20px;min-height:20px;margin:2px 0 0;padding:0}
+.record-erasure-consent span{min-width:0;overflow-wrap:anywhere}
+.record-erasure-body button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.record-erasure-status{line-height:1.6}

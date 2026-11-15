@@ -1,0 +1,20 @@
+.referral-section{display:grid;gap:20px;min-width:0}
+.referral-section .referral-card{min-width:0;padding:24px;border:1px solid var(--ux-border,var(--border));border-radius:14px;background:var(--ux-surface,var(--surface))}
+.referral-section h2{margin:0 0 12px;font-size:18px}
+.referral-section .referral-count{display:block;font-size:34px;line-height:1.2;font-variant-numeric:tabular-nums;margin:10px 0 18px}
+.referral-count-label,.referral-status{font-size:13px;line-height:1.5}
+.referral-section input,.referral-section select{box-sizing:border-box;max-width:100%;min-width:0}
+.referral-card>button{margin:10px 10px 0 0}
+.referral-people{list-style:none;padding:0;margin:0}
+.referral-people>li{padding:12px 0;border-bottom:1px solid var(--ux-border,var(--border));overflow-wrap:anywhere}
+.referral-people>li:last-child{border:0}
+.referral-section form{display:grid;gap:8px}
+.referral-section form label{margin-top:8px;font-size:13px}
+.referral-section form button{margin-top:12px;justify-self:start}
+.referral-admin-counts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.referral-admin .referral-filters{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,1fr)) auto;align-items:center;gap:12px}
+.referral-admin .referral-filters button{margin:0}
+.referral-edges{display:grid;gap:14px;margin:20px 0}
+.referral-edge-people{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.referral-edge-people button{white-space:normal;overflow-wrap:anywhere;text-align:start}
+@media(max-width:760px){.referral-admin-counts{grid-template-columns:repeat(2,minmax(0,1fr))}.referral-admin .referral-filters{grid-template-columns:minmax(0,1fr)}.referral-section .referral-card{padding:18px}.referral-edge-people{display:grid;grid-template-columns:minmax(0,1fr)}.referral-edge-people>span{display:none}}

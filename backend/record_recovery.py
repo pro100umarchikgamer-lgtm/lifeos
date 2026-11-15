@@ -42,6 +42,8 @@ class RecordRecovery:
         return token_hash(canonical({key:value[key] for key in ('id','workspace_id','owner_id','kind','visibility','audience','revision','data','progress') if key in value}))
 
     def _validate(self, db, actor, space, row, value):
+        from .record_erasure import block_in
+        block_in(db,row['id'])
         require(self.backend._editable(db,actor,space,row),'record_forbidden',403)
         data=value['data'];kind=row['kind'];audience=value['audience']
         if space['role']=='child':
@@ -76,6 +78,10 @@ class RecordRecovery:
     def trash(self, actor, wid, before=None, record_id=None):
         stamp,last_id=self._cursor(before)
         with self.backend.connect() as db:
+            self._account(db,actor);self._space(db,actor,wid)
+        from .record_erasure import RecordErasure
+        permanent_delete_available=RecordErasure(self.backend).available()
+        with self.backend.connect() as db:
             self._account(db,actor);space=self._space(db,actor,wid)
             if record_id is not None:
                 row, unused_space = self._owner_record(db, actor, record_id)
@@ -91,7 +97,8 @@ class RecordRecovery:
                 try:self._validate(db,actor,space,row,value)
                 except Failure as failure:error=failure.code
                 page.append(dict(value,consent_hash=self._hash(value),restorable=error is None,restore_error=error))
-        return {'records':page,'next_before':str(rows[49]['seq'])+':'+rows[49]['id'] if len(rows)>50 else None}
+        return {'records':page,'next_before':str(rows[49]['seq'])+':'+rows[49]['id'] if len(rows)>50 else None,
+                'permanent_delete_available':permanent_delete_available}
 
     def request(self, actor, body):
         rid=identifier(body.get('record_id'));revision=body.get('revision');digest=body.get('consent_hash')

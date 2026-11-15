@@ -32,6 +32,31 @@ class InboxMessage {
   String get title => data['title'] as String? ?? 'ULADIM';
   String get body => data['body'] as String? ?? '';
   String get kind => data['kind'] as String? ?? 'reminder';
+  String localizedTitle(String Function(String) translate) =>
+      !local && kind == 'budget' && data['title_key'] == 'module_budgets'
+          ? translate('module_budgets')
+          : title;
+  String localizedBody(String Function(String) translate) {
+    if (local || kind == 'announcement') return body;
+    final key = data['message_key'];
+    if (kind == 'reminder' &&
+        (key == 'system_task_reminder' || key == 'system_calendar_reminder')) {
+      return translate(key as String);
+    }
+    if (kind == 'test' && key == 'system_test_notification_queued') {
+      return translate(key as String);
+    }
+    if (kind == 'budget' && key == 'system_budget_threshold') {
+      final args = data['message_args'];
+      final threshold = args is Map ? args['threshold'] : null;
+      if (threshold is int && threshold >= 1 && threshold <= 100) {
+        return translate('system_budget_threshold')
+            .replaceAll('{threshold}', '$threshold');
+      }
+    }
+    return body;
+  }
+
   String get presentation => data['presentation'] as String? ?? 'inbox';
   String? get entryId => data['entry_id'] as String?;
   int number(String key) => (data[key] as num?)?.toInt() ?? 0;

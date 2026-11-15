@@ -10,7 +10,8 @@ from .service import Backend, Failure, token_hash
 MAX_BODY=2*1024*1024
 
 def dispatch(backend,method,path,body,auth):
-    split=urllib.parse.urlsplit(path);route=split.path;query=urllib.parse.parse_qs(split.query)
+    split=urllib.parse.urlsplit(path);route=split.path
+    query=urllib.parse.parse_qs(split.query,keep_blank_values=route.startswith('/v1/referrals') or route=='/v1/task-reminders')
     if route=='/v1/auth/signup' and method=='POST':
         from .account_lifecycle import AccountLifecycle
         result=AccountLifecycle(backend).signup(body.get('email'),body.get('password'))
@@ -38,6 +39,27 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/account/features' and method=='GET':
             from .control import Control
             result={'flags':Control(backend).flags(actor['id'])}
+        elif route.startswith('/v1/referrals'):
+            from .referrals import Referrals
+            referrals=Referrals(backend)
+            if route=='/v1/referrals' and method=='GET':result=referrals.summary(actor,query)
+            else:
+                if query:raise Failure('invalid_fields')
+                if route=='/v1/referrals/alias' and method=='GET':result=referrals.alias(actor)
+                elif route=='/v1/referrals/code' and method=='POST':result=referrals.create_code(actor,body)
+                elif route=='/v1/referrals/claim' and method=='POST':result=referrals.claim(actor,body)
+                elif route=='/v1/referrals/alias' and method=='POST':result=referrals.alias(actor,body)
+                else:raise Failure('not_found',404)
+        elif route=='/v1/task-reminders':
+            from .task_reminders import TaskReminders
+            reminders=TaskReminders(backend)
+            if method=='GET':
+                if not set(query)<= {'workspace','task_id'} or any(len(v)!=1 for v in query.values()) or 'workspace' not in query:raise Failure('invalid_fields')
+                result=reminders.get(actor,query['workspace'][0],query['task_id'][0]) if 'task_id' in query else reminders.list(actor,query['workspace'][0])
+            elif method=='POST':
+                if query:raise Failure('invalid_fields')
+                result=reminders.save(actor,body)
+            else:raise Failure('not_found',404)
         elif route.startswith('/v1/account/inbox'):
             from .inbox import Inbox
             inbox = Inbox(backend)
@@ -120,7 +142,9 @@ def handler(backend):
                         return value
                     body=json.loads(self.rfile.read(length),object_pairs_hook=unique)
                     if not isinstance(body,dict):raise Failure('invalid_input')
-                result=dispatch(backend,method,self.path,body,self.headers.get('Authorization',''))
+                from .request_locale import request_locale
+                with request_locale(self.headers.get('Accept-Language','')):
+                    result=dispatch(backend,method,self.path,body,self.headers.get('Authorization',''))
                 self.respond(200,result)
             except Failure as error:self.respond(error.status,{'error':error.code})
             except (ValueError,TypeError,KeyError):self.respond(400,{'error':'invalid_input'})

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/language_pack.dart';
 
 /// Values stay in their field until the user opens a bounded, searchable picker.
 class LifeSelect<T> extends StatelessWidget {
@@ -187,9 +188,8 @@ class _ChoiceDialogState<T> extends State<_ChoiceDialog<T>> {
                       child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Text(
-                        Localizations.localeOf(context).languageCode == 'ru'
-                            ? 'Ничего не найдено'
-                            : 'No results',
+                        LanguagePackScope.maybeOf(context)?.t('search_empty') ??
+                            'No matching records',
                         style: Theme.of(context)
                             .textTheme
                             .bodyMedium

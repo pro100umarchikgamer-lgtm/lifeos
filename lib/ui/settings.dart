@@ -47,7 +47,8 @@ class _PersonalSettingsState extends State<PersonalSettings> {
 
   Future<void> legalLink(String path) async {
     try {
-      await c.native.openExternalLink(publicSitePage(path));
+      await c.native.openExternalLink(
+          publicSitePage(path).replace(queryParameters: {'lang': c.pack.tag}));
     } catch (_) {
       message('inbox_link_failed');
     }
@@ -592,13 +593,13 @@ class _PersonalSettingsState extends State<PersonalSettings> {
               SettingsGroup(children: [
                 SettingsRow(
                     key: const Key('help_center'),
-                    title: helpCenterTitle(c.pack.tag),
+                    title: helpCenterTitle(c.pack),
                     icon: Icons.help_outline_rounded,
                     onTap: () => Navigator.push<void>(
                         context,
                         MaterialPageRoute(
                             builder: (_) => HelpCenterScreen(
-                                languageTag: c.pack.tag,
+                                pack: c.pack,
                                 onOpenLink: c.native.openExternalLink)))),
                 SettingsRow(
                     key: const Key('legal_privacy'),

@@ -128,11 +128,13 @@ class PostgresBackend(Backend):
     def _audit(self, db, wid, actor, op, kind, rid=None):
         return db.execute('INSERT INTO changes(workspace_id,record_id,actor_id,operation_id,kind) VALUES(?,?,?,?,?) RETURNING seq',
             (wid,rid,actor['id'],op,kind)).fetchone()['seq']
-    def _deliver(self, db, email, code, purpose):
+    def _deliver(self, db, email, code, purpose, locale=None):
         import uuid
         from .service import canonical
+        from .request_locale import current_locale, normalize_locale
         now = int(self.clock())
-        payload = self.cipher.encrypt(canonical({'email':email,'code':code,'purpose':purpose}).encode())
+        selected = current_locale() if locale is None else normalize_locale(locale)
+        payload = self.cipher.encrypt(canonical({'email':email,'code':code,'purpose':purpose,'locale':selected}).encode())
         from .account_erasure import mail_subject
         user=mail_subject(db,email,code,purpose)
         db.execute('INSERT INTO email_jobs(id,payload,expires_at,next_attempt,user_id) VALUES(?,?,?,?,?)',

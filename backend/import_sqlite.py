@@ -9,6 +9,8 @@ OPTIONAL_TABLES={'owner_setup','early_access','early_access_limits','account_mfa
 TABLES=re.findall(r'CREATE TABLE IF NOT EXISTS (\w+)\s*\(',Path(__file__).with_name('schema.sql').read_text())
 OPTIONAL_TABLES |= {'record_recovery_requests', 'control_handoffs', 'control_admissions'}
 OPTIONAL_TABLES |= {'account_reauth_grants', 'account_erasure_ledger', 'erased_financial_stubs', 'control_audit_notes'}
+OPTIONAL_TABLES |= {'referral_codes','referral_aliases','referral_attributions','task_reminders','user_layout_preferences'}
+OPTIONAL_TABLES |= {'record_erasure_ledger','record_erasure_intents'}
 OPTIONAL_TABLES |= {'web_push_keys','web_push_subscriptions','web_push_deliveries'}
 OPTIONAL_TABLES |= {'inbox_notifications','announcements','announcement_recipients','announcement_states',
                     'inbox_settings','budget_inbox_notifications','budget_inbox_sources'}
@@ -45,6 +47,11 @@ def main():
     backend=PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()))
     try:
         counts=import_server(backend,args.source,args.apply)
+        if args.apply:
+            from .account_erasure import initialize
+            from .record_erasure import initialize as initialize_record_erasure
+            initialize(backend,settings.account_erasure_ledger,settings.account_erasure_ack_socket)
+            initialize_record_erasure(backend,settings.record_erasure_ledger,settings.record_erasure_ack_socket,settings.record_erasure_required)
         print(('Imported atomically: ' if args.apply else 'Read-only preview: ')+str(counts))
     finally:backend.close()
 

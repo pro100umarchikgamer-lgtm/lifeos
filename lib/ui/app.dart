@@ -21,6 +21,7 @@ import 'family.dart';
 import 'family_dashboard.dart';
 import 'global_search.dart';
 import 'notification_center.dart';
+import 'referrals.dart';
 
 class LifeOSApp extends StatefulWidget {
   const LifeOSApp({super.key, required this.controller, this.builder});
@@ -79,9 +80,12 @@ class _LifeOSAppState extends State<LifeOSApp> {
             debugShowCheckedModeBanner: false,
             scaffoldMessengerKey: notices.messengerKey,
             navigatorObservers: [navigationObserver],
-            builder: (context, child) => LifeNoticeScope(
-              notices: notices,
-              child: widget.builder?.call(context, child) ?? child!,
+            builder: (context, child) => LanguagePackScope(
+              pack: controller.pack,
+              child: LifeNoticeScope(
+                notices: notices,
+                child: widget.builder?.call(context, child) ?? child!,
+              ),
             ),
             themeAnimationDuration: WidgetsBinding.instance.platformDispatcher
                     .accessibilityFeatures.disableAnimations
@@ -1719,6 +1723,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 MaterialPageRoute(
                   builder: (_) =>
                       FamilyPage(controller: c.family!, pack: c.pack),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          LifeCard(
+            child: ListTile(
+              key: const Key('native_referrals_entry'),
+              leading: const Icon(Icons.person_add_alt_outlined),
+              title: Text(referralText(c.pack, 'title')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ReferralsPage(controller: c.family!, pack: c.pack),
                 ),
               ),
             ),

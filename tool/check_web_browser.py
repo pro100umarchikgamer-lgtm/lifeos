@@ -61,10 +61,10 @@ def main():
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             with sync_playwright() as p:
-                browser=p.chromium.launch(proxy={'server':os.environ['HTTPS_PROXY'],'bypass':'.uladim.test'} if os.environ.get('HTTPS_PROXY') else None,args=['--host-resolver-rules=MAP *.uladim.test 127.0.0.1','--proxy-bypass-list=*.uladim.test','--ignore-certificate-errors-spki-list='+pin])
+                browser=p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM','/usr/bin/chromium'),proxy={'server':os.environ['HTTPS_PROXY'],'bypass':'.uladim.test'} if os.environ.get('HTTPS_PROXY') else None,args=['--host-resolver-rules=MAP *.uladim.test 127.0.0.1','--proxy-bypass-list=*.uladim.test','--ignore-certificate-errors-spki-list='+pin])
                 for theme in ('light','dark'):
                     context=browser.new_context(viewport={'width':390,'height':844},color_scheme=theme)
-                    page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                    page=context.new_page();errors=[];page.on('pageerror',lambda e:(errors.append(str(e)),print('SYNTHETIC_PAGE_ERROR',str(e),flush=True)))
                     for name,path in (('home','/'),('plans','/plans'),('privacy','/privacy'),('account_login','/account')):
                         page.goto(site+path);expect(page.locator('h1')).to_be_visible()
                         check_header_layout(page)

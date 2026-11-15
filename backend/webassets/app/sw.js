@@ -1,6 +1,6 @@
 'use strict';
-const CACHE='uladim-interface-v54-account-confirmation';
-const FILES=['/app/assets/account-deletion.js','/app/assets/account-deletion.css','/app/assets/recovery.js','/app/assets/recovery.css','/app/assets/inbox.js','/app/assets/inbox.css','/app/assets/domain.js','/app/assets/auth-texture.webp','/assets/design.css','/app/assets/money.js','/app/assets/statement-formats.js','/app/assets/import.js','/app/assets/personal-import.js','/app/assets/statement-xlsx.js','/app/assets/statement-worker.js','/app/assets/app.js','/app/assets/app.css','/app/assets/locales.json','/app/assets/offline.html','/app/assets/offline.js','/app/assets/icon-192.png','/app/assets/icon-512.png','/app/assets/apple-touch-icon.png'];
+const CACHE='uladim-interface-v58-reviewed-localization';
+const FILES=['/app/assets/record-erasure.js','/app/assets/i18n.js','/app/assets/translations.json','/app/assets/layout-order.js','/app/assets/referrals.js','/app/assets/referrals.css','/app/assets/task-reminders.js','/app/assets/password-policy.js','/app/assets/appearance-intensity.js','/app/assets/account-deletion.js','/app/assets/account-deletion.css','/app/assets/recovery.js','/app/assets/recovery.css','/app/assets/inbox.js','/app/assets/inbox.css','/app/assets/domain.js','/app/assets/auth-texture.webp','/assets/design.css','/app/assets/money.js','/app/assets/statement-formats.js','/app/assets/import.js','/app/assets/personal-import.js','/app/assets/statement-xlsx.js','/app/assets/statement-worker.js','/app/assets/app.js','/app/assets/app.css','/app/assets/locales.json','/app/assets/offline.html','/app/assets/offline.js','/app/assets/icon-192.png','/app/assets/icon-512.png','/app/assets/apple-touch-icon.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all([...keys.filter(key=>key.startsWith('uladim-interface-')&&key!==CACHE).map(key=>caches.delete(key)),self.clients.claim()]))));
 self.addEventListener('fetch',event=>{
@@ -25,7 +25,13 @@ function notificationDestination(value){
     const url=new URL(value,self.location.origin);
     if(url.origin!==self.location.origin||!['/app','/app/'].includes(url.pathname)||url.hash||url.username||url.password)return null;
     if(!url.search)return '/app';
-    if([...url.searchParams.keys()].some(key=>!['notification','workspace','day'].includes(key))||[...url.searchParams.keys()].length!==3)return null;
+    const keys=[...url.searchParams.keys()];
+    if(keys.length!==3||new Set(keys).size!==3||!PUSH_UUID.test(url.searchParams.get('workspace')||''))return null;
+    if(url.searchParams.get('notification')==='task'){
+      if(keys.some(key=>!['notification','workspace','task'].includes(key))||!PUSH_UUID.test(url.searchParams.get('task')||''))return null;
+      return '/app'+url.search;
+    }
+    if(keys.some(key=>!['notification','workspace','day'].includes(key)))return null;
     const day=url.searchParams.get('day');
     if(url.searchParams.get('notification')!=='calendar'||!PUSH_UUID.test(url.searchParams.get('workspace')||'')||!/^\d{4}-\d{2}-\d{2}$/.test(day||'')||new Date(day+'T12:00:00Z').toISOString().slice(0,10)!==day)return null;
     return '/app'+url.search;

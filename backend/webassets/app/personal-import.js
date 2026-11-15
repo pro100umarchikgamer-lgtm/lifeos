@@ -205,7 +205,7 @@ export async function previewPersonalFiles(files) {
   return rows.length?rows:[{issue:'invalid_file'}];
 }
 
-const COPY = {
+const COPY = globalThis.UladimI18n.copy("grp_4fb190f7ec06",{
   ru: {
     title:'Импорт и синхронизация', oneTime:'Разовый импорт', sync:'Синхронизация',
     pick:'Выбрать файлы', calendars:'Календари', notes:'Заметки', tasks:'Задачи', backups:'Резервные копии',
@@ -259,7 +259,7 @@ const COPY = {
     calendar_rule:'This recurrence cannot be represented exactly. The event was skipped.',
     floating_time:'The event has no timezone. Its time remains local on each device.',
   }
-};
+});
 
 export function importCopy(key, lang) {
   return (COPY[lang] || COPY.en)[key];

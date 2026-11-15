@@ -66,6 +66,17 @@ class NativeBridge {
     await channel.invokeMethod<void>('openExternalLink', uri.toString());
   }
 
+  Future<void> shareReferralLink(Uri uri) async {
+    final codes = uri.queryParametersAll['ref'];
+    if (!supported || uri.scheme != 'https' || uri.host != 'getuladim.space' ||
+        uri.port != 443 || uri.userInfo.isNotEmpty || uri.path != '/app' ||
+        uri.hasFragment || uri.queryParametersAll.length != 1 || codes == null ||
+        codes.length != 1 || !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(codes.single)) {
+      throw PlatformException(code: 'link_unavailable');
+    }
+    await channel.invokeMethod<void>('shareText', uri.toString());
+  }
+
   Future<void> acknowledge(List<String> ids) async {
     if (supported) await channel.invokeMethod<void>('ackActions', ids);
   }

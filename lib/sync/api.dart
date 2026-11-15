@@ -5,7 +5,7 @@ import 'dart:io';
 import 'contracts.dart';
 
 class FamilyApi implements SyncTransport {
-  FamilyApi(String endpoint) : base = Uri.parse(endpoint) {
+  FamilyApi(String endpoint, {this.locale}) : base = Uri.parse(endpoint) {
     if (base.host.isEmpty ||
         base.userInfo.isNotEmpty ||
         base.hasQuery ||
@@ -23,6 +23,7 @@ class FamilyApi implements SyncTransport {
     }
   }
   final Uri base;
+  String Function()? locale;
   String? token, refreshToken, userId;
   Future<void> Function(Json)? onRotated;
   Future<void>? _rotation;
@@ -72,6 +73,25 @@ class FamilyApi implements SyncTransport {
 
   Future<Json> _send(String path, {Json? body}) async {
     try {
+      final selectedLocale = locale?.call() ?? 'ru';
+      const supportedLocales = {
+        'ru',
+        'en',
+        'uz-Latn',
+        'uz-Cyrl',
+        'de',
+        'fr',
+        'es',
+        'it',
+        'pt',
+        'kk',
+        'uk',
+        'ka',
+        'az',
+        'hy',
+        'tg',
+        'ky',
+      };
       final bytes = body == null ? null : utf8.encode(jsonEncode(body));
       if (bytes != null && bytes.length > 2 * 1024 * 1024) {
         throw const SyncFailure('body_limit');
@@ -80,6 +100,8 @@ class FamilyApi implements SyncTransport {
           .openUrl(body == null ? 'GET' : 'POST', base.resolve(path))
           .timeout(const Duration(seconds: 15));
       req.followRedirects = false;
+      req.headers.set(HttpHeaders.acceptLanguageHeader,
+          supportedLocales.contains(selectedLocale) ? selectedLocale : 'ru');
       if (token != null) {
         req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
       }

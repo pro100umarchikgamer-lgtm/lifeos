@@ -225,3 +225,45 @@ CREATE TABLE IF NOT EXISTS record_recovery_requests (
 );
 CREATE INDEX IF NOT EXISTS record_recovery_user ON record_recovery_requests(user_id,created_at,id);
 CREATE INDEX IF NOT EXISTS record_recovery_queue ON record_recovery_requests(created_at,id);
+
+CREATE TABLE IF NOT EXISTS referral_codes (
+ user_id TEXT PRIMARY KEY REFERENCES users(id), code TEXT NOT NULL UNIQUE,
+ created_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS referral_aliases (
+ user_id TEXT PRIMARY KEY REFERENCES users(id), display_name TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS referral_attributions (
+ invitee_id TEXT PRIMARY KEY REFERENCES users(id),
+ referrer_id TEXT REFERENCES users(id), confirmed_at BIGINT NOT NULL,
+ CHECK(referrer_id IS NULL OR referrer_id<>invitee_id)
+);
+CREATE INDEX IF NOT EXISTS referral_referrer ON referral_attributions(referrer_id,confirmed_at,invitee_id);
+
+CREATE TABLE IF NOT EXISTS task_reminders (
+ task_id TEXT PRIMARY KEY REFERENCES records(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL CHECK(revision>0), schedule TEXT,
+ reminder INTEGER NOT NULL CHECK(reminder IN(0,1)), updated_at INTEGER NOT NULL,
+ updated_by TEXT NOT NULL REFERENCES users(id), CHECK(reminder=0 OR schedule IS NOT NULL)
+);
+
+-- Personal display order only: opaque live record IDs, never finance payloads.
+CREATE TABLE IF NOT EXISTS user_layout_preferences (
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ kind TEXT NOT NULL CHECK(kind IN ('account','budget')),
+ order_ids TEXT NOT NULL DEFAULT '[]',
+ revision BIGINT NOT NULL CHECK(revision>0),
+ PRIMARY KEY(user_id,workspace_id,kind)
+);
+
+CREATE TABLE IF NOT EXISTS record_erasure_ledger (
+ record_id TEXT PRIMARY KEY, erased_at BIGINT NOT NULL CHECK(erased_at>0)
+);
+CREATE TABLE IF NOT EXISTS record_erasure_intents (
+ record_id TEXT PRIMARY KEY REFERENCES records(id),
+ user_id TEXT NOT NULL REFERENCES users(id), operation_id TEXT NOT NULL,
+ record_revision BIGINT NOT NULL CHECK(record_revision>0), consent_hash TEXT NOT NULL,
+ erased_at BIGINT NOT NULL CHECK(erased_at>0), operation_digest TEXT NOT NULL,
+ UNIQUE(user_id,operation_id)
+);

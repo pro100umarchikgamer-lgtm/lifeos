@@ -36,7 +36,9 @@ class AppController extends ChangeNotifier {
   FamilyController? get family => _family;
   set family(FamilyController? value) {
     _family?.removeListener(_accountChanged);
+    _family?.requestLocale = null;
     _family = value;
+    _family?.requestLocale = () => pack.tag;
     _family?.addListener(_accountChanged);
     _accountChanged();
   }

@@ -167,14 +167,21 @@ class GoogleIdentity:
         # These policy checks are separate from cryptographic JWT verification so
         # test providers cannot accidentally bypass the account boundary rules.
         now = int(self.backend.clock())
+        presenter = claims.get('azp', self.settings.google_client_id)
         require(claims.get('iss') in ISSUERS and claims.get('aud') == self.settings.google_client_id
-            and claims.get('azp', self.settings.google_client_id) == self.settings.google_client_id
+            and isinstance(presenter, str)
             and type(claims.get('exp')) is int and claims['exp'] > now
             and type(claims.get('iat')) is int and now - 600 <= claims['iat'] <= now + 30
             and isinstance(claims.get('nonce'), str)
             and hmac.compare_digest(token_hash(claims['nonce']), payload['nonce_hash'])
             and isinstance(claims.get('sub'), str) and 1 <= len(claims['sub']) <= 255
             and claims.get('email_verified') is True, 'google_invalid', 401)
+        # Hybrid Android tokens can name the Android OAuth client as azp while
+        # aud remains our Web client. Trust only explicitly configured presenters;
+        # a signed token alone must not extend this application's client set.
+        if presenter != self.settings.google_client_id:
+            require(client == 'android', 'google_invalid', 401)
+            require(presenter in getattr(self.settings, 'google_android_client_ids', ()), 'google_android_client_untrusted', 403)
         email = claims.get('email')
         require(isinstance(email, str) and len(email) <= 254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email), 'google_invalid', 401)
         email = email.casefold()

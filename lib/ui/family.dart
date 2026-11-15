@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../account/password_policy.dart';
 import '../localization/language_pack.dart';
 import '../domain/models.dart';
 import '../sync/controller.dart';
@@ -521,6 +522,9 @@ class _FamilyPageState extends State<FamilyPage> {
                                 : AutofillHints.password,
                           ],
                           decoration: InputDecoration(
+                            helperText:
+                                register ? t('family_password_hint') : null,
+                            helperMaxLines: 5,
                             suffixIcon: IconButton(
                               tooltip: t(
                                 showPassword
@@ -595,14 +599,13 @@ class _FamilyPageState extends State<FamilyPage> {
                           : () async {
                               if (register &&
                                   c.pendingRegistrationEmail !=
-                                      email.text.trim() &&
-                                  (password.text.length < 7 ||
-                                      password.text.length > 256)) {
-                                setState(
-                                  () => formError =
-                                      'family_error_password_length',
-                                );
-                                return;
+                                      email.text.trim()) {
+                                final issue = newPasswordIssue(password.text);
+                                if (issue != null) {
+                                  setState(() =>
+                                      formError = 'family_error_$issue');
+                                  return;
+                                }
                               }
                               if (register &&
                                   c.pendingRegistrationEmail !=

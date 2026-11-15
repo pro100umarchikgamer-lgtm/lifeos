@@ -1,54 +1,56 @@
 'use strict';
+window.UladimReferrals?.captureInvite();
 const root=document.querySelector('#root'),alerts=document.querySelector('#alerts');
-const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},financeReportFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'violet',chart:'bar',generation:0,busy:false,googleEnabled:false};
+const state={session:null,csrf:'',spaces:[],space:null,roster:null,records:[],financeFilters:{},financeReportFilters:{},taskQuery:'',taskStatus:'all',calendarDay:localDate(),lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',settingsTab:'',lang:'ru',theme:'system',palette:'violet',chart:'bar',appearanceIntensity:50,generation:0,busy:false,googleEnabled:false};
 let calendarMode='month';
 let packs={},alertTimer,navObserver,privateEpoch=0,redrawFinance=null,backgroundDirty=false;
+const personalLayoutCache=new Map(),personalLayoutMounts=new Set();
 const sessionEvents=typeof BroadcastChannel==='function'?new BroadcastChannel('uladim-session'):null;
-sessionEvents?.addEventListener('message',event=>{if(event.data==='signed-out'){clearIdentity();login();}});
+sessionEvents?.addEventListener('message',event=>{if(event.data==='signed-out'){window.UladimReferrals?.forget();clearIdentity();login();}});
 const pendingDeletes=new Map();
 const quickTasks=new Map();
 const taskChanges=new Map();
-try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];}catch{}
+try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');for(const key of ['lang','theme','palette','chart'])if(typeof saved[key]==='string')state[key]=saved[key];if(Number.isFinite(saved.appearanceIntensity))state.appearanceIntensity=saved.appearanceIntensity;}catch{}
 // Persist only interface preferences. Accounts, spaces, records and tokens stay in memory.
-function preferences(){try{localStorage.setItem('uladim-interface',JSON.stringify({lang:state.lang,theme:state.theme,palette:state.palette,chart:state.chart}));}catch{}applyTheme();}
-function applyTheme(){document.body.dataset.design=new URLSearchParams(location.search).get('design')==='legacy'?'':'clarity';document.body.dataset.theme=state.theme;document.body.dataset.palette=state.palette;document.documentElement.lang=state.lang;}
+function preferences(){try{localStorage.setItem('uladim-interface',JSON.stringify({lang:state.lang,theme:state.theme,palette:state.palette,chart:state.chart,appearanceIntensity:state.appearanceIntensity}));}catch{}applyTheme();}
+function applyTheme(){document.body.dataset.design=new URLSearchParams(location.search).get('design')==='legacy'?'':'clarity';document.body.dataset.theme=state.theme;document.body.dataset.palette=state.palette;document.documentElement.lang=state.lang;window.UladimAppearance?.applyIntensity({state});}
 
-const WEB_COPY={
- ru:{web_calendar:'Календарь',family_kind_event:'Событие',web_upcoming:'Ближайшие 7 дней',web_no_events:'Событий пока нет. Добавьте время для важного.',web_all_tasks:'Все задачи',web_task_search:'Поиск задач',web_task_status:'Статус задачи',web_all:'Все',web_no_results:'Ничего не найдено',web_event_start:'Начало события',web_timezone:'Часовой пояс',web_all_day:'Весь день',web_repeat:'Повторение',web_interval:'Интервал повторения',web_until:'Повторять до',web_repeat_none:'Не повторять',web_repeat_daily:'Ежедневно',web_repeat_weekly:'Еженедельно',web_repeat_monthly:'Ежемесячно',web_repeat_yearly:'Ежегодно',web_deleted_pending:'Запись будет удалена',web_delete_failed:'Удаление не подтверждено. Обновите данные перед повтором.',web_previous:'Предыдущий месяц',web_next:'Следующий месяц',web_month:'Месяц',web_agenda:'Повестка',web_partial_short:'частичный перевод',web_locale_coverage:'Новые экраны переведены на русский, английский и два варианта узбекского. Для остальных языков новые подписи показаны на английском.',web_conflict:'Запись изменена на другом устройстве. Скопируйте свои правки и загрузите серверную версию.',web_uncertain:'Сервер мог сохранить запись. Повторите запрос этой кнопкой — повтор не создаст копию.',web_server_error:'Сервис временно недоступен. Попробуйте позже.',web_view_changed:'Пространство или сессия изменились. Откройте запись заново.',web_currency_mismatch:'Валюта должна совпадать со счётом. При переводе в одной валюте суммы должны быть одинаковыми.',web_transfer_accounts:'Для перевода нужны два разных счёта.',web_install_button:'Установить ULADIM',web_loading:'Загрузка пространства…',web_quick_task:'Что нужно сделать?',web_add_task:'Добавить задачу',web_online_status:'Синхронизация через ваш аккаунт',web_day:'Выбранный день',web_cancel:'Отменить'},
- en:{web_calendar:'Calendar',family_kind_event:'Event',web_upcoming:'Next 7 days',web_no_events:'No events yet. Make time for what matters.',web_all_tasks:'All tasks',web_task_search:'Search tasks',web_task_status:'Task status',web_all:'All',web_no_results:'No results',web_event_start:'Event start',web_timezone:'Time zone',web_all_day:'All day',web_repeat:'Repeat',web_interval:'Repeat interval',web_until:'Repeat until',web_repeat_none:'Never',web_repeat_daily:'Daily',web_repeat_weekly:'Weekly',web_repeat_monthly:'Monthly',web_repeat_yearly:'Yearly',web_deleted_pending:'Record will be deleted',web_delete_failed:'Deletion not confirmed. Refresh before retrying.',web_previous:'Previous month',web_next:'Next month',web_month:'Month',web_agenda:'Agenda',web_partial_short:'partial translation',web_locale_coverage:'New screens are translated into Russian, English and both Uzbek scripts. Other languages use English for new labels.',web_conflict:'This record changed on another device. Copy your edits, then load the server version.',web_uncertain:'The server may have saved this record. Retry with this button; it reuses the operation to avoid duplicates.',web_server_error:'Service temporarily unavailable. Try again later.',web_view_changed:'Workspace or session changed. Reopen the record.',web_currency_mismatch:'Currency must match the account. Same-currency transfers must have equal amounts.',web_transfer_accounts:'Transfers require two different accounts.',web_install_button:'Install ULADIM',web_loading:'Loading workspace…',web_quick_task:'What needs to be done?',web_add_task:'Add task',web_online_status:'Synced through your account',web_day:'Selected day',web_cancel:'Undo'},
- 'uz-Latn':{web_calendar:'Taqvim',family_kind_event:'Tadbir',web_upcoming:'Keyingi 7 kun',web_no_events:'Hozircha tadbirlar yo‘q. Muhim ishlar uchun vaqt ajrating.',web_all_tasks:'Barcha vazifalar',web_task_search:'Vazifalarni qidirish',web_task_status:'Vazifa holati',web_all:'Barchasi',web_no_results:'Hech narsa topilmadi',web_event_start:'Tadbir boshlanishi',web_timezone:'Vaqt mintaqasi',web_all_day:'Kun bo‘yi',web_repeat:'Takrorlash',web_interval:'Takrorlash oralig‘i',web_until:'Shu sanagacha takrorlash',web_repeat_none:'Takrorlanmasin',web_repeat_daily:'Har kuni',web_repeat_weekly:'Har hafta',web_repeat_monthly:'Har oy',web_repeat_yearly:'Har yil',web_deleted_pending:'Yozuv o‘chiriladi',web_delete_failed:'O‘chirish tasdiqlanmadi. Qayta urinishdan oldin yangilang.',web_previous:'Oldingi oy',web_next:'Keyingi oy',web_month:'Oy',web_agenda:'Kun tartibi',web_partial_short:'qisman tarjima',web_locale_coverage:'Yangi ekranlar rus, ingliz va o‘zbek tilining ikkala yozuvida tarjima qilingan. Qolgan tillarda yangi yozuvlar inglizcha.',web_conflict:'Yozuv boshqa qurilmada o‘zgargan. Tahrirlaringizni nusxalang va server nusxasini yuklang.',web_uncertain:'Server yozuvni saqlagan bo‘lishi mumkin. Shu tugma bilan takrorlang — nusxa yaratilmaydi.',web_server_error:'Xizmat vaqtincha mavjud emas. Keyinroq urinib ko‘ring.',web_view_changed:'Makon yoki seans o‘zgargan. Yozuvni qayta oching.',web_currency_mismatch:'Valyuta hisob bilan mos bo‘lsin. Bir xil valyutadagi o‘tkazma summalari teng bo‘lishi kerak.',web_transfer_accounts:'O‘tkazma uchun ikki xil hisob kerak.',web_install_button:'ULADIM o‘rnatish',web_loading:'Makon yuklanmoqda…',web_quick_task:'Nima qilish kerak?',web_add_task:'Vazifa qo‘shish',web_online_status:'Hisobingiz orqali sinxronlanadi',web_day:'Tanlangan kun',web_cancel:'Bekor qilish'},
- 'uz-Cyrl':{web_calendar:'Тақвим',family_kind_event:'Тадбир',web_upcoming:'Кейинги 7 кун',web_no_events:'Ҳозирча тадбирлар йўқ. Муҳим ишлар учун вақт ажратинг.',web_all_tasks:'Барча вазифалар',web_task_search:'Вазифаларни қидириш',web_task_status:'Вазифа ҳолати',web_all:'Барчаси',web_no_results:'Ҳеч нарса топилмади',web_event_start:'Тадбир бошланиши',web_timezone:'Вақт минтақаси',web_all_day:'Кун бўйи',web_repeat:'Такрорлаш',web_interval:'Такрорлаш оралиғи',web_until:'Шу санагача такрорлаш',web_repeat_none:'Такрорланмасин',web_repeat_daily:'Ҳар куни',web_repeat_weekly:'Ҳар ҳафта',web_repeat_monthly:'Ҳар ой',web_repeat_yearly:'Ҳар йил',web_deleted_pending:'Ёзув ўчирилади',web_delete_failed:'Ўчириш тасдиқланмади. Қайта уринишдан олдин янгиланг.',web_previous:'Олдинги ой',web_next:'Кейинги ой',web_month:'Ой',web_agenda:'Кун тартиби',web_partial_short:'қисман таржима',web_locale_coverage:'Янги экранлар рус, инглиз ва ўзбек тилининг иккала ёзувида таржима қилинган. Қолган тилларда янги ёзувлар инглизча.',web_conflict:'Ёзув бошқа қурилмада ўзгарган. Таҳрирларингизни нусхаланг ва сервер нусхасини юкланг.',web_uncertain:'Сервер ёзувни сақлаган бўлиши мумкин. Шу тугма билан такрорланг — нусха яратилмайди.',web_server_error:'Хизмат вақтинча мавжуд эмас. Кейинроқ уриниб кўринг.',web_view_changed:'Макон ёки сеанс ўзгарган. Ёзувни қайта очинг.',web_currency_mismatch:'Валюта ҳисоб билан мос бўлсин. Бир хил валютадаги ўтказма суммалари тенг бўлиши керак.',web_transfer_accounts:'Ўтказма учун икки хил ҳисоб керак.',web_install_button:'ULADIM ўрнатиш',web_loading:'Макон юкланмоқда…',web_quick_task:'Нима қилиш керак?',web_add_task:'Вазифа қўшиш',web_online_status:'Ҳисобингиз орқали синхронланади',web_day:'Танланган кун',web_cancel:'Бекор қилиш'}
-};
+const WEB_COPY=globalThis.UladimI18n.copy("grp_df75f2b14723",{
+ ru:{web_calendar:'Календарь',family_kind_event:'Событие',web_upcoming:'Ближайшие 7 дней',web_no_events:'Событий пока нет. Добавьте время для важного.',web_all_tasks:'Все задачи',web_task_search:'Поиск задач',web_task_status:'Статус задачи',web_all:'Все',web_no_results:'Ничего не найдено',web_event_start:'Начало события',web_timezone:'Часовой пояс',web_all_day:'Весь день',web_repeat:'Повторение',web_interval:'Интервал повторения',web_until:'Повторять до',web_repeat_none:'Не повторять',web_repeat_daily:'Ежедневно',web_repeat_weekly:'Еженедельно',web_repeat_monthly:'Ежемесячно',web_repeat_yearly:'Ежегодно',web_deleted_pending:'Запись будет удалена',web_delete_failed:'Удаление не подтверждено. Обновите данные перед повтором.',web_previous_month:'Предыдущий месяц',web_next_month:'Следующий месяц',web_month:'Месяц',web_agenda:'Повестка',web_partial_short:'частичный перевод',web_locale_coverage:'Новые экраны переведены на русский, английский и два варианта узбекского. Для остальных языков новые подписи показаны на английском.',web_conflict:'Запись изменена на другом устройстве. Скопируйте свои правки и загрузите серверную версию.',web_uncertain:'Сервер мог сохранить запись. Повторите запрос этой кнопкой — повтор не создаст копию.',web_server_error:'Сервис временно недоступен. Попробуйте позже.',web_view_changed:'Пространство или сессия изменились. Откройте запись заново.',web_currency_mismatch:'Валюта должна совпадать со счётом. При переводе в одной валюте суммы должны быть одинаковыми.',web_transfer_accounts:'Для перевода нужны два разных счёта.',web_install_button:'Установить ULADIM',web_loading:'Загрузка пространства…',web_quick_task:'Что нужно сделать?',web_add_task:'Добавить задачу',web_online_status:'Синхронизация через ваш аккаунт',web_day:'Выбранный день',web_cancel:'Отменить'},
+ en:{web_calendar:'Calendar',family_kind_event:'Event',web_upcoming:'Next 7 days',web_no_events:'No events yet. Make time for what matters.',web_all_tasks:'All tasks',web_task_search:'Search tasks',web_task_status:'Task status',web_all:'All',web_no_results:'No results',web_event_start:'Event start',web_timezone:'Time zone',web_all_day:'All day',web_repeat:'Repeat',web_interval:'Repeat interval',web_until:'Repeat until',web_repeat_none:'Never',web_repeat_daily:'Daily',web_repeat_weekly:'Weekly',web_repeat_monthly:'Monthly',web_repeat_yearly:'Yearly',web_deleted_pending:'Record will be deleted',web_delete_failed:'Deletion not confirmed. Refresh before retrying.',web_previous_month:'Previous month',web_next_month:'Next month',web_month:'Month',web_agenda:'Agenda',web_partial_short:'partial translation',web_locale_coverage:'New screens are translated into Russian, English and both Uzbek scripts. Other languages use English for new labels.',web_conflict:'This record changed on another device. Copy your edits, then load the server version.',web_uncertain:'The server may have saved this record. Retry with this button; it reuses the operation to avoid duplicates.',web_server_error:'Service temporarily unavailable. Try again later.',web_view_changed:'Workspace or session changed. Reopen the record.',web_currency_mismatch:'Currency must match the account. Same-currency transfers must have equal amounts.',web_transfer_accounts:'Transfers require two different accounts.',web_install_button:'Install ULADIM',web_loading:'Loading workspace…',web_quick_task:'What needs to be done?',web_add_task:'Add task',web_online_status:'Synced through your account',web_day:'Selected day',web_cancel:'Undo'},
+ 'uz-Latn':{web_calendar:'Taqvim',family_kind_event:'Tadbir',web_upcoming:'Keyingi 7 kun',web_no_events:'Hozircha tadbirlar yo‘q. Muhim ishlar uchun vaqt ajrating.',web_all_tasks:'Barcha vazifalar',web_task_search:'Vazifalarni qidirish',web_task_status:'Vazifa holati',web_all:'Barchasi',web_no_results:'Hech narsa topilmadi',web_event_start:'Tadbir boshlanishi',web_timezone:'Vaqt mintaqasi',web_all_day:'Kun bo‘yi',web_repeat:'Takrorlash',web_interval:'Takrorlash oralig‘i',web_until:'Shu sanagacha takrorlash',web_repeat_none:'Takrorlanmasin',web_repeat_daily:'Har kuni',web_repeat_weekly:'Har hafta',web_repeat_monthly:'Har oy',web_repeat_yearly:'Har yil',web_deleted_pending:'Yozuv o‘chiriladi',web_delete_failed:'O‘chirish tasdiqlanmadi. Qayta urinishdan oldin yangilang.',web_previous_month:'Oldingi oy',web_next_month:'Keyingi oy',web_month:'Oy',web_agenda:'Kun tartibi',web_partial_short:'qisman tarjima',web_locale_coverage:'Yangi ekranlar rus, ingliz va o‘zbek tilining ikkala yozuvida tarjima qilingan. Qolgan tillarda yangi yozuvlar inglizcha.',web_conflict:'Yozuv boshqa qurilmada o‘zgargan. Tahrirlaringizni nusxalang va server nusxasini yuklang.',web_uncertain:'Server yozuvni saqlagan bo‘lishi mumkin. Shu tugma bilan takrorlang — nusxa yaratilmaydi.',web_server_error:'Xizmat vaqtincha mavjud emas. Keyinroq urinib ko‘ring.',web_view_changed:'Makon yoki seans o‘zgargan. Yozuvni qayta oching.',web_currency_mismatch:'Valyuta hisob bilan mos bo‘lsin. Bir xil valyutadagi o‘tkazma summalari teng bo‘lishi kerak.',web_transfer_accounts:'O‘tkazma uchun ikki xil hisob kerak.',web_install_button:'ULADIM o‘rnatish',web_loading:'Makon yuklanmoqda…',web_quick_task:'Nima qilish kerak?',web_add_task:'Vazifa qo‘shish',web_online_status:'Hisobingiz orqali sinxronlanadi',web_day:'Tanlangan kun',web_cancel:'Bekor qilish'},
+ 'uz-Cyrl':{web_calendar:'Тақвим',family_kind_event:'Тадбир',web_upcoming:'Кейинги 7 кун',web_no_events:'Ҳозирча тадбирлар йўқ. Муҳим ишлар учун вақт ажратинг.',web_all_tasks:'Барча вазифалар',web_task_search:'Вазифаларни қидириш',web_task_status:'Вазифа ҳолати',web_all:'Барчаси',web_no_results:'Ҳеч нарса топилмади',web_event_start:'Тадбир бошланиши',web_timezone:'Вақт минтақаси',web_all_day:'Кун бўйи',web_repeat:'Такрорлаш',web_interval:'Такрорлаш оралиғи',web_until:'Шу санагача такрорлаш',web_repeat_none:'Такрорланмасин',web_repeat_daily:'Ҳар куни',web_repeat_weekly:'Ҳар ҳафта',web_repeat_monthly:'Ҳар ой',web_repeat_yearly:'Ҳар йил',web_deleted_pending:'Ёзув ўчирилади',web_delete_failed:'Ўчириш тасдиқланмади. Қайта уринишдан олдин янгиланг.',web_previous_month:'Олдинги ой',web_next_month:'Кейинги ой',web_month:'Ой',web_agenda:'Кун тартиби',web_partial_short:'қисман таржима',web_locale_coverage:'Янги экранлар рус, инглиз ва ўзбек тилининг иккала ёзувида таржима қилинган. Қолган тилларда янги ёзувлар инглизча.',web_conflict:'Ёзув бошқа қурилмада ўзгарган. Таҳрирларингизни нусхаланг ва сервер нусхасини юкланг.',web_uncertain:'Сервер ёзувни сақлаган бўлиши мумкин. Шу тугма билан такрорланг — нусха яратилмайди.',web_server_error:'Хизмат вақтинча мавжуд эмас. Кейинроқ уриниб кўринг.',web_view_changed:'Макон ёки сеанс ўзгарган. Ёзувни қайта очинг.',web_currency_mismatch:'Валюта ҳисоб билан мос бўлсин. Бир хил валютадаги ўтказма суммалари тенг бўлиши керак.',web_transfer_accounts:'Ўтказма учун икки хил ҳисоб керак.',web_install_button:'ULADIM ўрнатиш',web_loading:'Макон юкланмоқда…',web_quick_task:'Нима қилиш керак?',web_add_task:'Вазифа қўшиш',web_online_status:'Ҳисобингиз орқали синхронланади',web_day:'Танланган кун',web_cancel:'Бекор қилиш'}
+});
 let deferredInstall=null;
-for(const [locale,message] of Object.entries({
+for(const [locale,message] of Object.entries(globalThis.UladimI18n.copy("grp_e2ef2cc742fb",{
  ru:'Изменения сохранены. Повторите обновление списка.',
  en:'Your changes were saved. Retry loading the list.',
  'uz-Latn':'O‘zgarishlar saqlandi. Ro‘yxatni qayta yuklang.',
  'uz-Cyrl':'Ўзгаришлар сақланди. Рўйхатни қайта юкланг.'
-})) WEB_COPY[locale].web_saved_refresh=message;
-for(const [locale,message] of Object.entries({ru:'Итого',en:'Net','uz-Latn':'Jami','uz-Cyrl':'Жами'}))WEB_COPY[locale].web_today_net=message;
-for(const [locale,copy] of Object.entries({
+}))) WEB_COPY[locale].web_saved_refresh=message;
+for(const [locale,message] of Object.entries(globalThis.UladimI18n.copy("grp_9853f2a908d2",{ru:'Итого',en:'Net','uz-Latn':'Jami','uz-Cyrl':'Жами'})))WEB_COPY[locale].web_today_net=message;
+for(const [locale,copy] of Object.entries(globalThis.UladimI18n.copy("grp_4c65447d73df",{
  ru:['Расписание','{done} из {total}'],en:['Schedule','{done} of {total}'],
  'uz-Latn':['Kun tartibi','{total} tadan {done} ta'],'uz-Cyrl':['Кун тартиби','{total} тадан {done} та']
-})){
+}))){
  WEB_COPY[locale].web_today_schedule=copy[0];
  WEB_COPY[locale].web_today_progress=copy[1];
 }
-for(const [locale,[retry,create,pending]] of Object.entries({
+for(const [locale,[retry,create,pending]] of Object.entries(globalThis.UladimI18n.copy("grp_13b01fd4273c",{
  ru:['Сохранение не подтверждено','Повторить создание','Действие сохранено только до перезагрузки.'],
  en:['Save unconfirmed','Retry creating task','This action is only available until reload.'],
  'uz-Latn':['Saqlash tasdiqlanmadi','Yaratishni takrorlash','Harakat sahifa qayta yuklanguncha saqlanadi.'],
  'uz-Cyrl':['Сақлаш тасдиқланмади','Яратишни такрорлаш','Ҳаракат саҳифа қайта юклангунча сақланади.']
-})){
+}))){
  Object.assign(WEB_COPY[locale],{web_task_unconfirmed:retry,web_task_retry_create:create,web_task_tab_only:pending});
 }
-for(const [locale,message] of Object.entries({ru:'Импорт и синхронизация',en:'Import and sync','uz-Latn':'Import va sinxronlash','uz-Cyrl':'Импорт ва синхронлаш'}))WEB_COPY[locale].web_personal_import=message;
-for(const [locale,labels] of Object.entries({
+for(const [locale,message] of Object.entries(globalThis.UladimI18n.copy("grp_f305ccfd60c5",{ru:'Импорт и синхронизация',en:'Import and sync','uz-Latn':'Import va sinxronlash','uz-Cyrl':'Импорт ва синхронлаш'})))WEB_COPY[locale].web_personal_import=message;
+for(const [locale,labels] of Object.entries(globalThis.UladimI18n.copy("grp_d6a6efe6f8f6",{
  ru:['Дополнительные параметры','Операции','Бюджеты'],
  en:['Additional options','Transactions','Budgets'],
  'uz-Latn':['Qo‘shimcha sozlamalar','Operatsiyalar','Budjetlar'],
  'uz-Cyrl':['Қўшимча созламалар','Операциялар','Бюджетлар']
-})){
+}))){
  const [web_event_options,web_finance_transactions,web_finance_budgets]=labels;
  Object.assign(WEB_COPY[locale],{web_event_options,web_finance_transactions,web_finance_budgets});
 }
@@ -74,12 +76,12 @@ function eventRow(o,agenda=false){
  if(currentSpace()?.kind==='family')caption.append(E('span',t('family_'+o.record.visibility),'calendar-event-visibility'));
  return append(row,caption,iconButton('more',t('edit')+' · '+o.record.data.title,()=>editRecord('event',o.record)));
 }
-const CALENDAR_COPY={
+const CALENDAR_COPY=globalThis.UladimI18n.copy("grp_3c98a98cc123",{
  ru:['Неделя','День','Предыдущая неделя','Следующая неделя','Предыдущий день','Следующий день'],
  en:['Week','Day','Previous week','Next week','Previous day','Next day'],
  'uz-Latn':['Hafta','Kun','Oldingi hafta','Keyingi hafta','Oldingi kun','Keyingi kun'],
  'uz-Cyrl':['Ҳафта','Кун','Олдинги ҳафта','Кейинги ҳафта','Олдинги кун','Кейинги кун']
-};
+});
 function offsetDate(date,days){
  const shifted=new Date(date.getTime());
  shifted.setDate(shifted.getDate()+days);
@@ -87,12 +89,12 @@ function offsetDate(date,days){
 }
 function calendar(m){
  const addEvent=()=>editRecord('event',null,{eventDay:state.calendarDay});
- const copy={
+ const copy=globalThis.UladimI18n.copy("grp_2258c4ce0eac",{
   ru:['Планы и встречи','Ваши планы и встречи в одном месте.','Новое событие','Добавить событие'],
   en:['Plans and gatherings','Your plans and gatherings, all in one place.','New event','Add event'],
   'uz-Latn':['Rejalar va uchrashuvlar','Rejalaringiz va uchrashuvlaringiz bir joyda.','Yangi tadbir','Tadbir qo‘shish'],
   'uz-Cyrl':['Режалар ва учрашувлар','Режаларингиз ва учрашувларингиз бир жойда.','Янги тадбир','Тадбир қўшиш']
- }[state.lang]||['Plans and gatherings','Your plans and gatherings, all in one place.','New event','Add event'];
+ })[state.lang]||['Plans and gatherings','Your plans and gatherings, all in one place.','New event','Add event'];
  title(m,'web_calendar');
  m.classList.add('calendar-page');
  const intro=m.querySelector('.intro'),introText=intro.firstElementChild;
@@ -127,9 +129,9 @@ function calendar(m){
  };
  const toolbar=E('div',undefined,'calendar-toolbar');
  const move=(delta,selector)=>showDate(dateString(calendarMode==='month'?new Date(year,month+delta,1):offsetDate(date,delta*(calendarMode==='week'?7:1))),selector);
- const previous=iconButton('back',calendarMode==='month'?t('web_previous'):calendarMode==='week'?previousWeek:previousDay,()=>move(-1,'.calendar-previous'));
+ const previous=iconButton('back',calendarMode==='month'?t('web_previous_month'):calendarMode==='week'?previousWeek:previousDay,()=>move(-1,'.calendar-previous'));
  previous.classList.add('calendar-previous');
- const next=iconButton('forward',calendarMode==='month'?t('web_next'):calendarMode==='week'?nextWeek:nextDay,()=>move(1,'.calendar-next'));
+ const next=iconButton('forward',calendarMode==='month'?t('web_next_month'):calendarMode==='week'?nextWeek:nextDay,()=>move(1,'.calendar-next'));
  next.classList.add('calendar-next');
  const period=calendarMode==='month'?date.toLocaleDateString(state.lang,{month:'long',year:'numeric'}):
   calendarMode==='week'?new Intl.DateTimeFormat(state.lang,{day:'numeric',month:'long'}).formatRange(from,offsetDate(to,-1)):
@@ -207,26 +209,26 @@ function queueDelete(r,workspace){
  job.timer=setTimeout(async()=>{notification.remove();if(epoch!==privateEpoch){pendingDeletes.delete(r.id);return;}try{await saveOperation({id:crypto.randomUUID(),action:'record.delete',record_id:r.id,revision:r.revision},workspace);pendingDeletes.delete(r.id);await refresh();render();}catch(error){pendingDeletes.delete(r.id);if(state.session){render();report(error);toast(t('web_delete_failed'));}}},4000);
 }
 
-const CLARITY_COPY={
+const CLARITY_COPY=globalThis.UladimI18n.copy("grp_a42b252e47ec",{
  ru:{web_more:'Ещё',web_transfer_pending:'Ожидает подтверждения до',web_family_transfer:'Передача семейного пространства',web_back_settings:'К настройкам',web_account_data:'Данные аккаунта',web_confirm_delete:'Введите DELETE',web_current_session:'Текущий сеанс',web_last_active:'Последняя активность',web_revoked_on:'Доступ отозван',web_no_sessions:'Нет активных сеансов',web_active_sessions:'Активные сеансы',web_revoked_sessions:'Завершённые сеансы',web_revoke_current_hint:'Вы выйдете из аккаунта в этом браузере.',web_revoke_device_hint:'На выбранном устройстве потребуется войти снова.',web_add_operation:'Добавить операцию',web_history:'История операций',web_filters:'Фильтры',web_analysis:'Аналитика',web_finance_summary:'Сводка',web_all_operations:'Все операции',web_open_task_form:'Задача с деталями'},
  en:{web_more:'More',web_transfer_pending:'Awaiting confirmation until',web_family_transfer:'Family workspace transfer',web_back_settings:'Back to settings',web_account_data:'Account data',web_confirm_delete:'Type DELETE',web_current_session:'Current session',web_last_active:'Last active',web_revoked_on:'Access revoked',web_no_sessions:'No active sessions',web_active_sessions:'Active sessions',web_revoked_sessions:'Ended sessions',web_revoke_current_hint:'You will be signed out in this browser.',web_revoke_device_hint:'This device will need to sign in again.',web_add_operation:'Add transaction',web_history:'Transaction history',web_filters:'Filters',web_analysis:'Analysis',web_finance_summary:'Summary',web_all_operations:'All transactions',web_open_task_form:'Task with details'},
  'uz-Latn':{web_more:'Yana',web_transfer_pending:'Tasdiqlash muddati',web_family_transfer:'Oilaviy makonni topshirish',web_back_settings:'Sozlamalarga qaytish',web_account_data:'Hisob ma’lumotlari',web_confirm_delete:'DELETE yozing',web_current_session:'Joriy seans',web_last_active:'So‘nggi faollik',web_revoked_on:'Ruxsat bekor qilindi',web_no_sessions:'Faol seanslar yo‘q',web_active_sessions:'Faol seanslar',web_revoked_sessions:'Yakunlangan seanslar',web_revoke_current_hint:'Bu brauzerda hisobdan chiqasiz.',web_revoke_device_hint:'Bu qurilmada qayta kirish kerak bo‘ladi.',web_add_operation:'Operatsiya qo‘shish',web_history:'Operatsiyalar tarixi',web_filters:'Filtrlar',web_analysis:'Tahlil',web_finance_summary:'Umumiy holat',web_all_operations:'Barcha operatsiyalar',web_open_task_form:'Tafsilotli vazifa'},
  'uz-Cyrl':{web_more:'Яна',web_transfer_pending:'Тасдиқлаш муддати',web_family_transfer:'Оилавий маконни топшириш',web_back_settings:'Созламаларга қайтиш',web_account_data:'Ҳисоб маълумотлари',web_confirm_delete:'DELETE ёзинг',web_current_session:'Жорий сеанс',web_last_active:'Сўнгги фаоллик',web_revoked_on:'Рухсат бекор қилинди',web_no_sessions:'Фаол сеанслар йўқ',web_active_sessions:'Фаол сеанслар',web_revoked_sessions:'Якунланган сеанслар',web_revoke_current_hint:'Бу браузерда ҳисобдан чиқасиз.',web_revoke_device_hint:'Бу қурилмада қайта кириш керак бўлади.',web_add_operation:'Операция қўшиш',web_history:'Операциялар тарихи',web_filters:'Фильтрлар',web_analysis:'Таҳлил',web_finance_summary:'Умумий ҳолат',web_all_operations:'Барча операциялар',web_open_task_form:'Тафсилотли вазифа'}
-};
-const WORKSPACE_COPY={
+});
+const WORKSPACE_COPY=globalThis.UladimI18n.copy("grp_62e8a642b778",{
  ru:{web_security_devices:'Защита и устройства',web_google_status_loading:'Проверяем связь с Google…',web_google_status_error:'Не удалось получить статус Google',web_password_change_hint:'После смены пароля нужно будет войти снова.',web_mfa_enable:'Настроить двухфакторную защиту'},
  en:{web_security_devices:'Security and devices',web_google_status_loading:'Checking Google connection…',web_google_status_error:'Could not load Google status',web_password_change_hint:'You’ll need to sign in again after changing your password.',web_mfa_enable:'Set up two-factor authentication'},
  'uz-Latn':{web_security_devices:'Himoya va qurilmalar',web_google_status_loading:'Google ulanishi tekshirilmoqda…',web_google_status_error:'Google holatini olib bo‘lmadi',web_password_change_hint:'Parolni almashtirgach, qayta kirishingiz kerak.',web_mfa_enable:'Ikki bosqichli himoyani sozlash'},
  'uz-Cyrl':{web_security_devices:'Ҳимоя ва қурилмалар',web_google_status_loading:'Google уланиши текширилмоқда…',web_google_status_error:'Google ҳолатини олиб бўлмади',web_password_change_hint:'Паролни алмаштиргач, қайта киришингиз керак.',web_mfa_enable:'Икки босқичли ҳимояни созлаш'}
-};
-for(const [locale,copy]of Object.entries({
+});
+for(const [locale,copy]of Object.entries(globalThis.UladimI18n.copy("grp_f673d77165b6",{
  ru:{web_new_email:'Новый адрес электронной почты',web_mfa_intro:'После пароля при входе потребуется код из приложения-аутентификатора на телефоне, например Google Authenticator.',web_mfa_enrollment_hint:'Пароль ниже подтверждает, что защиту настраиваете вы. Затем подключите приложение и сохраните резервные коды — они помогут войти при потере телефона.'},
  en:{web_new_email:'New email address',web_mfa_intro:'After your password, sign-in will require a code from an authenticator app on your phone, such as Google Authenticator.',web_mfa_enrollment_hint:'Your current password confirms that you are setting up protection. Then connect your authenticator app and save the recovery codes so you can sign in if you lose your phone.'},
  'uz-Latn':{web_new_email:'Yangi elektron pochta manzili',web_mfa_intro:'Kirishda paroldan keyin telefoningizdagi autentifikator ilovasidan, masalan Google Authenticator’dan kod kerak bo‘ladi.',web_mfa_enrollment_hint:'Joriy parol himoyani o‘zingiz sozlayotganingizni tasdiqlaydi. Keyin ilovani ulang va telefon yo‘qolsa kirish uchun tiklash kodlarini saqlang.'},
  'uz-Cyrl':{web_new_email:'Янги электрон почта манзили',web_mfa_intro:'Киришда паролдан кейин телефонингиздаги аутентификатор иловасидан, масалан Google Authenticator’дан код керак бўлади.',web_mfa_enrollment_hint:'Жорий парол ҳимояни ўзингиз созлаётганингизни тасдиқлайди. Кейин иловани уланг ва телефон йўқолса кириш учун тиклаш кодларини сақланг.'}
-}))Object.assign(WORKSPACE_COPY[locale],copy);
-for(const [locale,text]of Object.entries({ru:'Оттенки помогают различать события',en:'Colors help distinguish events','uz-Latn':'Tuslar tadbirlarni farqlashga yordam beradi','uz-Cyrl':'Туслар тадбирларни фарқлашга ёрдам беради'}))WORKSPACE_COPY[locale].web_event_color_help=text;
-const t=k=>WORKSPACE_COPY[state.lang]?.[k]||WORKSPACE_COPY.en[k]||CLARITY_COPY[state.lang]?.[k]||WEB_COPY[state.lang]?.[k]||WEB_COPY.en[k]||packs[state.lang]?.strings[k]||CLARITY_COPY.en[k]||packs.ru?.strings[k]||k;
+})))Object.assign(WORKSPACE_COPY[locale],copy);
+for(const [locale,text]of Object.entries(globalThis.UladimI18n.copy("grp_be59410710ee",{ru:'Оттенки помогают различать события',en:'Colors help distinguish events','uz-Latn':'Tuslar tadbirlarni farqlashga yordam beradi','uz-Cyrl':'Туслар тадбирларни фарқлашга ёрдам беради'})))WORKSPACE_COPY[locale].web_event_color_help=text;
+const t=k=>packs[state.lang]?.strings[k]||WORKSPACE_COPY[state.lang]?.[k]||CLARITY_COPY[state.lang]?.[k]||WEB_COPY[state.lang]?.[k]||packs.en?.strings[k]||WORKSPACE_COPY.en[k]||CLARITY_COPY.en[k]||WEB_COPY.en[k]||packs.ru?.strings[k]||k;
 const E=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 function append(e,...children){e.append(...children);return e;}
 function toast(message){const n=E('div',message,'toast');alerts.append(n);setTimeout(()=>n.remove(),4000);}
@@ -236,7 +238,7 @@ async function call(path,body){
  const epoch=privateEpoch,account=state.session?.user_id;
  const changed=()=>epoch!==privateEpoch||account!==state.session?.user_id;
  const viewChanged=()=>Object.assign(new Error('view_changed'),{code:'view_changed',uncertain:body!==undefined});
- let response;try{response=await fetch('/account/api/'+path,{method:body===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:body===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':state.csrf},body:body===undefined?undefined:JSON.stringify(body)});}catch{throw Object.assign(new Error('offline'),{code:'offline',uncertain:body!==undefined});}
+ let response;try{response=await fetch('/account/api/'+path,{method:body===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:body===undefined?{'Accept-Language':state.lang}:{'Content-Type':'application/json','X-CSRF-Token':state.csrf,'Accept-Language':state.lang},body:body===undefined?undefined:JSON.stringify(body)});}catch{throw Object.assign(new Error('offline'),{code:'offline',uncertain:body!==undefined});}
  let value;try{value=await response.json();}catch{throw Object.assign(new Error('server_error'),{code:'server_error',status:response.status,uncertain:body!==undefined});}
  if(changed())throw viewChanged();
  if(!response.ok&&value.error==='account_unavailable'&&account){
@@ -266,7 +268,7 @@ function anchor(text,path){const a=E('a',text,'button');a.href=path;return a;}
 let activeCurrencyPicker=null,currencyPickerDismissReady=false;
 const CURRENCY_FALLBACK=['AED','AFN','ALL','AMD','ARS','AUD','AZN','BAM','BDT','BGN','BHD','BND','BOB','BRL','BWP','BYN','CAD','CHF','CLP','CNY','COP','CRC','CZK','DKK','DZD','EGP','EUR','GBP','GEL','GHS','HKD','HUF','IDR','ILS','INR','IQD','ISK','JOD','JPY','KES','KGS','KHR','KRW','KWD','KZT','LAK','LBP','LKR','MAD','MDL','MKD','MNT','MOP','MUR','MXN','MYR','NGN','NOK','NPR','NZD','OMR','PEN','PHP','PKR','PLN','PYG','QAR','RON','RSD','RUB','SAR','SEK','SGD','THB','TJS','TMT','TND','TRY','TWD','TZS','UAH','UGX','USD','UYU','UZS','VND','XAF','XOF','ZAR'];
 function currencyInput(n){
- const labels={ru:['Выбрать валюту','Валюты','Валюта не найдена'],en:['Choose currency','Currencies','No currency found'],'uz-Latn':['Valyutani tanlash','Valyutalar','Valyuta topilmadi'],'uz-Cyrl':['Валютани танлаш','Валюталар','Валюта топилмади']}[state.lang]||['Choose currency','Currencies','No currency found'];
+ const labels=globalThis.UladimI18n.copy("grp_e2be5d3d81ef",{ru:['Выбрать валюту','Валюты','Валюта не найдена'],en:['Choose currency','Currencies','No currency found'],'uz-Latn':['Valyutani tanlash','Valyutalar','Valyuta topilmadi'],'uz-Cyrl':['Валютани танлаш','Валюталар','Валюта топилмади']})[state.lang]||['Choose currency','Currencies','No currency found'];
  const field=E('div',undefined,'currency-picker'),toggle=E('button',undefined,'currency-picker-toggle'),list=E('div',undefined,'currency-picker-list');
  n.replaceWith(field);field.append(n,toggle,list);n.currencyField=field;
  n.maxLength=64;n.pattern='[A-Za-z]{3}';n.autocomplete='off';n.spellcheck=false;n.autocapitalize='characters';
@@ -353,7 +355,7 @@ function currencyInput(n){
  }
  return n;
 }
-function input(container,name,label,type='text',value='',required=true){const id='input-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const n=E(type==='textarea'?'textarea':'input');n.name=name;n.id=id;if(type!=='textarea')n.type=type;if(type==='email')n.autocomplete='email';if(type==='password')n.autocomplete=['new','next','new-password'].includes(name)?'new-password':'current-password';if(type==='textarea')n.maxLength=20000;if(['name','label'].includes(name))n.maxLength=2000;if(['amount','received'].includes(name))n.inputMode='decimal';if(name==='code'){n.autocomplete='one-time-code';n.spellcheck=false;}n.value=value??'';n.required=required&&type!=='checkbox';append(container,l,n);if(name==='currency')currencyInput(n);return n;}
+function input(container,name,label,type='text',value='',required=true){const id='input-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const n=E(type==='textarea'?'textarea':'input');n.name=name;n.id=id;if(type!=='textarea')n.type=type;if(type==='email')n.autocomplete='email';if(type==='password')n.autocomplete=['new','next','new-password'].includes(name)?'new-password':'current-password';if(type==='textarea')n.maxLength=20000;if(['name','label'].includes(name))n.maxLength=2000;if(['amount','received'].includes(name))n.inputMode='decimal';if(name==='code'){n.autocomplete='one-time-code';n.spellcheck=false;}n.value=value??'';n.required=required&&type!=='checkbox';append(container,l,n);if(name==='currency')currencyInput(n);if(type==='password'&&['new','next','new-password'].includes(name))window.UladimPassword?.attach(n,()=>state.lang);return n;}
 function select(container,name,label,choices,value){const id='select-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const s=E('select');s.name=name;s.id=id;for(const [v,label]of choices){const o=E('option',label);o.value=v;s.append(o);}s.value=value;append(container,l,s);return s;}
 function card(title,body){const c=E('section',undefined,'card');if(title)c.append(E('h2',title));if(body)c.append(E('p',body));return c;}
 function form(container,title,build,submit,submitLabel=t('save')){
@@ -382,8 +384,8 @@ function form(container,title,build,submit,submitLabel=t('save')){
   pending=true;b.disabled=true;status.textContent='';
   try{await submit(values);status.textContent=t('account_done');}
   catch(error){
-   const retry=error.uncertain||error.refreshOnly;
-   fields.disabled=initiallyDisabled||!!retry;
+   const retry=error.uncertain||error.refreshOnly||error.taskScheduleRetry;
+   fields.disabled=initiallyDisabled||!!retry&&!error.taskScheduleRetry;
    b.textContent=retry?t('retry'):submitLabel;
    status.textContent=error.displayMessage||(error.refreshOnly?t('web_saved_refresh'):error.uncertain?t('web_uncertain'):errorText(error));
    const field=['invalid_amount','amount_precision'].includes(error.code)?values.amount:['invalid_currency','currency_mismatch'].includes(error.code)?values.currency:error.code==='invalid_date'?values.date||values.end||values.start:null;
@@ -433,12 +435,12 @@ function replaceDialog(d,...nodes){
  heading.focus({preventScroll:true});
 }
 
-const SESSION_COPY={
+const SESSION_COPY=globalThis.UladimI18n.copy("grp_2142537a9303",{
  ru:{title:'Выйти из аккаунта?',hint:'Сеанс завершится только в этом браузере. Ваши записи останутся в аккаунте.',stay:'Остаться в ULADIM',cancel:'Отменить',done:'Вы вышли из аккаунта',googleDisconnect:'Отключить Google',googleHint:'После отключения потребуется войти с паролем. Другие данные аккаунта сохранятся.'},
  en:{title:'Sign out of your account?',hint:'This ends the session in this browser. Your records stay in your account.',stay:'Stay in ULADIM',cancel:'Cancel',done:'You have signed out',googleDisconnect:'Disconnect Google',googleHint:'You will need to sign in with your password afterwards. Your account data will be kept.'},
  'uz-Latn':{title:'Hisobdan chiqasizmi?',hint:'Faqat shu brauzerdagi seans tugaydi. Yozuvlaringiz hisobingizda qoladi.',stay:'ULADIMda qolish',cancel:'Bekor qilish',done:'Hisobdan chiqdingiz',googleDisconnect:'Google ulanishini uzish',googleHint:'Keyin parol bilan kirishingiz kerak. Hisob ma’lumotlari saqlanadi.'},
  'uz-Cyrl':{title:'Ҳисобдан чиқасизми?',hint:'Фақат шу браузердаги сеанс тугайди. Ёзувларингиз ҳисобингизда қолади.',stay:'ULADIMда қолиш',cancel:'Бекор қилиш',done:'Ҳисобдан чиқдингиз',googleDisconnect:'Google уланишини узиш',googleHint:'Кейин парол билан киришингиз керак. Ҳисоб маълумотлари сақланади.'}
-};
+});
 const sessionCopy=key=>(SESSION_COPY[state.lang]||SESSION_COPY.en)[key];
 function settingsInline(title,build,trigger){
  const host=root.querySelector('.settings-content');if(!host)return;
@@ -453,8 +455,8 @@ function settingsInline(title,build,trigger){
  return panel;
 }
 async function finishSignOut(){
- try{await call('logout',{});}catch(error){error.displayMessage={ru:'Не удалось подтвердить выход. Проверьте подключение и повторите.',en:'Could not confirm sign-out. Check your connection and retry.','uz-Latn':'Chiqish tasdiqlanmadi. Ulanishni tekshiring va takrorlang.','uz-Cyrl':'Чиқиш тасдиқланмади. Уланишни текширинг ва такрорланг.'}[state.lang]||'Could not confirm sign-out. Check your connection and retry.';throw error;}
- clearIdentity();sessionEvents?.postMessage('signed-out');login();
+ try{await call('logout',{});}catch(error){error.displayMessage=globalThis.UladimI18n.copy("grp_a6e916b61e61",{ru:'Не удалось подтвердить выход. Проверьте подключение и повторите.',en:'Could not confirm sign-out. Check your connection and retry.','uz-Latn':'Chiqish tasdiqlanmadi. Ulanishni tekshiring va takrorlang.','uz-Cyrl':'Чиқиш тасдиқланмади. Уланишни текширинг ва такрорланг.'})[state.lang]||'Could not confirm sign-out. Check your connection and retry.';throw error;}
+ window.UladimReferrals?.forget();clearIdentity();sessionEvents?.postMessage('signed-out');login();
  const status=E('p',sessionCopy('done'),'signout-success');status.setAttribute('role','status');root.querySelector('.auth-form-panel')?.prepend(status);
 }
 function signoutPage(host){
@@ -465,7 +467,7 @@ function signoutPage(host){
  host.append(panel);
 }
 
-function clearIdentity(){clearNoteDrafts();clearTaskActions();privateDeletion?.clear();privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},financeReportFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
+function clearIdentity(){clearPersonalLayoutMounts();personalLayoutCache.clear();clearNoteDrafts();clearTaskActions();privateDeletion?.clear();privateRecovery?.clear();inboxCenter().clear();redrawFinance=null;backgroundDirty=false;refreshTail=Promise.resolve();privateEpoch++;state.generation++;for(const job of pendingDeletes.values())clearTimeout(job.timer);pendingDeletes.clear();quickTasks.clear();taskChanges.clear();alerts.replaceChildren();Object.assign(state,{session:null,csrf:'',space:null,spaces:[],roster:null,records:[],financeFilters:{},financeReportFilters:{},taskQuery:'',taskStatus:'all',settingsTab:'',referenceSection:'',lastRead:0,syncState:'idle',syncSpace:null,syncCursor:0,syncEpoch:'',tab:'today',busy:false});document.querySelectorAll('dialog').forEach(d=>{d.close();d.remove();});}
 function money(value,currency){return ULADIMMoney.format(value,currency,state.lang);}
 function moneyParts(value,currency,prefix=''){
  const full=prefix+money(value,currency);
@@ -489,12 +491,12 @@ function structuralAccountReference(record){
   /^[A-Z]{3}$/.test(record.reference_currency||'')&&record.data&&typeof record.data==='object'&&
   !Array.isArray(record.data)&&Object.keys(record.data).length===0;
 }
-function erasedFinanceCopy(){return ({
+function erasedFinanceCopy(){return (globalThis.UladimI18n.copy("grp_471e95e43e23",{
  ru:['Удалённый счёт','Данные счёта удалены его владельцем. Суммы и дата вашей операции сохранены. Изменить перевод с удалённым счётом нельзя.'],
  en:['Deleted account','The account owner deleted its details. Your transfer amounts and date are preserved. A transfer linked to a deleted account cannot be changed.'],
  'uz-Latn':['O‘chirilgan hisob','Hisob egasi uning ma’lumotlarini o‘chirdi. O‘tkazmangiz summalari va sanasi saqlandi. O‘chirilgan hisob bilan bog‘liq o‘tkazmani o‘zgartirib bo‘lmaydi.'],
  'uz-Cyrl':['Ўчирилган ҳисоб','Ҳисоб эгаси унинг маълумотларини ўчирди. Ўтказмангиз суммалари ва санаси сақланди. Ўчирилган ҳисоб билан боғлиқ ўтказмани ўзгартириб бўлмайди.']
- })[state.lang]||['Deleted account','The account owner deleted its details. Your transfer amounts and date are preserved. A transfer linked to a deleted account cannot be changed.'];}
+ }))[state.lang]||['Deleted account','The account owner deleted its details. Your transfer amounts and date are preserved. A transfer linked to a deleted account cannot be changed.'];}
 function accountReference(id){
  const record=state.records.find(r=>r.id===id&&r.kind==='account'&&(!r.deleted||structuralAccountReference(r)));
  if(!record)return null;
@@ -524,12 +526,12 @@ async function readSpace(){
  }throw {code:'invalid_sync_response'};
 }
 let refreshTail=Promise.resolve();
-const SYNC_COPY={
+const SYNC_COPY=globalThis.UladimI18n.copy("grp_4975618d7f20",{
  ru:['Обновление…','Не удалось обновить','Обновлено','Нет сети','Сменить тему'],
  en:['Refreshing…','Refresh failed','Updated','Offline','Switch theme'],
  'uz-Latn':['Yangilanmoqda…','Yangilanmadi','Yangilandi','Tarmoq yo‘q','Mavzuni almashtirish'],
  'uz-Cyrl':['Янгиланмоқда…','Янгиланмади','Янгиланди','Тармоқ йўқ','Мавзуни алмаштириш']
-};
+});
 function updateSyncStatus(){
  const node=root.querySelector('.workspace-sync');if(!node)return;
  const copy=SYNC_COPY[state.lang]||SYNC_COPY.en;
@@ -538,7 +540,7 @@ function updateSyncStatus(){
  node.dataset.status=index===1?'error':index===3?'offline':'read';
 }
 function refresh(){const epoch=privateEpoch;const run=async()=>{if(epoch!==privateEpoch)return;state.busy=true;state.syncState='loading';updateSyncStatus();try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();if(epoch===privateEpoch&&(!state.space||state.syncSpace===state.space)){state.lastRead=Date.now();state.syncState='read';}}catch(error){if(epoch===privateEpoch)state.syncState='error';throw error;}finally{if(epoch===privateEpoch){state.busy=false;updateSyncStatus();}}};const pending=refreshTail.then(run,run);refreshTail=pending.catch(()=>{});return pending;}
-async function start(){state.session=await call('session');state.csrf=state.session.csrf;await refresh();await consumeNotificationLink();const url=new URL(location.href),section=url.searchParams.get('settings');if(['security','deletion'].includes(section)){state.tab='account';state.settingsTab=section;url.searchParams.delete('settings');history.replaceState(null,'',url.pathname+url.search+url.hash);}render();inboxCenter().refresh();refreshNotificationTimezone();}
+async function start(){const session=await call('session');if(state.session&&state.session.user_id!==session.user_id)clearIdentity();state.session=session;state.csrf=state.session.csrf;await refresh();const taskNotification=await consumeNotificationLink();const url=new URL(location.href),section=url.searchParams.get('settings');if(['security','deletion'].includes(section)){state.tab='account';state.settingsTab=section;url.searchParams.delete('settings');history.replaceState(null,'',url.pathname+url.search+url.hash);}render();if(taskNotification)editRecord('task',taskNotification);inboxCenter().refresh();refreshNotificationTimezone();}
 function login(){
  delete document.body.dataset.referenceLayout;
  root.replaceChildren();
@@ -576,26 +578,32 @@ function login(){
 }
 
 function focusLoginStory(create,lang){
- const copy={
+ const copy=globalThis.UladimI18n.copy("grp_b81532ffd21b",{
   ru:['Меньше суеты.','Больше ясности.','Важное — в одном месте. Задачи, планы и финансы в вашем ритме.','Задачи и заметки','События и календарь','Личные и семейные финансы','В браузере на телефоне, планшете и компьютере.'],
   en:['Less to juggle.','More clarity.','Keep what matters together. Tasks, plans and finances at your pace.','Tasks and notes','Events and calendar','Personal and family finances','In your browser on phone, tablet and desktop.'],
   'uz-Latn':['Kamroq tashvish.','Ko‘proq aniqlik.','Muhim ishlar bir joyda. Vazifalar, rejalar va moliya o‘z maromingizda.','Vazifalar va qaydlar','Tadbirlar va taqvim','Shaxsiy va oilaviy moliya','Telefon, planshet va kompyuter brauzerida.'],
   'uz-Cyrl':['Камроқ ташвиш.','Кўпроқ аниқлик.','Муҳим ишлар бир жойда. Вазифалар, режалар ва молия ўз маромингизда.','Вазифалар ва қайдлар','Тадбирлар ва тақвим','Шахсий ва оилавий молия','Телефон, планшет ва компьютер браузерида.']
- }[lang]||['Less to juggle.','More clarity.','Keep what matters together. Tasks, plans and finances at your pace.','Tasks and notes','Events and calendar','Personal and family finances','In your browser on phone, tablet and desktop.'];
+ })[lang]||['Less to juggle.','More clarity.','Keep what matters together. Tasks, plans and finances at your pace.','Tasks and notes','Events and calendar','Personal and family finances','In your browser on phone, tablet and desktop.'];
  const aside=create('aside',undefined,'focus-login-story');
  const heading=create('h2');heading.append(create('span',copy[0]),create('span',copy[1]));
  const list=create('ul');for(const text of copy.slice(3,6))list.append(create('li',text));
- aside.append(create('div','ULADIM · '+(lang==='ru'?'ФОКУС':'FOCUS'),'focus-story-label'),heading,create('p',copy[2]),list,create('p',copy[6],'focus-story-footnote'));
+ aside.append(create('div','ULADIM · '+(globalThis.UladimI18n.text("loc_b05681c1e896",{},"FOCUS")),'focus-story-label'),heading,create('p',copy[2]),list,create('p',copy[6],'focus-story-footnote'));
  return aside;
 }
 
 
+const STAFF_SETUP_KEY='uladim-staff-setup';
+function staffSetupIntent(){const setup=new URLSearchParams(location.search).get('setup');return ['owner','staff'].includes(setup)?setup:'';}
 async function beginGoogle(invitation){
  const result=await call('google/start',invitation?{invitation}:{});
+ // Only a UI enum survives the external sign-in; credentials stay in memory.
+ try{const setup=staffSetupIntent();if(setup)sessionStorage.setItem(STAFF_SETUP_KEY,setup);else sessionStorage.removeItem(STAFF_SETUP_KEY);}catch{}
  location.assign(result.authorization_url);
 }
 async function googleReturn(){
- const deletionIntent=window.UladimDeletion?.takeIntent();history.replaceState(null,'','/app');
+ let setup=staffSetupIntent();
+ try{const saved=sessionStorage.getItem(STAFF_SETUP_KEY);if(!setup&&['owner','staff'].includes(saved))setup=saved;sessionStorage.removeItem(STAFF_SETUP_KEY);}catch{}
+ const deletionIntent=window.UladimDeletion?.takeIntent();history.replaceState(null,'','/app'+(setup?'?setup='+setup:''));
  const result=await call('google/complete',{});
  if(result.error){try{state.tab='account';state.settingsTab=deletionIntent?'deletion':'security';await start();if(deletionIntent&&deletionCenter())deletionCenter().setMessage(result.error);else toast(errorText({code:result.error}));}catch(error){if(error.code==='unauthorized'){clearIdentity();login();}else report(error);}return;}
  if(result.reauth_token){state.tab='account';state.settingsTab='deletion';await start();deletionCenter()?.setProof(result.reauth_token,result.expires_in);return;}
@@ -609,24 +617,24 @@ function mfaStep(challenge){
  m.append(button(t('cancel'),()=>{challenge='';login();}));m.querySelector('input').focus();
 }
 
-function language(container){const s=select(container,'language',t('language'),Object.entries(packs).map(([k,v])=>[k,v.name+(WEB_COPY[k]?'':' · '+t('web_partial_short'))]),state.lang);s.addEventListener('change',()=>{state.lang=s.value;preferences();if(state.session)render();else login();});}
+function language(container){const s=select(container,'language',t('language'),Object.entries(packs).map(([k,v])=>[k,v.name+(globalThis.UladimI18n.complete(k)?'':' · '+t('web_partial_short'))]),state.lang);s.addEventListener('change',async()=>{state.lang=s.value;await globalThis.UladimI18n.load(packs);globalThis.UladimI18n.setLanguage(state.lang);preferences();if(state.session&&window.Notification?.permission==='granted')refreshNotificationTimezone().catch(()=>{});if(state.session)render();else login();});}
 document.addEventListener('pointerdown',event=>{
  const menu=root.querySelector('.nav-more[open]');
  if(menu&&!menu.contains(event.target))menu.open=false;
 });
-const REFERENCE_COPY={
+const REFERENCE_COPY=globalThis.UladimI18n.copy("grp_007cb3f2eb7d",{
  ru:['Планирование','Финансы','Пространство','Обзор финансов','Семья и участники','Добро пожаловать','Задачи к выполнению','Расходы за месяц','Ближайшее событие','Моё пространство','Последние операции','Счета','Лаванда','Баланс счетов'],
  en:['Planning','Finances','Workspace','Financial overview','Family and members','Welcome back','Tasks to do','Monthly expenses','Next event','My workspace','Recent transactions','Accounts','Lavender','Account balances'],
  'uz-Latn':['Rejalashtirish','Moliya','Makon','Moliya sharhi','Oila va a’zolar','Xush kelibsiz','Bajariladigan vazifalar','Oylik xarajatlar','Keyingi tadbir','Mening makonim','Oxirgi operatsiyalar','Hisoblar','Lavanda','Hisoblar balansi'],
  'uz-Cyrl':['Режалаштириш','Молия','Макон','Молия шарҳи','Оила ва аъзолар','Хуш келибсиз','Бажариладиган вазифалар','Ойлик харажатлар','Кейинги тадбир','Менинг маконим','Охирги операциялар','Ҳисоблар','Лаванда','Ҳисоблар баланси']
-};
+});
 function referenceCopy(index){return (REFERENCE_COPY[state.lang]||REFERENCE_COPY.en)[index];}
-const CONTEXT_HELP={
+const CONTEXT_HELP=globalThis.UladimI18n.copy("grp_a8ea8674a86a",{
  ru:{title:'Как пользоваться',more:'Открыть справку',topics:{today:'Начните с сегодняшних задач и событий. Для новой записи выберите нужный раздел или кнопку добавления.',tasks:'Добавьте задачу и при необходимости уточните детали. Выполненные задачи доступны через фильтр статуса.',calendar:'Переключайтесь между днём, неделей и месяцем. В событии проверьте время, часовой пояс и повторение.',notes:'Сохраните мысль в заметке. Незавершённый черновик можно продолжить из списка заметок.',finances:'Проверьте счёт, валюту и период. Доходы, расходы и переводы учитываются отдельно; разные валюты не складываются.',account:'Здесь находятся внешний вид, безопасность, устройства и данные аккаунта. Изменения с важными последствиями требуют подтверждения.',security:'Используйте надёжный пароль и второй фактор. Коды восстановления храните у себя и не передавайте поддержке.',notifications:'История сообщений и системные уведомления на устройстве настраиваются отдельно. Разрешение браузера ещё не подтверждает доставку на экран.',recovery:'Проверьте удалённую запись и отправьте запрос. После одобрения вы сами подтверждаете восстановление.',family:'Каждый участник входит в свой аккаунт. Перед совместной работой проверьте роли и доступ детей.',import:'Выберите файл и проверьте предварительный просмотр, счёт, даты и валюту. Подтверждайте только нужные строки.',support:'Укажите тему и опишите, что произошло. Не отправляйте пароли, коды входа и банковские секреты.',deletion:'Перед удалением проверьте влияние на семью, общие записи и локальные копии. Страница покажет доступные действия и попросит подтверждение.',plans:'Текущие возможности доступны бесплатно. Информация о будущих планах не означает оформленную подписку или оплату.',installation:'Внешний вид и язык меняются здесь. Инструкции по установке приложения находятся в справке.'}},
  en:{title:'How to use this',more:'Open help',topics:{today:'Start with today’s tasks and events. Choose a section or its add button to create a record.',tasks:'Add a task and include details when needed. Completed tasks are available through the status filter.',calendar:'Switch between day, week and month. Check an event’s time, time zone and repeat settings.',notes:'Save an idea in a note. Continue an unfinished draft from the note list.',finances:'Check the account, currency and period. Income, expenses and transfers are separate; different currencies are not added together.',account:'Find appearance, security, devices and account data here. Changes with important consequences require confirmation.',security:'Use a strong password and a second factor. Keep recovery codes yourself and never send them to support.',notifications:'Message history and system notifications on this device have separate settings. Browser permission does not confirm display on your screen.',recovery:'Review a deleted record and send a request. After approval, you confirm the final restore yourself.',family:'Each member uses their own account. Check roles and children’s access before working together.',import:'Choose a file, then review the account, dates and currency. Confirm only the rows you need.',support:'Choose a subject and describe what happened. Never send passwords, sign-in codes or bank secrets.',deletion:'Before deleting, review the effect on family, shared records and local copies. The page shows available actions and asks for confirmation.',plans:'Current features are free to use. Information about future plans does not mean a subscription or payment was made.',installation:'Change appearance and language here. See help for app installation instructions.'}},
  'uz-Latn':{title:'Qanday foydalaniladi',more:'Yordamni ochish',topics:{today:'Bugungi vazifalar va tadbirlardan boshlang. Yozuv yaratish uchun kerakli bo‘limni tanlang.',tasks:'Vazifa qo‘shing va kerak bo‘lsa tafsilotlarni kiriting. Bajarilgan vazifalarni holat filtri orqali topasiz.',calendar:'Kun, hafta yoki oy ko‘rinishini tanlang. Tadbir vaqti, vaqt mintaqasi va takrorlanishini tekshiring.',notes:'Fikringizni qaydga saqlang. Tugallanmagan qoralamani qaydlar ro‘yxatidan davom ettiring.',finances:'Hisob, valyuta va davrni tekshiring. Daromad, xarajat va o‘tkazmalar alohida hisoblanadi; turli valyutalar qo‘shilmaydi.',account:'Ko‘rinish, xavfsizlik, qurilmalar va hisob ma’lumotlari shu yerda. Muhim o‘zgarishlar tasdiqlashni talab qiladi.',security:'Kuchli parol va ikkinchi omildan foydalaning. Tiklash kodlarini o‘zingizda saqlang va yordam xizmatiga yubormang.',notifications:'Xabarlar tarixi va qurilma bildirishnomalari alohida sozlanadi. Brauzer ruxsati ekranga yetkazilganini tasdiqlamaydi.',recovery:'O‘chirilgan yozuvni tekshirib, so‘rov yuboring. Tasdiqdan keyin tiklashni o‘zingiz yakunlaysiz.',family:'Har bir ishtirokchi o‘z hisobiga kiradi. Birgalikda ishlashdan oldin rollar va bolalar ruxsatlarini tekshiring.',import:'Faylni tanlang, hisob, sana va valyutani tekshiring. Faqat kerakli satrlarni tasdiqlang.',support:'Mavzu va nima bo‘lganini yozing. Parol, kirish kodi yoki bank sirlarini yubormang.',deletion:'O‘chirishdan oldin oila, umumiy yozuvlar va mahalliy nusxalarga ta’sirni tekshiring. Sahifa mavjud amallarni ko‘rsatib, tasdiq so‘raydi.',plans:'Hozirgi imkoniyatlar bepul. Kelajakdagi tariflar haqida ma’lumot obuna yoki to‘lovni anglatmaydi.',installation:'Ko‘rinish va tilni shu yerda o‘zgartiring. O‘rnatish ko‘rsatmalari yordamda mavjud.'}},
  'uz-Cyrl':{title:'Қандай фойдаланилади',more:'Ёрдамни очиш',topics:{today:'Бугунги вазифалар ва тадбирлардан бошланг. Ёзув яратиш учун керакли бўлимни танланг.',tasks:'Вазифа қўшинг ва керак бўлса тафсилотларни киритинг. Бажарилган вазифаларни ҳолат филтри орқали топасиз.',calendar:'Кун, ҳафта ёки ой кўринишини танланг. Тадбир вақти, вақт минтақаси ва такрорланишини текширинг.',notes:'Фикрингизни қайдга сақланг. Тугалланмаган қораламани қайдлар рўйхатидан давом эттиринг.',finances:'Ҳисоб, валюта ва даврни текширинг. Даромад, харажат ва ўтказмалар алоҳида ҳисобланади; турли валюталар қўшилмайди.',account:'Кўриниш, хавфсизлик, қурилмалар ва ҳисоб маълумотлари шу ерда. Муҳим ўзгаришлар тасдиқлашни талаб қилади.',security:'Кучли парол ва иккинчи омилдан фойдаланинг. Тиклаш кодларини ўзингизда сақланг ва ёрдам хизматига юборманг.',notifications:'Хабарлар тарихи ва қурилма билдиришномалари алоҳида созланади. Браузер рухсати экранга етказилганини тасдиқламайди.',recovery:'Ўчирилган ёзувни текшириб, сўров юборинг. Тасдиқдан кейин тиклашни ўзингиз якунлайсиз.',family:'Ҳар бир иштирокчи ўз ҳисобига киради. Биргаликда ишлашдан олдин роллар ва болалар рухсатларини текширинг.',import:'Файлни танланг, ҳисоб, сана ва валютани текширинг. Фақат керакли сатрларни тасдиқланг.',support:'Мавзу ва нима бўлганини ёзинг. Парол, кириш коди ёки банк сирларини юборманг.',deletion:'Ўчиришдан олдин оила, умумий ёзувлар ва маҳаллий нусхаларга таъсирни текширинг. Саҳифа мавжуд амалларни кўрсатиб, тасдиқ сўрайди.',plans:'Ҳозирги имкониятлар бепул. Келажакдаги тарифлар ҳақида маълумот обуна ёки тўловни англатмайди.',installation:'Кўриниш ва тилни шу ерда ўзгартиринг. Ўрнатиш кўрсатмалари ёрдамда мавжуд.'}}
-};
+});
 function contextHelp(host,topic){
  const copy=CONTEXT_HELP[state.lang]||CONTEXT_HELP.en,text=copy.topics[topic]||CONTEXT_HELP.en.topics[topic];if(!text||host.querySelector('.context-help'))return;
  const details=E('details',undefined,'context-help'),summary=E('summary',copy.title),mark=E('span','?','context-help-mark');mark.setAttribute('aria-hidden','true');summary.prepend(mark);const link=E('a',copy.more);link.href='/faq#'+topic;link.target='_blank';link.rel='noopener';append(details,summary,E('p',text),link);const intro=host.querySelector('.intro');if(intro)intro.after(details);else host.append(details);
@@ -680,7 +688,7 @@ function shell(){
  const crumbs=E('div',undefined,'reference-breadcrumb');append(crumbs,E('span',currentSpace()?.name||referenceCopy(9)),icon('forward'),E('strong',t(pageLabels[state.tab]||'today')));
  const tools=E('div',undefined,'header-tools');
  const date=button(new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',year:'numeric'}),()=>{state.calendarDay=localDate();referenceNavigate('calendar');},'secondary reference-date');date.prepend(icon('calendar'));
- const toolLabels={ru:['Тема','Профиль'],en:['Theme','Profile'],'uz-Latn':['Mavzu','Profil'],'uz-Cyrl':['Мавзу','Профил']}[state.lang]||['Theme','Profile'];
+ const toolLabels=globalThis.UladimI18n.copy("grp_573f574fe543",{ru:['Тема','Профиль'],en:['Theme','Profile'],'uz-Latn':['Mavzu','Profil'],'uz-Cyrl':['Мавзу','Профил']})[state.lang]||['Theme','Profile'];
  const theme=button('',()=>{const dark=state.theme==='dark'||(state.theme==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);state.theme=dark?'light':'dark';preferences();redrawFinance?.();},'icon header-theme');theme.append(icon('appearance'),E('span',toolLabels[0],'header-tool-label'));theme.setAttribute('aria-label',(SYNC_COPY[state.lang]||SYNC_COPY.en)[4]);
  const profileButton=button('',profile,'icon header-profile');profileButton.append(E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),E('span',toolLabels[1],'header-tool-label'));profileButton.setAttribute('aria-label',t('profile'));
  append(tools,date,theme,inboxCenter().bell(),profileButton);append(header,crumbs,tools);
@@ -693,15 +701,15 @@ function shell(){
 }
 let privateInbox,privateRecovery,privateDeletion;
 function deletionCenter(){return privateDeletion||(privateDeletion=window.UladimDeletion?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,report,refresh,navigate:openSettings,recover}));}
-for(const [locale,label]of Object.entries({ru:'Удаление аккаунта',en:'Delete account','uz-Latn':'Hisobni o‘chirish','uz-Cyrl':'Ҳисобни ўчириш'}))WEB_COPY[locale].web_account_deletion=label;
+for(const [locale,label]of Object.entries(globalThis.UladimI18n.copy("grp_42f8a62fb051",{ru:'Удаление аккаунта',en:'Delete account','uz-Latn':'Hisobni o‘chirish','uz-Cyrl':'Ҳисобни ўчириш'})))WEB_COPY[locale].web_account_deletion=label;
 function recoveryCenter(){return privateRecovery||(privateRecovery=window.UladimRecovery?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,report,refresh,money}));}
-for(const [locale,label]of Object.entries({ru:'Корзина и восстановление',en:'Trash and recovery','uz-Latn':'Savat va tiklash','uz-Cyrl':'Сават ва тиклаш'}))WEB_COPY[locale].web_recovery=label;
+for(const [locale,label]of Object.entries(globalThis.UladimI18n.copy("grp_8d74a3e0aa56",{ru:'Корзина',en:'Trash','uz-Latn':'Savat','uz-Cyrl':'Сават'})))WEB_COPY[locale].web_recovery=label;
 function inboxCenter(){return privateInbox||(privateInbox=window.UladimInbox?.create({state,epoch:()=>privateEpoch,request:call,E,append,button,icon,navigate:referenceNavigate,help:host=>contextHelp(host,'notifications'),safe:()=>state.tab==='today'&&!state.busy&&!editingView()&&![...quickTasks.values()].some(draft=>draft.title?.trim()||draft.operation||draft.busy),report})||unavailableInbox());}
-function unavailableInbox(){const noop=()=>{};return {clear:noop,refresh:noop,settings:noop,stage:noop,maybeRefresh:noop,updateBell:noop,bell:()=>{const control=iconButton('bell',t('web_inbox'),()=>referenceNavigate('inbox'));control.classList.add('header-inbox');return control;},page:host=>{title(host,'web_inbox');append(host,E('p',({ru:'История уведомлений пока недоступна.',en:'Notification history is not available yet.','uz-Latn':'Bildirishnomalar tarixi hozircha mavjud emas.','uz-Cyrl':'Билдиришномалар тарихи ҳозирча мавжуд эмас.'})[state.lang]||'Notification history is not available yet.'),button(t('retry'),()=>location.reload(),'secondary'));contextHelp(host,'notifications');},snapshot:()=>({notifications:[],unread_count:0})};}
+function unavailableInbox(){const noop=()=>{};return {clear:noop,refresh:noop,settings:noop,stage:noop,maybeRefresh:noop,updateBell:noop,bell:()=>{const control=iconButton('bell',t('web_inbox'),()=>referenceNavigate('inbox'));control.classList.add('header-inbox');return control;},page:host=>{title(host,'web_inbox');append(host,E('p',(globalThis.UladimI18n.copy("grp_2f46ef6d45c3",{ru:'История уведомлений пока недоступна.',en:'Notification history is not available yet.','uz-Latn':'Bildirishnomalar tarixi hozircha mavjud emas.','uz-Cyrl':'Билдиришномалар тарихи ҳозирча мавжуд эмас.'}))[state.lang]||'Notification history is not available yet.'),button(t('retry'),()=>location.reload(),'secondary'));contextHelp(host,'notifications');},snapshot:()=>({notifications:[],unread_count:0})};}
 
-for(const [locale,label]of Object.entries({ru:'Уведомления',en:'Notifications','uz-Latn':'Bildirishnomalar','uz-Cyrl':'Билдиришномалар'}))WEB_COPY[locale].web_inbox=label;
+for(const [locale,label]of Object.entries(globalThis.UladimI18n.copy("grp_3e9940c9fe02",{ru:'Уведомления',en:'Notifications','uz-Latn':'Bildirishnomalar','uz-Cyrl':'Билдиришномалар'})))WEB_COPY[locale].web_inbox=label;
 function title(m,label,add){const intro=E('div',undefined,'intro');const a=E('div');if(label==='today')a.append(E('div',new Date().toLocaleDateString(state.lang,{day:'numeric',month:'long',weekday:'long'}),'eyebrow'));a.append(E('h1',t(label)));intro.append(a);if(add)intro.append(addButton(t('add'),add));m.append(intro);}
-function render(){redrawFinance=null;if(!state.session){login();return;}const view=[state.tab,state.settingsTab||'',state.referenceSection||''].join('/'),previous=root.querySelector('main')?.dataset.view;const m=shell();m.dataset.view=view;if(previous!==view)m.classList.add('view-enter');backgroundDirty=false;inboxCenter().stage();if(state.tab==='inbox'){inboxCenter().page(m);return;}if(state.tab==='account'){account(m);workspaceContextHelp(m);return;}if(!state.space){onboarding(m);return;}
+function render(){clearPersonalLayoutMounts();redrawFinance=null;if(!state.session){login();return;}const view=[state.tab,state.settingsTab||'',state.referenceSection||''].join('/'),previous=root.querySelector('main')?.dataset.view;const m=shell();m.dataset.view=view;if(previous!==view)m.classList.add('view-enter');backgroundDirty=false;inboxCenter().stage();if(state.tab==='inbox'){inboxCenter().page(m);return;}if(state.tab==='account'){account(m);workspaceContextHelp(m);return;}if(!state.space){onboarding(m);return;}
  if(state.tab==='today')today(m);else if(state.tab==='tasks')listTasks(m);else if(state.tab==='calendar')calendar(m);else if(state.tab==='notes')listNotes(m);else if(state.tab==='money')finance(m);workspaceContextHelp(m);
 }
 function openTabSection(tab,selector){
@@ -784,6 +792,7 @@ function today(m){
  tile('event',referenceCopy(8),next?.record.data.title||'—','calendar',()=>referenceNavigate('calendar'),next?next.day+' · '+(next.allDay?t('web_all_day'):next.time):t('web_no_events'));
  tile('workspace',referenceCopy(9),currentSpace()?.name||referenceCopy(9),'account',()=>referenceNavigate('account','family'),t(currentSpace()?.kind==='family'?'family_account':'family_private'));
  m.append(tiles);
+ if(state.session?.verified&&window.UladimReferrals?.pending())window.UladimReferrals.invitation(m,{request:call,session:state.session,lang:state.lang});
  const grid=E('div',undefined,'today-grid');
  const side=E('div',undefined,'today-side');
  m.append(grid);
@@ -1080,16 +1089,16 @@ function emptyPanel(symbol,message){
  const panel=E('div',undefined,'workspace-empty');
  return append(panel,icon(symbol),E('p',message));
 }
-const NOTE_DRAFT_COPY={
+const NOTE_DRAFT_COPY=globalThis.UladimI18n.copy("grp_916b718b32e5",{
  ru:['Продолжить черновик','Черновик хранится в этой вкладке.','Браузер не смог сохранить черновик в этой вкладке.'],
  en:['Continue draft','The draft is stored in this tab.','The browser could not store the draft in this tab.'],
  'uz-Latn':['Qoralamani davom ettirish','Qoralama shu varaqda saqlanadi.','Brauzer qoralamani shu varaqda saqlay olmadi.'],
  'uz-Cyrl':['Қораламани давом эттириш','Қоралама шу варақда сақланади.','Браузер қораламани шу варақда сақлай олмади.']
-};
-const NOTE_SEARCH_COPY={ru:'Поиск заметок',en:'Search notes','uz-Latn':'Qaydlarni qidirish','uz-Cyrl':'Қайдларни қидириш'};
-const TRANSACTION_TITLE={ru:'Операция',en:'Transaction','uz-Latn':'Operatsiya','uz-Cyrl':'Операция'};
-const BUDGET_EMPTY_COPY={ru:'Добавьте бюджет, чтобы следить за лимитом.',en:'Add a budget to track a spending limit.',
- 'uz-Latn':'Xarajat chegarasini kuzatish uchun byudjet qo‘shing.','uz-Cyrl':'Харажат чегарасини кузатиш учун бюджет қўшинг.'};
+});
+const NOTE_SEARCH_COPY=globalThis.UladimI18n.copy("grp_12a60c49c3b8",{ru:'Поиск заметок',en:'Search notes','uz-Latn':'Qaydlarni qidirish','uz-Cyrl':'Қайдларни қидириш'});
+const TRANSACTION_TITLE=globalThis.UladimI18n.copy("grp_3c6d0ed07cbb",{ru:'Операция',en:'Transaction','uz-Latn':'Operatsiya','uz-Cyrl':'Операция'});
+const BUDGET_EMPTY_COPY=globalThis.UladimI18n.copy("grp_f448cb8a6e4a",{ru:'Добавьте бюджет, чтобы следить за лимитом.',en:'Add a budget to track a spending limit.',
+ 'uz-Latn':'Xarajat chegarasini kuzatish uchun byudjet qo‘shing.','uz-Cyrl':'Харажат чегарасини кузатиш учун бюджет қўшинг.'});
 const noteDraftPrefix=()=>state.session?.user_id?'uladim-note-draft:'+state.session.user_id+':':'';
 function noteDraftKey(record){
  const prefix=noteDraftPrefix();
@@ -1122,12 +1131,12 @@ function clearNoteDrafts(){
  }catch{}
 }
 function listNotes(m){
- const copy={
+ const copy=globalThis.UladimI18n.copy("grp_12edc7202d57",{
   ru:['Ваши идеи','Важное, к чему хочется вернуться.','Новая заметка','Все заметки'],
   en:['Your ideas','Keep what you want to come back to.','New note','All notes'],
   'uz-Latn':['Fikrlaringiz','Qaytishni istagan muhim narsalaringiz.','Yangi qayd','Barcha qaydlar'],
   'uz-Cyrl':['Фикрларингиз','Қайтишни истаган муҳим нарсаларингиз.','Янги қайд','Барча қайдлар']
- }[state.lang]||['Your ideas','Keep what you want to come back to.','New note','All notes'];
+ })[state.lang]||['Your ideas','Keep what you want to come back to.','New note','All notes'];
  title(m,'widget_notes');
  m.classList.add('notes-page');
  const intro=m.querySelector('.intro'),introText=intro.firstElementChild;
@@ -1200,15 +1209,15 @@ function rememberTransactionAccount(key,account){
 }
 function transactionCategoryChoices(){
  const ids=['','food','transport','shopping','housing','health','leisure','education','transfers','other'];
- const names={
+ const names=globalThis.UladimI18n.copy("grp_8279edd1e24d",{
   ru:['Без категории','Питание','Транспорт','Покупки','Дом и счета','Здоровье','Отдых','Образование','Переводы','Другое'],
   en:['Uncategorized','Food','Transport','Shopping','Home and bills','Health','Leisure','Education','Transfers','Other'],
   'uz-Latn':['Toifasiz','Oziq-ovqat','Transport','Xaridlar','Uy va hisoblar','Salomatlik','Dam olish','Ta’lim','O‘tkazmalar','Boshqa'],
   'uz-Cyrl':['Тоифасиз','Озиқ-овқат','Транспорт','Харидлар','Уй ва ҳисоблар','Саломатлик','Дам олиш','Таълим','Ўтказмалар','Бошқа']
- };
+ });
  return ids.map((id,index)=>[id,(names[state.lang]||names.en)[index]]);
 }
-const BUDGET_EDITOR_COPY={
+const BUDGET_EDITOR_COPY=globalThis.UladimI18n.copy("grp_513f77729ca4",{
  ru:{options:'Дополнительно',recurring:'Лимит обновляется каждый период. Дату окончания указывать не нужно.',custom:'Укажите начало и конец своего периода.',since:'Начало действия',participants:'Участники'},
  en:{options:'More options',recurring:'The limit renews each period. No end date is needed.',custom:'Choose the start and end of your period.',since:'Starts on',participants:'Participants'},
  az:{options:'Əlavə seçimlər',recurring:'Limit hər dövrdə yenilənir. Bitmə tarixi lazım deyil.',custom:'Dövrün başlanğıcını və sonunu seçin.',since:'Başlanğıc',participants:'İştirakçılar'},
@@ -1225,7 +1234,7 @@ const BUDGET_EDITOR_COPY={
  uk:{options:'Додатково',recurring:'Ліміт оновлюється кожного періоду. Дату завершення вказувати не потрібно.',custom:'Вкажіть початок і кінець свого періоду.',since:'Початок дії',participants:'Учасники'},
  'uz-Latn':{options:'Qo‘shimcha',recurring:'Limit har davrda yangilanadi. Tugash sanasi kerak emas.',custom:'Davrning boshlanishi va tugashini tanlang.',since:'Boshlanishi',participants:'Ishtirokchilar'},
  'uz-Cyrl':{options:'Қўшимча',recurring:'Лимит ҳар даврда янгиланади. Тугаш санаси керак эмас.',custom:'Даврнинг бошланиши ва тугашини танланг.',since:'Бошланиши',participants:'Иштирокчилар'}
-};
+});
 function budgetEditorStart(period,at=localDate()){
  const date=new Date(at+'T12:00:00Z');
  if(period==='month')date.setUTCDate(1);
@@ -1255,10 +1264,80 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
  const [ ,localDraft,failedDraft]=NOTE_DRAFT_COPY[state.lang]||NOTE_DRAFT_COPY.en;
  let operation=draft?.operation||pendingTask?.operation||null,accepted=Boolean(draft?.accepted||pendingTask?.accepted);
  const fields={};
+ let taskSchedule=null,taskScheduleMeta=null,taskScheduleDirty=false,taskScheduleRequest=null;
+ let taskSchedulePanel,taskScheduleMount,taskScheduleStatus,taskScheduleReload,taskScheduleState='loading';
+ const taskSchedules=window.UladimTaskReminders;
+ const taskScheduleCopy=taskSchedules?.copy(state.lang);
  const draftRevision=draft?.revision??r?.revision??0;
  const draftNotice=draftKey?E('p',undefined,'small note-draft-status'):null;
  if(draftNotice)draftNotice.setAttribute('role','status');
  const invalidated=()=>epoch!==privateEpoch||container.dataset.privacyErased==='true';
+ const taskScheduleActive=()=>!invalidated()&&workspace===state.space&&taskSchedulePanel?.isConnected;
+ const freezeTaskRecord=()=>{
+  if(kind!=='task'||!accepted)return;
+  editor.querySelector('fieldset').disabled=Boolean(r&&!r.editable);
+  for(const control of editor.querySelector('fieldset').querySelectorAll('input,select,textarea,button')){
+   if(!taskSchedulePanel.contains(control))control.disabled=true;
+  }
+ };
+ async function loadTaskSchedule(){
+  if(!taskScheduleActive())return;
+  taskScheduleState='loading';taskScheduleStatus.textContent=taskScheduleCopy?.loading||t('web_loading');taskScheduleReload.disabled=true;
+  taskSchedule?.setBusy(true);
+  try{
+   if(!taskSchedules)throw {code:'service_unavailable'};
+   const taskId=r?.id||(accepted?operation?.record_id:null);
+   const metadata=taskId?await taskSchedules.get(call,workspace,taskId):{revision:0,schedule:null,reminder:false,can_edit:true};
+   if(!taskScheduleActive())return;
+   taskSchedule?.dispose();taskScheduleMeta=metadata;taskScheduleDirty=false;taskScheduleRequest=null;
+   taskSchedule=taskSchedules.mount(taskScheduleMount,{initial:metadata,lang:state.lang,onChange:()=>{taskScheduleDirty=true;taskScheduleRequest=null;taskScheduleStatus.textContent='';}});
+   taskScheduleState='ready';taskScheduleStatus.textContent='';freezeTaskRecord();
+  }catch(error){
+   if(!taskScheduleActive())return;
+   taskScheduleState='failed';taskScheduleStatus.textContent=taskScheduleCopy?.loadFailed||errorText(error);
+   if(error.code==='unauthorized')report(error);
+  }finally{if(taskScheduleActive()){taskScheduleReload.disabled=false;taskScheduleReload.hidden=taskScheduleState==='ready';}}
+ }
+ async function persistTaskSchedule(){
+  if(kind!=='task'||!taskScheduleDirty)return;
+  const desired=taskScheduleRequest?.value||taskSchedule.value();
+  const expected=taskScheduleRequest?.revision??taskScheduleMeta.revision;
+  taskScheduleRequest={value:desired,revision:expected};taskSchedule.setBusy(true);
+  const confirmed=metadata=>{
+   taskScheduleMeta=metadata;taskScheduleDirty=false;taskScheduleRequest=null;
+   taskSchedule.setBusy(false);taskScheduleStatus.textContent='';
+  };
+  try{
+   // Reconcile first: an earlier response may have been lost after the save.
+   const current=await taskSchedules.get(call,workspace,operation.record_id);
+   if(!taskScheduleActive())throw {code:'view_changed'};
+   if(taskSchedules.matches(current,desired)){confirmed(current);return;}
+   if(current.revision!==expected)throw {code:'revision_conflict'};
+   if(current.can_edit===false)throw {code:'record_forbidden'};
+   try{
+    const saved=await taskSchedules.save(call,{workspace_id:workspace,task_id:operation.record_id,revision:expected,...desired});
+    if(!taskScheduleActive())throw {code:'view_changed'};
+    confirmed(saved);
+   }catch(error){
+    if(error.uncertain||error.code==='revision_conflict'){
+     try{
+      const saved=await taskSchedules.get(call,workspace,operation.record_id);
+      if(!taskScheduleActive())throw {code:'view_changed'};
+      if(taskSchedules.matches(saved,desired)){confirmed(saved);return;}
+     }catch{/* Keep the original write outcome and the user's unchanged input. */}
+    }
+    throw error;
+   }
+  }catch(error){
+   if(!taskScheduleActive())throw {code:'view_changed'};
+   taskSchedule.setBusy(Boolean(error.uncertain));
+   if(!error.uncertain)taskScheduleRequest=null;
+   const detail=error.code==='revision_conflict'?taskScheduleCopy.conflict:error.code==='task_completed'?taskScheduleCopy.completed:'';
+   taskScheduleStatus.textContent=detail||taskScheduleCopy.savedFailed;
+   taskScheduleReload.hidden=false;
+   throw {...error,taskScheduleRetry:true,displayMessage:taskScheduleCopy.savedFailed+(detail?' '+detail:'')};
+  }
+ }
  const keepDraft=()=>{
   if(!draftKey||invalidated())return;
   if(!r&&!operation&&!fields.body.value){
@@ -1276,7 +1355,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
    return row;
   };
   if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',pendingTask?.operation.data.title||data.title||data.name||'');
-  if(kind==='task')fields.name.placeholder=({ru:'Например, купить продукты',en:'For example, buy groceries','uz-Latn':'Masalan, oziq-ovqat xarid qilish','uz-Cyrl':'Масалан, озиқ-овқат харид қилиш'})[state.lang]||'For example, buy groceries';
+  if(kind==='task')fields.name.placeholder=(globalThis.UladimI18n.copy("grp_fa864d29f47e",{ru:'Например, купить продукты',en:'For example, buy groceries','uz-Latn':'Masalan, oziq-ovqat xarid qilish','uz-Cyrl':'Масалан, озиқ-овқат харид қилиш'}))[state.lang]||'For example, buy groceries';
   if(kind==='event'){
    const schedule=data.schedule||{};
    fields.localStart=input(f,'localStart',t('web_event_start'),'datetime-local',schedule.localStart?.slice(0,16)||eventDay+'T09:00');
@@ -1305,6 +1384,10 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
    fields.completed=input(f,'completed',t('completed'),'checkbox');fields.completed.checked=!!(pendingTask?.operation.data.completed??data.completed);fields.completed.disabled=!!data.assignees?.length;
    const status=E('div',undefined,'task-editor-status'),statusLabel=fields.completed.previousElementSibling;append(status,fields.completed,statusLabel);f.append(status);
    if(data.assignees?.length){f.append(E('p',t('family_review_pending')));for(const pid of data.assignees){const profile=state.roster.profiles.find(p=>p.id===pid);f.append(button(t('complete')+' · '+(profile?.name||pid),async()=>{await saveOperation({id:crypto.randomUUID(),action:'task.complete',record_id:r.id,revision:r.revision,profile_id:pid,completed:true});d.close();await refresh();render();}));}}
+   taskSchedulePanel=E('section',undefined,'task-schedule-panel');taskScheduleMount=E('div');
+   taskScheduleStatus=E('p',taskScheduleCopy?.loading||t('web_loading'),'small task-schedule-status');taskScheduleStatus.setAttribute('role','status');
+   taskScheduleReload=button(taskScheduleCopy?.reload||t('retry'),loadTaskSchedule,'text-button');taskScheduleReload.hidden=true;
+   append(taskSchedulePanel,taskScheduleMount,taskScheduleStatus,taskScheduleReload);f.append(taskSchedulePanel);
   }
   if(['account','transaction'].includes(kind))fields.currency=input(f,'currency',t('currency'),'text',data.currency||'RUB');
   if(['account','transaction','transfer'].includes(kind)){
@@ -1315,7 +1398,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
   if(kind==='transaction'){
    fields.direction=select(f,'direction',t('family_kind_transaction'),[['expense',t('expense')],['income',t('income')]],data.kind||'expense');
    fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());fields.label=input(f,'label',t('family_name'),'text',data.label||'',false);
-   fields.category=select(f,'category',({ru:'Категория',en:'Category','uz-Latn':'Toifa','uz-Cyrl':'Тоифа'}[state.lang]||'Category'),transactionCategoryChoices(),data.category||'');
+   fields.category=select(f,'category',(globalThis.UladimI18n.copy("grp_d09a67bcec30",{ru:'Категория',en:'Category','uz-Latn':'Toifa','uz-Cyrl':'Тоифа'})[state.lang]||'Category'),transactionCategoryChoices(),data.category||'');
    const categoryLabel=fields.category.previousElementSibling;
    const categoryVisibility=()=>{fields.category.hidden=false;categoryLabel.hidden=false;};
    categoryVisibility();fields.direction.addEventListener('change',categoryVisibility);
@@ -1397,6 +1480,8 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
   if(disabled)f.disabled=true;return fields;
  },async v=>{
   if(workspace!==state.space||epoch!==privateEpoch)throw {code:'view_changed'};
+  if(kind==='task'&&taskScheduleState!=='ready')throw {code:'service_unavailable',displayMessage:taskScheduleCopy?.loadFailed||t('web_server_error')};
+  if(kind==='task'&&taskScheduleDirty)taskSchedule.value();
   if(!operation){let data={...r?.data};
    if(kind==='note')data={body:v.body.value};
    if(kind==='event'){
@@ -1438,6 +1523,8 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
     throw error;
    }
   }
+  freezeTaskRecord();
+  await persistTaskSchedule();
   try{await refresh();}catch(error){throw {...error,refreshOnly:true};}
   if(invalidated())return;
   if(draftKey)writeNoteDraft(draftKey,null);
@@ -1450,14 +1537,15 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
   editor.querySelector('.error').textContent=pendingTask?pendingTaskMessage(accepted):t(accepted?'web_saved_refresh':'web_uncertain');
  }
  const secondary=E('div',undefined,'editor-secondary-actions');
- secondary.append(button(({ru:'Отмена',en:'Cancel','uz-Latn':'Bekor qilish','uz-Cyrl':'Бекор қилиш'})[state.lang]||'Cancel',()=>d.close(),'secondary editor-cancel'));
- if(r){const more=E('details',undefined,'editor-more');more.append(E('summary',({ru:'Другие действия',en:'More actions','uz-Latn':'Boshqa amallar','uz-Cyrl':'Бошқа амаллар'})[state.lang]||'More actions'));more.append(button(t('family_use_server'),async()=>{
+ secondary.append(button((globalThis.UladimI18n.copy("grp_7097dc1a0b93",{ru:'Отмена',en:'Cancel','uz-Latn':'Bekor qilish','uz-Cyrl':'Бекор қилиш'}))[state.lang]||'Cancel',()=>d.close(),'secondary editor-cancel'));
+ if(r){const more=E('details',undefined,'editor-more');more.append(E('summary',(globalThis.UladimI18n.copy("grp_c05c2c0976f4",{ru:'Другие действия',en:'More actions','uz-Latn':'Boshqa amallar','uz-Cyrl':'Бошқа амаллар'}))[state.lang]||'More actions'));more.append(button(t('family_use_server'),async()=>{
   await refresh();
   if(draftKey)writeNoteDraft(draftKey,null);
   d.close();render();
  },'secondary'));
  if(r.editable)more.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));secondary.append(more);}
  container.append(secondary);
+ if(kind==='task')queueMicrotask(loadTaskSchedule);
  });
  if(r)d.dataset.recordId=r.id;
  if(taskKey)d.addEventListener('close',()=>{
@@ -1501,15 +1589,56 @@ function financeBudgetPeriod(data,at=localDate()){
  else end=new Date(+start+(data.period==='custom'?Math.floor((Date.parse(data.end_on+'T00:00:00Z')-first)/day):6)*day);
  return {start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};
 }
+function clearPersonalLayoutMounts(){for(const controller of personalLayoutMounts)controller.destroy();personalLayoutMounts.clear();}
+function personalLayoutKey(kind){return JSON.stringify([state.session?.user_id,state.space,kind]);}
+function orderedFinancialRecords(kind){const rows=records(kind),saved=personalLayoutCache.get(personalLayoutKey(kind));return window.UladimLayoutOrder?.orderRecords(rows,saved?.order||[])||rows;}
+async function mountPersonalLayout(container,kind,items){
+ if(!window.UladimLayoutOrder||items.length<2)return;
+ const user=state.session?.user_id,workspace=state.space,epoch=privateEpoch,key=personalLayoutKey(kind);
+ const viewChanged=()=>Object.assign(new Error('view_changed'),{code:'view_changed'});
+ const sameContext=()=>privateEpoch===epoch&&state.session?.user_id===user&&state.space===workspace;
+ const active=()=>sameContext()&&container.isConnected;
+ let entry=personalLayoutCache.get(key);
+ const load=async()=>{
+  if(!entry){
+   entry={};personalLayoutCache.set(key,entry);
+   entry.promise=call('layout-order?workspace='+encodeURIComponent(workspace)+'&kind='+kind).then(value=>{
+    if(!sameContext())throw viewChanged();Object.assign(entry,value);delete entry.promise;return entry;
+   }).catch(error=>{if(personalLayoutCache.get(key)===entry)personalLayoutCache.delete(key);throw error;});
+  }
+  return entry.promise?await entry.promise:entry;
+ };
+ try{
+  await load();if(!active())return;
+  const controller=window.UladimLayoutOrder.mountOrderControls({container,items,kind,order:entry.order,onSave:async order=>{
+   if(!active())throw viewChanged();
+   try{
+    const value=await call('layout-order',{workspace_id:workspace,kind,order,revision:entry.revision});
+    if(!sameContext())throw viewChanged();Object.assign(entry,value);
+   }catch(error){
+    if(error.code==='layout_revision_conflict'&&sameContext()){
+     const value=await call('layout-order?workspace='+encodeURIComponent(workspace)+'&kind='+kind);
+     if(sameContext())Object.assign(entry,value);
+    }
+    throw error;
+   }
+  },E,lang:state.lang});personalLayoutMounts.add(controller);
+ }catch(error){
+  if(!active())return;
+  if(['unauthorized','workspace_forbidden','service_restricted'].includes(error.code)){report(error);return;}
+  const message=E('p',t('web_server_error'),'small'),retry=button(t('retry'),()=>{message.remove();retry.remove();mountPersonalLayout(container,kind,items);},'secondary');
+  message.setAttribute('role','status');container.prepend(message,retry);
+ }
+}
 function renderFinanceBudgets(m){
- const copy={
+ const copy=globalThis.UladimI18n.copy("grp_0626a54183c0",{
   ru:{spent:'Потрачено за период',available:'Доступно на период',remaining:'Осталось',over:'Превышение',carry:'Перенос остатка',future:'Начнётся',limit:'Лимит периода'},
   en:{spent:'Spent this period',available:'Available this period',remaining:'Remaining',over:'Over budget',carry:'Rollover',future:'Starts',limit:'Period limit'},
   'uz-Latn':{spent:'Davr xarajatlari',available:'Davr uchun mavjud',remaining:'Qoldiq',over:'Oshib ketgan',carry:'Qoldiqni o‘tkazish',future:'Boshlanadi',limit:'Davr limiti'},
   'uz-Cyrl':{spent:'Давр харажатлари',available:'Давр учун мавжуд',remaining:'Қолдиқ',over:'Ошиб кетган',carry:'Қолдиқни ўтказиш',future:'Бошланади',limit:'Давр лимити'}
- }[state.lang]||{spent:'Spent this period',available:'Available this period',remaining:'Remaining',over:'Over budget',carry:'Rollover',future:'Starts',limit:'Period limit'};
+ })[state.lang]||{spent:'Spent this period',available:'Available this period',remaining:'Remaining',over:'Over budget',carry:'Rollover',future:'Starts',limit:'Period limit'};
  const budgets=E('section',undefined,'finance-budgets finance-budget-grid');budgets.id='finance-budgets';
- const budgetRecords=records('budget'),views=new Map();
+ const budgetRecords=orderedFinancialRecords('budget'),views=new Map();
  for(const r of budgetRecords){
   const data=r.data,row=card(),head=E('div',undefined,'finance-budget-head'),text=E('div'),period=financeBudgetPeriod(data);
   row.classList.add('finance-budget-card');row.dataset.budget=r.id;
@@ -1573,18 +1702,18 @@ function drawExpenseCategories(canvas,currency,groups){
 }
 function finance(m){
  const epoch=privateEpoch,workspace=state.space;
- const copy={
+ const copy=globalThis.UladimI18n.copy("grp_71cf0331da0c",{
   ru:{overview:'Обзор финансов',history:'Вся история',balance:'Баланс счетов',recent:'Последние операции',report:'Отчёт по счёту',back:'Все счета',open:'Открыть отчёт',separate:'Суммы показаны отдельно по валютам.',noAccount:'Счёт больше недоступен',period:'Период отчёта'},
   en:{overview:'Financial overview',history:'All time',balance:'Account balances',recent:'Recent transactions',report:'Account report',back:'All accounts',open:'Open report',separate:'Amounts are shown separately by currency.',noAccount:'Account is no longer available',period:'Report period'},
   'uz-Latn':{overview:'Moliya sharhi',history:'Barcha vaqt',balance:'Hisoblar balansi',recent:'Oxirgi operatsiyalar',report:'Hisob bo‘yicha hisobot',back:'Barcha hisoblar',open:'Hisobotni ochish',separate:'Summalar valyuta bo‘yicha alohida ko‘rsatilgan.',noAccount:'Hisob endi mavjud emas',period:'Hisobot davri'},
   'uz-Cyrl':{overview:'Молия шарҳи',history:'Барча вақт',balance:'Ҳисоблар баланси',recent:'Охирги операциялар',report:'Ҳисоб бўйича ҳисобот',back:'Барча ҳисоблар',open:'Ҳисоботни очиш',separate:'Суммалар валюта бўйича алоҳида кўрсатилган.',noAccount:'Ҳисоб энди мавжуд эмас',period:'Ҳисобот даври'}
- }[state.lang]||{overview:'Financial overview',history:'All time',balance:'Account balances',recent:'Recent transactions',report:'Account report',back:'All accounts',open:'Open report',separate:'Amounts are shown separately by currency.',noAccount:'Account is no longer available',period:'Report period'};
- const categoriesTitle=({ru:'По категориям',en:'By category','uz-Latn':'Toifalar bo‘yicha','uz-Cyrl':'Тоифалар бўйича'})[state.lang]||'By category';
- const categoriesHint=({ru:'Нажмите категорию, чтобы увидеть операции.',en:'Choose a category to see its transactions.','uz-Latn':'Operatsiyalarni ko‘rish uchun toifani tanlang.','uz-Cyrl':'Операцияларни кўриш учун тоифани танланг.'})[state.lang]||'Choose a category to see its transactions.';
+ })[state.lang]||{overview:'Financial overview',history:'All time',balance:'Account balances',recent:'Recent transactions',report:'Account report',back:'All accounts',open:'Open report',separate:'Amounts are shown separately by currency.',noAccount:'Account is no longer available',period:'Report period'};
+ const categoriesTitle=(globalThis.UladimI18n.copy("grp_936bc763ebec",{ru:'По категориям',en:'By category','uz-Latn':'Toifalar bo‘yicha','uz-Cyrl':'Тоифалар бўйича'}))[state.lang]||'By category';
+ const categoriesHint=(globalThis.UladimI18n.copy("grp_c7395236cb2f",{ru:'Нажмите категорию, чтобы увидеть операции.',en:'Choose a category to see its transactions.','uz-Latn':'Operatsiyalarni ko‘rish uchun toifani tanlang.','uz-Cyrl':'Операцияларни кўриш учун тоифани танланг.'}))[state.lang]||'Choose a category to see its transactions.';
  const view=['accounts','budgets','ledger','analysis','report'].includes(state.referenceSection)?state.referenceSection:'overview';
  // Reports own their scope; visiting one must not replace deliberate overview filters.
  const filterState=view==='report'?'financeReportFilters':'financeFilters',financeFilters=state[filterState];
- const accountRecords=records('account'),reportAccount=view==='report'?accountRecords.find(a=>a.id===financeFilters.account):null;
+ const accountRecords=orderedFinancialRecords('account'),reportAccount=view==='report'?accountRecords.find(a=>a.id===financeFilters.account):null;
  title(m,'finances');m.classList.add('finance-page');m.dataset.financeView=view;
  const heading=m.querySelector('.intro h1');heading.textContent=reportAccount?reportAccount.data.name:({overview:copy.overview,accounts:t('web_accounts'),budgets:t('web_finance_budgets'),ledger:t('web_finance_transactions'),analysis:t('web_analysis'),report:copy.report}[view]);
  const toolbar=E('div',undefined,'finance-toolbar');
@@ -1627,7 +1756,7 @@ function finance(m){
  if(view==='overview')ledger.append(button(t('web_all_operations'),()=>referenceNavigate('money','ledger'),'text-button finance-ledger-all'));
  const accounts=card();accounts.classList.add('finance-accounts');accounts.id='finance-accounts';
  for(const a of accountRecords){
-  const row=E('div',undefined,'account-balance');
+  const row=E('div',undefined,'account-balance');row.dataset.account=a.id;
   const report=button('',()=>{state.financeReportFilters={...state.financeFilters,account:a.id};referenceNavigate('money','report');},'secondary finance-account-report');
   const name=append(E('span',undefined,'account-name'),icon('money'),E('strong',a.data.name,'text'));
   append(report,name,moneyElement(balance(a),a.data.currency,'finance-account-amount'),E('span',copy.open,'small finance-account-link'));
@@ -1646,7 +1775,7 @@ function finance(m){
  breakdownWrap.append(chartCurrency);chartCurrency.classList.add('finance-chart-currency');chartCurrency.hidden=currencies.length<2;
  breakdownWrap.classList.toggle('has-currencies',currencies.length>1);
  let drilldown=false,categoryFilter=null;
- const clearDrill=button(({ru:'Все категории',en:'All categories','uz-Latn':'Barcha toifalar','uz-Cyrl':'Барча тоифалар'})[state.lang]||'All categories',()=>{categoryFilter=null;drilldown=false;draw();},'text-button finance-clear-drill');
+ const clearDrill=button((globalThis.UladimI18n.copy("grp_0e077d72b313",{ru:'Все категории',en:'All categories','uz-Latn':'Barcha toifalar','uz-Cyrl':'Барча тоифалар'}))[state.lang]||'All categories',()=>{categoryFilter=null;drilldown=false;draw();},'text-button finance-clear-drill');
  clearDrill.hidden=true;ledger.insertBefore(clearDrill,ledgerRows);
  const drill=(kind,category=null)=>{breakdownKind.value=kind;mode.value='categories';drilldown=true;categoryFilter=category;ledgerLimit=25;draw();};
  currency.disabled=mode.disabled=!currencies.length;
@@ -1663,8 +1792,11 @@ function finance(m){
   if(view==='ledger')grid.append(ledger);
   else if(view==='analysis')grid.append(chart);
   else append(grid,chart,ledger);
- }else if(view==='accounts')grid.append(accounts);
- else grid.append(budgets);
+ }else if(view==='accounts'){
+  grid.append(accounts);mountPersonalLayout(accounts,'account',accountRecords.map((record,index)=>({id:record.id,label:record.data.name,element:accounts.querySelectorAll('.account-balance')[index]})));
+ }else{
+  grid.append(budgets);mountPersonalLayout(budgets,'budget',orderedFinancialRecords('budget').map(record=>({id:record.id,label:record.data.name,element:budgets.querySelector('[data-budget="'+record.id+'"]')})));
+ }
  function draw(){
   if(epoch!==privateEpoch||workspace!==state.space||!m.isConnected)return;
   const selectedAccount=accountRecords.find(account=>account.id===accountFilter.value);
@@ -1683,7 +1815,7 @@ function finance(m){
    const values=kind==='balance'?[...balanceByCurrency.entries()]:currencies.filter(code=>!accountFilter.value||accountRecords.find(a=>a.id===accountFilter.value)?.data.currency===code).map(code=>[code,financeTotals(filtered,code)[kind]]);
    for(const [code,amount]of values)tile.append(moneyElement(amount,code));
    if(!values.length)tile.append(E('strong','—'));
-   tile.append(E('span',({ru:'Подробнее',en:'View details','uz-Latn':'Batafsil','uz-Cyrl':'Батафсил'})[state.lang]||'View details','finance-metric-link'));
+   tile.append(E('span',(globalThis.UladimI18n.copy("grp_35b4388fe0b1",{ru:'Подробнее',en:'View details','uz-Latn':'Batafsil','uz-Cyrl':'Батафсил'}))[state.lang]||'View details','finance-metric-link'));
    metricGrid.append(tile);
   }
   const values=financeTotals(filtered,currency.value),categories=mode.value==='categories';legend.replaceChildren();
@@ -1733,7 +1865,7 @@ function finance(m){
    append(row,text,amountNode,iconButton('more',t('edit')+' · '+label,()=>editRecord(entry.kind,entry)));
    ledgerRows.append(row);
   }
-  const paginationCopy={ru:['Показано','из','Показать ещё'],en:['Showing','of','Show more'],'uz-Latn':['Ko‘rsatilgan','jami','Yana ko‘rsatish'],'uz-Cyrl':['Кўрсатилган','жами','Яна кўрсатиш']}[state.lang]||['Showing','of','Show more'];
+  const paginationCopy=globalThis.UladimI18n.copy("grp_e320bf4ae60d",{ru:['Показано','из','Показать ещё'],en:['Showing','of','Show more'],'uz-Latn':['Ko‘rsatilgan','jami','Yana ko‘rsatish'],'uz-Cyrl':['Кўрсатилган','жами','Яна кўрсатиш']})[state.lang]||['Showing','of','Show more'];
   pageStatus.textContent=paginationCopy[0]+' '+displayed.length+' '+paginationCopy[1]+' '+entries.length;
   showMore.hidden=displayed.length>=entries.length;showMore.textContent=paginationCopy[2]+' '+Math.min(25,entries.length-displayed.length);
   if(!entries.length)ledgerRows.append(E('p',t(active?'web_no_results':'empty_money'),'empty'));
@@ -1769,12 +1901,12 @@ function acceptInvite(){
  }));
 }
 function familyPanel(m){
- const copy={
+ const copy=globalThis.UladimI18n.copy("grp_bb945604105e",{
   ru:['Вместе проще','Личные планы и общие дела — в своих пространствах.','Активно','Личное пространство','Семейное пространство','Создать пространство','Ваши личные планы и заметки','Общие задачи, бюджет и календарь','Участники пространства','Участников','Владелец'],
   en:['Better together','Personal plans and shared activities, in your own spaces.','Active','Personal workspace','Family workspace','Create workspace','Your personal plans and notes','Shared tasks, budget and calendar','Workspace members','Members','Owner'],
   'uz-Latn':['Birga osonroq','Shaxsiy rejalar va umumiy ishlar — o‘z makonlaringizda.','Faol','Shaxsiy makon','Oilaviy makon','Makon yaratish','Shaxsiy rejalaringiz va qaydlaringiz','Umumiy vazifalar, budjet va taqvim','Makon a’zolari','A’zolar','Egasi'],
   'uz-Cyrl':['Бирга осонроқ','Шахсий режалар ва умумий ишлар — ўз маконларингизда.','Фаол','Шахсий макон','Оилавий макон','Макон яратиш','Шахсий режаларингиз ва қайдларингиз','Умумий вазифалар, бюджет ва тақвим','Макон аъзолари','Аъзолар','Эгаси']
- }[state.lang]||['Better together','Personal plans and shared activities, in your own spaces.','Active','Personal workspace','Family workspace','Create workspace','Your personal plans and notes','Shared tasks, budget and calendar','Workspace members','Members','Owner'];
+ })[state.lang]||['Better together','Personal plans and shared activities, in your own spaces.','Active','Personal workspace','Family workspace','Create workspace','Your personal plans and notes','Shared tasks, budget and calendar','Workspace members','Members','Owner'];
  const page=m.closest('main'),intro=page?.querySelector('.intro');
  page?.classList.add('reference-family-page');
  const breadcrumb=root.querySelector('.reference-breadcrumb strong');if(breadcrumb)breadcrumb.textContent=referenceCopy(4);
@@ -1823,12 +1955,12 @@ function familyPanel(m){
   actions.append(button(t('family_child_add'),()=>{const d=dialog(t('family_child_add'),container=>form(container,'',f=>({name:input(f,'name',t('name'))}),async v=>{await call('family',{id:crypto.randomUUID(),workspace_id:space.id,action:'child.save',profile_id:crypto.randomUUID(),revision:0,name:v.name.value,permissions:['view_shared','complete_tasks']});d.close();await refresh();render();}));},'text-button'));
  }
 }
-const NOTIFICATION_COPY={
+const NOTIFICATION_COPY=globalThis.UladimI18n.copy("grp_bbeb8b1c1b93",{
  ru:{title:'Уведомления',intro:'Напоминания календаря на этом устройстве, даже когда ULADIM закрыт.',off:'Выключены на этом устройстве',on:'Включены на этом устройстве',enable:'Включить уведомления',disable:'Выключить на устройстве',test:'Проверить доставку',loading:'Проверяем настройки…',unavailable:'Этот браузер не поддерживает фоновые уведомления. Откройте ULADIM в актуальном браузере.',install:'На iPhone и iPad уведомления работают в установленном приложении с iOS 16.4 или новее. В Safari нажмите «Поделиться» → «На экран Домой», затем откройте ULADIM с экрана Домой.',denied:'Уведомления запрещены в настройках браузера. Разрешите их для ULADIM и вернитесь сюда.',update:'Чтобы подключить уведомления, закройте остальные окна ULADIM и откройте приложение снова: обновление ещё устанавливается.',permission:'Разрешение не получено. Можно включить уведомления позже.',options:'Параметры напоминаний',lead:'До начала события',minutes:'мин',priority:'Приоритет доставки',high:'Высокий',normal:'Обычный',save:'Сохранить параметры',saved:'Параметры сохранены',schedule:'События со временем — заранее; события на весь день — в 09:00 по часовому поясу этого устройства.',privacy:'Текст уведомлений не раскрывает названия событий. Звук и показ на экране определяет система устройства. Высокий приоритет не обходит режим «Не беспокоить».',delivery:'Последняя проверка доставки',queued:'Уведомление в очереди',sending:'Отправляем в push-сервис…',accepted:'Push-сервис принял уведомление. Ждём ответа устройства.',displayed:'Передано системе устройства. Проверьте экран и настройки звука.',suppressed:'Показ пропущен: сеанс недоступен или устройство не разрешило уведомление.',failed:'Доставка не подтверждена. Проверьте соединение и разрешения устройства.',cancelled:'Отправка отменена',pending:'Ответ устройства пока не получен. Можно вернуться сюда позже.',error:'Не удалось обновить настройки уведомлений. Проверьте соединение и повторите.',cooldown:'Повторная проверка доступна через минуту.',retry:'Повторить',enabledHelp:'Только этот браузер или установленное веб-приложение. Другие устройства настраиваются отдельно.',disablePartial:'Не удалось подтвердить отключение на сервере. Повторите отключение.',testHelp:'Проверка отправит одно уведомление. Подтверждение системы не означает, что баннер был виден.'},
  en:{title:'Notifications',intro:'Calendar reminders on this device, even when ULADIM is closed.',off:'Off on this device',on:'On on this device',enable:'Enable notifications',disable:'Turn off on this device',test:'Check delivery',loading:'Checking settings…',unavailable:'This browser does not support background notifications. Open ULADIM in an up-to-date browser.',install:'On iPhone and iPad, notifications require the installed app and iOS 16.4 or later. In Safari, choose Share → Add to Home Screen, then open ULADIM from your Home Screen.',denied:'Notifications are blocked in browser settings. Allow them for ULADIM and return here.',update:'Close the other ULADIM windows and reopen the app to enable notifications: an update is still installing.',permission:'Permission was not granted. You can enable notifications later.',options:'Reminder settings',lead:'Before an event',minutes:'min',priority:'Delivery priority',high:'High',normal:'Normal',save:'Save settings',saved:'Settings saved',schedule:'Timed events arrive in advance; all-day events at 09:00 in this device’s time zone.',privacy:'Notification text does not reveal event titles. Your device controls sound and banners. High priority does not override Do Not Disturb.',delivery:'Latest delivery check',queued:'Notification queued',sending:'Sending to the push service…',accepted:'The push service accepted the notification. Waiting for the device.',displayed:'Passed to the device system. Check your screen and sound settings.',suppressed:'Display skipped: the session was unavailable or the device did not allow notifications.',failed:'Delivery was not confirmed. Check your connection and device permissions.',cancelled:'Sending cancelled',pending:'The device has not responded yet. You can return here later.',error:'Could not update notification settings. Check your connection and retry.',cooldown:'Another check is available in one minute.',retry:'Retry',enabledHelp:'Applies to this browser or installed web app only. Set up other devices separately.',disablePartial:'The server did not confirm disabling notifications. Try turning them off again.',testHelp:'This sends one notification. System confirmation does not mean the banner was visible.'},
  'uz-Latn':{title:'Bildirishnomalar',intro:'ULADIM yopiq bo‘lsa ham, ushbu qurilmada taqvim eslatmalari.',off:'Bu qurilmada o‘chirilgan',on:'Bu qurilmada yoqilgan',enable:'Bildirishnomalarni yoqish',disable:'Bu qurilmada o‘chirish',test:'Yetkazishni tekshirish',loading:'Sozlamalar tekshirilmoqda…',unavailable:'Bu brauzer fon bildirishnomalarini qo‘llamaydi. ULADIMni yangilangan brauzerda oching.',install:'iPhone va iPadda bildirishnomalar o‘rnatilgan ilovada, iOS 16.4 yoki yangiroq tizimda ishlaydi. Safarida Ulashish → Bosh ekranga qo‘shish tugmasini bosing va ULADIMni bosh ekrandan oching.',denied:'Brauzer sozlamalarida bildirishnomalar taqiqlangan. ULADIM uchun ruxsat bering va bu yerga qayting.',update:'Yangilanish hali o‘rnatilmoqda. ULADIMning boshqa oynalarini yoping va ilovani qayta oching.',permission:'Ruxsat berilmadi. Bildirishnomalarni keyinroq yoqishingiz mumkin.',options:'Eslatma sozlamalari',lead:'Tadbirdan oldin',minutes:'daq',priority:'Yetkazish ustuvorligi',high:'Yuqori',normal:'Oddiy',save:'Sozlamalarni saqlash',saved:'Sozlamalar saqlandi',schedule:'Vaqti belgilangan tadbirlar oldindan, kun bo‘yi tadbirlar esa qurilma vaqt mintaqasida 09:00 da eslatiladi.',privacy:'Bildirishnomada tadbir nomi ko‘rsatilmaydi. Ovoz va bannerlarni qurilma boshqaradi. Yuqori ustuvorlik «Bezovta qilmang» rejimini chetlab o‘tmaydi.',delivery:'So‘nggi yetkazish tekshiruvi',queued:'Bildirishnoma navbatda',sending:'Push xizmatiga yuborilmoqda…',accepted:'Push xizmati qabul qildi. Qurilma javobi kutilmoqda.',displayed:'Qurilma tizimiga uzatildi. Ekran va ovoz sozlamalarini tekshiring.',suppressed:'Ko‘rsatish o‘tkazib yuborildi: seans mavjud emas yoki qurilma ruxsat bermadi.',failed:'Yetkazish tasdiqlanmadi. Ulanish va qurilma ruxsatlarini tekshiring.',cancelled:'Yuborish bekor qilindi',pending:'Qurilma hali javob bermadi. Keyinroq qaytishingiz mumkin.',error:'Bildirishnoma sozlamalarini yangilab bo‘lmadi. Ulanishni tekshirib qayta urinib ko‘ring.',cooldown:'Bir daqiqadan so‘ng qayta tekshirish mumkin.',retry:'Qayta urinish',enabledHelp:'Faqat shu brauzer yoki o‘rnatilgan veb-ilova uchun. Boshqa qurilmalar alohida sozlanadi.',disablePartial:'Server o‘chirishni tasdiqlamadi. Qayta o‘chirib ko‘ring.',testHelp:'Tekshiruv bitta bildirishnoma yuboradi. Tizim tasdig‘i banner ko‘ringanini anglatmaydi.'},
  'uz-Cyrl':{title:'Билдиришномалар',intro:'ULADIM ёпиқ бўлса ҳам, ушбу қурилмада тақвим эслатмалари.',off:'Бу қурилмада ўчирилган',on:'Бу қурилмада ёқилган',enable:'Билдиришномаларни ёқиш',disable:'Бу қурилмада ўчириш',test:'Етказишни текшириш',loading:'Созламалар текширилмоқда…',unavailable:'Бу браузер фон билдиришномаларини қўлламайди. ULADIMни янгиланган браузерда очинг.',install:'iPhone ва iPadда билдиришномалар ўрнатилган иловада, iOS 16.4 ёки янгироқ тизимда ишлайди. Safariда Улашиш → Бош экранга қўшиш тугмасини босинг ва ULADIMни бош экрандан очинг.',denied:'Браузер созламаларида билдиришномалар тақиқланган. ULADIM учун рухсат беринг ва бу ерга қайтинг.',update:'Янгиланиш ҳали ўрнатилмоқда. ULADIMнинг бошқа ойналарини ёпинг ва иловани қайта очинг.',permission:'Рухсат берилмади. Билдиришномаларни кейинроқ ёқишингиз мумкин.',options:'Эслатма созламалари',lead:'Тадбирдан олдин',minutes:'дақ',priority:'Етказиш устуворлиги',high:'Юқори',normal:'Оддий',save:'Созламаларни сақлаш',saved:'Созламалар сақланди',schedule:'Вақти белгиланган тадбирлар олдиндан, кун бўйи тадбирлар эса қурилма вақт минтақасида 09:00 да эслатилади.',privacy:'Билдиришномада тадбир номи кўрсатилмайди. Овоз ва баннерларни қурилма бошқаради. Юқори устуворлик «Безовта қилманг» режимини четлаб ўтмайди.',delivery:'Сўнгги етказиш текшируви',queued:'Билдиришнома навбатда',sending:'Push хизматига юборилмоқда…',accepted:'Push хизмати қабул қилди. Қурилма жавоби кутилмоқда.',displayed:'Қурилма тизимига узатилди. Экран ва овоз созламаларини текширинг.',suppressed:'Кўрсатиш ўтказиб юборилди: сеанс мавжуд эмас ёки қурилма рухсат бермади.',failed:'Етказиш тасдиқланмади. Уланиш ва қурилма рухсатларини текширинг.',cancelled:'Юбориш бекор қилинди',pending:'Қурилма ҳали жавоб бермади. Кейинроқ қайтишингиз мумкин.',error:'Билдиришнома созламаларини янгилаб бўлмади. Уланишни текшириб қайта уриниб кўринг.',cooldown:'Бир дақиқадан сўнг қайта текшириш мумкин.',retry:'Қайта уриниш',enabledHelp:'Фақат шу браузер ёки ўрнатилган веб-илова учун. Бошқа қурилмалар алоҳида созланади.',disablePartial:'Сервер ўчиришни тасдиқламади. Қайта ўчириб кўринг.',testHelp:'Текширув битта билдиришнома юборади. Тизим тасдиғи баннер кўринганини англатмайди.'}
-};
+});
 for(const [locale,copy]of Object.entries(NOTIFICATION_COPY))WORKSPACE_COPY[locale].web_notifications=copy.title;
 function notificationSupport(){
  const ios=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1848,7 +1980,7 @@ async function notificationWorker(){
  return {registration,supported};
 }
 function notificationKey(value){const text=atob(value.replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(text,c=>c.charCodeAt(0));}
-function notificationSettings(subscription,settings){return {subscription:subscription.toJSON(),lead_minutes:settings.lead_minutes||15,priority:settings.priority||'high',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'};}
+function notificationSettings(subscription,settings){return {subscription:subscription.toJSON(),locale:state.lang,lead_minutes:settings.lead_minutes||15,priority:settings.priority||'high',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'};}
 async function refreshNotificationTimezone(){
  const epoch=privateEpoch;if(!state.session||notificationSupport()!=='supported'||Notification.permission!=='granted')return;
  try{
@@ -1858,12 +1990,12 @@ async function refreshNotificationTimezone(){
   if(subscription&&epoch===privateEpoch&&state.session)await call('notifications/subscribe',notificationSettings(subscription,settings));
  }catch{} // Existing opt-in only; startup must never show a permission dialog.
 }
-const NOTIFICATION_CONNECTION_COPY={
+const NOTIFICATION_CONNECTION_COPY=globalThis.UladimI18n.copy("grp_d8ed580741da",{
  ru:{retry:'Повторить подключение',partial:'Разрешение получено, но подключение доставки не подтверждено. Повторите подключение.',status:'Подключение уведомлений не подтверждено',support:'Сведения для поддержки',stage:'Этап',code:'Код'},
  en:{retry:'Retry connection',partial:'Permission was granted, but the delivery connection was not confirmed. Retry connecting.',status:'Notification connection is unconfirmed',support:'Support details',stage:'Stage',code:'Code'},
  'uz-Latn':{retry:'Ulanishni takrorlash',partial:'Ruxsat berilgan, ammo yetkazish ulanishi tasdiqlanmadi. Ulanishni takrorlang.',status:'Bildirishnoma ulanishi tasdiqlanmadi',support:'Yordam uchun ma’lumot',stage:'Bosqich',code:'Kod'},
  'uz-Cyrl':{retry:'Уланишни такрорлаш',partial:'Рухсат берилган, аммо етказиш уланиши тасдиқланмади. Уланишни такрорланг.',status:'Билдиришнома уланиши тасдиқланмади',support:'Ёрдам учун маълумот',stage:'Босқич',code:'Код'}
-};
+});
 function notificationFailureCode(error){const known=new Set(['offline','server_error','server_unavailable','service_unavailable','push_unavailable','push_subscription_invalid','push_endpoint_invalid','push_preferences_invalid','push_timezone_invalid','rate_limited','csrf_invalid','notification_timeout']);if(known.has(error?.code))return error.code;const names=new Set(['NotAllowedError','AbortError','InvalidStateError','NotSupportedError','SecurityError','TypeError','TimeoutError']);return names.has(error?.name)?error.name:'unknown_error';}
 async function notificationPage(content){
  const copy=NOTIFICATION_COPY[state.lang]||NOTIFICATION_COPY.en,connectionCopy=NOTIFICATION_CONNECTION_COPY[state.lang]||NOTIFICATION_CONNECTION_COPY.en,epoch=privateEpoch;
@@ -1944,10 +2076,20 @@ async function notificationPage(content){
  }catch(error){if(!active())return;status.textContent=copy.error;failure(error);controls.append(button(copy.retry,()=>openSettings('notifications'),'secondary'));}
 }
 async function consumeNotificationLink(){
- const url=new URL(location.href);if(url.searchParams.get('notification')!=='calendar')return;
- const workspace=url.searchParams.get('workspace'),day=url.searchParams.get('day');
- for(const key of ['notification','workspace','day'])url.searchParams.delete(key);history.replaceState(null,'',url.pathname+url.search+url.hash);
- if(!state.spaces.some(space=>space.id===workspace)||!/^\d{4}-\d{2}-\d{2}$/.test(day||''))return;
+ const url=new URL(location.href),kind=url.searchParams.get('notification');if(!['calendar','task'].includes(kind))return;
+ const workspace=url.searchParams.get('workspace'),day=url.searchParams.get('day'),task=url.searchParams.get('task');
+ const keys=[...url.searchParams.keys()],allowed=kind==='task'?['notification','workspace','task']:['notification','workspace','day'];
+ for(const key of ['notification','workspace','day','task'])url.searchParams.delete(key);history.replaceState(null,'',url.pathname+url.search+url.hash);
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ if(keys.length!==3||new Set(keys).size!==3||keys.some(key=>!allowed.includes(key))||!uuid.test(workspace||'')||!state.spaces.some(space=>space.id===workspace))return;
+ if(kind==='task'){
+  if(!uuid.test(task||''))return;
+  if(state.space!==workspace){state.space=workspace;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;await refresh();}
+  const record=records('task').find(record=>record.id===task&&record.workspace_id===workspace);
+  if(!record)return;
+  state.tab='tasks';state.taskStatus='all';state.taskQuery='';return record;
+ }
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day||''))return;
  const date=new Date(day+'T12:00:00Z');if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==day||date.getUTCFullYear()<1900||date.getUTCFullYear()>2200)return;
  if(state.space!==workspace){state.space=workspace;state.records=[];state.syncSpace=null;state.syncCursor=0;state.syncEpoch='';state.roster=null;await refresh();}
  state.tab='calendar';state.calendarDay=day;
@@ -1965,12 +2107,12 @@ function openSettings(section){
 async function renderAccountPlan(content){
  const [ent,catalog]=await Promise.all([call('entitlements'),call('plans')]);
  if(!content.isConnected||state.tab!=='account'||state.settingsTab!=='plan')return;
- const copy={
+ const copy=globalThis.UladimI18n.copy("grp_5d7736b48264",{
   ru:{free:'«Пока всё доступно бесплатно»',current:'Ваш уровень доступа',intro:'Пользуйтесь всеми текущими возможностями. Оформлять подписку и вводить платёжные данные не нужно.',future:'Будущий тариф',included:'Сейчас включено',note:'Plus и Premium — подготовленная линейка на будущее. Цены и различия ещё не утверждены; продажи отключены.',titles:['Для личного ритма','Для своих привычек','Для совместных планов'],descriptions:['Задачи, заметки, календарь и финансы в одном месте.','Больше внимания настройкам, диаграммам и личному пространству.','Личные и семейные дела в отдельных пространствах.'],features:{personal_core:'Задачи, заметки, календарь и финансы',family_sync:'Семейное пространство и синхронизация',custom_charts:'Настройка диаграмм',extended_personalization:'Темы и палитры'}},
   en:{free:'“Everything is free for now”',current:'Your access level',intro:'Use all current features. No subscription or payment details are needed.',future:'Future plan',included:'Included now',note:'Plus and Premium are prepared for the future. Prices and differences have not been approved; sales are disabled.',titles:['For your daily rhythm','For your own way of working','For plans together'],descriptions:['Tasks, notes, calendar and finances together.','A focus on settings, charts and your personal workspace.','Personal and family activities in separate workspaces.'],features:{personal_core:'Tasks, notes, calendar and finances',family_sync:'Family workspace and sync',custom_charts:'Chart settings',extended_personalization:'Themes and palettes'}},
   'uz-Latn':{free:'«Hozircha barcha imkoniyatlar bepul»',current:'Kirish darajangiz',intro:'Barcha mavjud imkoniyatlardan foydalaning. Obuna yoki to‘lov ma’lumotlari kerak emas.',future:'Kelajakdagi tarif',included:'Hozir mavjud',note:'Plus va Premium kelajak uchun tayyorlangan. Narxlar va farqlar hali tasdiqlanmagan; savdo o‘chirilgan.',titles:['Kundalik maromingiz uchun','O‘zingizga mos ishlash uchun','Birgalikdagi rejalar uchun'],descriptions:['Vazifalar, qaydlar, taqvim va moliya bir joyda.','Sozlamalar, diagrammalar va shaxsiy makonga e’tibor.','Shaxsiy va oilaviy ishlar alohida makonlarda.'],features:{personal_core:'Vazifalar, qaydlar, taqvim va moliya',family_sync:'Oilaviy makon va sinxronlash',custom_charts:'Diagramma sozlamalari',extended_personalization:'Mavzular va ranglar'}},
   'uz-Cyrl':{free:'«Ҳозирча барча имкониятлар бепул»',current:'Кириш даражангиз',intro:'Барча мавжуд имкониятлардан фойдаланинг. Обуна ёки тўлов маълумотлари керак эмас.',future:'Келажакдаги тариф',included:'Ҳозир мавжуд',note:'Plus ва Premium келажак учун тайёрланган. Нархлар ва фарқлар ҳали тасдиқланмаган; савдо ўчирилган.',titles:['Кундалик маромингиз учун','Ўзингизга мос ишлаш учун','Биргаликдаги режалар учун'],descriptions:['Вазифалар, қайдлар, тақвим ва молия бир жойда.','Созламалар, диаграммалар ва шахсий маконга эътибор.','Шахсий ва оилавий ишлар алоҳида маконларда.'],features:{personal_core:'Вазифалар, қайдлар, тақвим ва молия',family_sync:'Оилавий макон ва синхронлаш',custom_charts:'Диаграмма созламалари',extended_personalization:'Мавзулар ва ранглар'}}
- };
+ });
  const c=copy[state.lang]||copy.en;
  const access=card(t('account_access'));access.classList.add('access-plan-status');
  append(access,E('p',c.current,'small'),E('strong',ent.tier,'access-plan-tier'),E('p',c.free,'access-free-note'),E('p',c.intro));
@@ -1979,19 +2121,19 @@ async function renderAccountPlan(content){
  ['Free','Plus','Premium'].forEach((tier,index)=>{
   const plan=catalog.tiers?.[tier];if(!plan)return;
   const item=E('section',undefined,'card access-plan-card');item.dataset.tier=tier;
-  append(item,E('p',index===0?c.included:c.future,'access-plan-label'),E('h3',tier+' · '+c.titles[index]),E('p',c.descriptions[index]));
+  append(item,E('p',index===0?c.included:c.future,'access-plan-label'),E('h3',tier+' · '+(tier==='Premium'?c.future:c.titles[index])),E('p',tier==='Premium'?t('plan_premium_description'):c.descriptions[index]));
   grid.append(item);
  });
  append(content,grid,E('p',c.note,'small access-plan-boundary'));
 }
-const APPEARANCE_PALETTE_COPY={
+const APPEARANCE_PALETTE_COPY=globalThis.UladimI18n.copy("grp_39b9ba8075e8",{
  az:['Lavanda','Qızılgül','Qum'],de:['Lavendel','Rose','Sand'],en:['Lavender','Rose','Sand'],
  es:['Lavanda','Rosa','Arena'],fr:['Lavande','Rose','Sable'],hy:['Նարդոս','Վարդագույն','Ավազագույն'],
  it:['Lavanda','Rosa','Sabbia'],ka:['ლავანდა','ვარდისფერი','ქვიშისფერი'],kk:['Лаванда','Раушан','Құм'],
  ky:['Лаванда','Кызгылт','Кум'],pt:['Lavanda','Rosa','Areia'],ru:['Лаванда','Роза','Песочный'],
  tg:['Лаванда','Гулобӣ','Регӣ'],uk:['Лаванда','Троянда','Пісочний'],
  'uz-Cyrl':['Лаванда','Атиргул','Қумранг'],'uz-Latn':['Lavanda','Atirgul','Qumrang']
-};
+});
 function appearanceSettings(content){
  const settings=card(t('theme'));settings.classList.add('settings-grid','appearance-settings');content.append(settings);
  const controls=E('div',undefined,'appearance-controls'),languageBox=E('div'),themeBox=E('div');
@@ -2014,14 +2156,15 @@ function appearanceSettings(content){
   const check=E('span','✓','palette-choice-check');check.setAttribute('aria-hidden','true');
   append(choice,preview,append(E('span',undefined,'palette-choice-label'),E('span',label),check));choices.append(choice);
  }
+ window.UladimAppearance?.attachIntensity({container:settings,state,save:preferences,E,append,input});
  const help=E('div',undefined,'appearance-help'),install=E('details',undefined,'installation-help');
  append(install,E('summary','iPhone / iPad · PWA'),E('p',t('web_install')));
- append(help,install,E('p',t('web_online'),'small'),E('p',t('web_locale_coverage'),'small'));settings.append(help);
+ append(help,install,E('p',t('web_online'),'small'));settings.append(help);
  if(deferredInstall)settings.append(button(t('web_install_button'),async()=>{await deferredInstall.prompt();deferredInstall=null;}));
 }
 async function account(m){
  const section=state.settingsTab||'profile';
- const pageTitle={deletion:'web_account_deletion',recovery:'web_recovery',notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import'};
+ const pageTitle={deletion:'web_account_deletion',recovery:'web_recovery',notifications:'web_notifications',security:'account_privacy',devices:'account_devices','personal-import':'web_personal_import',referrals:'referrals_title'};
  title(m,pageTitle[section]||'account_manage');m.classList.add('settings-page');
  m.dataset.settingsDetail=String(Boolean(state.settingsTab));
  const layout=E('div',undefined,'settings-layout'),navigation=E('nav',undefined,'settings-navigation'),content=E('section',undefined,'settings-content');
@@ -2029,7 +2172,7 @@ async function account(m){
  navigation.setAttribute('aria-label',t('account_manage'));
  const back=button(t('web_back_settings'),()=>openSettings(''),'settings-back text-button');
  back.prepend(icon('back'));append(layout,navigation,content);append(m,back,layout);
- const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['devices','account_devices'],['notifications','web_notifications'],['family','family_account'],['personal-import','web_personal_import'],['plan','account_access'],['support','account_support']];
+ const sections=[['profile','profile'],['appearance','theme'],['security','account_privacy'],['devices','account_devices'],['notifications','web_notifications'],['family','family_account'],['personal-import','web_personal_import'],['plan','account_access'],['referrals','referrals_title'],['support','account_support']];
  if(state.session.record_recovery_available===true)sections.splice(6,0,['recovery','web_recovery']);
  for(const [key,label] of sections){
   const item=settingsRow(t(label),()=>openSettings(key),'settings-item');
@@ -2038,12 +2181,12 @@ async function account(m){
   navigation.append(item);
  }
  if(section==='profile'){
-  const copy={
+  const copy=globalThis.UladimI18n.copy("grp_888b8361f651",{
    ru:['Ваш аккаунт','Управляйте своим аккаунтом и предпочтениями.','Личные данные','Подтверждена','Не подтверждена','Выйти из аккаунта','Завершить текущий сеанс на этом устройстве'],
    en:['Your account','Manage your account and preferences.','Personal details','Verified','Not verified','Sign out of your account','End the current session on this device'],
    'uz-Latn':['Hisobingiz','Hisobingiz va sozlamalaringizni boshqaring.','Shaxsiy ma’lumotlar','Tasdiqlangan','Tasdiqlanmagan','Hisobdan chiqish','Ushbu qurilmadagi joriy seansni tugatish'],
    'uz-Cyrl':['Ҳисобингиз','Ҳисобингиз ва созламаларингизни бошқаринг.','Шахсий маълумотлар','Тасдиқланган','Тасдиқланмаган','Ҳисобдан чиқиш','Ушбу қурилмадаги жорий сеансни тугатиш']
-  }[state.lang]||['Your account','Manage your account and preferences.','Personal details','Verified','Not verified','Sign out of your account','End the current session on this device'];
+  })[state.lang]||['Your account','Manage your account and preferences.','Personal details','Verified','Not verified','Sign out of your account','End the current session on this device'];
   m.classList.add('reference-profile-page');
   const heading=m.querySelector('.intro h1');heading.textContent=t('profile');heading.before(E('div',copy[0],'eyebrow'));heading.after(E('p',copy[1],'reference-account-description'));
   const c=card(t('profile'));c.classList.add('profile-summary');
@@ -2052,8 +2195,8 @@ async function account(m){
   const identity=append(E('div',undefined,'reference-profile-identity'),E('span',(state.session.email||'U').slice(0,1).toLocaleUpperCase(state.lang),'reference-avatar'),append(E('dl',undefined,'profile-identity'),E('dt',t('family_email')),email));
   const verified=E('span',copy[state.session.verified?3:4],'reference-profile-verified');verified.dataset.verified=String(Boolean(state.session.verified));identity.append(verified);
   const options=E('div',undefined,'reference-profile-options');
-  for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar'],['notifications','web_notifications','bell'],['family','family_account','account'],['personal-import','web_personal_import','notes'],['plan','account_access','money'],['support','account_support','notes']]){
-   const action=settingsRow(t(label),()=>openSettings(key),'reference-profile-option'+(['appearance','security','devices'].includes(key)?'':' reference-profile-extra'));action.dataset.settingsSection=key;action.prepend(icon(symbol));options.append(action);
+  for(const [key,label,symbol]of [['appearance','theme','appearance'],['security','account_privacy','account'],['devices','account_devices','calendar'],['notifications','web_notifications','bell'],['family','family_account','account'],['personal-import','web_personal_import','notes'],['plan','account_access','money'],['referrals','referrals_title','account'],['support','account_support','notes']]){
+   const action=settingsRow(t(label),()=>openSettings(key),'reference-profile-option'+(['appearance','security','devices','referrals'].includes(key)?'':' reference-profile-extra'));action.dataset.settingsSection=key;action.prepend(icon(symbol));options.append(action);
   }
   const logout=button(t('family_logout'),()=>openSettings('signout'),'text-button profile-logout');
   logout.append(icon('forward'));
@@ -2061,9 +2204,10 @@ async function account(m){
   append(signout,append(E('div'),E('h2',copy[5]),E('p',copy[6])),logout);
   append(c,identity,options);append(content,c,signout);
   if(state.session.control_available===true)content.append(button('ULADIM Control',openControl,'secondary'));
-  if(['owner','staff'].includes(new URLSearchParams(location.search).get('setup')))content.append(button('ULADIM Control',enrollStaff));
+  else if(staffSetupIntent())content.append(button(t('web_control_activate'),enrollStaff));
  }
  if(section==='appearance')appearanceSettings(content);
+ if(section==='referrals')await window.UladimReferrals?.customer(content,{request:call,session:state.session,lang:state.lang});
  if(section==='signout')signoutPage(content);
  if(section==='notifications'){inboxCenter().settings(content);await notificationPage(content);}
  if(section==='personal-import')await personalImportCenter(content).catch(report);
@@ -2081,15 +2225,34 @@ async function openControl(){
  if(target.pathname!=='/admit'||target.search||target.hash||target.username||target.password||!['https:','http:'].includes(target.protocol)||target.protocol==='http:'&&!['localhost','control.localhost','127.0.0.1'].includes(target.hostname)||! /^[A-Za-z0-9_-]{43}$/.test(access.ticket))throw {code:'server_error'};
  const handoff=E('form');handoff.method='POST';handoff.action=target.href;handoff.hidden=true;const ticket=E('input');ticket.type='hidden';ticket.name='ticket';ticket.value=access.ticket;handoff.append(ticket);document.body.append(handoff);window.addEventListener('pagehide',()=>handoff.remove(),{once:true});handoff.submit();
 }
-function enrollStaff(){dialog('ULADIM Control',container=>{const owner=new URLSearchParams(location.search).get('setup')==='owner';const d=container;form(container,t('account_manage'),f=>({password:input(f,'password',t('family_password'),'password'),invitation:input(f,'invitation',t('family_invitation'))}),async v=>{const result=await call('staff/enrollment',{owner,password:v.password.value,invitation:v.invitation.value});replaceDialog(container,E('h2',t('account_mfa')),E('p',t('account_mfa_setup')),E('pre',result.totp_secret));form(container,'',f=>({code:input(f,'code',t('family_code'))}),async code=>{const r=await call('staff/confirm',{owner,enrollment:result.enrollment,code:code.code.value});replaceDialog(container,E('h2',t('account_mfa_recovery')),E('pre',r.recovery_codes.join('\n')),button(t('close'),()=>d.close()));});});});}
+for(const [locale,copy]of Object.entries(globalThis.UladimI18n.copy("grp_fe67c17c7a1b",{ru:['Активировать ULADIM Control','Коды сохранены на этом экране. Если кнопка входа не появилась, после сохранения кодов обновите страницу.'],en:['Activate ULADIM Control','The codes remain on this screen. If the sign-in button has not appeared, save the codes and reload the page.'],'uz-Latn':['ULADIM Control’ni faollashtirish','Kodlar shu ekranda qoladi. Kirish tugmasi ko‘rinmasa, kodlarni saqlab, sahifani yangilang.'],'uz-Cyrl':['ULADIM Control’ни фаоллаштириш','Кодлар шу экранда қолади. Кириш тугмаси кўринмаса, кодларни сақлаб, саҳифани янгиланг.']})))Object.assign(WORKSPACE_COPY[locale],{web_control_activate:copy[0],web_control_refresh:copy[1]});
+function enrollStaff(){dialog('ULADIM Control',container=>{
+ const owner=staffSetupIntent()==='owner',d=container;
+ form(container,t('account_manage'),f=>({password:input(f,'password',t('family_password'),'password'),invitation:input(f,'invitation',t('family_invitation'))}),async v=>{
+  const result=await call('staff/enrollment',{owner,password:v.password.value,invitation:v.invitation.value});
+  replaceDialog(container,E('h2',t('account_mfa')),E('p',t('account_mfa_setup')),E('pre',result.totp_secret));
+  form(container,'',f=>({code:input(f,'code',t('family_code'))}),async code=>{
+   const r=await call('staff/confirm',{owner,enrollment:result.enrollment,code:code.code.value});
+   // Show the issued recovery codes before any further network request.
+   replaceDialog(container,E('h2',t('account_mfa_recovery')),E('pre',r.recovery_codes.join('\n')),button(t('close'),()=>d.close()));
+   try{
+    const session=await call('session');
+    if(session.user_id!==state.session?.user_id)throw {code:'view_changed'};
+    state.session=session;state.csrf=session.csrf;
+    if(session.control_available===true){const url=new URL(location.href);url.searchParams.delete('setup');history.replaceState(null,'',url.pathname+url.search+url.hash);}
+    render();
+   }catch{if(container.isConnected)container.append(E('p',t('web_control_refresh')));}
+  });
+ });
+});}
 let activeSupportThread=null;
 function supportCopy(){
- const all={
+ const all=globalThis.UladimI18n.copy("grp_0d62a7b0af5f",{
   ru:{category:'Тип обращения',back:'Все обращения',you:'Вы',empty:'Обращений пока нет',hint:'Опишите проблему или отправьте жалобу. Не прикладывайте пароли, коды и банковские выписки.',categories:[['other','Другой вопрос'],['bug','Ошибка в приложении'],['complaint','Жалоба'],['account','Аккаунт и вход'],['sync','Синхронизация'],['billing','Тарифы и доступ'],['privacy','Приватность'],['deletion','Удаление аккаунта']]},
   en:{category:'Request type',back:'All requests',you:'You',empty:'No requests yet',hint:'Describe a problem or send a complaint. Do not include passwords, codes or bank statements.',categories:[['other','Other question'],['bug','App problem'],['complaint','Complaint'],['account','Account and sign-in'],['sync','Sync'],['billing','Plans and access'],['privacy','Privacy'],['deletion','Account deletion']]},
   'uz-Latn':{category:'Murojaat turi',back:'Barcha murojaatlar',you:'Siz',empty:'Hali murojaatlar yo‘q',hint:'Muammoni tasvirlang yoki shikoyat yuboring. Parollar, kodlar yoki bank ko‘chirmalarini qo‘shmang.',categories:[['other','Boshqa savol'],['bug','Ilovadagi xato'],['complaint','Shikoyat'],['account','Hisob va kirish'],['sync','Sinxronlash'],['billing','Tariflar va kirish'],['privacy','Maxfiylik'],['deletion','Hisobni o‘chirish']]},
   'uz-Cyrl':{category:'Мурожаат тури',back:'Барча мурожаатлар',you:'Сиз',empty:'Ҳали мурожаатлар йўқ',hint:'Муаммони тасвирланг ёки шикоят юборинг. Пароллар, кодлар ёки банк кўчирмаларини қўшманг.',categories:[['other','Бошқа савол'],['bug','Иловадаги хато'],['complaint','Шикоят'],['account','Ҳисоб ва кириш'],['sync','Синхронлаш'],['billing','Тарифлар ва кириш'],['privacy','Махфийлик'],['deletion','Ҳисобни ўчириш']]}
- };return all[state.lang]||all.en;
+ });return all[state.lang]||all.en;
 }
 async function support(m){
  if(activeSupportThread?.epoch===privateEpoch)return openThread(activeSupportThread.id,m);
@@ -2135,14 +2298,14 @@ window.addEventListener('pageshow',e=>{if(e.persisted)start().catch(error=>{if(e
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')backgroundRefresh().catch(report);});
 document.addEventListener('focusout',()=>requestAnimationFrame(()=>{flushBackground();inboxCenter().stage();}));
 setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)backgroundRefresh().catch(report);},30000);
-(async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';applyTheme();const config=await call('config');state.googleEnabled=Boolean(config.google_enabled);try{if(new URLSearchParams(location.search).get('google')==='return')await googleReturn();else await start();}catch(error){if(error.code==='unauthorized'){login();if(new URLSearchParams(location.search).get('action')==='signup')await signup();}else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
+(async()=>{try{packs=await (await fetch('/app/assets/locales.json',{cache:'no-store'})).json();if(!packs[state.lang])state.lang='ru';await globalThis.UladimI18n.load(packs);globalThis.UladimI18n.setLanguage(state.lang);window.UladimReferrals?.configureCopies(packs);applyTheme();const config=await call('config');state.googleEnabled=Boolean(config.google_enabled);try{if(new URLSearchParams(location.search).get('google')==='return')await googleReturn();else await start();}catch(error){if(error.code==='unauthorized'){login();if(new URLSearchParams(location.search).get('action')==='signup')await signup();}else{login();report(error);}}if('serviceWorker'in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app'}).catch(()=>{});}catch{root.textContent='ULADIM · '+t('retry');}})();
 
-const SIGNUP_COPY = {
+const SIGNUP_COPY = globalThis.UladimI18n.copy("grp_9637d353b44e",{
  ru: {intro: 'Введите почту и придумайте пароль.', or: 'или', privacy: 'Конфиденциальность'},
  en: {intro: 'Enter your email and choose a password.', or: 'or', privacy: 'Privacy'},
  'uz-Latn': {intro: 'Email manzilingizni kiriting va parol yarating.', or: 'yoki', privacy: 'Maxfiylik'},
  'uz-Cyrl': {intro: 'Email манзилингизни киритинг ва парол яратинг.', or: 'ёки', privacy: 'Махфийлик'}
-};
+});
 
 function authDialogBrand(container) {
  container.querySelector('.dialog-head').prepend(E('span','ULADIM','registration-brand'));
@@ -2195,12 +2358,12 @@ async function signup() {
  });
 }
 
-const RECOVERY_COPY = {
+const RECOVERY_COPY = globalThis.UladimI18n.copy("grp_30467a13cad2",{
  ru: ['Восстановление пароля','Введите почту, которую используете в ULADIM.','Если аккаунт существует, код придёт на эту почту.','Отправить код','Сохранить пароль','Вернуться ко входу'],
  en: ['Reset your password','Enter the email you use for ULADIM.','If an account exists, a code will be sent to this email.','Send code','Save password','Back to sign in'],
  'uz-Latn': ['Parolni tiklash','ULADIM uchun ishlatadigan email manzilingizni kiriting.','Hisob mavjud bo‘lsa, shu manzilga kod yuboriladi.','Kodni yuborish','Parolni saqlash','Kirishga qaytish'],
  'uz-Cyrl': ['Паролни тиклаш','ULADIM учун ишлатадиган email манзилингизни киритинг.','Ҳисоб мавжуд бўлса, шу манзилга код юборилади.','Кодни юбориш','Паролни сақлаш','Киришга қайтиш']
-};
+});
 
 function recover(){
  const [title,intro,sent,send,save,back]=RECOVERY_COPY[state.lang]||RECOVERY_COPY.en;
@@ -2268,7 +2431,7 @@ function privacy(m){
 }
 async function passwordSettingsHelp(trigger,label){
  const epoch=privateEpoch,methods=await call('google');if(epoch!==privateEpoch||trigger&&!trigger.isConnected)return true;if(methods.has_password!==false)return false;
- const copy={ru:['Вы входите через Google. Для этого действия сначала настройте пароль по почте. Дополнительная защита сохранится.','Настроить пароль по почте'],en:['You sign in with Google. Set up a password by email before this action. Your second factor will remain.','Set up a password by email'],'uz-Latn':['Google orqali kirasiz. Bu amal uchun avval pochta orqali parol o‘rnating. Qo‘shimcha himoya saqlanadi.','Pochta orqali parol o‘rnatish'],'uz-Cyrl':['Google орқали кирасиз. Бу амал учун аввал почта орқали парол ўрнатинг. Қўшимча ҳимоя сақланади.','Почта орқали парол ўрнатиш']}[state.lang]||['You sign in with Google. Set up a password by email before this action. Your second factor will remain.','Set up a password by email'];
+ const copy=globalThis.UladimI18n.copy("grp_f388ced73cf5",{ru:['Вы входите через Google. Для этого действия сначала настройте пароль по почте. Дополнительная защита сохранится.','Настроить пароль по почте'],en:['You sign in with Google. Set up a password by email before this action. Your second factor will remain.','Set up a password by email'],'uz-Latn':['Google orqali kirasiz. Bu amal uchun avval pochta orqali parol o‘rnating. Qo‘shimcha himoya saqlanadi.','Pochta orqali parol o‘rnatish'],'uz-Cyrl':['Google орқали кирасиз. Бу амал учун аввал почта орқали парол ўрнатинг. Қўшимча ҳимоя сақланади.','Почта орқали парол ўрнатиш']})[state.lang]||['You sign in with Google. Set up a password by email before this action. Your second factor will remain.','Set up a password by email'];
  settingsInline(label,panel=>append(panel,E('p',copy[0]),button(copy[1],recover,'secondary')),trigger);return true;
 }
 async function changePassword(trigger){
@@ -2434,7 +2597,7 @@ async function personalImportCenter(host){
  const backup=card(copy('backups'),copy('backupStatus'));
  const sync=card(copy('sync'),copy('googleStatus'));
  backup.classList.add('personal-import-status-card');sync.classList.add('personal-import-status-card');
- const guide=anchor(state.lang==='ru'?'Руководство по импорту':'Import guide','/docs#import');guide.classList.add('personal-import-guide-link');
+ const guide=anchor(globalThis.UladimI18n.text("loc_a93bffa338e3",{},"Import guide"),'/docs#import');guide.classList.add('personal-import-guide-link');
  append(host,files,backup,sync,guide);
 }
 

@@ -8,6 +8,8 @@ import '../platform/native_bridge.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
+import '../account/password_policy.dart';
+import '../account/referrals.dart';
 import 'contracts.dart';
 import 'record_projection.dart';
 import 'api.dart';
@@ -33,6 +35,9 @@ class FamilyController extends ChangeNotifier {
         _apiFactory = apiFactory ?? FamilyApi.new,
         _native = native ?? NativeBridge();
   final FamilyApi Function(String) _apiFactory;
+  String Function()? requestLocale;
+  FamilyApi _newApi(String endpoint) =>
+      _apiFactory(endpoint)..locale = () => requestLocale?.call() ?? 'ru';
   final NativeBridge _native;
   final SyncStore store;
   final FlutterSecureStorage secure;
@@ -114,7 +119,7 @@ class FamilyController extends ChangeNotifier {
       final endpoint = saved?['endpoint'] as String? ??
           await secure.read(key: 'lifeos.sync.endpoint');
       if (endpoint == null) return;
-      api = _apiFactory(endpoint);
+      api = _newApi(endpoint);
       api!.token = saved?['token'] as String? ??
           await secure.read(key: 'lifeos.sync.token');
       api!.refreshToken = saved?['refresh_token'] as String?;
@@ -215,7 +220,11 @@ class FamilyController extends ChangeNotifier {
     String? mfaCode,
   }) =>
       run(() async {
-        final candidate = _apiFactory(endpoint);
+        if (register && verificationCode == null) {
+          final issue = newPasswordIssue(password);
+          if (issue != null) throw SyncFailure(issue);
+        }
+        final candidate = _newApi(endpoint);
         try {
           if (register && verificationCode == null) {
             await candidate.request('/v1/auth/signup',
@@ -275,7 +284,7 @@ class FamilyController extends ChangeNotifier {
 
   Future<void> refreshLoginMethods() async {
     if (accountOrigin.isEmpty || loginMethodsLoading) return;
-    final candidate = _apiFactory(accountOrigin);
+    final candidate = _newApi(accountOrigin);
     loginMethodsLoading = true;
     loginMethodsError = null;
     publish();
@@ -298,7 +307,7 @@ class FamilyController extends ChangeNotifier {
   }
 
   Future<void> signInGoogle(String endpoint) => run(() async {
-        final candidate = _apiFactory(endpoint);
+        final candidate = _newApi(endpoint);
         try {
           cancelLogin();
           final grant =
@@ -387,7 +396,7 @@ class FamilyController extends ChangeNotifier {
       );
 
   Future<void> recover(String endpoint, String email) => run(() async {
-        final candidate = _apiFactory(endpoint);
+        final candidate = _newApi(endpoint);
         try {
           await candidate.request('/v1/auth/recovery', body: {'email': email});
         } finally {
@@ -401,7 +410,9 @@ class FamilyController extends ChangeNotifier {
     String password,
   ) =>
       run(() async {
-        final candidate = _apiFactory(endpoint);
+        final issue = newPasswordIssue(password);
+        if (issue != null) throw SyncFailure(issue);
+        final candidate = _newApi(endpoint);
         try {
           await candidate.request(
             '/v1/auth/reset',
@@ -512,6 +523,54 @@ class FamilyController extends ChangeNotifier {
     return result;
   }
 
+  Future<Json> _referralRequest(String path, {Json? body}) async {
+    final client = api;
+    if (client == null || account == null) {
+      throw const SyncFailure('unauthorized', 401);
+    }
+    if (!verified) throw const SyncFailure('verify_email', 403);
+    final principal = capturePrincipal();
+    final result = await client.request(path, body: body);
+    if (!isCurrentPrincipal(principal)) {
+      throw const SyncFailure('identity_mismatch');
+    }
+    return result;
+  }
+
+  Future<ReferralSummary> referralSummary({int offset = 0}) async {
+    if (offset < 0 || offset > 100000) {
+      throw const SyncFailure('invalid_cursor');
+    }
+    return ReferralSummary.fromJson(
+        await _referralRequest('/v1/referrals?offset=$offset'),
+        offset: offset);
+  }
+
+  Future<ReferralSummary> createReferralCode() async =>
+      ReferralSummary.fromJson(
+          await _referralRequest('/v1/referrals/code', body: {}));
+
+  Future<void> claimReferral(String code) async {
+    if (referralCodeFromInput(code) != code) {
+      throw const SyncFailure('referral_invalid');
+    }
+    final result =
+        await _referralRequest('/v1/referrals/claim', body: {'code': code});
+    if (result.length != 1 || result['status'] != 'confirmed') {
+      throw const SyncFailure('invalid_sync_response');
+    }
+  }
+
+  Future<String> referralAlias() async =>
+      referralDisplayName(await _referralRequest('/v1/referrals/alias'));
+
+  Future<String> saveReferralAlias(
+          String firstName, String surnameInitial) async =>
+      referralDisplayName(await _referralRequest('/v1/referrals/alias', body: {
+        'first_name': firstName.trim(),
+        'surname_initial': surnameInitial.trim(),
+      }));
+
   Future<void> accept(String invitation) => run(() async {
         await api!.request(
           '/v1/invitations/accept',
@@ -566,6 +625,8 @@ class FamilyController extends ChangeNotifier {
       });
   Future<void> password(String oldPassword, String newPassword) =>
       run(() async {
+        final issue = newPasswordIssue(newPassword);
+        if (issue != null) throw SyncFailure(issue);
         await api!.request(
           '/v1/auth/password',
           body: {'old_password': oldPassword, 'new_password': newPassword},
@@ -589,6 +650,7 @@ class FamilyController extends ChangeNotifier {
         _recheckUnavailablePrincipal(expectedPrincipal, request)
             .whenComplete(() => _restrictionCheck = null);
   }
+
   Future<bool> _recheckUnavailablePrincipal(AccountPrincipal principal,
       Future<Json> Function(String path, {Json? body})? request) async {
     final fetch = request ?? principal._api?.request;
