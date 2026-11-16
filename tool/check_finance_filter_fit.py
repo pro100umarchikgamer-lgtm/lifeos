@@ -68,7 +68,17 @@ def main():
                     values = panel.locator('.finance-filters').evaluate('''grid => {
                         const rect = el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width}};
                         const fields=[...grid.querySelectorAll('input,select')].map(el=>({name:el.name,box:rect(el),parent:rect(el.parentElement),value:el.value}));
-                        return {grid:rect(grid),fields,overflow:document.documentElement.scrollWidth>innerWidth};
+                        const overflow=document.documentElement.scrollWidth>innerWidth;
+                        const offenders=overflow ? [...document.body.querySelectorAll('*')].filter(el=>{
+                            const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+                            return r.width>0 && s.visibility!=='hidden' && s.display!=='none' &&
+                                (r.right>innerWidth+1 || r.x < -1 || el.scrollWidth>el.clientWidth+1);
+                        }).map(el=>({tag:el.tagName,id:el.id,classes:el.className,name:el.getAttribute('name'),
+                            box:rect(el),clientWidth:el.clientWidth,scrollWidth:el.scrollWidth,
+                            overflowX:getComputedStyle(el).overflowX,
+                            text:el.textContent.trim().slice(0,120)})).slice(0,80) : [];
+                        return {grid:rect(grid),fields,overflow,viewport:innerWidth,
+                            documentWidth:document.documentElement.scrollWidth,offenders};
                     }''')
                     defects = []
                     for field in values['fields']:
@@ -89,6 +99,8 @@ def main():
                     checks.append(row)
                     if defects:
                         failures.append(row)
+                        if not filled and theme == 'light':
+                            page.screenshot(path=str(out / f'overflow-{width}.png'), full_page=True)
                     if width == 1280 and filled and theme == 'light':
                         page.screenshot(path=str(out / 'finance-filters.png'))
         browser.close()

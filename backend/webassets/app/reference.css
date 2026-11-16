@@ -213,6 +213,8 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.financ
 /* Native iPad date controls must fit the filter track, including padding. */
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters>div{min-width:0;min-inline-size:0}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters :is(input,select){box-sizing:border-box;min-width:0;min-inline-size:0;width:100%;inline-size:100%;max-width:100%;max-inline-size:100%}
+/* Keep WebKit's native option content inside the field; retain its focus outline. */
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters select{contain:paint}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel input[type=date]::-webkit-datetime-edit{min-inline-size:0;padding:0}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel input[type=date]::-webkit-date-and-time-value{min-inline-size:0;text-align:start}
 body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-overview{padding:0!important;margin:0 0 22px;background:transparent;border:0;box-shadow:none}
