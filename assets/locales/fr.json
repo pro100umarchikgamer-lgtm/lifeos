@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Votre candidature a été approuvée. Créez un compte sur https://getuladim.space/account avec cette invitation (7 jours) :\n{code}",
     "mail_body_early_rejected": "Nous ne pouvons pas vous intégrer au test fermé ULADIM actuellement. Aucun compte n’a été créé. Consultez l’état de votre candidature ou annulez-la sur https://getuladim.space/early-access",
     "mail_code_single_use": "Ce code est utilisable une seule fois.",
-    "mail_unrequested": "Si vous n’avez pas demandé cette action, ignorez cet e-mail."
+    "mail_unrequested": "Si vous n’avez pas demandé cette action, ignorez cet e-mail.",
+    "workspace_device": "Sur cet appareil",
+    "workspace_account_personal": "Espace personnel du compte",
+    "account_spaces": "Espaces du compte",
+    "create_personal_space": "Créer un espace personnel",
+    "current_balance": "Solde actuel",
+    "appearance_intensity": "Intensité du fond",
+    "appearance_less_color": "Moins de couleur",
+    "appearance_more_color": "Plus de couleur",
+    "appearance_slate": "Ardoise",
+    "appearance_ink": "Encre",
+    "appearance_moss": "Mousse",
+    "state_yes": "Oui",
+    "state_no": "Non",
+    "cloud_operations": "Opérations",
+    "cloud_category_food": "Alimentation",
+    "cloud_category_housing": "Logement et factures",
+    "cloud_category_health": "Santé",
+    "cloud_category_leisure": "Loisirs",
+    "cloud_category_education": "Éducation"
   },
   "plurals": {
     "record_count": {

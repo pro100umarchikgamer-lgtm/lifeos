@@ -87,6 +87,25 @@ class _AppearanceEditorState extends State<AppearanceEditor> {
           const SizedBox(height: 28),
           choices('theme', ['system', 'light', 'dark'], draft.mode,
               (v) => preview(draft.copyWith(mode: v))),
+          Text(c.pack.t('appearance_intensity'),
+              style: Theme.of(context).textTheme.titleMedium),
+          Slider(
+              value: draft.intensity.toDouble(),
+              min: 0,
+              max: 100,
+              divisions: 100,
+              label: '${draft.intensity}%',
+              semanticFormatterCallback: (value) => '${value.round()}%',
+              onChanged: saving
+                  ? null
+                  : (v) => preview(draft.copyWith(intensity: v.round()))),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Flexible(child: Text(c.pack.t('appearance_less_color'))),
+            Flexible(
+                child: Text(c.pack.t('appearance_more_color'),
+                    textAlign: TextAlign.end)),
+          ]),
+          const SizedBox(height: 24),
           choices('palette', Appearance.palettes, draft.palette,
               (v) => preview(draft.copyWith(palette: v))),
           ExpansionTile(

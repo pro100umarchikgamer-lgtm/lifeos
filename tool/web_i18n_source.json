@@ -9389,6 +9389,86 @@
       "values": {
         "ru": "{arg0} · сборка {arg1} · {arg2} МБ · {arg3} и новее"
       }
+    },
+    "editor_unsaved": {
+      "values": {
+        "ru": "Есть несохранённые изменения.",
+        "en": "Keep editing or discard your changes?",
+        "az": "Yadda saxlanmamış dəyişikliklər var.",
+        "de": "Es gibt ungespeicherte Änderungen.",
+        "es": "Hay cambios sin guardar.",
+        "fr": "Des modifications ne sont pas enregistrées.",
+        "hy": "Կան չպահպանված փոփոխություններ։",
+        "it": "Ci sono modifiche non salvate.",
+        "ka": "არის შეუნახავი ცვლილებები.",
+        "kk": "Сақталмаған өзгерістер бар.",
+        "ky": "Сакталбаган өзгөртүүлөр бар.",
+        "pt": "Há alterações por guardar.",
+        "tg": "Тағйироти сабтнашуда вуҷуд доранд.",
+        "uk": "Є незбережені зміни.",
+        "uz-Latn": "Saqlanmagan o‘zgarishlar bor.",
+        "uz-Cyrl": "Сақланмаган ўзгаришлар бор."
+      }
+    },
+    "editor_keep": {
+      "values": {
+        "ru": "Продолжить редактирование",
+        "en": "Continue editing",
+        "az": "Redaktəyə davam et",
+        "de": "Weiter bearbeiten",
+        "es": "Seguir editando",
+        "fr": "Continuer la modification",
+        "hy": "Շարունակել խմբագրումը",
+        "it": "Continua a modificare",
+        "ka": "რედაქტირების გაგრძელება",
+        "kk": "Өңдеуді жалғастыру",
+        "ky": "Түзөтүүнү улантуу",
+        "pt": "Continuar a editar",
+        "tg": "Идомаи таҳрир",
+        "uk": "Продовжити редагування",
+        "uz-Latn": "Tahrirlashni davom ettirish",
+        "uz-Cyrl": "Таҳрирлашни давом эттириш"
+      }
+    },
+    "editor_discard": {
+      "values": {
+        "ru": "Не сохранять",
+        "en": "Discard changes",
+        "az": "Dəyişiklikləri ləğv et",
+        "de": "Änderungen verwerfen",
+        "es": "Descartar cambios",
+        "fr": "Abandonner les modifications",
+        "hy": "Չպահպանել փոփոխությունները",
+        "it": "Scarta modifiche",
+        "ka": "ცვლილებების გაუქმება",
+        "kk": "Өзгерістерді сақтамау",
+        "ky": "Өзгөртүүлөрдү сактабоо",
+        "pt": "Descartar alterações",
+        "tg": "Тағйиротро сабт накардан",
+        "uk": "Не зберігати зміни",
+        "uz-Latn": "O‘zgarishlarni saqlamaslik",
+        "uz-Cyrl": "Ўзгаришларни сақламаслик"
+      }
+    },
+    "editor_reset": {
+      "values": {
+        "ru": "Сбросить фильтры",
+        "en": "Reset filters",
+        "az": "Filtrləri sıfırla",
+        "de": "Filter zurücksetzen",
+        "es": "Restablecer filtros",
+        "fr": "Réinitialiser les filtres",
+        "hy": "Զրոյացնել զտիչները",
+        "it": "Reimposta filtri",
+        "ka": "ფილტრების განულება",
+        "kk": "Сүзгілерді қалпына келтіру",
+        "ky": "Чыпкаларды тазалоо",
+        "pt": "Repor filtros",
+        "tg": "Тоза кардани полоишҳо",
+        "uk": "Скинути фільтри",
+        "uz-Latn": "Filtrlarni tozalash",
+        "uz-Cyrl": "Фильтрларни тозалаш"
+      }
     }
   },
   "groups": {
@@ -10281,6 +10361,12 @@
       "stale": "loc_56d4300f236f",
       "uncertain": "loc_17405579f246",
       "error": "loc_c66b03ed3253"
+    },
+    "grp_editor_interactions": {
+      "unsaved": "editor_unsaved",
+      "keep": "editor_keep",
+      "discard": "editor_discard",
+      "reset": "editor_reset"
     }
   },
   "required": [
@@ -11773,7 +11859,11 @@
     "literal_908b6d3a8368",
     "literal_e638fc3afbee",
     "template_01b861a1acc8",
-    "template_1639ae3b8823"
+    "template_1639ae3b8823",
+    "editor_unsaved",
+    "editor_keep",
+    "editor_discard",
+    "editor_reset"
   ],
   "occurrences": [
     {

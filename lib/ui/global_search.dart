@@ -4,7 +4,7 @@ import '../app_controller.dart';
 import '../domain/models.dart';
 import 'design.dart';
 import 'record_detail.dart';
-import 'family.dart';
+import 'cloud_record_detail.dart';
 import 'personal_modules.dart';
 import 'selection.dart';
 
@@ -81,11 +81,9 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                     c.pack.t('family_kind_${r['kind']}'))
                 .toString(),
             subtitle: c.pack.t('family_kind_${r['kind']}'),
-            onTap: () => Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => FamilyRecordEditor(
-                        controller: c.family!, pack: c.pack, record: r))),
+            onTap: () => openCloudRecord(
+                context, c.family!, c.pack, r['id'] as String,
+                region: c.region, clock: () => c.now),
           ));
         }
       } else {

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 
 import '../domain/appearance.dart';
 
@@ -47,6 +48,47 @@ class LifeSurfaces extends ThemeExtension<LifeSurfaces> {
         );
 }
 
+/// Platform back gestures remain native; ordinary route timing stays brief.
+class LifePageTransitionsBuilder extends PredictiveBackPageTransitionsBuilder {
+  const LifePageTransitionsBuilder();
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 200);
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 160);
+  @override
+  Widget buildTransitions<T>(
+      PageRoute<T> route,
+      BuildContext context,
+      Animation<double> animation,
+      Animation<double> secondaryAnimation,
+      Widget child) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    if (Theme.of(context).platform == TargetPlatform.iOS ||
+        Theme.of(context).platform == TargetPlatform.macOS) {
+      return const CupertinoPageTransitionsBuilder().buildTransitions(
+          route, context, animation, secondaryAnimation, child);
+    }
+    return super
+        .buildTransitions(route, context, animation, secondaryAnimation, child);
+  }
+}
+
+AnimationStyle lifeSheetMotion(BuildContext context) =>
+    MediaQuery.disableAnimationsOf(context)
+        ? AnimationStyle.noAnimation
+        : const AnimationStyle(
+            duration: Duration(milliseconds: 180),
+            reverseDuration: Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic);
+
+AnimationStyle lifeDialogMotion(BuildContext context) =>
+    MediaQuery.disableAnimationsOf(context)
+        ? AnimationStyle.noAnimation
+        : const AnimationStyle(
+            duration: Duration(milliseconds: 160),
+            reverseDuration: Duration(milliseconds: 140));
+
 ThemeData lifeTheme(
   Brightness brightness, {
   Appearance appearance = const Appearance(),
@@ -60,12 +102,22 @@ ThemeData lifeTheme(
           'pistachio' => const Color(0xff60764e),
           'sky' => const Color(0xff346b91),
           'sand' => const Color(0xff846746),
+          'slate' => const Color(0xff536479),
+          'ink' => const Color(0xff4f506b),
+          'moss' => const Color(0xff54674b),
           _ => LifePalette.green,
         };
   final classic = appearance.palette == 'emerald' &&
       !(appearance.dynamic && wallpaperSeed != null);
   final violet = appearance.palette == 'violet' &&
       !(appearance.dynamic && wallpaperSeed != null);
+  final tint = appearance.intensity / 100;
+  final page = Color.lerp(
+      dark ? LifePalette.darkBackground : LifePalette.background,
+      seed,
+      (dark ? .16 : .12) * tint)!;
+  Color decorative(Color base) =>
+      Color.lerp(base, seed, (dark ? .12 : .08) * tint)!;
   final scheme = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: brightness,
@@ -82,13 +134,13 @@ ThemeData lifeTheme(
     surface: dark ? LifePalette.darkSurface : Colors.white,
     onSurface: dark ? const Color(0xfff0f1f4) : LifePalette.ink,
     onSurfaceVariant: dark ? const Color(0xffa8adb8) : LifePalette.muted,
-    surfaceContainerLowest:
-        dark ? LifePalette.darkBackground : LifePalette.background,
+    surfaceContainerLowest: page,
     surfaceContainerLow:
-        dark ? const Color(0xff24272f) : const Color(0xfffafafa),
-    surfaceContainer: dark ? const Color(0xff282b33) : const Color(0xfff3f4f7),
+        decorative(dark ? const Color(0xff24272f) : const Color(0xfffafafa)),
+    surfaceContainer:
+        decorative(dark ? const Color(0xff282b33) : const Color(0xfff3f4f7)),
     surfaceContainerHigh:
-        dark ? const Color(0xff2c3039) : const Color(0xffeef0f4),
+        decorative(dark ? const Color(0xff2c3039) : const Color(0xffeef0f4)),
     surfaceContainerHighest:
         dark ? const Color(0xff333741) : const Color(0xffe4e7ec),
     outline: dark ? const Color(0xff7a8291) : const Color(0xff8c93a0),
@@ -154,11 +206,14 @@ ThemeData lifeTheme(
     brightness: brightness,
     colorScheme: scheme,
     extensions: [LifeSurfaces(radius, appearance.surface)],
-    scaffoldBackgroundColor:
-        dark ? LifePalette.darkBackground : LifePalette.background,
+    scaffoldBackgroundColor: page,
     textTheme: textTheme,
     dividerColor: scheme.outlineVariant,
-    splashFactory: InkSparkle.splashFactory,
+    splashFactory: InkRipple.splashFactory,
+    pageTransitionsTheme: PageTransitionsTheme(builders: {
+      for (final platform in TargetPlatform.values)
+        platform: const LifePageTransitionsBuilder(),
+    }),
     iconTheme: IconThemeData(color: scheme.onSurfaceVariant, size: 22),
     listTileTheme: ListTileThemeData(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -175,8 +230,7 @@ ThemeData lifeTheme(
       shape: shape,
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor:
-          dark ? LifePalette.darkBackground : LifePalette.background,
+      backgroundColor: page,
       foregroundColor: scheme.onSurface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
@@ -273,31 +327,18 @@ class LifeCard extends StatelessWidget {
     final theme = Theme.of(context), colors = theme.colorScheme;
     final surface =
         theme.extension<LifeSurfaces>() ?? const LifeSurfaces(16, 'soft');
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: surface.treatment == 'tonal'
-            ? colors.surfaceContainerLow
-            : colors.surface,
-        borderRadius: BorderRadius.circular(surface.radius),
-        border: Border.all(
-            color: surface.treatment == 'outlined'
-                ? colors.outline
-                : colors.outlineVariant),
-        boxShadow:
-            surface.treatment == 'soft' && theme.brightness == Brightness.light
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: .018,
-                      ),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-      ),
-      child: Material(type: MaterialType.transparency, child: child),
+    return Material(
+      color: surface.treatment == 'tonal'
+          ? colors.surfaceContainerLow
+          : colors.surface,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(surface.radius),
+          side: BorderSide(
+              color: surface.treatment == 'outlined'
+                  ? colors.outline
+                  : colors.outlineVariant)),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(padding: padding, child: child),
     );
   }
 }

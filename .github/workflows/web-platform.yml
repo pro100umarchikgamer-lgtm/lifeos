@@ -128,6 +128,8 @@ jobs:
           python -m tool.check_import_simple
       - name: November recorded feedback and private referrals
         run: |
+          python -m tool.check_shared_editor_browser --output web_evidence/shared-editor
+          python -m tool.check_motion_browser --output web_evidence/motion
           python -m tool.check_web_localization_browser
           python -m tool.check_finance_filter_fit
           python -m tool.check_finance_filter_fit --engine webkit

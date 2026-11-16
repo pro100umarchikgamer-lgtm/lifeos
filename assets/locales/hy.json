@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Ձեր հայտը հավանություն է ստացել։ Հաշիվ ստեղծեք https://getuladim.space/account էջում՝ այս հրավերով (7 օր)՝\n{code}",
     "mail_body_early_rejected": "Այժմ մենք չենք կարող ձեզ ներառել ULADIM-ի փակ փորձարկման մեջ։ Հաշիվ չի ստեղծվել։ Հայտի կարգավիճակն ու չեղարկումը՝ https://getuladim.space/early-access",
     "mail_code_single_use": "Կոդը միանգամյա է։",
-    "mail_unrequested": "Եթե այս գործողության հարցում չեք ուղարկել, անտեսեք նամակը։"
+    "mail_unrequested": "Եթե այս գործողության հարցում չեք ուղարկել, անտեսեք նամակը։",
+    "workspace_device": "Այս սարքում",
+    "workspace_account_personal": "Հաշվի անձնական տարածք",
+    "account_spaces": "Հաշվի տարածքներ",
+    "create_personal_space": "Ստեղծել անձնական տարածք",
+    "current_balance": "Ընթացիկ մնացորդ",
+    "appearance_intensity": "Ֆոնի հագեցվածություն",
+    "appearance_less_color": "Ավելի մեղմ",
+    "appearance_more_color": "Ավելի վառ",
+    "appearance_slate": "Թերթաքար",
+    "appearance_ink": "Թանաք",
+    "appearance_moss": "Մամուռ",
+    "state_yes": "Այո",
+    "state_no": "Ոչ",
+    "cloud_operations": "Գործարքներ",
+    "cloud_category_food": "Սնունդ",
+    "cloud_category_housing": "Տուն և հաշիվներ",
+    "cloud_category_health": "Առողջություն",
+    "cloud_category_leisure": "Հանգիստ",
+    "cloud_category_education": "Կրթություն"
   },
   "plurals": {
     "record_count": {

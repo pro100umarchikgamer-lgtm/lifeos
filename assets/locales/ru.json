@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Ваша заявка одобрена. Создайте аккаунт на https://getuladim.space/account с этим приглашением (7 дней):\n{code}",
     "mail_body_early_rejected": "Сейчас мы не можем включить вас в закрытый тест ULADIM. Аккаунт не создан. Статус и отмена заявки: https://getuladim.space/early-access",
     "mail_code_single_use": "Код одноразовый.",
-    "mail_unrequested": "Если вы не запрашивали это действие, проигнорируйте письмо."
+    "mail_unrequested": "Если вы не запрашивали это действие, проигнорируйте письмо.",
+    "workspace_device": "На этом устройстве",
+    "workspace_account_personal": "Личное в аккаунте",
+    "account_spaces": "Пространства аккаунта",
+    "create_personal_space": "Создать личное пространство",
+    "current_balance": "Текущий баланс",
+    "appearance_intensity": "Насыщенность фона",
+    "appearance_less_color": "Сдержанно",
+    "appearance_more_color": "Ярче",
+    "appearance_slate": "Сланцевый",
+    "appearance_ink": "Чернильный",
+    "appearance_moss": "Мох",
+    "state_yes": "Да",
+    "state_no": "Нет",
+    "cloud_operations": "Операции",
+    "cloud_category_food": "Питание",
+    "cloud_category_housing": "Дом и счета",
+    "cloud_category_health": "Здоровье",
+    "cloud_category_leisure": "Отдых",
+    "cloud_category_education": "Образование"
   },
   "plurals": {
     "record_count": {

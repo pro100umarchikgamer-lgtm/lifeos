@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Арызыңыз жактырылды. Бул чакыруу менен https://getuladim.space/account дарегинен аккаунт түзүңүз (7 күн):\n{code}",
     "mail_body_early_rejected": "Азыр сизди ULADIM жабык сыноосуна кошо албайбыз. Аккаунт түзүлгөн жок. Арыздын абалын текшерүү же аны жокко чыгаруу: https://getuladim.space/early-access",
     "mail_code_single_use": "Бул код бир гана жолу колдонулат.",
-    "mail_unrequested": "Эгер бул аракетти сурабаган болсоңуз, бул катка көңүл бурбаңыз."
+    "mail_unrequested": "Эгер бул аракетти сурабаган болсоңуз, бул катка көңүл бурбаңыз.",
+    "workspace_device": "Бул түзмөктө",
+    "workspace_account_personal": "Аккаунттагы жеке мейкиндик",
+    "account_spaces": "Аккаунт мейкиндиктери",
+    "create_personal_space": "Жеке мейкиндик түзүү",
+    "current_balance": "Учурдагы баланс",
+    "appearance_intensity": "Фондун каныктыгы",
+    "appearance_less_color": "Жумшагыраак",
+    "appearance_more_color": "Каныгыраак",
+    "appearance_slate": "Сланец",
+    "appearance_ink": "Сыя",
+    "appearance_moss": "Мамык",
+    "state_yes": "Ооба",
+    "state_no": "Жок",
+    "cloud_operations": "Операциялар",
+    "cloud_category_food": "Азык-түлүк",
+    "cloud_category_housing": "Үй жана төлөмдөр",
+    "cloud_category_health": "Ден соолук",
+    "cloud_category_leisure": "Эс алуу",
+    "cloud_category_education": "Билим берүү"
   },
   "plurals": {
     "record_count": {

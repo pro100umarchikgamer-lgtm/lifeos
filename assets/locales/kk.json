@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Өтініміңіз мақұлданды. Осы шақырумен https://getuladim.space/account мекенжайында аккаунт құрыңыз (7 күн):\n{code}",
     "mail_body_early_rejected": "Қазір сізді ULADIM жабық тестіне қоса алмаймыз. Аккаунт құрылмады. Өтінім күйі және бас тарту: https://getuladim.space/early-access",
     "mail_code_single_use": "Код бір реттік.",
-    "mail_unrequested": "Бұл әрекетті сұрамаған болсаңыз, хатты елемеңіз."
+    "mail_unrequested": "Бұл әрекетті сұрамаған болсаңыз, хатты елемеңіз.",
+    "workspace_device": "Осы құрылғыда",
+    "workspace_account_personal": "Аккаунттағы жеке кеңістік",
+    "account_spaces": "Аккаунт кеңістіктері",
+    "create_personal_space": "Жеке кеңістік жасау",
+    "current_balance": "Ағымдағы теңгерім",
+    "appearance_intensity": "Фон қанықтығы",
+    "appearance_less_color": "Бәсең",
+    "appearance_more_color": "Қанығырақ",
+    "appearance_slate": "Тақтатас",
+    "appearance_ink": "Сия",
+    "appearance_moss": "Мүк",
+    "state_yes": "Иә",
+    "state_no": "Жоқ",
+    "cloud_operations": "Операциялар",
+    "cloud_category_food": "Азық-түлік",
+    "cloud_category_housing": "Үй және төлемдер",
+    "cloud_category_health": "Денсаулық",
+    "cloud_category_leisure": "Демалыс",
+    "cloud_category_education": "Білім"
   },
   "plurals": {
     "record_count": {

@@ -21,10 +21,10 @@
  let sequence=0;
  const element=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
  const path=(workspace,task)=>'task-reminders?workspace='+encodeURIComponent(workspace)+(task?'&task_id='+encodeURIComponent(task):'');
- function mount(container,{initial={},lang='en',timezone,onChange=()=>{}}={}){
+ function mount(container,{initial={},lang='en',timezone,wrapDate=field=>field,onChange=()=>{}}={}){
   const c=COPY[lang]||COPY.en,prefix='task-schedule-'+(++sequence),section=element('fieldset');section.className='task-schedule-fields';section.style.minInlineSize='0';
   section.append(element('legend',c.legend));
-  const control=(name,caption,type)=>{const label=element('label',caption),field=element('input');field.type=type;field.id=prefix+'-'+name;field.name='task_schedule_'+name;field.style.maxWidth='100%';field.style.boxSizing='border-box';label.htmlFor=field.id;section.append(label,field);return field;};
+  const control=(name,caption,type)=>{const label=element('label',caption),field=element('input');field.type=type;field.id=prefix+'-'+name;field.name='task_schedule_'+name;field.style.maxWidth='100%';field.style.boxSizing='border-box';label.htmlFor=field.id;section.append(label,field);wrapDate(field);return field;};
   const date=control('date',c.date,'date'),time=control('time',c.time,'time');date.min='1900-01-01';date.max='2200-12-31';
   const reminderLabel=element('label'),reminder=element('input');reminder.type='checkbox';reminder.id=prefix+'-reminder';reminder.name='task_schedule_reminder';reminderLabel.htmlFor=reminder.id;reminderLabel.style.display='flex';reminderLabel.style.alignItems='center';reminderLabel.style.gap='10px';reminderLabel.append(reminder,element('span',c.reminder));section.append(reminderLabel);
   const clear=element('button',c.clear);clear.type='button';clear.className='text-button';section.append(clear);
@@ -36,7 +36,7 @@
   const original=initial.schedule?{...initial.schedule}:null;let busy=false;
   if(original){date.value=original.localStart.slice(0,10);time.value=original.allDay?'':original.localStart.slice(11,16);}
   reminder.checked=Boolean(initial.reminder);
-  function state(){const locked=busy||initial.can_edit===false;date.disabled=locked;time.disabled=locked||!date.value;reminder.disabled=locked||!date.value;clear.disabled=locked||!date.value;if(!date.value)reminder.checked=false;}
+  function state(){const locked=busy||initial.can_edit===false,hasDate=Boolean(date.value),timeRoot=time.dateField||time;date.disabled=locked;time.disabled=locked||!hasDate;reminder.disabled=locked||!hasDate;clear.disabled=locked||!hasDate;if(!hasDate)reminder.checked=false;timeRoot.hidden=!hasDate;timeRoot.previousElementSibling.hidden=!hasDate;for(const node of [reminderLabel,clear,zoneText,helpDetails])node.hidden=!hasDate;}
   function value(){
    if(!date.value)return {schedule:null,reminder:false};
    if(!date.checkValidity()||!time.checkValidity()){section.closest('form')?.reportValidity();throw Object.assign(new Error('invalid_schedule'),{code:'invalid_schedule'});}

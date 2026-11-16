@@ -102,7 +102,9 @@ Deletion also removes Google identity metadata and pending link requests.
    rebuilds dependencies when requirements differ and passes Google environment
    variables through the retained Compose configuration. Never use a code-only
    overlay without PyJWT. Migrate 011 only after a
-   fresh verified backup and checks. Registration remains closed and payments off.
+   fresh verified backup and checks. Registration policy must match the deployed
+   configuration; public registration is open as verified on 16 November. Payments
+   remain off.
 2. Real browser Google signup/login, cancellation, relogin, email-collision linking,
    unlink and ULADIM MFA. Check production callback log redaction.
 3. Real signed Android Credential Manager login with the retained certificate,
@@ -136,3 +138,17 @@ confirmed compatibility defect and a possible cause of the recording, not proof
 of its sole cause. Configuration of the real Android client IDs and a successful
 signed physical Android login remain unobserved release gates. No app signing
 key, customer role, MFA rule or production data was changed during diagnosis.
+
+## Owner recording on 2026-11-16
+
+The new Android screen recording shows the Google account chooser followed by a
+signed-in ULADIM account. It then shows records after selecting the existing cloud
+personal space. This is evidence of a successful physical-device login in that
+session, rather than proof of every cancellation, relogin, linking or MFA case.
+The owner identifies the recording as APK334 feedback; the device binary itself
+was not independently attested from the video. The current UI correction makes
+an explicit successful verified login select the existing personal cloud space
+and open Today. It keeps local records separate and does not change OAuth,
+permissions or transport. Google-only accounts use existing email recovery to
+establish a password; an unknown old password is no longer requested by that
+shortcut. Signed release acceptance and owner activation remain separate checks.

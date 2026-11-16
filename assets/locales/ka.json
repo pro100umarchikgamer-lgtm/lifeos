@@ -898,7 +898,26 @@
     "mail_body_early_invite": "თქვენი განაცხადი დამტკიცებულია. შექმენით ანგარიში მისამართზე https://getuladim.space/account ამ მოწვევით (7 დღე):\n{code}",
     "mail_body_early_rejected": "ახლა ULADIM-ის დახურულ ტესტში ვერ შეგიყვანთ. ანგარიში არ შექმნილა. განაცხადის სტატუსი და გაუქმება: https://getuladim.space/early-access",
     "mail_code_single_use": "კოდი ერთჯერადია.",
-    "mail_unrequested": "თუ ეს მოქმედება არ მოგითხოვიათ, წერილი უგულებელყავით."
+    "mail_unrequested": "თუ ეს მოქმედება არ მოგითხოვიათ, წერილი უგულებელყავით.",
+    "workspace_device": "ამ მოწყობილობაზე",
+    "workspace_account_personal": "ანგარიშის პირადი სივრცე",
+    "account_spaces": "ანგარიშის სივრცეები",
+    "create_personal_space": "პირადი სივრცის შექმნა",
+    "current_balance": "მიმდინარე ბალანსი",
+    "appearance_intensity": "ფონის ინტენსივობა",
+    "appearance_less_color": "ნაკლები ფერი",
+    "appearance_more_color": "მეტი ფერი",
+    "appearance_slate": "ფიქალი",
+    "appearance_ink": "მელანი",
+    "appearance_moss": "ხავსი",
+    "state_yes": "დიახ",
+    "state_no": "არა",
+    "cloud_operations": "ოპერაციები",
+    "cloud_category_food": "საკვები",
+    "cloud_category_housing": "სახლი და გადასახადები",
+    "cloud_category_health": "ჯანმრთელობა",
+    "cloud_category_leisure": "დასვენება",
+    "cloud_category_education": "განათლება"
   },
   "plurals": {
     "record_count": {

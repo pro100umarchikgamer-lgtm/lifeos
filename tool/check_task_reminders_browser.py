@@ -165,6 +165,9 @@ def main():
         expect(editor.get_by_label('Дата задачи', exact=True)).to_have_value('2026-12-15')
         expect(editor.get_by_label('Название задачи', exact=True)).to_have_value('Unsaved title remains while date reloads')
         editor.get_by_role('button', name='Отмена', exact=True).click()
+        expect(editor.get_by_label('Название задачи', exact=True)).to_have_value('Unsaved title remains while date reloads')
+        editor.get_by_role('button', name='Не сохранять', exact=True).click()
+        expect(editor).to_have_count(0)
         checks.append('failed_initial_metadata_get_never_clears_saved_date_or_submits_task')
 
         editor = edit_task(lost['data']['title'])

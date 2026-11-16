@@ -41,6 +41,7 @@ class _CalendarPanelState extends State<CalendarPanel> {
   Future<void> editor([CalendarEntry? entry]) async {
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: lifeSheetMotion(context),
       isScrollControlled: true,
       useSafeArea: true,
       isDismissible: false,

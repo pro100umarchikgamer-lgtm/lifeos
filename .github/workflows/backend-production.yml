@@ -3,6 +3,7 @@ on:
   workflow_call:
 permissions:
   contents: read
+  actions: read
 jobs:
   postgres:
     # Playwright 1.56 supports this image; ubuntu-latest now selects 26.04.
@@ -43,7 +44,13 @@ jobs:
               db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-ci-only-password'")
               db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
           PY
+      - name: Verify completed checks for identical backend bytes
+        id: backend_evidence
+        env:
+          ULADIM_READ_API_TOKEN: ${{ github.token }}
+        run: python3 tool/verify_backend_evidence.py
       - name: Backend tests and two-account authorization evidence
+        if: steps.backend_evidence.outputs.reused != 'true'
         run: python -m tool.run_security_audit --all
       - uses: subosito/flutter-action@v2
         with:

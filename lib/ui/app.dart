@@ -19,6 +19,7 @@ import 'dashboard_editor.dart';
 import 'module_calendar_route.dart';
 import 'family.dart';
 import 'family_dashboard.dart';
+import 'cloud_record_detail.dart';
 import 'global_search.dart';
 import 'notification_center.dart';
 import 'referrals.dart';
@@ -88,7 +89,8 @@ class _LifeOSAppState extends State<LifeOSApp> {
               ),
             ),
             themeAnimationDuration: WidgetsBinding.instance.platformDispatcher
-                    .accessibilityFeatures.disableAnimations
+                        .accessibilityFeatures.disableAnimations ||
+                    MediaQuery.maybeDisableAnimationsOf(context) == true
                 ? Duration.zero
                 : const Duration(milliseconds: 180),
             locale: controller.pack.locale,
@@ -212,6 +214,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       } else {
         await showModalBottomSheet<void>(
           context: context,
+          sheetAnimationStyle: lifeSheetMotion(context),
           useSafeArea: true,
           isScrollControlled: true,
           builder: (_) => EventEditor(
@@ -264,10 +267,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       c.preferences['active_scope'] == 'family' &&
       c.family?.verified == true &&
       c.family?.workspace != null;
+  Future<bool> _activateCloudWorkspace(String id) async {
+    final selected = await c.selectCloudWorkspace(id);
+    if (selected && mounted) {
+      _selectDestination(0);
+    }
+    return selected;
+  }
+
   Future<void> _workspace() async {
     final f = c.family;
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: lifeSheetMotion(context),
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
@@ -277,7 +289,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text(c.pack.t('personal_space')),
+                title: Text(c.pack.t('workspace_device')),
                 leading: const Icon(Icons.person_outline),
                 selected: !familyMode,
                 onTap: () async {
@@ -289,28 +301,36 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 for (final space in f!.spaces)
                   ListTile(
                     title: Text(space['name'] as String),
-                    leading: const Icon(Icons.people_outline),
+                    leading: Icon(space['kind'] == 'personal'
+                        ? Icons.person_outline
+                        : Icons.people_outline),
+                    subtitle: Text(c.pack.t(space['kind'] == 'personal'
+                        ? 'workspace_account_personal'
+                        : 'account_spaces')),
                     selected: familyMode && f.workspace == space['id'],
                     onTap: f.busy
                         ? null
                         : () async {
-                            await f.select(space['id'] as String);
-                            if (f.workspace == space['id']) {
-                              await c.preference('active_scope', 'family');
-                            }
+                            await _activateCloudWorkspace(
+                                space['id'] as String);
                             if (ctx.mounted) Navigator.pop(ctx);
                           },
                   ),
               if (f != null)
                 ListTile(
-                  title: Text(c.pack.t('family_account')),
+                  title: Text(c.pack.t('account_manage')),
                   leading: const Icon(Icons.manage_accounts_outlined),
                   onTap: () {
                     Navigator.pop(ctx);
                     Navigator.push<void>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => FamilyPage(controller: f, pack: c.pack),
+                        builder: (_) => FamilyPage(
+                            controller: f,
+                            pack: c.pack,
+                            region: c.region,
+                            clock: () => c.now,
+                            onWorkspaceSelected: _activateCloudWorkspace),
                       ),
                     );
                   },
@@ -354,12 +374,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     FocusScope.of(context).unfocus();
     showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: lifeSheetMotion(context),
       useSafeArea: true,
       showDragHandle: true,
       isScrollControlled: true,
-      sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
-          ? AnimationStyle.noAnimation
-          : null,
       builder: (sheetContext) => SafeArea(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -470,17 +488,20 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               label: Text(c.pack.t('profile')),
             )),
         if (familyMode)
-          FamilyDashboard(controller: c, visibleKinds: const {
-            'note',
-            'task',
-            'account',
-            'transaction',
-            'transfer',
-            'budget',
-            'event',
-            'shopping',
-            'request',
-          })
+          FamilyDashboard(
+              controller: c,
+              onWorkspaceSelected: _activateCloudWorkspace,
+              visibleKinds: const {
+                'note',
+                'task',
+                'account',
+                'transaction',
+                'transfer',
+                'budget',
+                'event',
+                'shopping',
+                'request',
+              })
         else
           ..._modules(),
       ] else if (_profileOpen) ...[
@@ -501,6 +522,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ] else if (familyMode)
         FamilyDashboard(
             controller: c,
+            onWorkspaceSelected: _activateCloudWorkspace,
             tab: _tab,
             visibleKinds: switch (_destination) {
               1 => const {'task'},
@@ -626,10 +648,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ? (c.family!.spaces
                 .where((s) => s['id'] == c.family!.workspace)
                 .firstOrNull?['name'] as String? ??
-            c.pack.t('family_account'))
-        : c.pack.t(MediaQuery.sizeOf(context).width < 600
-            ? 'workspace_personal_short'
-            : 'personal_space');
+            c.pack.t('account_manage'))
+        : c.pack.t('workspace_device');
     final workspace = TextButton(
       key: const Key('workspace_switcher'),
       onPressed: _workspace,
@@ -638,8 +658,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           foregroundColor: colors.onSurface,
           padding: const EdgeInsets.symmetric(horizontal: 8)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(familyMode ? Icons.people_outline : Icons.person_outline,
-            size: 20, color: colors.primary),
+        Icon(
+            familyMode && cloudSpaceKind(c.family!) == 'family'
+                ? Icons.people_outline
+                : Icons.person_outline,
+            size: 20,
+            color: colors.primary),
         const SizedBox(width: 8),
         Flexible(
             child: Text(name,
@@ -1715,14 +1739,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         if (c.family != null) ...[
           LifeCard(
             child: ListTile(
-              leading: const Icon(Icons.people_outline),
-              title: Text(c.pack.t('family_account')),
+              leading: const Icon(Icons.manage_accounts_outlined),
+              title: Text(c.pack.t('account_manage')),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.push<void>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      FamilyPage(controller: c.family!, pack: c.pack),
+                  builder: (_) => FamilyPage(
+                      controller: c.family!,
+                      pack: c.pack,
+                      region: c.region,
+                      clock: () => c.now,
+                      onWorkspaceSelected: _activateCloudWorkspace),
                 ),
               ),
             ),

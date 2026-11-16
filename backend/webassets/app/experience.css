@@ -5,8 +5,17 @@ body[data-design=clarity] {
  -webkit-tap-highlight-color:transparent;
 }
 body[data-design=clarity] :is(button,a,input,select,textarea) {
- transition:background-color var(--motion-fast) ease,border-color var(--motion-fast) ease,box-shadow var(--motion-fast) ease,color var(--motion-fast) ease;
+ transition:background-color var(--motion-fast) ease,border-color var(--motion-fast) ease,box-shadow var(--motion-fast) ease,color var(--motion-fast) ease,transform var(--motion-fast) ease;
 }
+body[data-design=clarity] dialog::backdrop { background:#17132360;backdrop-filter:none!important;-webkit-backdrop-filter:none!important; }
+@media(prefers-reduced-motion:no-preference) {
+ body[data-design=clarity] dialog[open] { animation:uladim-dialog-in var(--motion-view) ease-out; }
+ body[data-design=clarity] dialog[open]::backdrop { animation:uladim-fade-in var(--motion-fast) ease-out; }
+ body[data-design=clarity] dialog[open]:is(.note-editor,.inbox-startup-fullscreen) { animation-name:uladim-fade-in; }
+ body[data-design=clarity] .editor-discard-choice:not([hidden]) { animation:uladim-fade-in var(--motion-fast) ease-out; }
+}
+@keyframes uladim-dialog-in { from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none} }
+@keyframes uladim-fade-in { from{opacity:0}to{opacity:1} }
 body[data-design=clarity] :is(button,a,input,select,textarea):focus-visible {
  outline:2px solid var(--ux-green);
  outline-offset:3px;
@@ -106,6 +115,8 @@ body[data-design=clarity][data-reference-layout=b12] #root .reference-member-rol
 }
 @media(prefers-reduced-motion:reduce) {
  body[data-design=clarity] *,body.product-site * { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
+ body[data-design=clarity] :is(button,a):is(:hover,:active),body[data-design=clarity] dialog[open],body[data-design=clarity] .editor-discard-choice { transform:none!important; }
+ body[data-design=clarity] dialog::backdrop { animation:none!important;transition:none!important; }
 }
 
 /* Device notification settings use the same quiet, inline account layout. */

@@ -13,13 +13,18 @@ import time
 import urllib.request
 
 REPO = 'pro100umarchikgamer-lgtm/lifeos'
-SOURCE = 'f1bb8fdbf51bed46da71f4fec95315937a421128'
-MERGE = '5755751e0c3e73ca2f450adcfb340e401bbf4394'
-BACKEND_TREE = '60fb44baca1bdb1ce516fcb7564c58f3c1645666'
-RUN, JOB = 43770878763, 132986291534
+SOURCE = 'b1532b7827851b9e2347522636089d36ce73ff11'
+MERGE = '9544d3f8484394a028f0dc781a9df5a1c2de0998'
+BACKEND_TREE = '410d4b7e9c0afedbb03786cc58f0951021d22803'
+RUN, JOB = 43782501504, 133022640449
 # Visual layers are exercised by this run's browser checks. All server files,
 # tests, schemas and dependencies must retain their previously tested bytes.
-VISUAL_FILES = frozenset({'webassets/design.css', 'webassets/app/reference.css'})
+VISUAL_FILES = frozenset({
+    'webassets/design.css', 'webassets/app/reference.css',
+    'webassets/app/app.js', 'webassets/app/refinements.css',
+    'webassets/app/task-reminders.js', 'webassets/app/translations.json',
+    'webassets/app/experience.css',
+})
 
 def verify_runtime_manifest(previous, current):
     assert set(previous) == set(current)

@@ -41,11 +41,17 @@ FamilyController familyFixture({bool child = false, bool configured = false}) {
   };
   f.workspace = 'family';
   f.spaces = [
-    {'id': 'family', 'name': 'Наша семья', 'role': child ? 'child' : 'parent'},
+    {
+      'id': 'family',
+      'kind': 'family',
+      'name': 'Наша семья',
+      'role': child ? 'child' : 'parent'
+    },
   ];
   f.roster = {
     'space': {
       'id': 'family',
+      'kind': 'family',
       'role': child ? 'child' : 'parent',
       'profile_id': child ? 'child-profile' : null,
     },
@@ -112,10 +118,12 @@ void main() {
     final bytes = await File('test/fonts/NotoSans-Regular.ttf').readAsBytes();
     await (FontLoader(
       'Roboto',
-    )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+    )..addFont(Future.value(ByteData.sublistView(bytes))))
+        .load();
     await (FontLoader(
       'MaterialIcons',
-    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf')))
+        .load();
     catalog = await PackCatalog.load();
   });
   for (final width in [320, 430]) {
@@ -143,7 +151,8 @@ void main() {
           final c = AppController(SnapshotStore([], theme), catalog, 'ru');
           await c.load();
           c.family = familyFixture(
-              child: screen.startsWith('child'), configured: screen == 'register');
+              child: screen.startsWith('child'),
+              configured: screen == 'register');
           if (['login', 'register'].contains(screen)) c.family!.account = null;
           if (['family', 'child'].contains(screen)) {
             c.preferences['active_scope'] = 'family';

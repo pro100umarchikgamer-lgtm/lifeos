@@ -34,7 +34,9 @@ The FAQ contains 21 grouped searchable answers. Stable topic links used by conte
 
 Privacy and terms have readable sections, a contents index, version/date, plain-language highlights and a print action. Support, deletion and downloads have separate actionable pages. Informational pages stay available during account-config failures. Plans reflect current free access, a Plus preview and unavailable future AI, without prices or paid calls to action.
 
-Native HelpCenterScreen is available through Settings → Data and privacy without requiring a cloud account. It provides searchable Russian/English answers, with English fallback for other app languages, and public legal/support links. Operator/legal details remain on the public site to avoid stale packaged legal facts.
+Native HelpCenterScreen is available through Settings → Data and privacy without requiring a cloud account. Its searchable answers and links use the active language pack; all 16 shipped packs contain the help strings. Operator/legal details remain on the public site to avoid stale packaged legal facts.
+
+As verified on 16 November, the download card also checks the immutable first-party path `/download/android/<source>/ULADIM.apk` with a credential-free HEAD request. It selects that URL only when the content type, byte count, ETag, source, version code, APK digest and signing-certificate headers all match the validated release manifest. Otherwise it retains the source-bound GitHub URL. This delivery check does not finalize the pending legal facts above.
 
 ## Targeted verification
 

@@ -1,4 +1,39 @@
 /* November 13 recorded feedback: quiet editors, useful reports and bounded lists. */
+/* Shared native control boundary: padding belongs to a stable box, not UA date internals. */
+.native-date-field { box-sizing:border-box;display:flex;align-items:center;min-width:0;min-inline-size:0;width:100%;max-width:100%;overflow:hidden;padding:0 12px;min-height:48px;border:1px solid var(--ux-border,var(--border));border-radius:10px;background:var(--ux-bg,var(--surface));font-size:16px; }
+.native-date-field>input { display:block;flex:1 1 auto;min-width:0!important;min-inline-size:0!important;width:100%!important;inline-size:100%!important;max-width:100%!important;max-inline-size:100%!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;min-height:44px!important;height:44px;color:inherit;appearance:none;-webkit-appearance:none; }
+.native-date-field>input::-webkit-datetime-edit { min-width:0;padding:0; }
+.native-date-field>input::-webkit-date-and-time-value { min-width:0;text-align:start; }
+.native-date-field:focus-within { outline:3px solid var(--ux-green,var(--income));outline-offset:-3px; }
+.native-date-field:has(>input[aria-invalid=true]) { border-color:var(--expense); }
+.native-date-field:has(>input:disabled) { opacity:.65; }
+body[data-design=clarity] dialog.record-editor { display:flex;flex-direction:column;overflow:hidden; }
+body[data-design=clarity] dialog.record-editor:not([open]) { display:none; }
+body[data-design=clarity] dialog.record-editor>.dialog-head { flex:none; }
+body[data-design=clarity] dialog.record-editor>form { min-height:0;display:flex;flex-direction:column;overflow:hidden; }
+body[data-design=clarity] dialog.record-editor .editor-fields { min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable; }
+body[data-design=clarity] dialog.record-editor .editor-actions { flex:none;display:flex;align-items:center;gap:12px;padding-top:12px; }
+body[data-design=clarity] dialog.record-editor .editor-actions>button[type=submit] { flex:1;min-width:0;margin:0; }
+body[data-design=clarity] dialog.record-editor .editor-actions>.editor-secondary-actions { flex:none;order:-1;margin:0; }
+body[data-design=clarity] dialog.record-editor .editor-more { max-width:100%;margin-top:12px; }
+body[data-design=clarity] dialog.record-editor .editor-discard-choice { flex:none;display:flex;flex-wrap:wrap;gap:8px;padding:12px 6px 6px; }
+body[data-design=clarity] dialog.record-editor .editor-discard-choice>p { flex-basis:100%;margin:0 0 4px; }
+body[data-design=clarity] dialog.record-editor .editor-discard-choice>button { flex:1;min-width:0;white-space:normal; }
+body[data-design=clarity] dialog.record-editor :is(button.secondary,button.text-button,summary) { min-height:44px;font-size:14px;white-space:normal;line-height:1.4; }
+body[data-design=clarity][data-reference-layout=b12] #root :is(.header-profile,.header-theme) { width:44px;min-width:44px;min-height:44px; }
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); }
+body[data-design=clarity][data-reference-layout=b12] #root :is(.tasks-page,.today-page,.calendar-page,.finance-page) :is(button.secondary,button.text-button,summary) { min-height:44px;font-size:14px;white-space:normal;overflow-wrap:anywhere;line-height:1.4; }
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row>button { width:44px;min-width:44px;height:44px;min-height:44px; }
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row { grid-template-columns:minmax(0,1fr) minmax(100px,auto) 44px; }
+body[data-design=clarity][data-reference-layout=b12] #root .finance-page .finance-reset-filters { margin:8px 0; }
+body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-reset-filters { align-self:end;min-width:0; }
+body[data-design=clarity] :is(.task-reset-filters,.finance-reset-filters) { opacity:1;transition-property:background-color,border-color,box-shadow,color,transform,opacity; }
+body :is(.task-reset-filters,.finance-reset-filters).filter-reset-idle { visibility:hidden;opacity:0; }
+@media(max-width:759px) {
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .ledger .ledger-row { grid-template-columns:minmax(0,1fr) 44px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .finance-page>.finance-filter-panel .finance-filters>div:has(select) { grid-column:1/-1; }
+ body[data-design=clarity][data-reference-layout=b12] #root .calendar-page .calendar-toolbar { flex-wrap:wrap; }
+}
 body[data-design=clarity] [hidden] { display:none!important; }
 body[data-design=clarity] .record-editor .task-editor-status {
  display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 0 16px;
@@ -176,7 +211,8 @@ body[data-design=clarity] #root .appearance-help .small { font-size:12px;line-he
 
 body[data-design=clarity][data-reference-layout=b12] #root .task-workspace { display:grid;grid-template-columns:minmax(0,1fr) 212px;align-items:start;gap:24px;max-width:1200px; }
 body[data-design=clarity][data-reference-layout=b12] #root .task-primary { min-width:0; }
-body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters { padding:0 0 20px;border:0;border-radius:0;background:none;box-shadow:none;margin:0;grid-template-columns:minmax(0,1fr) minmax(140px,180px);gap:16px; }
+body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters { padding:0 0 20px;border:0;border-radius:0;background:none;box-shadow:none;margin:0;grid-template-columns:minmax(0,1fr) minmax(0,180px) minmax(0,140px);gap:16px; }
+body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters>div { min-width:0; }
 body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters :is(input,select) { background:var(--ux-surface); }
 body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-list { padding:0;border:0;border-radius:0;background:none;gap:16px; }
 body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-group { padding:0 20px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:12px; }
@@ -217,7 +253,8 @@ body[data-design=clarity][data-reference-layout=b12] #root .task-overview progre
  body[data-design=clarity] #root .palette-choices { grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
  body[data-design=clarity] #root .palette-preview { height:76px;padding:10px; }
  body[data-design=clarity] #root .palette-choice-label { padding-inline:5px;font-size:11px; }
- body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters { grid-template-columns:minmax(0,1fr);gap:14px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters { grid-template-columns:repeat(2,minmax(0,1fr));gap:14px; }
+ body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters>div:first-child { grid-column:1/-1; }
  body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-group { padding:0 16px; }
  body[data-design=clarity][data-reference-layout=b12] #root .task-overview-counts dt { font-size:11px; }
 }

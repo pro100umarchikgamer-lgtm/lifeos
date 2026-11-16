@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Arizangiz maʼqullandi. Ushbu taklif bilan https://getuladim.space/account sahifasida akkaunt yarating (7 kun):\n{code}",
     "mail_body_early_rejected": "Hozir sizni ULADIM yopiq sinoviga qo‘sha olmaymiz. Akkaunt yaratilmagan. Ariza holati va uni bekor qilish: https://getuladim.space/early-access",
     "mail_code_single_use": "Kod bir martalik.",
-    "mail_unrequested": "Bu amalni siz so‘ramagan bo‘lsangiz, xatga eʼtibor bermang."
+    "mail_unrequested": "Bu amalni siz so‘ramagan bo‘lsangiz, xatga eʼtibor bermang.",
+    "workspace_device": "Shu qurilmada",
+    "workspace_account_personal": "Akkauntdagi shaxsiy makon",
+    "account_spaces": "Akkaunt makonlari",
+    "create_personal_space": "Shaxsiy makon yaratish",
+    "current_balance": "Joriy balans",
+    "appearance_intensity": "Fon rangining to‘yinganligi",
+    "appearance_less_color": "Sokinroq",
+    "appearance_more_color": "Yorqinroq",
+    "appearance_slate": "Slanets",
+    "appearance_ink": "Siyoh",
+    "appearance_moss": "Mox",
+    "state_yes": "Ha",
+    "state_no": "Yo‘q",
+    "cloud_operations": "Operatsiyalar",
+    "cloud_category_food": "Oziq-ovqat",
+    "cloud_category_housing": "Uy va hisoblar",
+    "cloud_category_health": "Salomatlik",
+    "cloud_category_leisure": "Dam olish",
+    "cloud_category_education": "Ta’lim"
   },
   "plurals": {
     "record_count": {

@@ -239,6 +239,9 @@ void main() {
     addTearDown(c.dispose);addTearDown(alice.close);
     await tester.pumpWidget(MaterialApp(home:FamilyRecordEditor(controller:c,pack:catalog!.packs['en']!,record:record)));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const Key('cloud_record_more')),250,scrollable:find.byType(Scrollable).first);
+    await tester.tap(find.byKey(const Key('cloud_record_more')));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text(catalog.packs['en']!.t('delete')));
     await tester.tap(find.text(catalog.packs['en']!.t('delete')));
     await tester.pumpAndSettle();
@@ -256,7 +259,7 @@ void main() {
       if(body!=null){writes.add((path,body));return {};}
       throw const SyncFailure('offline');
     })..token='bob';
-    final c=FamilyController(MemorySyncStore())..api=alice..account={'user_id':'alice','verified':true,'email':'alice@example.test'}..workspace='alice-family'..roster={'space':{'role':'parent','creator_id':'alice','revision':1},'members':[],'profiles':[]};
+    final c=FamilyController(MemorySyncStore())..api=alice..account={'user_id':'alice','verified':true,'email':'alice@example.test'}..workspace='alice-family'..roster={'space':{'kind':'family','role':'parent','creator_id':'alice','revision':1},'members':[],'profiles':[]};
     addTearDown(c.dispose);addTearDown(alice.close);
     await tester.pumpWidget(MaterialApp(home:FamilyPage(controller:c,pack:catalog!.packs['en']!)));
     await tester.pumpAndSettle();

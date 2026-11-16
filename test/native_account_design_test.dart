@@ -199,7 +199,14 @@ void main() {
         'visibility': 'shared',
         'data': {
           'title': 'Calendar only',
-          'schedule': {'localStart': '2026-11-13T09:00:00'}
+          'schedule': {
+            'localStart': '${dateOnly(c.now)}T09:00:00',
+            'timezone': 'UTC',
+            'allDay': false,
+            'repeat': 'none',
+            'interval': 1,
+            'until': null
+          }
         }
       },
       {
@@ -251,7 +258,7 @@ void main() {
                 child: FamilyDashboard(
                     controller: c, visibleKinds: const {'event'})))));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(c.pack.t('family_record_add')));
+    await tester.tap(find.byKey(const Key('cloud_add_record')));
     await tester.pumpAndSettle();
     expect(find.text(c.pack.t('all_day')), findsOneWidget);
     expect(tester.takeException(), isNull);

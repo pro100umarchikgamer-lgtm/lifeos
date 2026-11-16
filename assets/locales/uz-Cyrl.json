@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Аризангиз маъқулланди. Ушбу таклиф билан https://getuladim.space/account саҳифасида аккаунт яратинг (7 кун):\n{code}",
     "mail_body_early_rejected": "Ҳозир сизни ULADIM ёпиқ синовига қўша олмаймиз. Аккаунт яратилмаган. Ариза ҳолати ва уни бекор қилиш: https://getuladim.space/early-access",
     "mail_code_single_use": "Код бир марталик.",
-    "mail_unrequested": "Бу амални сиз сўрамаган бўлсангиз, хатга эътибор берманг."
+    "mail_unrequested": "Бу амални сиз сўрамаган бўлсангиз, хатга эътибор берманг.",
+    "workspace_device": "Шу қурилмада",
+    "workspace_account_personal": "Аккаунтдаги шахсий макон",
+    "account_spaces": "Аккаунт маконлари",
+    "create_personal_space": "Шахсий макон яратиш",
+    "current_balance": "Жорий баланс",
+    "appearance_intensity": "Фон рангининг тўйинганлиги",
+    "appearance_less_color": "Сокинроқ",
+    "appearance_more_color": "Ёрқинроқ",
+    "appearance_slate": "Сланец",
+    "appearance_ink": "Сиёҳ",
+    "appearance_moss": "Мох",
+    "state_yes": "Ҳа",
+    "state_no": "Йўқ",
+    "cloud_operations": "Операциялар",
+    "cloud_category_food": "Озиқ-овқат",
+    "cloud_category_housing": "Уй ва ҳисоблар",
+    "cloud_category_health": "Саломатлик",
+    "cloud_category_leisure": "Дам олиш",
+    "cloud_category_education": "Таълим"
   },
   "plurals": {
     "record_count": {

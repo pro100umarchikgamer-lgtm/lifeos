@@ -1,3 +1,4 @@
+import 'design.dart';
 import 'package:flutter/material.dart';
 import '../localization/language_pack.dart';
 
@@ -23,81 +24,83 @@ class LifeSelect<T> extends StatelessWidget {
   final Map<T, String> Function(String)? queryChoices;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        enabled: onChanged != null,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onChanged == null
-              ? null
-              : () async {
-                  FocusScope.of(context).unfocus();
-                  final T? selected;
-                  {
-                    final picker = _ChoiceDialog<T>(
-                      label: label,
-                      value: value,
-                      choices: choices,
-                      searchLabel: searchLabel,
-                      queryChoices: queryChoices,
-                    );
-                    selected = MediaQuery.sizeOf(context).width < 600
-                        ? await showModalBottomSheet<T>(
-                            context: context,
-                            isScrollControlled: true,
-                            useSafeArea: true,
-                            showDragHandle: true,
-                            builder: (_) => picker,
-                          )
-                        : await showDialog<T>(
-                            context: context,
-                            builder: (_) => Dialog(
-                              insetPadding: const EdgeInsets.all(24),
-                              child: picker,
-                            ),
-                          );
-                  }
-                  if (selected != null && context.mounted) {
-                    onChanged?.call(selected);
-                  }
-                },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (showLabel)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 6),
-                    child: Text(
-                      label,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                InputDecorator(
+  Widget build(BuildContext context) {
+    final border = Theme.of(context).inputDecorationTheme.border;
+    final radius = border is OutlineInputBorder
+        ? border.borderRadius
+        : BorderRadius.circular(16);
+    final shape = RoundedRectangleBorder(borderRadius: radius);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showLabel)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+        Material(
+          color: Theme.of(context).inputDecorationTheme.fillColor ??
+              Theme.of(context).colorScheme.surface,
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          child: Semantics(
+            label: label,
+            button: true,
+            enabled: onChanged != null,
+            child: InkWell(
+              customBorder: shape,
+              onTap: onChanged == null
+                  ? null
+                  : () async {
+                      FocusScope.of(context).unfocus();
+                      final picker = _ChoiceDialog<T>(
+                          label: label,
+                          value: value,
+                          choices: choices,
+                          searchLabel: searchLabel,
+                          queryChoices: queryChoices);
+                      final selected = MediaQuery.sizeOf(context).width < 600
+                          ? await showModalBottomSheet<T>(
+                              context: context,
+                              sheetAnimationStyle: lifeSheetMotion(context),
+                              isScrollControlled: true,
+                              useSafeArea: true,
+                              showDragHandle: true,
+                              builder: (_) => picker)
+                          : await showDialog<T>(
+                              context: context,
+                              animationStyle: lifeDialogMotion(context),
+                              builder: (_) => Dialog(
+                                  insetPadding: const EdgeInsets.all(24),
+                                  child: picker));
+                      if (selected != null && context.mounted) {
+                        onChanged?.call(selected);
+                      }
+                    },
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: InputDecorator(
                   decoration: InputDecoration(
-                    enabled: onChanged != null,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                          child: Text(choices[value] ?? '$value',
-                              maxLines: 2, overflow: TextOverflow.ellipsis)),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.expand_more_rounded),
-                    ],
-                  ),
+                      fillColor: Colors.transparent,
+                      enabled: onChanged != null,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14)),
+                  child: Row(children: [
+                    Expanded(
+                        child: Text(choices[value] ?? '$value',
+                            maxLines: 2, overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.expand_more_rounded),
+                  ]),
                 ),
-              ],
+              ),
             ),
           ),
         ),
-      );
+      ],
+    );
+  }
 }
 
 class _ChoiceDialog<T> extends StatefulWidget {
@@ -174,6 +177,7 @@ class _ChoiceDialogState<T> extends State<_ChoiceDialog<T>> {
                   key: const Key('selection_search'),
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
+                    fillColor: Colors.transparent,
                     labelText: widget.searchLabel ??
                         MaterialLocalizations.of(context).searchFieldLabel,
                     prefixIcon: const Icon(Icons.search_rounded),

@@ -355,7 +355,10 @@ function currencyInput(n){
  }
  return n;
 }
-function input(container,name,label,type='text',value='',required=true){const id='input-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const n=E(type==='textarea'?'textarea':'input');n.name=name;n.id=id;if(type!=='textarea')n.type=type;if(type==='email')n.autocomplete='email';if(type==='password')n.autocomplete=['new','next','new-password'].includes(name)?'new-password':'current-password';if(type==='textarea')n.maxLength=20000;if(['name','label'].includes(name))n.maxLength=2000;if(['amount','received'].includes(name))n.inputMode='decimal';if(name==='code'){n.autocomplete='one-time-code';n.spellcheck=false;}n.value=value??'';n.required=required&&type!=='checkbox';append(container,l,n);if(name==='currency')currencyInput(n);if(type==='password'&&['new','next','new-password'].includes(name))window.UladimPassword?.attach(n,()=>state.lang);return n;}
+function boundedDateInput(n){
+ const shell=E('span',undefined,'native-date-field');n.replaceWith(shell);shell.append(n);n.dateField=shell;return n;
+}
+function input(container,name,label,type='text',value='',required=true){const id='input-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const n=E(type==='textarea'?'textarea':'input');n.name=name;n.id=id;if(type!=='textarea')n.type=type;if(type==='email')n.autocomplete='email';if(type==='password')n.autocomplete=['new','next','new-password'].includes(name)?'new-password':'current-password';if(type==='textarea')n.maxLength=20000;if(['name','label'].includes(name))n.maxLength=2000;if(['amount','received'].includes(name))n.inputMode='decimal';if(name==='code'){n.autocomplete='one-time-code';n.spellcheck=false;}n.value=value??'';n.required=required&&type!=='checkbox';append(container,l,n);if(['date','datetime-local','time'].includes(type))boundedDateInput(n);if(name==='currency')currencyInput(n);if(type==='password'&&['new','next','new-password'].includes(name))window.UladimPassword?.attach(n,()=>state.lang);return n;}
 function select(container,name,label,choices,value){const id='select-'+name+'-'+crypto.randomUUID();const l=E('label',label);l.htmlFor=id;const s=E('select');s.name=name;s.id=id;for(const [v,label]of choices){const o=E('option',label);o.value=v;s.append(o);}s.value=value;append(container,l,s);return s;}
 function card(title,body){const c=E('section',undefined,'card');if(title)c.append(E('h2',title));if(body)c.append(E('p',body));return c;}
 function form(container,title,build,submit,submitLabel=t('save')){
@@ -367,7 +370,7 @@ function form(container,title,build,submit,submitLabel=t('save')){
  const fieldError=(field,message)=>{
   if(!field)return;
   const id=field.id+'-error';let hint=document.getElementById(id);
-  if(!hint){hint=E('p',undefined,'field-error');hint.id=id;(field.currencyField||field).after(hint);}
+  if(!hint){hint=E('p',undefined,'field-error');hint.id=id;(field.dateField||field.currencyField||field).after(hint);}
   hint.textContent=message;field.setAttribute('aria-invalid','true');
   field.setAttribute('aria-describedby',[...new Set([...(field.getAttribute('aria-describedby')||'').split(' ').filter(Boolean),id])].join(' '));
   const options=field.closest('details');if(options)options.open=true;
@@ -381,9 +384,12 @@ function form(container,title,build,submit,submitLabel=t('save')){
   event.preventDefault();if(pending)return;
   const invalid=[...f.elements].find(field=>!field.disabled&&typeof field.checkValidity==='function'&&!field.checkValidity());
   if(invalid){fieldError(invalid,invalid.validationMessage);invalid.focus({preventScroll:true});invalid.scrollIntoView({block:'nearest'});return;}
-  pending=true;b.disabled=true;status.textContent='';
-  try{await submit(values);status.textContent=t('account_done');}
+  pending=true;f.dataset.pending='true';b.disabled=true;b.textContent=t('saving');fields.disabled=true;status.textContent='';
+  f.dispatchEvent(new Event('pendingchange'));
+  let failed=false;
+  try{await submit(values);status.textContent=t('account_done');b.textContent=submitLabel;}
   catch(error){
+   failed=true;
    const retry=error.uncertain||error.refreshOnly||error.taskScheduleRetry;
    fields.disabled=initiallyDisabled||!!retry&&!error.taskScheduleRetry;
    b.textContent=retry?t('retry'):submitLabel;
@@ -391,12 +397,14 @@ function form(container,title,build,submit,submitLabel=t('save')){
    const field=['invalid_amount','amount_precision'].includes(error.code)?values.amount:['invalid_currency','currency_mismatch'].includes(error.code)?values.currency:error.code==='invalid_date'?values.date||values.end||values.start:null;
    if(field){fieldError(field,status.textContent);field.focus({preventScroll:true});}
    if(error.code==='unauthorized')report(error);
-  }finally{b.disabled=false;pending=false;}
+   f.dispatchEvent(new CustomEvent('submiterror',{detail:error}));
+  }finally{if(!failed)fields.disabled=initiallyDisabled;b.disabled=false;pending=false;delete f.dataset.pending;f.dispatchEvent(new Event('pendingchange'));}
  });
  container.append(f);return f;
 }
+function requestDialogClose(d){if(d.requestEditorClose)d.requestEditorClose();else d.close();}
 function dialogClose(d){
- const close=iconButton('close',t('close'),()=>d.close());
+ const close=iconButton('close',t('close'),()=>requestDialogClose(d));
  close.classList.add('dialog-close');
  return close;
 }
@@ -420,6 +428,54 @@ function dialog(title,build){
  d.showModal();
  heading.focus({preventScroll:true});
  return d;
+}
+const EDITOR_COPY=globalThis.UladimI18n.copy('grp_editor_interactions',{
+ ru:{unsaved:'Есть несохранённые изменения.',keep:'Продолжить редактирование',discard:'Не сохранять',reset:'Сбросить фильтры'},
+ en:{unsaved:'Keep editing or discard your changes?',keep:'Continue editing',discard:'Discard changes',reset:'Reset filters'}
+});
+function editorGuard(d,editor,actions,hasLocalState,onDiscard=()=>{},hasPendingWrite=()=>false){
+ const original=new Map(),read=field=>field.type==='checkbox'?field.checked:field.value;
+ const remember=container=>{for(const field of container.querySelectorAll('input,select,textarea'))if(!original.has(field))original.set(field,read(field));};
+ remember(editor);
+ const dirty=()=>hasLocalState()||[...original].some(([field,value])=>field.isConnected&&read(field)!==value);
+ const copy=EDITOR_COPY[state.lang]||EDITOR_COPY.en,choice=E('div',undefined,'editor-discard-choice');
+ choice.hidden=true;choice.setAttribute('role','region');choice.setAttribute('aria-label',copy.unsaved);
+ const message=E('p',copy.unsaved);message.setAttribute('role','status');let returnFocus;
+ const keep=button(copy.keep,()=>{choice.hidden=true;actions.hidden=false;if(returnFocus?.isConnected)returnFocus.focus({preventScroll:true});},'secondary');
+ const discard=button(copy.discard,()=>{onDiscard();return close();},'danger');
+ append(choice,message,keep,discard);editor.append(choice);
+ const busy=()=>editor.dataset.pending==='true';
+ d.requestEditorClose=()=>{
+  if(busy())return;
+  if(!dirty())return close();
+  discard.textContent=hasPendingWrite()?t('close'):copy.discard;
+  message.textContent=hasPendingWrite()?(editor.querySelector('.error')?.textContent||t('web_uncertain')):copy.unsaved;
+  returnFocus=document.activeElement;choice.hidden=false;actions.hidden=true;keep.focus({preventScroll:true});
+ };
+ d.addEventListener('cancel',event=>{event.preventDefault();d.requestEditorClose();});
+ editor.addEventListener('pendingchange',()=>{for(const control of d.querySelectorAll('.dialog-close,.editor-cancel,.editor-discard-choice button'))control.disabled=busy();});
+ // One same-URL entry lets browser/device Back use the same inline choice.
+ const id=crypto.randomUUID(),previous=history.state;let closing=false,closePromise;
+ history.pushState({...previous,uladimEditor:id},'',location.href);
+ const close=()=>{
+  if(closePromise)return closePromise;
+  if(history.state?.uladimEditor!==id){d.close();return Promise.resolve();}
+  closing=true;
+  return closePromise=new Promise(resolve=>{
+   window.addEventListener('popstate',()=>{d.close();resolve();},{once:true});
+   history.back();
+  });
+ };
+ const back=()=>{
+  if(closing||!d.open||history.state?.uladimEditor===id)return;
+  if(busy()||dirty()){
+   history.pushState({...previous,uladimEditor:id},'',location.href);
+   d.requestEditorClose();
+  }else d.close();
+ };
+ window.addEventListener('popstate',back);
+ d.addEventListener('close',()=>{window.removeEventListener('popstate',back);if(history.state?.uladimEditor===id)history.replaceState(previous,'',location.href);},{once:true});
+ return {remember,close};
 }
 function replaceDialog(d,...nodes){
  const heading=nodes.find(n=>n.tagName==='H2')||E('h2','ULADIM');
@@ -1066,9 +1122,10 @@ function listTasks(m){
  const filters=E('div',undefined,'task-filters'),queryBox=E('div'),statusBox=E('div');append(filters,queryBox,statusBox);primary.append(filters);
  const query=input(queryBox,'task-search',t('web_task_search'),'search',state.taskQuery,false);
  const status=select(statusBox,'task-status',t('web_task_status'),[['all',t('web_all')],['open',t('open_tasks')],['done',t('completed')]],state.taskStatus);
+ const reset=button((EDITOR_COPY[state.lang]||EDITOR_COPY.en).reset,()=>{query.value='';status.value='all';draw();},'text-button task-reset-filters');filters.append(reset);
  const c=E('div',undefined,'task-list');primary.append(c);
  const draw=()=>{
-  state.taskQuery=query.value;state.taskStatus=status.value;c.replaceChildren();
+  state.taskQuery=query.value;state.taskStatus=status.value;reset.classList.toggle('filter-reset-idle',!query.value&&status.value==='all');c.replaceChildren();
   const available=records('task'),rows=ULADIMDomain.tasks(available,query.value,status.value);
   if(!rows.length){c.append(emptyPanel('tasks',t(available.length?'web_no_results':'empty_tasks')));return;}
   for(const [name,completed] of [['open_tasks',false],['completed',true]]){
@@ -1264,7 +1321,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
  const [ ,localDraft,failedDraft]=NOTE_DRAFT_COPY[state.lang]||NOTE_DRAFT_COPY.en;
  let operation=draft?.operation||pendingTask?.operation||null,accepted=Boolean(draft?.accepted||pendingTask?.accepted);
  const fields={};
- let taskSchedule=null,taskScheduleMeta=null,taskScheduleDirty=false,taskScheduleRequest=null;
+ let taskSchedule=null,taskScheduleMeta=null,taskScheduleDirty=false,taskScheduleRequest=null,guard;
  let taskSchedulePanel,taskScheduleMount,taskScheduleStatus,taskScheduleReload,taskScheduleState='loading';
  const taskSchedules=window.UladimTaskReminders;
  const taskScheduleCopy=taskSchedules?.copy(state.lang);
@@ -1275,7 +1332,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
  const taskScheduleActive=()=>!invalidated()&&workspace===state.space&&taskSchedulePanel?.isConnected;
  const freezeTaskRecord=()=>{
   if(kind!=='task'||!accepted)return;
-  editor.querySelector('fieldset').disabled=Boolean(r&&!r.editable);
+   editor.querySelector('fieldset').disabled=editor.dataset.pending==='true'||Boolean(r&&!r.editable);
   for(const control of editor.querySelector('fieldset').querySelectorAll('input,select,textarea,button')){
    if(!taskSchedulePanel.contains(control))control.disabled=true;
   }
@@ -1290,7 +1347,8 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
    const metadata=taskId?await taskSchedules.get(call,workspace,taskId):{revision:0,schedule:null,reminder:false,can_edit:true};
    if(!taskScheduleActive())return;
    taskSchedule?.dispose();taskScheduleMeta=metadata;taskScheduleDirty=false;taskScheduleRequest=null;
-   taskSchedule=taskSchedules.mount(taskScheduleMount,{initial:metadata,lang:state.lang,onChange:()=>{taskScheduleDirty=true;taskScheduleRequest=null;taskScheduleStatus.textContent='';}});
+   taskSchedule=taskSchedules.mount(taskScheduleMount,{initial:metadata,lang:state.lang,wrapDate:boundedDateInput,onChange:()=>{taskScheduleDirty=true;taskScheduleRequest=null;taskScheduleStatus.textContent='';}});
+   guard?.remember(taskScheduleMount);
    taskScheduleState='ready';taskScheduleStatus.textContent='';freezeTaskRecord();
   }catch(error){
    if(!taskScheduleActive())return;
@@ -1351,7 +1409,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
   const data=r?.data||{};const disabled=r&&!r.editable;
   const pair=(className,...controls)=>{
    const row=E('div',undefined,'finance-field-pair '+className);
-   for(const control of controls){const field=control.currencyField||control;row.append(append(E('div'),field.previousElementSibling,field));}
+   for(const control of controls){const field=control.dateField||control.currencyField||control;row.append(append(E('div'),field.previousElementSibling,field));}
    return row;
   };
   if(['task','event','account','budget'].includes(kind))fields.name=input(f,'name',t(kind==='task'?'task_title':'name'),'text',pendingTask?.operation.data.title||data.title||data.name||'');
@@ -1413,8 +1471,9 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
    };
    if(!r)accountCurrency();
    fields.account.addEventListener('change',accountCurrency);
-   append(f,pair('transaction-context',fields.direction,fields.account),
-    pair('transaction-value',fields.amount,fields.currency),fields.date.previousElementSibling,fields.date,
+    const dateField=fields.date.dateField||fields.date;
+    append(f,pair('transaction-context',fields.direction,fields.account),
+     pair('transaction-value',fields.amount,fields.currency),dateField.previousElementSibling,dateField,
     fields.label.previousElementSibling,fields.label,categoryLabel,fields.category);
   }
   if(kind==='budget'){
@@ -1529,7 +1588,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
   if(invalidated())return;
   if(draftKey)writeNoteDraft(draftKey,null);
   if(taskKey)storeTaskAction(taskKey,null);
-  d.close();render();onSaved?.();
+   await guard.close();render();onSaved?.();
  });
  if(operation){
   editor.querySelector('fieldset').disabled=true;
@@ -1537,14 +1596,19 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
   editor.querySelector('.error').textContent=pendingTask?pendingTaskMessage(accepted):t(accepted?'web_saved_refresh':'web_uncertain');
  }
  const secondary=E('div',undefined,'editor-secondary-actions');
- secondary.append(button((globalThis.UladimI18n.copy("grp_7097dc1a0b93",{ru:'Отмена',en:'Cancel','uz-Latn':'Bekor qilish','uz-Cyrl':'Бекор қилиш'}))[state.lang]||'Cancel',()=>d.close(),'secondary editor-cancel'));
- if(r){const more=E('details',undefined,'editor-more');more.append(E('summary',(globalThis.UladimI18n.copy("grp_c05c2c0976f4",{ru:'Другие действия',en:'More actions','uz-Latn':'Boshqa amallar','uz-Cyrl':'Бошқа амаллар'}))[state.lang]||'More actions'));more.append(button(t('family_use_server'),async()=>{
+ secondary.append(button((globalThis.UladimI18n.copy("grp_7097dc1a0b93",{ru:'Отмена',en:'Cancel','uz-Latn':'Bekor qilish','uz-Cyrl':'Бекор қилиш'}))[state.lang]||'Cancel',()=>requestDialogClose(d),'secondary editor-cancel'));
+ if(r){const more=E('details',undefined,'editor-more');more.append(E('summary',(globalThis.UladimI18n.copy("grp_c05c2c0976f4",{ru:'Другие действия',en:'More actions','uz-Latn':'Boshqa amallar','uz-Cyrl':'Бошқа амаллар'}))[state.lang]||'More actions'));const reload=button(t('family_use_server'),async()=>{
   await refresh();
   if(draftKey)writeNoteDraft(draftKey,null);
-  d.close();render();
- },'secondary'));
- if(r.editable)more.append(button(t('delete'),()=>{d.close();queueDelete(r,workspace);},'danger'));secondary.append(more);}
- container.append(secondary);
+   await guard.close();render();
+ },'secondary');reload.hidden=!operation&&!draft&&!pendingTask;more.append(reload);
+ editor.addEventListener('submiterror',event=>{if(operation||['conflict','revision_conflict'].includes(event.detail.code))reload.hidden=false;});
+ const remove=r.editable?button(t('delete'),async()=>{await guard.close();queueDelete(r,workspace);},'danger'):null;
+ const lockActions=()=>{reload.disabled=editor.dataset.pending==='true';if(remove)remove.disabled=editor.dataset.pending==='true'||Boolean(operation)||editor.querySelector('fieldset').disabled;};
+ editor.addEventListener('pendingchange',lockActions);lockActions();if(remove)more.append(remove);editor.append(more);}
+ const scrolling=E('div',undefined,'editor-fields'),fieldset=editor.querySelector('fieldset');fieldset.replaceWith(scrolling);scrolling.append(fieldset);const more=editor.querySelector('.editor-more');if(more)scrolling.append(more);
+ const actions=E('div',undefined,'editor-actions');append(actions,editor.querySelector('button[type=submit]'),secondary);editor.append(actions);
+ guard=editorGuard(container,editor,actions,()=>Boolean(operation||draft||pendingTask),()=>{if(draftKey&&!operation)writeNoteDraft(draftKey,null);},()=>Boolean(operation));
  if(kind==='task')queueMicrotask(loadTaskSchedule);
  });
  if(r)d.dataset.recordId=r.id;
@@ -1777,6 +1841,7 @@ function finance(m){
  let drilldown=false,categoryFilter=null;
  const clearDrill=button((globalThis.UladimI18n.copy("grp_0e077d72b313",{ru:'Все категории',en:'All categories','uz-Latn':'Barcha toifalar','uz-Cyrl':'Барча тоифалар'}))[state.lang]||'All categories',()=>{categoryFilter=null;drilldown=false;draw();},'text-button finance-clear-drill');
  clearDrill.hidden=true;ledger.insertBefore(clearDrill,ledgerRows);
+ const resetFilters=button((EDITOR_COPY[state.lang]||EDITOR_COPY.en).reset,()=>{search.value=from.value=to.value='';if(view!=='report')accountFilter.value='';categoryFilter=null;drilldown=false;draw();},'text-button finance-reset-filters');filterPanel.append(resetFilters);
  const drill=(kind,category=null)=>{breakdownKind.value=kind;mode.value='categories';drilldown=true;categoryFilter=category;ledgerLimit=25;draw();};
  currency.disabled=mode.disabled=!currencies.length;
  if(reportAccount)currency.disabled=true;
@@ -1805,6 +1870,7 @@ function finance(m){
   state[filterState]={'finance-search':search.value,'finance-from':from.value,'finance-to':to.value,account:accountFilter.value,currency:currency.value};
   const active=[search.value,from.value,to.value,accountFilter.value].filter(Boolean).length,filtered=rows();
   filterLabel.textContent=t('web_filters')+(active?' · '+active:'');
+  resetFilters.classList.toggle('filter-reset-idle',![search.value,from.value,to.value,view==='report'?'':accountFilter.value].some(Boolean)&&!drilldown);
   const activeScope=[from.value?t('web_period_start')+' '+displayDate(from.value):'',to.value?t('web_period_end')+' '+displayDate(to.value):'',accountFilter.value?accountFilter.selectedOptions[0]?.textContent:'',search.value?'“'+search.value+'”':''].filter(Boolean);
   scope.textContent=(activeScope.join(' · ')||copy.history)+' · '+copy.separate;filterLabel.title=activeScope.join(' · ');
   metricGrid.replaceChildren();

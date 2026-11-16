@@ -12,11 +12,22 @@ import 'account_center.dart';
 import 'settings_surfaces.dart';
 import 'preference_choices.dart';
 import 'family_financial_reference.dart';
+import 'cloud_record_detail.dart';
+import 'password_recovery.dart';
 
 class FamilyPage extends StatefulWidget {
-  const FamilyPage({super.key, required this.controller, required this.pack});
+  const FamilyPage(
+      {super.key,
+      required this.controller,
+      required this.pack,
+      this.onWorkspaceSelected,
+      this.region,
+      this.clock});
   final FamilyController controller;
   final LanguagePack pack;
+  final Future<bool> Function(String)? onWorkspaceSelected;
+  final String? region;
+  final DateTime Function()? clock;
   @override
   State<FamilyPage> createState() => _FamilyPageState();
 }
@@ -105,13 +116,73 @@ class _FamilyPageState extends State<FamilyPage> {
     return secret ? value : value?.trim();
   }
 
+  Future<void> changePassword() async {
+    final principal = c.capturePrincipal(),
+        workspace = c.workspace,
+        client = c.api;
+    if (client == null) return;
+    Json? methods;
+    await c.run(() async {
+      methods = await client.request('/v1/account/google');
+    });
+    if (!mounted || !_stillIn(principal, workspace) || c.error != null) return;
+    if (methods?['has_password'] == false) {
+      await Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  PasswordRecoveryPage(controller: c, pack: widget.pack)));
+      return;
+    }
+    if (methods?['has_password'] != true) return;
+    final old = await ask(t('family_old_password'), secret: true);
+    if (old == null || !_stillIn(principal, workspace)) return;
+    final next = await ask(t('family_new_password'), secret: true);
+    if (next != null && _stillIn(principal, workspace)) {
+      await c.password(old, next);
+    }
+  }
+
+  Future<void> authenticate(Future<void> Function() action) async {
+    final before = c.capturePrincipal(), wasVerified = c.verified;
+    await action();
+    if (!mounted ||
+        !c.verified ||
+        c.error != null ||
+        c.loginMfaRequired ||
+        c.isCurrentPrincipal(before) && wasVerified) {
+      return;
+    }
+    await landOnPersonal();
+  }
+
+  Future<void> landOnPersonal() async {
+    final select = widget.onWorkspaceSelected;
+    if (select == null || !c.verified) return;
+    final principal = c.capturePrincipal();
+    final personal = c.spaces.where((s) => s['kind'] == 'personal').toList();
+    if (personal.length != 1) {
+      return; // The visible account page remains a chooser.
+    }
+    final id = personal.single['id'] as String;
+    final selected = await select(id);
+    if (selected &&
+        mounted &&
+        c.isCurrentPrincipal(principal) &&
+        c.workspace == id) {
+      Navigator.pop(context);
+    }
+  }
+
   Future<void> command(String action, Json values) => c.run(() async {
         await c.family(action, values);
       });
   Future<void> invite() async {
     final principal = c.capturePrincipal(), workspace = c.workspace;
     final mail = await ask(t('family_invite_email'));
-    if (mail == null || mail.isEmpty || !mounted ||
+    if (mail == null ||
+        mail.isEmpty ||
+        !mounted ||
         !_stillIn(principal, workspace)) {
       return;
     }
@@ -312,6 +383,11 @@ class _FamilyPageState extends State<FamilyPage> {
 
   Future<void> edit([Json? record]) async {
     if (!mounted) return;
+    if (record != null) {
+      await openCloudRecord(context, c, widget.pack, record['id'] as String,
+          region: widget.region, clock: widget.clock);
+      return;
+    }
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
@@ -324,28 +400,31 @@ class _FamilyPageState extends State<FamilyPage> {
     );
   }
 
-  Widget button(String label, VoidCallback action, {IconData? icon}) =>
-      SettingsRow(
-        title: t(switch (label) {
-          'family_password_change' => 'account_password_title',
-          'family_create' => 'family_create_short',
-          'family_accept' => 'family_accept_short',
-          'family_sync' => 'refresh',
-          _ => label,
-        }),
-        icon: icon ??
-            switch (label) {
-              'family_password_change' => Icons.key_outlined,
-              'family_create' => Icons.add_home_outlined,
-              'family_accept' => Icons.mail_outline,
-              'family_dissolve' => Icons.delete_outline,
-              'family_leave' => Icons.logout,
-              'family_verify' => Icons.mark_email_read_outlined,
-              'family_record_add' => Icons.add,
-              _ => Icons.people_outline,
-            },
-        onTap: c.busy ? null : action,
-      );
+  Widget button(String label, VoidCallback action, {IconData? icon}) => Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SettingsGroup(children: [
+        SettingsRow(
+          title: t(switch (label) {
+            'family_password_change' => 'account_password_title',
+            'family_create' => 'family_create_short',
+            'family_accept' => 'family_accept_short',
+            'family_sync' => 'refresh',
+            _ => label,
+          }),
+          icon: icon ??
+              switch (label) {
+                'family_password_change' => Icons.key_outlined,
+                'family_create' => Icons.add_home_outlined,
+                'family_accept' => Icons.mail_outline,
+                'family_dissolve' => Icons.delete_outline,
+                'family_leave' => Icons.logout,
+                'family_verify' => Icons.mark_email_read_outlined,
+                'family_record_add' => Icons.add,
+                _ => Icons.people_outline,
+              },
+          onTap: c.busy ? null : action,
+        )
+      ]));
 
   Future<void> signOutPage() => Navigator.of(context).push<void>(
         MaterialPageRoute(
@@ -356,7 +435,7 @@ class _FamilyPageState extends State<FamilyPage> {
                 padding: settingsPagePadding(pageContext),
                 children: [
                   Text(
-                    c.account?['email'] as String? ?? t('family_account'),
+                    c.account?['email'] as String? ?? t('account_manage'),
                     style: Theme.of(pageContext).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
@@ -394,7 +473,7 @@ class _FamilyPageState extends State<FamilyPage> {
           appBar: AppBar(
             toolbarHeight:
                 MediaQuery.textScalerOf(context).scale(20) > 28 ? 96 : null,
-            title: Text(t('family_account'), maxLines: 2),
+            title: Text(t('account_manage'), maxLines: 2),
           ),
           body: SafeArea(
             child: ListView(
@@ -466,7 +545,8 @@ class _FamilyPageState extends State<FamilyPage> {
                                   passwordAgain.clear();
                                   code.clear();
                                   setState(() => register = false);
-                                  await c.signInGoogle(c.accountOrigin);
+                                  await authenticate(
+                                      () => c.signInGoogle(c.accountOrigin));
                                 },
                           child: Text(t('account_google_sign_in')),
                         ),
@@ -602,8 +682,8 @@ class _FamilyPageState extends State<FamilyPage> {
                                       email.text.trim()) {
                                 final issue = newPasswordIssue(password.text);
                                 if (issue != null) {
-                                  setState(() =>
-                                      formError = 'family_error_$issue');
+                                  setState(
+                                      () => formError = 'family_error_$issue');
                                   return;
                                 }
                               }
@@ -615,20 +695,20 @@ class _FamilyPageState extends State<FamilyPage> {
                                 return;
                               }
                               setState(() => formError = null);
-                              await c.signIn(
-                                c.accountOrigin,
-                                email.text.trim(),
-                                password.text,
-                                register: register,
-                                mfaCode: !register && c.loginMfaRequired
-                                    ? code.text.trim()
-                                    : null,
-                                verificationCode: register &&
-                                        c.pendingRegistrationEmail ==
-                                            email.text.trim()
-                                    ? code.text.trim()
-                                    : null,
-                              );
+                              await authenticate(() => c.signIn(
+                                    c.accountOrigin,
+                                    email.text.trim(),
+                                    password.text,
+                                    register: register,
+                                    mfaCode: !register && c.loginMfaRequired
+                                        ? code.text.trim()
+                                        : null,
+                                    verificationCode: register &&
+                                            c.pendingRegistrationEmail ==
+                                                email.text.trim()
+                                        ? code.text.trim()
+                                        : null,
+                                  ));
                               password.clear();
                               passwordAgain.clear();
                               code.clear();
@@ -689,7 +769,7 @@ class _FamilyPageState extends State<FamilyPage> {
                   ],
                 ] else ...[
                   Text(
-                    c.account!['email'] as String? ?? t('family_account'),
+                    c.account!['email'] as String? ?? t('account_manage'),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
@@ -705,20 +785,7 @@ class _FamilyPageState extends State<FamilyPage> {
                       icon: Icons.manage_accounts_outlined,
                     ),
                     button('family_logout', signOutPage, icon: Icons.logout),
-                    button('family_password_change', () async {
-                      final principal = c.capturePrincipal(), workspace = c.workspace;
-                      final old =
-                          await ask(t('family_old_password'), secret: true);
-                      if (old == null || !mounted ||
-                          !_stillIn(principal, workspace)) {
-                        return;
-                      }
-                      final next =
-                          await ask(t('family_new_password'), secret: true);
-                      if (next != null && _stillIn(principal, workspace)) {
-                        await c.password(old, next);
-                      }
-                    }),
+                    button('family_password_change', changePassword),
                   ]),
                   if (!c.verified) ...[
                     Text(t('family_verify_hint')),
@@ -726,7 +793,8 @@ class _FamilyPageState extends State<FamilyPage> {
                       controller: code,
                       decoration: InputDecoration(labelText: t('family_code')),
                     ),
-                    button('family_verify', () => c.verify(code.text.trim())),
+                    button('family_verify',
+                        () => authenticate(() => c.verify(code.text.trim()))),
                     button(
                       'ux3_resend_verification',
                       () => c.resendVerification(),
@@ -734,16 +802,38 @@ class _FamilyPageState extends State<FamilyPage> {
                     ),
                   ] else ...[
                     const SizedBox(height: 24),
-                    Text(t('family_spaces_title'),
+                    Text(t('account_spaces'),
                         style: Theme.of(context).textTheme.titleMedium),
                     if (c.spaces.isEmpty) ...[
                       const SizedBox(height: 8),
-                      Text(t('ux3_family_steps')),
+                      Text(t('workspace_account_personal')),
                     ],
                     const SizedBox(height: 12),
                     button('family_sync', () => c.refresh(), icon: Icons.sync),
+                    if (!c.spaces.any((s) => s['kind'] == 'personal'))
+                      button('create_personal_space', () async {
+                        final principal = c.capturePrincipal(),
+                            workspace = c.workspace;
+                        final name = await ask(t('family_name'));
+                        if (name == null ||
+                            name.isEmpty ||
+                            !_stillIn(principal, workspace)) {
+                          return;
+                        }
+                        await command('workspace.create', {
+                          'name': name,
+                          'kind': 'personal',
+                          'workspace_id': FamilyController.uuid.v4()
+                        });
+                        if (mounted &&
+                            c.isCurrentPrincipal(principal) &&
+                            c.error == null) {
+                          await landOnPersonal();
+                        }
+                      }),
                     button('family_create', () async {
-                      final principal = c.capturePrincipal(), workspace = c.workspace;
+                      final principal = c.capturePrincipal(),
+                          workspace = c.workspace;
                       final name = await ask(t('family_name'));
                       if (name != null && _stillIn(principal, workspace)) {
                         await command('workspace.create', {
@@ -754,7 +844,8 @@ class _FamilyPageState extends State<FamilyPage> {
                       }
                     }),
                     button('family_accept', () async {
-                      final principal = c.capturePrincipal(), workspace = c.workspace;
+                      final principal = c.capturePrincipal(),
+                          workspace = c.workspace;
                       final value = await ask(t('family_invitation'));
                       if (value != null && _stillIn(principal, workspace)) {
                         await c.accept(value);
@@ -763,12 +854,26 @@ class _FamilyPageState extends State<FamilyPage> {
                     for (final space in c.spaces)
                       ListTile(
                         title: Text(space['name'] as String),
-                        subtitle: Text(t('family_${space['role']}')),
+                        subtitle: Text(t(space['kind'] == 'personal'
+                            ? 'workspace_account_personal'
+                            : 'family_${space['role']}')),
+                        leading: Icon(space['kind'] == 'personal'
+                            ? Icons.person_outline
+                            : Icons.people_outline),
                         selected: c.workspace == space['id'],
                         trailing: const Icon(Icons.chevron_right),
                         onTap: c.busy
                             ? null
-                            : () => c.select(space['id'] as String),
+                            : () async {
+                                final selected = widget.onWorkspaceSelected;
+                                if (selected == null) {
+                                  await c.select(space['id'] as String);
+                                } else if (await selected(
+                                        space['id'] as String) &&
+                                    context.mounted) {
+                                  Navigator.pop(context);
+                                }
+                              },
                       ),
                     if (c.workspace != null) ...[
                       for (final raw in c.roster?['invitations'] as List? ?? [])
@@ -800,7 +905,7 @@ class _FamilyPageState extends State<FamilyPage> {
                               }),
                             ),
                           ),
-                      if (c.parent)
+                      if (c.parent && cloudSpaceKind(c) == 'family')
                         for (final raw in c.roster?['members'] as List? ?? [])
                           if (object(raw)['role'] == 'parent' &&
                               object(raw)['user_id'] !=
@@ -824,7 +929,7 @@ class _FamilyPageState extends State<FamilyPage> {
                             Text(t('family_sync_hint')),
                             Text('${t('family_pending')}: ${c.pending.length}'),
                           ]),
-                      if (c.parent) ...[
+                      if (c.parent && cloudSpaceKind(c) == 'family') ...[
                         button(
                           'family_invite',
                           invite,
@@ -943,8 +1048,9 @@ class _FamilyPageState extends State<FamilyPage> {
                           subtitle: Text(t('family_kind_${record['kind']}')),
                           onTap: c.busy ? null : () => edit(record),
                         ),
-                      if (c.roster?['space']?['creator_id'] ==
-                          c.account!['user_id'])
+                      if (cloudSpaceKind(c) == 'family' &&
+                          c.roster?['space']?['creator_id'] ==
+                              c.account!['user_id'])
                         button(
                           'family_dissolve',
                           () => confirm(
@@ -954,7 +1060,8 @@ class _FamilyPageState extends State<FamilyPage> {
                             }),
                           ),
                         )
-                      else if (c.roster != null)
+                      else if (c.roster != null &&
+                          cloudSpaceKind(c) == 'family')
                         button(
                           'family_leave',
                           () => confirm(
@@ -1057,8 +1164,8 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       widget.record == null ||
       widget.record!['owner_id'] == c.account?['user_id'];
   bool get completionOnly => role == 'child' && !own;
-  Json? get _currentRecord => c.records
-      .where((row) => row['id'] == widget.record?['id']).firstOrNull;
+  Json? get _currentRecord =>
+      c.records.where((row) => row['id'] == widget.record?['id']).firstOrNull;
   bool get _canAct => mounted && canEdit && !c.busy;
   bool get canEdit =>
       !_unavailable &&
@@ -1413,7 +1520,11 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (target != null && mounted && _canAct && own && visibility == 'private') {
+    if (target != null &&
+        mounted &&
+        _canAct &&
+        own &&
+        visibility == 'private') {
       final edit = revoke
           ? false
           : await showDialog<bool>(
@@ -1464,9 +1575,13 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
         ],
       ),
     );
-    if (target != null && _canAct && c.parent &&
-        c.records.any((r) => r['id'] == target &&
-            r['kind'] == 'transfer' && isActiveSyncRecord(r) &&
+    if (target != null &&
+        _canAct &&
+        c.parent &&
+        c.records.any((r) =>
+            r['id'] == target &&
+            r['kind'] == 'transfer' &&
+            isActiveSyncRecord(r) &&
             !c.transferUsesErasedAccount(r))) {
       await action('request.fulfill', {'movement_id': target});
     }
@@ -1519,14 +1634,16 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
             TextField(
               controller: controller,
               maxLines: lines,
-              keyboardType: ['amount', 'family_received'].contains(label)
+              keyboardType: ['amount', 'family_received', 'opening_balance']
+                      .contains(label)
                   ? const TextInputType.numberWithOptions(
                       decimal: true,
                       signed: true,
                     )
                   : TextInputType.text,
               decoration: InputDecoration(
-                  hintText: ['amount', 'family_received'].contains(label)
+                  hintText: ['amount', 'family_received', 'opening_balance']
+                          .contains(label)
                       ? '0'
                       : null),
             ),
@@ -1552,7 +1669,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
   Widget build(BuildContext context) {
     if (_unavailable) {
       return Scaffold(
-          appBar: settingsAppBar(context, t('family_record_add')),
+          appBar: settingsAppBar(context, t('details')),
           body: SafeArea(
               child: Padding(
                   padding: settingsPagePadding(context),
@@ -1580,7 +1697,9 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
       appBar: AppBar(
         toolbarHeight:
             MediaQuery.textScalerOf(context).scale(20) > 28 ? 96 : null,
-        title: Text(t('family_record_add'), maxLines: 2),
+        title: Text(
+            '${t(widget.record == null ? 'add' : 'edit')} · ${t('family_kind_$kind')}',
+            maxLines: 2),
       ),
       body: SafeArea(
         child: ListView(
@@ -1619,7 +1738,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                     onChanged: (v) => setState(() => currency.text = v),
                   ),
                 ),
-                field(amount, 'amount'),
+                field(amount, kind == 'account' ? 'opening_balance' : 'amount'),
               ],
               if (['transaction', 'budget', 'transfer'].contains(kind))
                 dateControl(
@@ -1648,7 +1767,7 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
               if (kind == 'transfer') ...[
                 select('family_from', from, accountChoices, (v) => from = v),
                 select('family_to', to, accountChoices, (v) => to = v),
-                field(amount, 'amount'),
+                field(amount, kind == 'account' ? 'opening_balance' : 'amount'),
                 field(received, 'family_received'),
               ],
               if (kind == 'budget') ...[
@@ -1843,29 +1962,33 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                 value: completed,
                 onChanged: (v) => setState(() => completed = v!),
               ),
-            if (role != 'child' && own) ...[
-              select(
-                  'family_visibility',
-                  visibility,
-                  {
-                    'private': t('family_private'),
-                    'shared': t('family_shared'),
-                  },
-                  (v) => visibility = v),
-              if (visibility == 'shared')
-                for (final raw in c.roster?['profiles'] as List? ?? [])
-                  CheckboxListTile(
-                    title: Text(object(raw)['name'] as String),
-                    value: audience.contains(object(raw)['id']),
-                    onChanged: (v) => setState(() {
-                      if (v == true) {
-                        audience.add(object(raw)['id'] as String);
-                      } else {
-                        audience.remove(object(raw)['id']);
-                      }
-                    }),
-                  ),
-            ],
+            if (role != 'child' && own && cloudSpaceKind(c) != 'personal')
+              ExpansionTile(
+                  title: Text(t('family_visibility')),
+                  tilePadding: EdgeInsets.zero,
+                  children: [
+                    select(
+                        'family_visibility',
+                        visibility,
+                        {
+                          'private': t('family_private'),
+                          'shared': t('family_shared'),
+                        },
+                        (v) => visibility = v),
+                    if (visibility == 'shared')
+                      for (final raw in c.roster?['profiles'] as List? ?? [])
+                        CheckboxListTile(
+                          title: Text(object(raw)['name'] as String),
+                          value: audience.contains(object(raw)['id']),
+                          onChanged: (v) => setState(() {
+                            if (v == true) {
+                              audience.add(object(raw)['id'] as String);
+                            } else {
+                              audience.remove(object(raw)['id']);
+                            }
+                          }),
+                        ),
+                  ]),
             if (error != null) Text(t('family_error_$error')),
             if (c.error != null) Text(t('family_error_${c.error}')),
             const SizedBox(height: 16),
@@ -1878,29 +2001,36 @@ class _FamilyRecordEditorState extends State<FamilyRecordEditor> {
                   : save,
               child: Text(t('save')),
             ),
-            if (widget.record != null) ...[
-              if (kind == 'request' &&
-                  c.parent &&
-                  widget.record!['data']['state'] == 'pending')
-                OutlinedButton(
-                  onPressed: c.busy ? null : fulfill,
-                  child: Text(t('family_fulfill')),
-                ),
-              if (own && visibility == 'private') ...[
-                OutlinedButton(
-                  onPressed: c.busy ? null : () => grant(false),
-                  child: Text(t('family_grant')),
-                ),
-                OutlinedButton(
-                  onPressed: c.busy ? null : () => grant(true),
-                  child: Text(t('family_revoke')),
-                ),
-              ],
-              OutlinedButton(
-                onPressed: c.busy || !canEdit ? null : delete,
-                child: Text(t('delete')),
-              ),
-            ],
+            if (widget.record != null)
+              ExpansionTile(
+                  key: const Key('cloud_record_more'),
+                  title: Text(t('details')),
+                  tilePadding: EdgeInsets.zero,
+                  children: [
+                    if (kind == 'request' &&
+                        c.parent &&
+                        widget.record!['data']['state'] == 'pending')
+                      OutlinedButton(
+                        onPressed: c.busy ? null : fulfill,
+                        child: Text(t('family_fulfill')),
+                      ),
+                    if (own &&
+                        visibility == 'private' &&
+                        cloudSpaceKind(c) == 'family') ...[
+                      OutlinedButton(
+                        onPressed: c.busy ? null : () => grant(false),
+                        child: Text(t('family_grant')),
+                      ),
+                      OutlinedButton(
+                        onPressed: c.busy ? null : () => grant(true),
+                        child: Text(t('family_revoke')),
+                      ),
+                    ],
+                    OutlinedButton(
+                      onPressed: c.busy || !canEdit ? null : delete,
+                      child: Text(t('delete')),
+                    ),
+                  ]),
           ],
         ),
       ),

@@ -193,6 +193,8 @@ class _RecordDetailState extends State<RecordDetail> {
                                     ? null
                                     : () => showModalBottomSheet<void>(
                                         context: context,
+                                        sheetAnimationStyle:
+                                            lifeSheetMotion(context),
                                         isScrollControlled: true,
                                         useSafeArea: true,
                                         builder: (_) => MoneyDetails(

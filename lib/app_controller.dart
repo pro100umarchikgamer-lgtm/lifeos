@@ -419,6 +419,27 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  /// UI selection only; authentication, mirror scope and transport stay in FamilyController.
+  Future<bool> selectCloudWorkspace(String id) async {
+    final f = family;
+    if (f == null ||
+        !f.verified ||
+        f.busy ||
+        !f.spaces.any((s) => s['id'] == id)) {
+      return false;
+    }
+    final principal = f.capturePrincipal();
+    await f.select(id);
+    if (!f.isCurrentPrincipal(principal) ||
+        f.workspace != id ||
+        f.roster == null ||
+        {'workspace_forbidden', 'profile_forbidden'}.contains(f.error)) {
+      return false;
+    }
+    await preference('active_scope', 'family');
+    return f.isCurrentPrincipal(principal) && f.workspace == id;
+  }
+
   Future<void> preference(String key, String value) async {
     switch (key) {
       case 'modules_view':

@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Аризаи шумо маъқул шуд. Дар https://getuladim.space/account бо ин даъват ҳисоб созед (7 рӯз):\n{code}",
     "mail_body_early_rejected": "Ҳоло мо шуморо ба озмоиши пӯшидаи ULADIM дохил карда наметавонем. Ҳисоб сохта нашудааст. Ҳолат ва бекоркунии ариза: https://getuladim.space/early-access",
     "mail_code_single_use": "Рамз якдафъаина аст.",
-    "mail_unrequested": "Агар шумо ин амалро дархост накарда бошед, ин номаро нодида гиред."
+    "mail_unrequested": "Агар шумо ин амалро дархост накарда бошед, ин номаро нодида гиред.",
+    "workspace_device": "Дар ин дастгоҳ",
+    "workspace_account_personal": "Фазои шахсии ҳисоб",
+    "account_spaces": "Фазоҳои ҳисоб",
+    "create_personal_space": "Сохтани фазои шахсӣ",
+    "current_balance": "Бақияи ҷорӣ",
+    "appearance_intensity": "Сершавии пасзамина",
+    "appearance_less_color": "Камрангтар",
+    "appearance_more_color": "Равшантар",
+    "appearance_slate": "Лавҳасанг",
+    "appearance_ink": "Сиёҳӣ",
+    "appearance_moss": "Ушна",
+    "state_yes": "Ҳа",
+    "state_no": "Не",
+    "cloud_operations": "Амалиётҳо",
+    "cloud_category_food": "Ғизо",
+    "cloud_category_housing": "Хона ва ҳисобҳо",
+    "cloud_category_health": "Тандурустӣ",
+    "cloud_category_leisure": "Истироҳат",
+    "cloud_category_education": "Маориф"
   },
   "plurals": {
     "record_count": {

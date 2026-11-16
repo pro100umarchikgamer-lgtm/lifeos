@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Ərizəniz təsdiqləndi. Bu dəvətlə https://getuladim.space/account səhifəsində akkaunt yaradın (7 gün):\n{code}",
     "mail_body_early_rejected": "Hazırda sizi ULADIM-in qapalı sınağına daxil edə bilmirik. Akkaunt yaradılmayıb. Ərizənin statusu və ləğvi: https://getuladim.space/early-access",
     "mail_code_single_use": "Kod yalnız bir dəfə istifadə olunur.",
-    "mail_unrequested": "Bu əməli istəməmisinizsə, məktubu nəzərə almayın."
+    "mail_unrequested": "Bu əməli istəməmisinizsə, məktubu nəzərə almayın.",
+    "workspace_device": "Bu cihazda",
+    "workspace_account_personal": "Hesabda şəxsi məkan",
+    "account_spaces": "Hesab məkanları",
+    "create_personal_space": "Şəxsi məkan yarat",
+    "current_balance": "Cari balans",
+    "appearance_intensity": "Fonun rəng intensivliyi",
+    "appearance_less_color": "Daha sakit",
+    "appearance_more_color": "Daha parlaq",
+    "appearance_slate": "Şist",
+    "appearance_ink": "Mürəkkəb",
+    "appearance_moss": "Mamır",
+    "state_yes": "Bəli",
+    "state_no": "Xeyr",
+    "cloud_operations": "Əməliyyatlar",
+    "cloud_category_food": "Qida",
+    "cloud_category_housing": "Ev və ödənişlər",
+    "cloud_category_health": "Sağlamlıq",
+    "cloud_category_leisure": "İstirahət",
+    "cloud_category_education": "Təhsil"
   },
   "plurals": {
     "record_count": {

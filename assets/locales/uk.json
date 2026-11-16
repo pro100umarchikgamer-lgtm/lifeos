@@ -898,7 +898,26 @@
     "mail_body_early_invite": "Вашу заявку схвалено. Створіть акаунт на https://getuladim.space/account із цим запрошенням (7 днів):\n{code}",
     "mail_body_early_rejected": "Зараз ми не можемо включити вас у закрите тестування ULADIM. Акаунт не створено. Статус і скасування заявки: https://getuladim.space/early-access",
     "mail_code_single_use": "Код одноразовий.",
-    "mail_unrequested": "Якщо ви не надсилали запиту на цю дію, проігноруйте цей лист."
+    "mail_unrequested": "Якщо ви не надсилали запиту на цю дію, проігноруйте цей лист.",
+    "workspace_device": "На цьому пристрої",
+    "workspace_account_personal": "Особисте в акаунті",
+    "account_spaces": "Простори акаунта",
+    "create_personal_space": "Створити особистий простір",
+    "current_balance": "Поточний баланс",
+    "appearance_intensity": "Насиченість тла",
+    "appearance_less_color": "Стримано",
+    "appearance_more_color": "Яскравіше",
+    "appearance_slate": "Сланцевий",
+    "appearance_ink": "Чорнильний",
+    "appearance_moss": "Мох",
+    "state_yes": "Так",
+    "state_no": "Ні",
+    "cloud_operations": "Операції",
+    "cloud_category_food": "Харчування",
+    "cloud_category_housing": "Дім і рахунки",
+    "cloud_category_health": "Здоров’я",
+    "cloud_category_leisure": "Відпочинок",
+    "cloud_category_education": "Освіта"
   },
   "plurals": {
     "record_count": {

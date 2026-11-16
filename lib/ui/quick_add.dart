@@ -1,3 +1,4 @@
+import 'design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -26,11 +27,9 @@ Future<bool?> showEntryEditor(
   }
   return showModalBottomSheet<bool>(
     context: context,
+    sheetAnimationStyle: lifeSheetMotion(context),
     isScrollControlled: true,
     useSafeArea: true,
-    sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
-        ? AnimationStyle.noAnimation
-        : null,
     isDismissible: false,
     enableDrag: false,
     builder: (_) =>
@@ -272,6 +271,7 @@ class _QuickAddState extends State<QuickAdd> {
                           FocusScope.of(context).unfocus();
                           await showModalBottomSheet<void>(
                             context: context,
+                            sheetAnimationStyle: lifeSheetMotion(context),
                             isScrollControlled: true,
                             useSafeArea: true,
                             builder: (_) => StatefulBuilder(
