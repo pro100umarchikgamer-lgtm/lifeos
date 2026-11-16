@@ -62,7 +62,7 @@ def main():
         scenario_clock=[int(backend.clock())];backend.clock=lambda:scenario_clock[0]
         try:
             with sync_playwright() as p:
-                browser=p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM','/usr/bin/chromium'),proxy={'server':os.environ['HTTPS_PROXY'],'bypass':'.uladim.test'} if os.environ.get('HTTPS_PROXY') else None,args=['--host-resolver-rules=MAP *.uladim.test 127.0.0.1','--proxy-bypass-list=*.uladim.test','--ignore-certificate-errors-spki-list='+pin])
+                browser=p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM') or p.chromium.executable_path,proxy={'server':os.environ['HTTPS_PROXY'],'bypass':'.uladim.test'} if os.environ.get('HTTPS_PROXY') else None,args=['--host-resolver-rules=MAP *.uladim.test 127.0.0.1','--proxy-bypass-list=*.uladim.test','--ignore-certificate-errors-spki-list='+pin])
                 for theme in ('light','dark'):
                     scenario_clock[0]+=61
                     context=browser.new_context(viewport={'width':390,'height':844},color_scheme=theme)

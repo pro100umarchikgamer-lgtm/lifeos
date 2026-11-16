@@ -125,7 +125,7 @@ def erase_in(backend, db, uid, now):
         db.execute('DELETE FROM staff_invitations WHERE email=?', (email,))
         db.execute('DELETE FROM early_access WHERE email=?', (email,))
         db.execute('DELETE FROM owner_setup WHERE email=?', (email,))
-        for key in (token_hash(email), 'recovery:'+token_hash(email), token_hash('control-login:'+email), token_hash('signup-resend:'+email)):
+        for key in (token_hash(email), 'recovery:'+token_hash(email), token_hash('password-reset:'+email), token_hash('control-login:'+email), token_hash('signup-resend:'+email)):
             db.execute('DELETE FROM auth_limits WHERE key=?', (key,))
         for prefix in ('email:', 'confirm:'):
             db.execute('DELETE FROM early_access_limits WHERE key=?', (token_hash('early-access:'+prefix+email),))
