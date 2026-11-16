@@ -3,7 +3,7 @@
 The failed referrals group and all subsequent groups run freshly. Any product
 change, missing proof or uncertainty runs the original full frontend checks.
 """
-import datetime,json,os,subprocess,sys,time
+import ast,base64,datetime,json,os,subprocess,sys,time
 from pathlib import Path
 from tool.verify_backend_evidence import api,REPO
 SOURCE='a14d26bd2aac25a75074b000f52cb5d2f92567e7'
@@ -12,7 +12,7 @@ TREE='0f1b10b18e0a99466c5a06a84c4df4f7f3871209'
 RUN,JOB=43778466930,133010053963
 STEPS=('DOM integration with actual server records','Product CRUD, both themes and four viewport widths','Clarity hierarchy and selected-device revocation','Owner feedback regressions','Recorded feedback, inbox, safe Control recovery and public help','Focus settings, refresh status and delayed workspace switching')
 ADDED='tool/verify_frontend_evidence.py'
-MODIFIED=frozenset({'.github/workflows/web-platform.yml','tool/check_layout_referral_integration.py','tool/check_task_reminders_browser.py'})
+MODIFIED=frozenset({'.github/workflows/web-platform.yml','tool/check_layout_referral_integration.py','tool/check_task_reminders_browser.py','tool/check_statement_browser.py'})
 WORKFLOW_BLOB='2d7bbdc23868571ccc138d92ee9c147622c5881c'
 
 def verify_manifest(previous,current):
@@ -26,6 +26,13 @@ def verify_manifest(previous,current):
             changed.append(path)
     assert current['.github/workflows/web-platform.yml']['sha']==WORKFLOW_BLOB
     return sorted(changed)
+
+def shared_statement_support(raw):
+    module=ast.parse(raw)
+    selected=[node for node in module.body if isinstance(node,ast.FunctionDef) and node.name=='run']
+    assert len(selected)==1
+    module.body=[node for node in module.body if node is not selected[0]]
+    return ast.dump(module,include_attributes=False)
 
 def evidence():
     assert sys.version_info[:2]==(3,12) and os.environ.get('GITHUB_REPOSITORY')==REPO
@@ -41,6 +48,14 @@ def evidence():
     prior=api('git/trees/'+TREE+'?recursive=1');assert prior['sha']==TREE and prior['truncated'] is False
     previous={r['path']:{k:r[k] for k in ('mode','type','sha')} for r in prior['tree'] if r['type']!='tree'}
     changed=verify_manifest(previous,current)
+    harness='tool/check_statement_browser.py'
+    if harness in changed:
+        # The reused account-import check replaces harness.run with its own
+        # runner. Its imported fixture/constants/main must remain unchanged.
+        prior_blob=api('git/blobs/'+previous[harness]['sha'])
+        assert prior_blob['sha']==previous[harness]['sha'] and prior_blob['encoding']=='base64'
+        prior_raw=base64.b64decode(prior_blob['content'])
+        assert shared_statement_support(prior_raw)==shared_statement_support(Path(harness).read_bytes())
     run=api('actions/runs/'+str(RUN));assert run['id']==RUN and run['head_sha']==SOURCE and run['run_attempt']==1
     assert run['repository']['id']==run['head_repository']['id']==1413453356 and run['event']=='pull_request' and run['head_branch']=='work/uladim-web-platform'
     assert run['path']=='.github/workflows/web-platform.yml' and run['status']=='completed'

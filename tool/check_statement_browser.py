@@ -90,6 +90,10 @@ def main():
 
 
 def run(browser, backend, actor, workspace, origin):
+    # Independent file-import scenarios represent separate visits. Keep the
+    # complete 1,000-row save/retry scenario within one unchanged rate window.
+    scenario_clock=[int(backend.clock())]
+    backend.clock=lambda:scenario_clock[0]
     # Keep the 503 injection on the page's request path in WebKit. PWA caching has separate acceptance tests.
     context = browser.new_context(viewport={'width': 1180, 'height': 820}, locale='ru-RU',
                                   service_workers='block', ignore_https_errors=origin.startswith('https:'))
@@ -116,6 +120,7 @@ def run(browser, backend, actor, workspace, origin):
     assert dialog.locator('input[type=file]').get_attribute('accept') is None
 
     def upload(name, contents):
+        scenario_clock[0]+=61
         if isinstance(contents, str):
             contents = contents.encode()
         dialog.locator('input[type=file]').set_input_files({
@@ -386,6 +391,7 @@ def run(browser, backend, actor, workspace, origin):
     page.unroute('**/account/api/sync*', lose_reply)
     close()
     context.close()
+    scenario_clock[0]+=61
     with browser.new_context(locale='ru-RU', service_workers='block',
                              ignore_https_errors=origin.startswith('https:')) as second_context:
         second = second_context.new_page()
