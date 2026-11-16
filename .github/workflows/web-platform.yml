@@ -70,13 +70,22 @@ jobs:
           set -euo pipefail
           mkdir -p web_evidence
           python -m unittest discover -s backend/tests -v 2>&1 | tee web_evidence/backend-tests.log
+      - name: Reuse completed UI checks for identical application files
+        id: frontend_evidence
+        env:
+          ULADIM_READ_API_TOKEN: ${{ github.token }}
+        run: python3 -m tool.verify_frontend_evidence
       - name: DOM integration with actual server records
+        if: steps.frontend_evidence.outputs.reused != 'true'
         run: python -m tool.check_web_dom
       - name: Product CRUD, both themes and four viewport widths
+        if: steps.frontend_evidence.outputs.reused != 'true'
         run: python -m tool.check_web_platform
       - name: Clarity hierarchy and selected-device revocation
+        if: steps.frontend_evidence.outputs.reused != 'true'
         run: python -m tool.check_clarity_review
       - name: Owner feedback regressions
+        if: steps.frontend_evidence.outputs.reused != 'true'
         run: |
           python -m tool.check_welcome_browser
           python -m tool.check_session_experience
@@ -89,6 +98,7 @@ jobs:
           python -m tool.check_transaction_categories
           python tool/test_publish_feedback_guard.py
       - name: Recorded feedback, inbox, safe Control recovery and public help
+        if: steps.frontend_evidence.outputs.reused != 'true'
         run: |
           python -m tool.check_feedback_browser
           python -m tool.check_inbox_browser
@@ -110,6 +120,7 @@ jobs:
           python -m tool.check_privacy_erased_browser
           python -m tool.check_account_unavailable_browser
       - name: Focus settings, refresh status and delayed workspace switching
+        if: steps.frontend_evidence.outputs.reused != 'true'
         run: |
           python -m tool.check_focus_completion
           python -m tool.check_workspace_switch_focus

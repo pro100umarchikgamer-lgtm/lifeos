@@ -19,7 +19,14 @@ def main():
         for label in ('Накопления','Путешествия'):put('account',{'name':label,'currency':'RUB','opening_minor':12505})
         for label in ('Подарки','Дом'):
             put('budget',{'name':label,'currency':'RUB','limit_minor':60000,'period':'month','start_on':'2026-11-01','end_on':None,'rollover':'none','participants':[]})
-        mail={};backend.deliver=lambda e,c:mail.__setitem__(e,c)
+        mail={}
+        if hasattr(backend,'pool'):
+            deliver=backend._deliver
+            def capture(db,email,code,purpose):
+                deliver(db,email,code,purpose);mail[email]=code
+            backend._deliver=capture
+        else:
+            backend.deliver=lambda e,c:mail.__setitem__(e,c)
         def user(email):
             session=backend.register(email,PASSWORD);value=backend.authenticate(session['token']);backend.verify(value,mail[email]);return backend.authenticate(session['token'])
         inviter=user('incoming@example.test');friend=user('friend-private@example.test')
