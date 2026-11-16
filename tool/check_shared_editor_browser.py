@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from playwright.sync_api import expect, sync_playwright
 from tool.check_finance_filter_fit import source_styles
-from tool.check_web_platform import fixture, login
+from tool.check_web_platform import fixture, login, PASSWORD
 from tool.web_browser_navigation import open_tab, open_finance_section
 
 
@@ -27,7 +27,8 @@ def main():
             page = context.new_page(); page.set_default_timeout(2500)
             errors=[]; page.on('pageerror', lambda error: errors.append(str(error)))
             try:
-                login(page, origin); run(page)
+                if name not in ('setup-route-owner-login','setup-route-mfa'):login(page, origin)
+                run(page)
                 assert not errors, errors
                 results.append({'case':name,'status':'passed'})
             except Exception as error:
@@ -146,8 +147,77 @@ def main():
             assert len(writes)==1
             evidence.update(write_count=len(writes),sync_read_count=len(reads),aborted_sync_read_count=len(aborted_reads),recovered=True)
             (args.output/'recovery-refresh-http.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2)+'\n')
-        for name,run in [('dates',dates),('discard',discard),('footer',footer),('pending',pending),('recovery',recovery),('actions',actions),('note-discard',note_discard),('recovery-refresh',recovery_refresh)]:
-            if args.case in ['all',name]:
+        def setup_route(page,scenario):
+            writes=[];checks=[];before=backend.pull(actor,workspace,0)['records']
+            page.on('request',lambda request:writes.append(request.url) if request.method=='POST' and any('/account/api/'+path in request.url for path in ('staff/','control/')) else None)
+            def sign_in(query):
+                page.goto(origin+'/app'+query)
+                page.get_by_label('Электронная почта',exact=True).fill('web@example.test')
+                page.locator('input[name=password]').fill(PASSWORD)
+                page.get_by_role('button',name='Войти',exact=True).click()
+            def profile():
+                expect(page.get_by_role('heading',name='Профиль',exact=True)).to_be_visible()
+                expect(page.locator('.settings-content')).to_have_attribute('data-section','profile')
+                expect(page.get_by_role('button',name='Активировать ULADIM Control',exact=True)).to_be_visible()
+                expect(page.get_by_role('dialog')).to_have_count(0)
+            if scenario=='owner-login':
+                sign_in('?setup=owner');profile()
+                assert page.evaluate('staffSetupIntent()')=='owner'
+                activation=page.get_by_role('button',name='Активировать ULADIM Control',exact=True)
+                geometry=activation.evaluate("e=>{const r=e.getBoundingClientRect(),header=document.querySelector('header').getBoundingClientRect(),nav=document.querySelector('.nav').getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,usable_top:Math.max(0,header.bottom),usable_bottom:Math.min(innerHeight,nav.top),viewport_width:innerWidth,scroll_y:scrollY};}")
+                (args.output/'setup-owner-initial-geometry.json').write_text(json.dumps(geometry,indent=2)+'\n')
+                expect(activation).to_be_in_viewport(ratio=1)
+                assert geometry['top']>=geometry['usable_top'] and geometry['bottom']<=geometry['usable_bottom'] and geometry['left']>=0 and geometry['right']<=geometry['viewport_width'],geometry
+                page.screenshot(path=str(args.output/'setup-owner-profile.jpg'),type='jpeg',quality=65)
+                activation.click()
+                panel=page.get_by_role('dialog');expect(panel).to_be_visible()
+                expect(panel.locator('input[name=password]')).to_be_visible()
+                expect(panel.locator('input[name=invitation]')).to_be_visible()
+                panel.get_by_role('button',name='Закрыть',exact=True).click()
+                expect(panel).to_have_count(0);page.evaluate('render()');profile()
+                page.screenshot(path=str(args.output/'setup-owner-activation.jpg'),type='jpeg',quality=65)
+                checks.append('owner intent survives actual password login; activation opens only on explicit click')
+            elif scenario=='staff':
+                page.goto(origin+'/app?setup=staff');profile()
+                assert page.evaluate('staffSetupIntent()')=='staff'
+                checks.append('authenticated staff setup opens Profile without a modal')
+            elif scenario in ('normal','invalid'):
+                if scenario=='invalid':page.goto(origin+'/app?setup=invalid')
+                expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                expect(page.get_by_role('dialog')).to_have_count(0)
+                checks.append(scenario+' launch stays on Today')
+            elif scenario in ('security','deletion'):
+                page.goto(origin+'/app?setup=owner&settings='+scenario)
+                expect(page.locator('.settings-content')).to_have_attribute('data-section',scenario)
+                assert 'settings=' not in page.url and 'setup=owner' in page.url
+                expect(page.get_by_role('dialog')).to_have_count(0)
+                checks.append(scenario+' deep link retains precedence and consumes only settings')
+            elif scenario=='mfa':
+                from backend.customer_mfa import CustomerMFA
+                from backend.control import totp
+                mfa=CustomerMFA(backend);enrollment=mfa.begin(actor,PASSWORD)
+                recovery=mfa.enable(actor,PASSWORD,enrollment['enrollment'],totp(enrollment['totp_secret'],int(backend.clock())//30))
+                sign_in('?setup=owner')
+                expect(page.get_by_role('heading',name='Двухфакторная защита',exact=True)).to_be_visible()
+                page.locator('input[name=code]').fill(recovery['recovery_codes'][0])
+                page.get_by_role('button',name='Войти',exact=True).click();profile()
+                checks.append('owner intent survives actual password plus MFA login')
+            else:
+                # Synthetic OAuth completion metadata; session/startup requests remain real WSGI.
+                linked=scenario=='google-linked';setup='owner' if linked else 'staff'
+                page.route('**/account/api/google/complete',lambda route:route.fulfill(json={'linked':True} if linked else {}))
+                page.evaluate("async setup=>{history.replaceState(null,'','/app?google=complete');sessionStorage.setItem(STAFF_SETUP_KEY,setup);state.tab='today';state.settingsTab='';await googleReturn();}",setup)
+                assert page.evaluate('sessionStorage.getItem(STAFF_SETUP_KEY)') is None
+                if linked:expect(page.locator('.settings-content')).to_have_attribute('data-section','security')
+                else:profile();assert 'setup=staff' in page.url
+                checks.append('Google linked return keeps Security' if linked else 'Google return restores setup once to Profile')
+            session=page.request.get(origin+'/account/api/session');assert session.ok and session.json()['control_available'] is False
+            assert not writes,writes
+            assert backend.pull(actor,workspace,0)['records']==before
+            (args.output/('setup-route-'+scenario+'-proof.json')).write_text(json.dumps({'checks':checks,'fixture_user_id':actor['id'],'staff_or_control_posts':writes,'control_available':False,'records_unchanged':True,'scope':'Disposable real WSGI/password/MFA; synthetic Google completion metadata, no external provider or role grants.'},ensure_ascii=False,indent=2)+'\n')
+        setup_cases=[('setup-route-'+scenario,lambda page,scenario=scenario:setup_route(page,scenario)) for scenario in ('owner-login','staff','normal','invalid','security','deletion','mfa','google-setup','google-linked')]
+        for name,run in [('dates',dates),('discard',discard),('footer',footer),('pending',pending),('recovery',recovery),('actions',actions),('note-discard',note_discard),('recovery-refresh',recovery_refresh)]+setup_cases:
+            if args.case in ['all',name] or args.case=='setup-route' and name.startswith('setup-route-'):
                 # Each independent browser case gets its own records and real HTTP counters.
                 with fixture() as (origin, backend, actor, workspace):case(name,run)
         browser.close()

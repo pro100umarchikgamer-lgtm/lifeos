@@ -596,7 +596,7 @@ function updateSyncStatus(){
  node.dataset.status=index===1?'error':index===3?'offline':'read';
 }
 function refresh(){const epoch=privateEpoch;const run=async()=>{if(epoch!==privateEpoch)return;state.busy=true;state.syncState='loading';updateSyncStatus();try{const result=await call('spaces');state.spaces=result.spaces;if(!state.spaces.some(s=>s.id===state.space))state.space=state.spaces[0]?.id||null;await readSpace();if(epoch===privateEpoch&&(!state.space||state.syncSpace===state.space)){state.lastRead=Date.now();state.syncState='read';}}catch(error){if(epoch===privateEpoch)state.syncState='error';throw error;}finally{if(epoch===privateEpoch){state.busy=false;updateSyncStatus();}}};const pending=refreshTail.then(run,run);refreshTail=pending.catch(()=>{});return pending;}
-async function start(){const session=await call('session');if(state.session&&state.session.user_id!==session.user_id)clearIdentity();state.session=session;state.csrf=state.session.csrf;await refresh();const taskNotification=await consumeNotificationLink();const url=new URL(location.href),section=url.searchParams.get('settings');if(['security','deletion'].includes(section)){state.tab='account';state.settingsTab=section;url.searchParams.delete('settings');history.replaceState(null,'',url.pathname+url.search+url.hash);}render();if(taskNotification)editRecord('task',taskNotification);inboxCenter().refresh();refreshNotificationTimezone();}
+async function start(){const session=await call('session');if(state.session&&state.session.user_id!==session.user_id)clearIdentity();state.session=session;state.csrf=state.session.csrf;await refresh();const taskNotification=await consumeNotificationLink();const url=new URL(location.href),section=url.searchParams.get('settings');if(['security','deletion'].includes(section)){state.tab='account';state.settingsTab=section;url.searchParams.delete('settings');history.replaceState(null,'',url.pathname+url.search+url.hash);}else if(staffSetupIntent()&&!state.settingsTab){state.tab='account';state.settingsTab='profile';}render();if(taskNotification)editRecord('task',taskNotification);inboxCenter().refresh();refreshNotificationTimezone();}
 function login(){
  delete document.body.dataset.referenceLayout;
  root.replaceChildren();
@@ -2269,8 +2269,8 @@ async function account(m){
   const signout=card();signout.classList.add('reference-profile-signout');
   append(signout,append(E('div'),E('h2',copy[5]),E('p',copy[6])),logout);
   append(c,identity,options);append(content,c,signout);
-  if(state.session.control_available===true)content.append(button('ULADIM Control',openControl,'secondary'));
-  else if(staffSetupIntent())content.append(button(t('web_control_activate'),enrollStaff));
+  if(state.session.control_available===true)c.insertBefore(button('ULADIM Control',openControl,'secondary'),options);
+  else if(staffSetupIntent())c.insertBefore(button(t('web_control_activate'),enrollStaff),options);
  }
  if(section==='appearance')appearanceSettings(content);
  if(section==='referrals')await window.UladimReferrals?.customer(content,{request:call,session:state.session,lang:state.lang});
