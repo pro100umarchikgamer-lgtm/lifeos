@@ -206,7 +206,16 @@ def main():
                 expect(page.locator('html')).to_have_attribute('lang','ru')
                 history_heading=page.locator('main h1').inner_text()
                 history_view=page.locator('main').get_attribute('data-view')
-                history_route=page.evaluate("""()=>{const url=new URL(location.href);if([...url.searchParams.keys()].some(key=>!['view','section','selectedspace'].includes(key)))throw Error('History destination has unexpected URL parameters');return url.pathname+url.search;}""")
+                history_route=page.evaluate("""design=>{
+                    const url=new URL(location.href),allowed=['view','section','selectedspace'];
+                    if(design==='clarity')allowed.push('design');
+                    const values=url.searchParams.getAll('design');
+                    if(design==='clarity' ? values.length!==1||values[0]!=='clarity' : values.length!==0)
+                        throw Error('History destination has an unexpected design mode');
+                    if([...url.searchParams.keys()].some(key=>!allowed.includes(key)))
+                        throw Error('History destination has unexpected URL parameters');
+                    return url.pathname+url.search;
+                }""",DESIGN)
                 assert history_view=='account/appearance/'
                 # A page entering history must not retain a readable private DOM.
                 page.evaluate("dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))")

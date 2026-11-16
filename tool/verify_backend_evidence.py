@@ -13,10 +13,10 @@ import time
 import urllib.request
 
 REPO = 'pro100umarchikgamer-lgtm/lifeos'
-SOURCE = 'b1532b7827851b9e2347522636089d36ce73ff11'
-MERGE = '9544d3f8484394a028f0dc781a9df5a1c2de0998'
-BACKEND_TREE = '410d4b7e9c0afedbb03786cc58f0951021d22803'
-RUN, JOB = 43782501504, 133022640449
+SOURCE = '7d8442eaafc730acbc3cb3f96958ffe7e1f21322'
+MERGE = 'd6c67278aa75cb574c323d353f97ea4e35ddbb66'
+BACKEND_TREE = '522db505f80200249db62a0223f9f5373f536625'
+RUN, JOB = 43980173695, 133694303837
 # Visual layers are exercised by this run's browser checks. All server files,
 # tests, schemas and dependencies must retain their previously tested bytes.
 VISUAL_FILES = frozenset({
