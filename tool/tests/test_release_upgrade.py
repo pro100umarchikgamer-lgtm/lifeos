@@ -1,4 +1,5 @@
 import hashlib
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -6,7 +7,77 @@ from unittest.mock import patch
 import xml.etree.ElementTree as ET
 from tool import check_release_upgrade as upgrade
 
+
+class ManualTimezoneDevice:
+    """Model the asynchronous settings/service boundary, not an Android app."""
+    def __init__(self, *, ignored=0, unsupported=False, automatic_delay=0):
+        self.zone = 'Etc/UTC'
+        self.automatic = True
+        self.ignored = ignored
+        self.unsupported = unsupported
+        self.automatic_delay = automatic_delay
+        self.requests = []
+        self.commands = []
+
+    def adb(self, *args, **kwargs):
+        self.commands.append(args)
+        command = args[1:]
+        if command[:3] == ('settings', 'put', 'global'):
+            # The setting write alone need not have reached the detector yet.
+            return b''
+        if command[:2] == ('settings', 'get'):
+            return b'0\n'
+        if command[:2] == ('cmd', 'time_zone_detector'):
+            if command[2] == 'set_auto_detection_enabled':
+                self.automatic = False
+                return b'Automatic detection disabled\n'
+            if command[2] == 'is_auto_detection_enabled':
+                if self.automatic_delay:
+                    self.automatic_delay -= 1
+                    return b'true\n'
+                return str(self.automatic).lower().encode() + b'\n'
+            if command[2] == 'suggest_manual_time_zone':
+                if self.unsupported:
+                    raise upgrade.subprocess.CalledProcessError(1, args, output=b'Unknown command: suggest_manual_time_zone\n')
+                self.requests.append(command[-1])
+                if not self.automatic and len(self.requests) > self.ignored:
+                    self.zone = command[-1]
+                return b'Manual suggestion received\n'
+        if command[:3] == ('cmd', 'alarm', 'set-timezone'):
+            self.requests.append(command[-1])
+            if not self.automatic and len(self.requests) > self.ignored:
+                self.zone = command[-1]
+            return b'Alarm request received\n'
+        if command == ('getprop', 'persist.sys.timezone'):
+            return self.zone.encode() + b'\n'
+        if command[:2] in [('dumpsys', 'time_zone_detector'), ('cmd', 'time_zone_detector')]:
+            return b'Synthetic timezone service diagnostic\n'
+        raise AssertionError('Unexpected timezone command: ' + repr(args))
+
+
 class ReleaseUpgradeHelpers(unittest.TestCase):
+    def timezone_case(self, device, *, fails=False, zone='Europe/Moscow'):
+        elapsed = [0.0]
+        def advance(seconds): elapsed[0] += seconds
+        with tempfile.TemporaryDirectory() as folder, patch.object(upgrade, 'OUT', Path(folder)), \
+                patch.object(upgrade, 'adb', side_effect=device.adb), \
+                patch.object(upgrade.time, 'sleep', side_effect=advance), \
+                patch.object(upgrade.time, 'monotonic', side_effect=lambda: elapsed[0]):
+            if fails:
+                with self.assertRaisesRegex(AssertionError, 'timezone mismatch'):
+                    upgrade.device_timezone(zone)
+            else:
+                upgrade.device_timezone(zone)
+            return json.loads((Path(folder) / ('timezone-' + zone.replace('/', '_') + '.json')).read_text())
+
+    def test_timezone_waits_for_manual_detector_mode_before_setting(self):
+        device = ManualTimezoneDevice(automatic_delay=2)
+        report = self.timezone_case(device)
+        self.assertEqual(device.zone, 'Europe/Moscow')
+        self.assertFalse(device.automatic)
+        self.assertTrue(report['verified'])
+        self.assertEqual(report['requested'], 'Europe/Moscow')
+
     def financial_tree(self, income='$100', expense='$12.50', difference='$87.50'):
         root=ET.Element('hierarchy')
         for value in (income,expense,difference):ET.SubElement(root,'node',{'content-desc':value})
@@ -49,20 +120,49 @@ class ReleaseUpgradeHelpers(unittest.TestCase):
         self.assertEqual(upgrade.legacy_add_node(root,1080,1920).get('id'),'add')
 
     def test_fixture_disables_automatic_timezone_before_setting_and_verifies_it(self):
-        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Europe/Moscow\n']) as adb:
-            upgrade.device_timezone('Europe/Moscow')
-            self.assertEqual(adb.call_args_list[0].args, ('shell','settings','put','global','auto_time_zone','0'))
-            self.assertEqual(adb.call_args_list[1].args, ('shell','cmd','alarm','set-timezone','Europe/Moscow'))
+        device = ManualTimezoneDevice()
+        report = self.timezone_case(device)
+        self.assertTrue(all(sample['manual'] for sample in report['samples']))
+        self.assertEqual(report['actual'], 'Europe/Moscow')
+        self.assertFalse(device.automatic)
+
     def test_fixture_waits_for_asynchronous_timezone_acknowledgement(self):
-        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Etc/UTC\n', b'Europe/Moscow\n']) as adb, patch.object(upgrade.time, 'sleep') as sleep, patch.object(upgrade.time, 'monotonic', return_value=0):
-            upgrade.device_timezone('Europe/Moscow')
-            sleep.assert_called_once_with(0.25)
-            self.assertEqual(adb.call_count, 4)
+        report = self.timezone_case(ManualTimezoneDevice(ignored=2))
+        self.assertEqual(report['attempts'], 2)
+        self.assertEqual([sample['actual'] for sample in report['samples'][-2:]],
+                         ['Europe/Moscow', 'Europe/Moscow'])
 
     def test_fixture_rejects_ignored_timezone_change(self):
-        with patch.object(upgrade, 'adb', side_effect=[b'', b'', b'Etc/UTC\n']), patch.object(upgrade.time, 'monotonic', side_effect=[0, 11]):
-            with self.assertRaisesRegex(AssertionError, 'timezone mismatch'):
-                upgrade.device_timezone('Europe/Moscow')
+        report = self.timezone_case(ManualTimezoneDevice(ignored=99), fails=True)
+        self.assertFalse(report['verified'])
+        self.assertEqual(report['actual'], 'Etc/UTC')
+        self.assertEqual(report['attempts'], 3)
+
+    def test_timezone_keeps_failed_setter_output_and_uses_verified_manual_fallback(self):
+        report = self.timezone_case(ManualTimezoneDevice(unsupported=True))
+        failure = next(row for row in report['commands'] if row['returncode'] == 1)
+        self.assertIn('Unknown command', failure['output'])
+        self.assertEqual(report['actual'], 'Europe/Moscow')
+        self.assertTrue(any(row['command'][:3] == ['cmd', 'alarm', 'set-timezone']
+                            for row in report['commands']))
+
+    def test_acknowledged_ignored_manual_suggestion_uses_alarm_fallback(self):
+        report = self.timezone_case(ManualTimezoneDevice(ignored=1))
+        self.assertEqual(report['attempts'], 1)
+        self.assertEqual(report['actual'], 'Europe/Moscow')
+        self.assertTrue(any(row['command'][:3] == ['cmd', 'alarm', 'set-timezone']
+                            for row in report['commands']))
+
+    def test_timezone_never_suggests_manual_zone_while_detector_reports_automatic(self):
+        device = ManualTimezoneDevice(automatic_delay=99)
+        report = self.timezone_case(device, fails=True)
+        self.assertFalse(report['verified'])
+        self.assertEqual(device.requests, [])
+
+    def test_timezone_verifies_both_moscow_and_utc_transitions(self):
+        device = ManualTimezoneDevice()
+        self.assertEqual(self.timezone_case(device)['actual'], 'Europe/Moscow')
+        self.assertEqual(self.timezone_case(device, zone='Etc/UTC')['actual'], 'Etc/UTC')
 
     def test_saved_task_below_calendar_is_revealed_without_skipping_assertion(self):
         empty = ET.fromstring('<hierarchy />')

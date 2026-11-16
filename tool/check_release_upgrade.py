@@ -13,9 +13,9 @@ ACCEPTED_VERSION=312001
 ACCEPTED_SHA256='66d123cef79f85b7b2665bdcad0e6309db4a694e9a5076ed871450154c762872'
 OUT=Path('upgrade_evidence')
 
-def run(*args,timeout=30):
-    return subprocess.check_output(args,timeout=timeout)
-def adb(*args,timeout=30):return run('adb','-s','emulator-5554',*args,timeout=timeout)
+def run(*args,timeout=30,capture_stderr=False):
+    return subprocess.check_output(args,timeout=timeout,stderr=subprocess.STDOUT if capture_stderr else None)
+def adb(*args,timeout=30,capture_stderr=False):return run('adb','-s','emulator-5554',*args,timeout=timeout,capture_stderr=capture_stderr)
 RETAINED_RELEASES={
     112001:('f8632cdd5cf4dad40f0163a44183016d23121abd','38883235405','0594d97502523901e9d8b7d6b0ceb5ec995f7379b66faabd886f8f75ea58908e'),
     134001:('6acbde34f499d7c740322687416abc3aa542f9ac','38984254821','a7f93159a138e464227fa2259d9c54c67063a280708e8dafbd95c27ec3ab8356'),
@@ -122,15 +122,66 @@ def scroll(up=True):
     y1,y2=(int(height*.78),int(height*.30)) if up else (int(height*.30),int(height*.78))
     adb('shell','input','swipe',x,str(y1),x,str(y2),'400');time.sleep(.4)
 def device_timezone(zone):
-    adb('shell','settings','put','global','auto_time_zone','0')
-    adb('shell','cmd','alarm','set-timezone',zone)
-    deadline=time.monotonic()+10
-    actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
-    # AlarmManager acknowledges the request before the timezone property settles.
-    while actual!=zone and time.monotonic()<deadline:
-        time.sleep(0.25)
-        actual=adb('shell','getprop','persist.sys.timezone').decode().strip()
-    assert actual==zone, f'Emulator timezone mismatch: {actual} != {zone}'
+    # settings.put is asynchronous; synchronize the detector before suggesting a
+    # manual zone. Acknowledgement alone is not evidence that it was applied.
+    report={'requested':zone,'verified':False,'commands':[],'samples':[]}
+    deadline=time.monotonic()+30
+    actual='unknown'
+    def request(*command):
+        try:
+            raw=adb('shell',*command,timeout=5,capture_stderr=True)
+            result={'command':list(command),'returncode':0,'output':raw.decode(errors='replace')[:8192]}
+        except (subprocess.CalledProcessError,subprocess.TimeoutExpired,OSError) as error:
+            raw=getattr(error,'output',b'') or b''
+            result={'command':list(command),'returncode':getattr(error,'returncode',None),
+                    'output':raw.decode(errors='replace')[:8192],'error':type(error).__name__}
+        report['commands'].append(result)
+        print('Timezone setup: '+json.dumps(result),flush=True)
+        return result
+    def verify_zone():
+        nonlocal actual
+        stable=0
+        for _ in range(12):
+            if time.monotonic()>=deadline:break
+            observed=request('getprop','persist.sys.timezone')
+            status=request('cmd','time_zone_detector','is_auto_detection_enabled')
+            actual=observed['output'].strip() if observed['returncode']==0 else 'unknown'
+            manual=status['returncode']==0 and status['output'].strip()=='false'
+            report['samples'].append({'actual':actual,'manual':manual})
+            stable=stable+1 if actual==zone and manual else 0
+            if stable>=2:return True
+            time.sleep(.25)
+        return False
+    for attempt in range(1,4):
+        if time.monotonic()>=deadline:break
+        report['attempts']=attempt
+        request('settings','put','global','auto_time_zone','0')
+        request('cmd','time_zone_detector','set_auto_detection_enabled','false')
+        manual=False
+        for _ in range(12):
+            if time.monotonic()>=deadline:break
+            status=request('cmd','time_zone_detector','is_auto_detection_enabled')
+            manual=status['returncode']==0 and status['output'].strip()=='false'
+            if manual:break
+            time.sleep(.25)
+        if not manual:continue
+        suggestion=request('cmd','time_zone_detector','suggest_manual_time_zone','--zone_id',zone)
+        if suggestion['returncode']==0 and verify_zone():
+            report['verified']=True
+            break
+        # A setter may be unsupported or acknowledge without applying the zone.
+        # Recheck manual mode before the fallback, then require the same evidence.
+        status=request('cmd','time_zone_detector','is_auto_detection_enabled')
+        if status['returncode']==0 and status['output'].strip()=='false':
+            request('cmd','alarm','set-timezone',zone)
+            report['verified']=verify_zone()
+        if report['verified']:break
+    request('dumpsys','time_zone_detector')
+    report['actual']=actual
+    OUT.mkdir(exist_ok=True)
+    path=OUT/('timezone-'+zone.replace('/','_')+'.json')
+    path.write_text(json.dumps(report,indent=2)+'\n')
+    assert report['verified'], f'Emulator timezone mismatch: {actual} != {zone}; diagnostics: {path}'
 
 def verify_active_test_notification(report):
     """Require a posted app notification in the active OS list, not history."""

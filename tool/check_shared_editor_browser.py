@@ -19,7 +19,7 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     results = []
-    with fixture() as (origin, backend, actor, workspace), sync_playwright() as pw:
+    with sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM'))
         def case(name, run):
             context = browser.new_context(viewport={'width':390,'height':844}, locale='ru-RU', timezone_id='Europe/Moscow', service_workers='block', reduced_motion='reduce')
@@ -113,19 +113,28 @@ def main():
             open_tab(page,'Финансы');open_finance_section(page,'ledger')
             page.get_by_role('button',name='Редактировать · Продукты на неделю',exact=True).click()
             editor=page.get_by_role('dialog');editor.locator('[name=label]').fill('Сохранено до ошибки обновления')
-            writes=[];failure=[True]
+            writes=[];reads=[];aborted_reads=[];failure=[True]
             def fail_read(route):
                 if route.request.method=='POST':
                     writes.extend(route.request.post_data_json['operations']);route.continue_()
-                elif writes and failure[0]:route.abort()
-                else:route.continue_()
+                else:
+                    reads.append(route.request.url)
+                    if writes and failure[0]:aborted_reads.append(route.request.url);route.abort()
+                    else:route.continue_()
             page.route('**/account/api/sync*',fail_read)
-            editor.get_by_role('button',name='Сохранить',exact=True).click()
+            with page.expect_response(lambda response: response.request.method=='POST' and '/account/api/sync' in response.url) as saved:
+                editor.get_by_role('button',name='Сохранить',exact=True).click()
+            response=saved.value;receipt=response.json()
             expect(editor.locator('form>.error')).not_to_be_empty()
-            expect(editor.locator('[name=label]')).to_be_disabled()
             assert len(writes)==1
             actual=next(r for r in backend.pull(actor,workspace,0)['records'] if r['id']==writes[0]['record_id'])
+            evidence={'post_status':response.status,'receipt':receipt,'write_count':len(writes),'sync_read_count':len(reads),'aborted_sync_read_count':len(aborted_reads),'server_label':actual['data']['label'],'form_error':editor.locator('form>.error').inner_text(),'payload_disabled':editor.locator('[name=label]').is_disabled()}
+            (args.output/'recovery-refresh-http.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2)+'\n')
+            accepted=receipt.get('results',[])
+            assert response.status==200 and len(accepted)==1 and accepted[0].get('id')==writes[0]['id'] and accepted[0].get('record_id')==writes[0]['record_id'] and accepted[0].get('status')=='accepted',evidence
             assert actual['data']['label']=='Сохранено до ошибки обновления'
+            assert len(aborted_reads)==1,evidence
+            expect(editor.locator('[name=label]')).to_be_disabled()
             editor.locator('.editor-more>summary').click()
             reload=editor.get_by_role('button',name='Отказаться от этого локального изменения',exact=True)
             expect(reload).to_be_enabled()
@@ -135,8 +144,12 @@ def main():
             failure[0]=False;reload.click();expect(editor).to_have_count(0)
             expect(page.locator('.ledger')).to_contain_text('Сохранено до ошибки обновления')
             assert len(writes)==1
+            evidence.update(write_count=len(writes),sync_read_count=len(reads),aborted_sync_read_count=len(aborted_reads),recovered=True)
+            (args.output/'recovery-refresh-http.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2)+'\n')
         for name,run in [('dates',dates),('discard',discard),('footer',footer),('pending',pending),('recovery',recovery),('actions',actions),('note-discard',note_discard),('recovery-refresh',recovery_refresh)]:
-            if args.case in ['all',name]:case(name,run)
+            if args.case in ['all',name]:
+                # Each independent browser case gets its own records and real HTTP counters.
+                with fixture() as (origin, backend, actor, workspace):case(name,run)
         browser.close()
     (args.output/'result.json').write_text(json.dumps(results,ensure_ascii=False,indent=2)+'\n')
     for row in results:print(json.dumps(row,ensure_ascii=False))
