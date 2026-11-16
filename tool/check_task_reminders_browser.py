@@ -96,6 +96,7 @@ def main():
         expect(editor.get_by_role('button', name='Сохранить', exact=True)).to_be_in_viewport(ratio=1)
         page.screenshot(path=str(OUT / 'task-date-reloaded-phone-dark.png'), full_page=True)
         editor.get_by_role('button', name='Отмена', exact=True).click()
+        expect(editor).to_have_count(0)
         page.set_viewport_size({'width': 390, 'height': 844})
         page.evaluate('state.theme="light";preferences()')
         checks.append('date_time_and_opt_in_persist_in_backend_after_real_page_reload')
@@ -194,6 +195,7 @@ def main():
         expect(editor.get_by_label('Дата задачи', exact=True)).to_be_disabled()
         expect(editor.get_by_label('Напомнить об этой задаче', exact=True)).to_be_disabled()
         editor.get_by_role('button', name='Отмена', exact=True).click()
+        expect(editor).to_have_count(0)
         checks.append('read_only_task_can_view_persisted_date_but_cannot_edit_it')
 
         scenario_clock[0]+=61
@@ -203,6 +205,7 @@ def main():
         expect(editor.get_by_label('Название задачи', exact=True)).to_have_value(task['data']['title'])
         expect(editor.get_by_label('Дата задачи', exact=True)).to_have_value('2026-12-15')
         editor.get_by_role('button', name='Отмена', exact=True).click()
+        expect(editor).to_have_count(0)
         for suffix in ['&task=' + task['id'], '&extra=1']:
             page.goto(origin + link + suffix)
             expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()

@@ -215,8 +215,11 @@ void main() {
           );
           await tester.pumpAndSettle();
           await snapshot('accounts_populated');
-          await tester.tap(find.byType(LifeSelect<OfflineTable>));
+          await tester.tap(find.descendant(
+              of: find.byType(LifeSelect<OfflineTable>),
+              matching: find.byType(InputDecorator)));
           await tester.pumpAndSettle();
+          expect(find.byKey(const Key('selection_dialog_body')), findsOneWidget);
           await tester.tap(find.text(pack.t('module_budgets')));
           await tester.pumpAndSettle();
           await snapshot('budgets_populated');
@@ -318,8 +321,11 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
-          await tester.tap(find.byType(LifeSelect<String>));
+          await tester.tap(find.descendant(
+              of: find.byType(LifeSelect<String>),
+              matching: find.byType(InputDecorator)));
           await tester.pumpAndSettle();
+          expect(find.byKey(const Key('selection_dialog_body')), findsOneWidget);
           await snapshot('currency_dialog_large_text');
           Navigator.of(tester.element(find.byKey(const Key('selection_dialog_body')))).pop();
           await tester.pumpAndSettle();
@@ -352,8 +358,11 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
-          await tester.tap(find.byType(LifeSelect<String>));
+          await tester.tap(find.descendant(
+              of: find.byType(LifeSelect<String>),
+              matching: find.byType(InputDecorator)));
           await tester.pumpAndSettle();
+          expect(find.byKey(const Key('selection_dialog_body')), findsOneWidget);
           tester.view.viewInsets = const FakeViewPadding(bottom: 330);
           await tester.pumpAndSettle();
           await snapshot('format_dialog_keyboard');

@@ -72,6 +72,7 @@ def main():
         assert page.get_by_text('Отказаться от этого локального изменения', exact=True).count() == 0
         page.screenshot(path=str(OUT / 'tablet-task-editor.png'), full_page=True)
         page.locator('.editor-cancel').click()
+        expect(page.locator('dialog.record-editor')).to_have_count(0)
         checks.append('task editor explains entry, shows current privacy, aligns status, and has a plain Cancel action')
         page.set_viewport_size({'width': 390, 'height': 844})
         page.reload()

@@ -252,7 +252,7 @@ void main() {
     await tester.pumpWidget(LifeOSApp(controller: c));
     await tester.pumpAndSettle();
     await openNativeProfile(tester);
-    await tester.tap(find.text(c.pack.t('family_account')));
+    await tester.tap(find.text(c.pack.t('account_manage')));
     await tester.pumpAndSettle();
 
     expect(find.byType(FamilyPage), findsOneWidget);

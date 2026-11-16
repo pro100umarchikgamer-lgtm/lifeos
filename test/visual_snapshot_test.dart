@@ -359,8 +359,11 @@ void main() {
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(const Key('settings_0')));
           await tester.pumpAndSettle();
-          await tester.tap(find.byType(LifeSelect<String>).first);
+          await tester.tap(find.descendant(
+              of: find.byType(LifeSelect<String>).first,
+              matching: find.byType(InputDecorator)));
           await tester.pumpAndSettle();
+          expect(find.byKey(const Key('selection_dialog_body')), findsOneWidget);
         }
         if (screen == 'repeat') {
           final context = tester.element(find.byType(HomeShell));
@@ -381,10 +384,14 @@ void main() {
           await tester.pumpAndSettle();
           await tester.tap(find.text(c.pack.t('repeat')).first);
           await tester.pumpAndSettle();
-          await tester.ensureVisible(find.byType(LifeSelect<RepeatRule>));
+          final repeatField = find.descendant(
+              of: find.byType(LifeSelect<RepeatRule>),
+              matching: find.byType(InputDecorator));
+          await tester.ensureVisible(repeatField);
           await tester.pumpAndSettle();
-          await tester.tap(find.byType(LifeSelect<RepeatRule>));
+          await tester.tap(repeatField);
           await tester.pumpAndSettle();
+          expect(find.byKey(const Key('selection_dialog_body')), findsOneWidget);
         }
         if (screen.startsWith('undo')) {
           if (screen == 'undo_keyboard') {
