@@ -85,11 +85,21 @@ def sweep_announcements(db, now):
         nid = row['id']
         db.execute("UPDATE announcements SET title='',body='',link='' WHERE id=?", (nid,))
         if remaining:
-            users = db.execute('SELECT user_id FROM announcement_recipients WHERE announcement_id=? UNION SELECT user_id FROM announcement_states WHERE announcement_id=? ORDER BY user_id LIMIT ?', (nid, nid, remaining)).fetchall()
+            users = db.execute('SELECT user_id FROM announcement_recipients WHERE announcement_id=? '
+                'UNION SELECT user_id FROM announcement_states WHERE announcement_id=? '
+                'UNION SELECT user_id FROM announcement_cohort_exclusions WHERE announcement_id=? '
+                'UNION SELECT user_id FROM newcomer_welcome_claims WHERE announcement_id=? '
+                'ORDER BY user_id LIMIT ?', (nid, nid, nid, nid, remaining)).fetchall()
             if users:
                 marks = ','.join('?' for _ in users)
                 values = (nid, *(user['user_id'] for user in users))
                 db.execute('DELETE FROM announcement_states WHERE announcement_id=? AND user_id IN (' + marks + ')', values)
                 db.execute('DELETE FROM announcement_recipients WHERE announcement_id=? AND user_id IN (' + marks + ')', values)
+                db.execute('DELETE FROM announcement_cohort_exclusions WHERE announcement_id=? AND user_id IN (' + marks + ')', values)
+                db.execute('UPDATE newcomer_welcome_claims SET announcement_id=NULL WHERE announcement_id=? AND user_id IN (' + marks + ')', values)
                 remaining -= len(users)
-        db.execute('DELETE FROM announcements WHERE id=? AND NOT EXISTS(SELECT 1 FROM announcement_recipients WHERE announcement_id=?) AND NOT EXISTS(SELECT 1 FROM announcement_states WHERE announcement_id=?)', (nid, nid, nid))
+        db.execute('DELETE FROM announcements WHERE id=? '
+            'AND NOT EXISTS(SELECT 1 FROM announcement_recipients WHERE announcement_id=?) '
+            'AND NOT EXISTS(SELECT 1 FROM announcement_states WHERE announcement_id=?) '
+            'AND NOT EXISTS(SELECT 1 FROM announcement_cohort_exclusions WHERE announcement_id=?) '
+            'AND NOT EXISTS(SELECT 1 FROM newcomer_welcome_claims WHERE announcement_id=?)', (nid, nid, nid, nid, nid))

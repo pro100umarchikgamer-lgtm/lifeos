@@ -89,8 +89,11 @@ class Web:
             return self.app_asset(path, headers)
         # The Control document uses only these shared UI assets. Admission above
         # still gates every Control-host request, including these static files.
-        if staff and method == 'GET' and path in {'/app/assets/' + name for name in ('i18n.js', 'translations.json', 'referrals.js', 'referrals.css', 'password-policy.js')}:
+        if staff and method == 'GET' and path in {'/app/assets/' + name for name in ('i18n.js', 'translations.json', 'referrals.js', 'referrals.css', 'password-policy.js', 'install.js', 'field-menu.js', 'field-menu.css', 'appearance-boot.js')}:
             return self.app_asset(path, headers)
+        if staff and method == 'GET' and path == '/assets/control-workbench.js':
+            headers[0] = ('Content-Type', 'text/javascript; charset=utf-8')
+            return (ASSETS / 'control-workbench.js').read_bytes(), headers
         if method == 'GET' and path == '/assets/locales.json':
             return (ASSETS / 'app' / 'locales.json').read_bytes(), headers
         if method == 'GET' and path in ('/assets/web.js', '/assets/web.css', '/assets/design.css'):
@@ -117,6 +120,8 @@ class Web:
             allowed = {'/'} if staff else {'/', '/account', '/plans', '/privacy', '/terms', '/support', '/delete-account', '/status', '/download', '/faq', '/early-access', '/docs'}
             require(path in allowed, 'not_found', 404)
             page = (ASSETS / 'index.html').read_text().replace('__SURFACE__', 'control' if staff else 'site')
+            if not staff:
+                headers = [(key, value.replace("default-src 'none';", "default-src 'none'; manifest-src 'self';") if key == 'Content-Security-Policy' else value) for key, value in headers]
             return page.encode(), [('Content-Type', 'text/html; charset=utf-8')] + headers[1:]
         require(path.startswith(prefix), 'not_found', 404)
         action = path[len(prefix):]
@@ -193,7 +198,10 @@ class Web:
         if not staff and action == 'google/unlink' and method == 'POST':
             return self.google.unlink(actor, body.get('password'), body.get('code')), headers + [self.cookie('', clear=True)]
         if action == 'session' and method == 'GET':
-            return ({'staff_id': actor.id, 'user_id': actor.user_id, 'roles': list(actor.roles), 'permissions': sorted(actor.permissions), 'csrf': self.csrf(token)} if staff else {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token), 'control_available': self.admission.available(actor), 'record_recovery_available': bool(actor['verified'])}), headers
+            if staff:
+                from .staff_permissions import authority
+                return dict({'staff_id': actor.id, 'user_id': actor.user_id, 'roles': list(actor.roles), 'csrf': self.csrf(token)}, **authority(actor)), headers
+            return {'user_id': actor['id'], 'email': actor['email'], 'verified': bool(actor['verified']), 'csrf': self.csrf(token), 'control_available': self.admission.available(actor), 'record_recovery_available': bool(actor['verified']), 'interface_flags': self.control.flags(actor['id'])}, headers
         if action == 'logout' and method == 'POST':
             if staff: self.control.logout(token)
             else:
@@ -275,6 +283,19 @@ class Web:
 
     def staff_action(self, actor, action, method, b, q):
         c = self.control
+        if action == 'permissions' and method == 'GET':
+            from .staff_permissions import catalog
+            return catalog(actor)
+        if action in ('recovery-cases', 'recovery-case', 'recovery-cases/update'):
+            from .recovery_cases import RecoveryCases
+            cases = RecoveryCases(self.backend)
+            if action == 'recovery-cases' and method == 'GET': return cases.listing(actor, q, True)
+            if action == 'recovery-cases' and method == 'POST': return cases.create(actor, b)
+            if action == 'recovery-case' and method == 'GET':
+                require(set(q) == {'id'} and len(q['id']) == 1, 'invalid_fields')
+                return cases.read(actor, q['id'][0], True)
+            if action == 'recovery-cases/update' and method == 'POST': return cases.update(actor, b)
+            raise Failure('not_found', 404)
         if action == 'referrals' and method == 'GET':
             from .referrals import Referrals
             return Referrals(self.backend, self.site).graph(actor, q)
@@ -291,7 +312,9 @@ class Web:
 
         if action == 'record-recovery' and method == 'GET':
             from .record_recovery import RecordRecovery
-            return RecordRecovery(self.backend).requests(actor, q.get('before', [None])[0], True)
+            require(set(q) <= {'before', 'user_id', 'state'} and all(len(v) == 1 for v in q.values()), 'invalid_fields')
+            return RecordRecovery(self.backend).requests(actor, q.get('before', [None])[0], True,
+                q.get('user_id', [None])[0], q.get('state', [None])[0])
         if action == 'record-recovery/approve' and method == 'POST':
             from .record_recovery import RecordRecovery
             return RecordRecovery(self.backend).approve(actor, b)
@@ -300,7 +323,11 @@ class Web:
                 from .early_access import EarlyAccess
                 return EarlyAccess(self.backend).list(actor, c, q.get('state', ['pending'])[0], q.get('before', [None])[0])
             if action == 'dashboard': return c.dashboard(actor)
-            if action == 'users': return c.users(actor, q.get('search', [''])[0])
+            if action == 'users':
+                require(set(q) <= {'search', 'before', 'limit'} and all(len(v) == 1 for v in q.values()), 'invalid_fields')
+                raw_limit = q.get('limit', ['50'])[0]
+                require(raw_limit.isdecimal() and len(raw_limit) <= 3, 'invalid_cursor')
+                return c.users(actor, q.get('search', [''])[0], q.get('before', [None])[0], int(raw_limit))
             if action == 'user': return c.user(actor, q.get('id', [''])[0])
             if action == 'staff': return c.staff_list(actor)
             if action == 'audit': return c.audit_log(actor, int(q['before'][0]) if 'before' in q else None)
@@ -322,8 +349,8 @@ class Web:
             if action == 'revoke-grant': return c.revoke_access(actor, b.get('grant_id'), b.get('reason'))
             if action == 'override': return c.override(actor, b.get('user_id'), b.get('feature'), b.get('enabled'), b.get('valid_until'), b.get('reason'))
             if action == 'catalog': return c.update_catalog(actor, b.get('catalog'), b.get('reason'))
-            if action == 'staff/invite': return c.invite_staff(actor, b.get('email'), b.get('roles'), b.get('reason'))
-            if action == 'staff/update': return c.update_staff(actor, b.get('staff_id'), b.get('roles'), b.get('active'), b.get('revision'), b.get('reason'))
+            if action == 'staff/invite': return c.invite_staff(actor, b.get('email'), b.get('roles'), b.get('reason'), b.get('denied_permissions'))
+            if action == 'staff/update': return c.update_staff(actor, b.get('staff_id'), b.get('roles'), b.get('active'), b.get('revision'), b.get('reason'), b.get('denied_permissions'))
             if action == 'support/reply': return self.support.reply(actor, b.get('ticket_id'), b.get('message'), b.get('state', 'waiting'), True)
             if action == 'support/triage': return self.support.triage(actor, b.get('ticket_id'), b.get('priority'), b.get('state'), b.get('reason'))
             if action == 'flags/preview': return c.preview_flag(actor, b.get('name'), b.get('enabled'), b.get('rollout'), b.get('revision'), b.get('reason'))
@@ -331,6 +358,21 @@ class Web:
         raise Failure('not_found', 404)
 
     def account_action(self, actor, action, method, b, q):
+        if action == 'identity' and method in ('GET', 'POST'):
+            from .account_identity import AccountIdentity
+            require(not q, 'invalid_fields')
+            return AccountIdentity(self.backend).identity(actor, b if method == 'POST' else None)
+        if action in ('recovery-cases', 'recovery-case', 'recovery-cases/confirm'):
+            from .recovery_cases import RecoveryCases
+            cases = RecoveryCases(self.backend)
+            if action == 'recovery-cases' and method == 'GET': return cases.listing(actor, q)
+            if action == 'recovery-case' and method == 'GET':
+                require(set(q) == {'id'} and len(q['id']) == 1, 'invalid_fields')
+                return cases.read(actor, q['id'][0])
+            if action == 'recovery-cases/confirm' and method == 'POST':
+                require(not q, 'invalid_fields')
+                return cases.confirm(actor, b)
+            raise Failure('not_found', 404)
         if action == 'layout-order':
             from .layout_preferences import LayoutPreferences
             layouts = LayoutPreferences(self.backend)
@@ -455,7 +497,7 @@ class Web:
         relative = 'index.html' if path in ('/app', '/app/') else ('sw.js' if path == '/app/sw.js' else path[len('/app/assets/'):])
         allowed = {'index.html', 'app.js', 'domain.js', 'money.js', 'statement-formats.js', 'statement-pdf.js', 'statement-xlsx.js', 'personal-import.js', 'pdf-lib.mjs', 'pdf-worker.mjs', 'import.js', 'statement-worker.js', 'app.css', 'auth-texture.webp', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'offline.html', 'offline.js', 'sw.js', 'locales.json'}
         allowed.update({'inbox.js', 'inbox.css'})
-        allowed.update({'password-policy.js', 'appearance-intensity.js'})
+        allowed.update({'password-policy.js', 'appearance-intensity.js', 'install.js', 'field-menu.js', 'field-menu.css', 'appearance-boot.js'})
         allowed.update({'task-reminders.js', 'layout-order.js', 'referrals.js', 'referrals.css'})
         allowed.update({'i18n.js', 'translations.json', 'record-erasure.js'})
 

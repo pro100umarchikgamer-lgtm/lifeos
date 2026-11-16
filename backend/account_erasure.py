@@ -48,6 +48,7 @@ def erase_in(backend, db, uid, now):
     subjects.update(r['id'] for r in db.execute('SELECT id FROM staff WHERE user_id=?', (uid,)))
     subjects.update(r['id'] for r in db.execute('SELECT id FROM support_tickets WHERE user_id=?', (uid,)))
     subjects.update(r['id'] for r in db.execute('SELECT id FROM record_recovery_requests WHERE user_id=?', (uid,)))
+    subjects.update(r['id'] for r in db.execute('SELECT id FROM support_recovery_cases WHERE user_id=? OR created_by IN (SELECT id FROM staff WHERE user_id=?) OR ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid, uid, uid)))
     for email in emails:
         subjects.update(r['id'] for r in db.execute('SELECT id FROM early_access WHERE email=?', (email,)))
     for subject in subjects:
@@ -102,13 +103,14 @@ def erase_in(backend, db, uid, now):
             seq=backend._audit(db,stub['workspace_id'],{'id':uid},str(uuid.uuid4()),'record.delete',rid)
             db.execute('UPDATE records SET revision=revision+1,seq=? WHERE id=?', (seq,rid))
     backend.revoke_all_in(db, uid)
-    for table in ('budget_inbox_sources', 'budget_inbox_notifications', 'inbox_settings', 'inbox_notifications', 'announcement_states', 'announcement_recipients', 'web_push_subscriptions', 'verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa', 'login_challenges', 'google_identities', 'account_credentials', 'oauth_challenges', 'account_reauth_grants', 'entitlement_grants', 'entitlement_overrides', 'service_holds', 'record_recovery_requests'):
+    for table in ('account_identity', 'announcement_cohort_exclusions', 'newcomer_welcome_claims', 'budget_inbox_sources', 'budget_inbox_notifications', 'inbox_settings', 'inbox_notifications', 'announcement_states', 'announcement_recipients', 'web_push_subscriptions', 'verification', 'password_recovery', 'email_changes', 'web_sessions', 'operations', 'account_recovery', 'account_mfa', 'login_challenges', 'google_identities', 'account_credentials', 'oauth_challenges', 'account_reauth_grants', 'entitlement_grants', 'entitlement_overrides', 'service_holds', 'record_recovery_requests'):
         db.execute('DELETE FROM '+table+' WHERE user_id=?', (uid,))
     db.execute('DELETE FROM refresh_tokens WHERE user_id=?', (uid,))
     db.execute('DELETE FROM devices WHERE user_id=?', (uid,))
     db.execute('DELETE FROM grants WHERE user_id=?', (uid,))
     db.execute('DELETE FROM provider_events WHERE EXISTS(SELECT 1 FROM provider_purchases p WHERE p.user_id=? AND p.source=provider_events.source AND p.reference_hash=provider_events.reference_hash)', (uid,))
     db.execute('DELETE FROM provider_purchases WHERE user_id=?', (uid,))
+    db.execute('DELETE FROM support_recovery_cases WHERE user_id=? OR created_by IN (SELECT id FROM staff WHERE user_id=?) OR ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid, uid, uid))
     db.execute('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id=?)', (uid,))
     db.execute('DELETE FROM support_tickets WHERE user_id=?', (uid,))
     # A former inactive staff member's replies on others' threads are their data;
@@ -117,6 +119,7 @@ def erase_in(backend, db, uid, now):
     db.execute('DELETE FROM invitations WHERE issued_by=? OR used_by=?', (uid, uid))
     db.execute('DELETE FROM ownership_transfers WHERE from_id=? OR to_id=?', (uid, uid))
     db.execute('DELETE FROM parent_changes WHERE target_id=? OR requested_by=? OR approved_by=?', (uid, uid, uid))
+    db.execute('DELETE FROM staff_permission_restrictions WHERE staff_id IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
     db.execute('DELETE FROM staff_invitations WHERE issued_by IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
     db.execute('DELETE FROM staff_recovery WHERE staff_id IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
     db.execute("UPDATE staff SET mfa_secret=?,roles='[]',active=0,last_counter=-1,created_at=0 WHERE user_id=?", (b'', uid))

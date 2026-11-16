@@ -33,11 +33,15 @@ class InboxPostgresTests(InboxScenarios, unittest.TestCase):
 
     def test_additive_migration_is_repeatable_and_preserves_existing_data(self):
         with self.backend.transaction() as db:
+            db.execute('DROP TABLE newcomer_welcome_claims')
+            db.execute('DROP TABLE announcement_cohort_exclusions')
+            db.execute('DROP TABLE announcement_targeting')
             db.execute('DROP TABLE announcement_states')
             db.execute('DROP TABLE announcement_recipients')
             db.execute('DROP TABLE announcements')
             db.execute('DROP TABLE inbox_notifications')
             db.execute("DELETE FROM schema_migrations WHERE version='014_inbox.sql'")
+            db.execute("DELETE FROM schema_migrations WHERE version='025_announcement_targeting.sql'")
         self.backend.migrate()
         self.backend.migrate()
         self.assertEqual(self.customer()[1]['notifications'], [])

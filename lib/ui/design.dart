@@ -115,9 +115,9 @@ ThemeData lifeTheme(
   final page = Color.lerp(
       dark ? LifePalette.darkBackground : LifePalette.background,
       seed,
-      (dark ? .16 : .12) * tint)!;
+      (dark ? .32 : .30) * tint)!;
   Color decorative(Color base) =>
-      Color.lerp(base, seed, (dark ? .12 : .08) * tint)!;
+      Color.lerp(base, seed, (dark ? .30 : .22) * tint)!;
   final scheme = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: brightness,
@@ -131,9 +131,9 @@ ThemeData lifeTheme(
                 : LifePalette.green
             : null,
   ).copyWith(
-    surface: dark ? LifePalette.darkSurface : Colors.white,
+    surface: decorative(dark ? LifePalette.darkSurface : Colors.white),
     onSurface: dark ? const Color(0xfff0f1f4) : LifePalette.ink,
-    onSurfaceVariant: dark ? const Color(0xffa8adb8) : LifePalette.muted,
+    onSurfaceVariant: dark ? const Color(0xffc1c5cf) : const Color(0xff4e4b56),
     surfaceContainerLowest: page,
     surfaceContainerLow:
         decorative(dark ? const Color(0xff24272f) : const Color(0xfffafafa)),
@@ -142,7 +142,7 @@ ThemeData lifeTheme(
     surfaceContainerHigh:
         decorative(dark ? const Color(0xff2c3039) : const Color(0xffeef0f4)),
     surfaceContainerHighest:
-        dark ? const Color(0xff333741) : const Color(0xffe4e7ec),
+        decorative(dark ? const Color(0xff333741) : const Color(0xffe4e7ec)),
     outline: dark ? const Color(0xff7a8291) : const Color(0xff8c93a0),
     outlineVariant: dark ? const Color(0xff343944) : const Color(0xffe4e7ec),
     primaryContainer: violet

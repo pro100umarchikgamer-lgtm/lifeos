@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "uk",
   "nativeName": "Українська",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Дім і рахунки",
     "cloud_category_health": "Здоров’я",
     "cloud_category_leisure": "Відпочинок",
-    "cloud_category_education": "Освіта"
+    "cloud_category_education": "Освіта",
+    "today_month_expenses": "Витрати за місяць",
+    "today_no_month_expenses": "Цього місяця витрат ще немає.",
+    "today_no_open_tasks": "Відкритих завдань немає.",
+    "today_next_seven_days": "Найближчі 7 днів",
+    "today_no_upcoming_events": "На найближчі 7 днів подій немає."
   },
   "plurals": {
     "record_count": {

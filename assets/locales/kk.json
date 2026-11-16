@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "kk",
   "nativeName": "Қазақша",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Үй және төлемдер",
     "cloud_category_health": "Денсаулық",
     "cloud_category_leisure": "Демалыс",
-    "cloud_category_education": "Білім"
+    "cloud_category_education": "Білім",
+    "today_month_expenses": "Осы айдағы шығындар",
+    "today_no_month_expenses": "Осы айда шығындар әлі тіркелмеген.",
+    "today_no_open_tasks": "Ашық тапсырмалар жоқ.",
+    "today_next_seven_days": "Алдағы 7 күн",
+    "today_no_upcoming_events": "Алдағы 7 күнге оқиғалар жоспарланбаған."
   },
   "plurals": {
     "record_count": {

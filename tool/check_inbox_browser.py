@@ -5,7 +5,7 @@ from pathlib import Path
 import json, os, time, uuid
 from playwright.sync_api import sync_playwright, expect
 from tool.check_web_platform import fixture, login
-from tool.web_browser_navigation import open_tab
+from tool.web_browser_navigation import open_tab, choose_field
 
 OUT=Path('web_evidence/inbox')
 
@@ -69,13 +69,13 @@ def main():
    page.set_viewport_size({'width':width,'height':900});page.screenshot(path=str(OUT/f'inbox-{width}.png'),full_page=True);assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),page.evaluate('({width:innerWidth,scroll:document.documentElement.scrollWidth,wide:[...document.querySelectorAll("*")].filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,cls:e.className,right:e.getBoundingClientRect().right})).slice(0,12)})')
   checks.append('phone_tablet_desktop_no_horizontal_overflow')
   page.set_viewport_size({'width':320,'height':900});page.evaluate("document.documentElement.style.fontSize='24px'");assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');page.screenshot(path=str(OUT/'inbox-320-large-text.png'),full_page=True);page.evaluate("document.documentElement.style.fontSize=''");checks.append('narrow_screen_large_text_filters_remain_readable')
-  page.evaluate("referenceNavigate('account','notifications')");budget=page.locator('.inbox-budget-settings');expect(budget).to_contain_text('Это не системные push-уведомления.');toggle=budget.get_by_label('Сообщать о порогах бюджета',exact=True);expect(toggle).not_to_be_checked();toggle.check();budget.get_by_label('Когда сообщать',exact=True).select_option('5');budget.get_by_role('button',name='Сохранить',exact=True).click();expect(budget).to_contain_text('Настройки сохранены');assert preferences['budget_enabled'] and preferences['budget_thresholds']==list(range(5,101,5));page.screenshot(path=str(OUT/'budget-history-settings.png'),full_page=True);checks.append('budget_history_optin_five_percent_preset_and_truthful_no_push_copy')
+  page.evaluate("referenceNavigate('account','notifications')");budget=page.locator('.inbox-budget-settings');expect(budget).to_contain_text('Это не системные push-уведомления.');toggle=budget.get_by_label('Сообщать о порогах бюджета',exact=True);expect(toggle).not_to_be_checked();toggle.check();choose_field(budget.get_by_label('Когда сообщать',exact=True), '5');budget.get_by_role('button',name='Сохранить',exact=True).click();expect(budget).to_contain_text('Настройки сохранены');assert preferences['budget_enabled'] and preferences['budget_thresholds']==list(range(5,101,5));page.screenshot(path=str(OUT/'budget-history-settings.png'),full_page=True);checks.append('budget_history_optin_five_percent_preset_and_truthful_no_push_copy')
   page.evaluate("referenceNavigate('account','signout')");page.locator('main').get_by_role('button',name='Выйти',exact=True).click();expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible();count=len(requests);page.evaluate('inboxCenter().refresh()');page.wait_for_timeout(100);assert len(requests)==count;assert page.evaluate('inboxCenter().snapshot().notifications.length')==0;checks.append('signout_clears_private_history_and_stops_protected_requests')
   mode['state']='404';login(page,origin);page.wait_for_timeout(250);expect(page.locator('#alerts')).to_be_empty();page.get_by_role('button',name='Уведомления',exact=True).click();expect(page.locator('.inbox-feedback')).to_contain_text('История уведомлений пока недоступна.');assert page.locator('.inbox-row').count()==0;mode['state']='ok';page.get_by_role('button',name='Повторить',exact=True).click();expect(page.locator('.inbox-feedback')).to_be_empty();checks.append('old_server_404_quiet_unavailable_no_fake_history_and_explicit_retry')
   page.evaluate("referenceNavigate('account')");expect(page.get_by_role('button',name='ULADIM Control',exact=True)).to_have_count(0);checks.append('ordinary_profile_has_no_control_entry')
   def own_staff_session(route):
    response=route.fetch();value=response.json();value['control_available']=True;route.fulfill(response=response,json=value)
-  page.route('**/account/api/session',own_staff_session);page.reload();expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible();page.evaluate("referenceNavigate('account')");expect(page.get_by_role('button',name='ULADIM Control',exact=True)).to_be_visible()
+  page.route('**/account/api/session',own_staff_session);page.reload();expect(page.get_by_role('heading',name='Профиль',exact=True,level=1)).to_be_visible();page.evaluate("referenceNavigate('account')");expect(page.get_by_role('button',name='ULADIM Control',exact=True)).to_be_visible()
   handoffs=[]
   def handoff(route):
    handoffs.append(route.request.post_data_json);route.fulfill(json={'control_url':origin.replace('localhost','control.localhost')+'/admit','ticket':'T'*43,'expires_in':60})

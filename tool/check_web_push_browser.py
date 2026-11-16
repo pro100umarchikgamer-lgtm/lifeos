@@ -10,7 +10,7 @@ from pathlib import Path
 import json,os,time,uuid
 from playwright.sync_api import sync_playwright,expect
 from tool.check_web_platform import fixture,login
-from tool.web_browser_navigation import open_tab,open_settings
+from tool.web_browser_navigation import open_tab,open_settings, choose_field
 from backend.production import Application
 
 OUT=Path('web_evidence/notifications')
@@ -70,7 +70,7 @@ def main():
   assert not page.locator('.notification-options').get_attribute('open');assert page.locator('main h1').bounding_box()['y']>=page.locator('header').bounding_box()['height'];enable.click()
   expect(page.get_by_text('Включены на этом устройстве',exact=True)).to_be_visible();assert status['enabled'];assert writes[-1][1]['timezone']=='Asia/Tashkent'
   page.evaluate('scrollTo(0,0)');page.screenshot(path=str(OUT/'phone-enabled.png'),full_page=True);checks.append('explicit_enable_device_only_and_options_folded')
-  page.locator('.notification-options summary').click();page.get_by_label('До начала события',exact=True).select_option('30');page.get_by_label('Приоритет доставки',exact=True).select_option('normal');page.get_by_role('button',name='Сохранить параметры',exact=True).click();expect(page.get_by_text('Параметры сохранены',exact=True)).to_be_visible();assert status['lead_minutes']==30 and status['priority']=='normal';checks.append('calendar_lead_and_standard_priority_preferences')
+  page.locator('.notification-options summary').click();choose_field(page.get_by_label('До начала события',exact=True), '30');choose_field(page.get_by_label('Приоритет доставки',exact=True), 'normal');page.get_by_role('button',name='Сохранить параметры',exact=True).click();expect(page.get_by_text('Параметры сохранены',exact=True)).to_be_visible();assert status['lead_minutes']==30 and status['priority']=='normal';checks.append('calendar_lead_and_standard_priority_preferences')
   page.locator('.notification-options summary').click()
   page.wait_for_function('navigator.serviceWorker.controller!==null')
   registration=next(item['registrationId'] for item in reversed(registrations) if item['scopeURL']==origin+'/app')

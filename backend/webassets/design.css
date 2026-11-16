@@ -3637,6 +3637,27 @@ body[data-design=clarity] #root .palette-choice[aria-pressed=true] .palette-choi
 body[data-design=clarity] #root .appearance-help { border-top:1px solid var(--ux-border);padding-top:8px; }
 body[data-design=clarity] #root .appearance-help .small { font-size:12px;line-height:1.65; }
 
+/* One installation action, shared by public guidance and account/onboarding views. */
+body :is(#root,.product-content) .install-affordance { box-sizing:border-box;min-width:0;max-width:100%;margin:16px 0;padding:20px;border:1px solid var(--ux-border,var(--line));border-radius:16px;background:var(--ux-surface,var(--card));color:var(--ux-ink,var(--ink));text-align:start; }
+body :is(#root,.product-content) .install-affordance [hidden] { display:none!important; }
+body :is(#root,.product-content) .install-affordance .install-affordance-title { margin:0 0 8px;font-size:18px;line-height:1.4;letter-spacing:-.02em; }
+body :is(#root,.product-content) .install-affordance .install-affordance-status { margin:0 0 12px;font-size:14px;line-height:1.6;max-width:68ch;color:var(--ux-muted,var(--muted));overflow-wrap:anywhere; }
+body :is(#root,.product-content) .install-affordance .install-affordance-actions { display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-width:0; }
+body :is(#root,.product-content) .install-affordance .install-affordance-button { min-height:44px;min-width:0;max-width:100%;padding:10px 16px;border:1px solid var(--ux-border,var(--line));border-radius:10px;background:var(--ux-surface,var(--card));color:var(--ux-ink,var(--ink));font-size:14px;font-weight:650;line-height:1.5;white-space:normal;overflow-wrap:anywhere; }
+body :is(#root,.product-content) .install-affordance .install-affordance-open { display:inline-flex;align-items:center;min-height:44px;min-width:0;max-width:100%;font-size:14px;line-height:1.5;color:var(--ux-green,var(--accent));text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere; }
+body :is(#root,.product-content) .install-affordance .install-affordance-guide { margin:12px 0 0;padding:0;border:0;border-top:1px solid var(--ux-border,var(--line));border-radius:0;background:transparent; }
+body :is(#root,.product-content) .install-affordance .install-affordance-guide>summary { box-sizing:border-box;display:list-item;min-height:44px;padding:10px 0;list-style-position:inside;font-size:14px;font-weight:600;line-height:1.6;color:var(--ux-ink,var(--ink));cursor:pointer; }
+body :is(#root,.product-content) .install-affordance .install-affordance-guide>summary::after { content:none; }
+body :is(#root,.product-content) .install-affordance .install-affordance-steps>p { margin:4px 0 12px;padding:0;max-width:68ch;font-size:14px;line-height:1.65;overflow-wrap:anywhere;color:var(--ux-muted,var(--muted)); }
+body :is(#root,.product-content) .install-affordance :is(button,a,summary):focus-visible { outline:3px solid var(--ux-green,var(--accent));outline-offset:3px; }
+body :is(#root,.product-content) .install-affordance-compact { padding:16px; }
+body.product-site .application-grid .install-affordance,body[data-design=clarity] #root .appearance-help .install-affordance { padding:0;border:0;border-radius:0;background:transparent; }
+body[data-design=clarity] #root .onboarding>.install-affordance { width:100%;max-width:600px;justify-self:center; }
+@media(max-width:420px) {
+ body :is(#root,.product-content) .install-affordance { padding:16px; }
+ body.product-site .application-grid .install-affordance,body[data-design=clarity] #root .appearance-help .install-affordance { padding:0; }
+}
+
 body[data-design=clarity][data-reference-layout=b12] #root .task-workspace { display:grid;grid-template-columns:minmax(0,1fr) 212px;align-items:start;gap:24px;max-width:1200px; }
 body[data-design=clarity][data-reference-layout=b12] #root .task-primary { min-width:0; }
 body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-filters { padding:0 0 20px;border:0;border-radius:0;background:none;box-shadow:none;margin:0;grid-template-columns:minmax(0,1fr) minmax(0,180px) minmax(0,140px);gap:16px; }
@@ -3686,3 +3707,15 @@ body[data-design=clarity][data-reference-layout=b12] #root .task-overview progre
  body[data-design=clarity][data-reference-layout=b12] #root .tasks-page .task-group { padding:0 16px; }
  body[data-design=clarity][data-reference-layout=b12] #root .task-overview-counts dt { font-size:11px; }
 }
+
+/* The saved 0–100 preference tints the actual page, cards and fields together.
+   Foreground, error, focus and action colors retain their contrast roles. */
+body[data-design=clarity][data-reference-layout=b12][data-palette][data-theme][data-appearance-intensity]{--ux-bg:var(--appearance-page-color,var(--palette-bg));--ux-surface:var(--appearance-surface-color,var(--palette-surface));--ux-soft:var(--appearance-soft-color,var(--palette-soft))}
+body[data-design=clarity][data-reference-layout=b12] #root :is(input:not([type=checkbox]):not([type=range]),textarea,select),body[data-design=clarity] dialog :is(input:not([type=checkbox]):not([type=range]),textarea,select){background:var(--appearance-input-color,var(--ux-surface))}
+body[data-design=clarity][data-reference-layout=b12] #root .field-menu-trigger,body[data-design=clarity] dialog .field-menu-trigger{background:var(--appearance-input-color,var(--ux-surface));color:var(--ux-ink);border:1px solid var(--ux-border);min-height:46px}
+body[data-design=clarity] .reference-workspace .field-menu{flex:1;min-width:0}
+body[data-design=clarity] .reference-workspace .field-menu-trigger{font-size:13px;min-height:42px;padding:8px 9px}
+body[data-design=clarity] .account-identity-editor{padding-block:14px;border-block-start:1px solid var(--ux-border)}
+body[data-design=clarity] .account-identity-editor form{max-width:480px}
+body[data-design=clarity] .header-support{font-size:12px;padding:8px;min-width:44px;min-height:44px}
+@media(max-width:759px){body[data-design=clarity] .header-support .header-tool-label{display:none}}

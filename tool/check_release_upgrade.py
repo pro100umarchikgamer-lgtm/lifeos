@@ -11,6 +11,14 @@ PROBE='ULADIM_upgrade_probe_112001'
 ACCEPTED_PROBE='ULADIM_direct_312001_upgrade'
 ACCEPTED_VERSION=312001
 ACCEPTED_SHA256='66d123cef79f85b7b2665bdcad0e6309db4a694e9a5076ed871450154c762872'
+DISTRIBUTED_VERSION=355001
+DISTRIBUTED_PROBE='ULADIM_distributed_355001_upgrade'
+DISTRIBUTED_SOURCE='189a21885c31285a86fcc92d32931dab99e434ff'
+DISTRIBUTED_RUN_ID=43896314650
+DISTRIBUTED_SHA256='5d4433dacf40bc678980d7b692321925e75c188f3e1f9cd0534cb4aa6209cb8b'
+DISTRIBUTED_ARTIFACT_ID=14241261712
+DISTRIBUTED_ARTIFACT_SHA256='d274096f6f95e1539eb67241f7fe34187ed58f1d6755263165f795bbd229b252'
+PUBLIC_RELEASES={DISTRIBUTED_VERSION:'https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/download/uladim-native-189a21885c31/'}
 OUT=Path('upgrade_evidence')
 
 def run(*args,timeout=30,capture_stderr=False):
@@ -21,14 +29,23 @@ RETAINED_RELEASES={
     134001:('6acbde34f499d7c740322687416abc3aa542f9ac','38984254821','a7f93159a138e464227fa2259d9c54c67063a280708e8dafbd95c27ec3ab8356'),
     303001:('dd2912af8b53d284494afa55c1cf39047bbe07fe','43329676603','e53e35e7c36e5ee9622af668f8db6073effcfeb774635fa0aeca90ce9c875142'),
     ACCEPTED_VERSION:('84b0bdf2c6d54132691d22323553496f6b3b1d43','43367262708',ACCEPTED_SHA256),
+    DISTRIBUTED_VERSION:(DISTRIBUTED_SOURCE,str(DISTRIBUTED_RUN_ID),DISTRIBUTED_SHA256),
 }
 def previous(baseline=112001,supplied=None):
     source,run_id,digest=RETAINED_RELEASES[baseline]
     target=Path(os.environ['RUNNER_TEMP'])/f'uladim-baseline-{baseline}'
     target.mkdir(exist_ok=True)
     if supplied is None:
-        subprocess.run(['gh','run','download',run_id,'--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+source,'--dir',str(target)],check=True,timeout=90)
-        original=target/'build/app/outputs/flutter-apk/app-release.apk'
+        if baseline in PUBLIC_RELEASES:
+            # Distributed release assets retain the exact approved bytes even
+            # when the original CI ZIP contains additional build-only files.
+            for name in ('ULADIM.apk','apk-identity.txt'):
+                subprocess.run(['curl','--fail','--location','--retry','2','--max-time','90',
+                                PUBLIC_RELEASES[baseline]+name,'--output',str(target/name)],check=True,timeout=100)
+            original=target/'ULADIM.apk'
+        else:
+            subprocess.run(['gh','run','download',run_id,'--repo','pro100umarchikgamer-lgtm/lifeos','--name','lifeos-release-test-apk-'+source,'--dir',str(target)],check=True,timeout=90)
+            original=target/'build/app/outputs/flutter-apk/app-release.apk'
         identity=dict(line.split('=',1) for line in (target/'apk-identity.txt').read_text().splitlines())
         assert identity['versionCode']==str(baseline) and identity['commit']==source
         assert identity['applicationId']==APP and identity['certificateSHA256']==Path('docs/ANDROID_TEST_CERT.sha256').read_text().strip()
@@ -117,6 +134,18 @@ def uid():
     found=re.search(rb'^package:app\.lifeos\.lifeos\s+uid:(\d+)\s*$',listing,re.M)
     if not found:raise RuntimeError('Cannot read installed package UID: '+listing.decode())
     return found[1].decode()
+
+def package_identity(report,owner):
+    if isinstance(report,bytes):report=report.decode()
+    fields={key:re.search(r'^\s*'+key+r'=(.+?)\s*$',report,re.M)
+            for key in ('dataDir','firstInstallTime')}
+    assert all(fields.values()),'Installed package identity metadata missing'
+    identifiers=re.findall(r'^\s*(userId|appId|uid)=(\d+)(?=\s|$)',report,re.M)
+    assert any(key in ('appId','userId') for key,_ in identifiers),'Installed package app ID metadata missing'
+    assert all(value==owner for _,value in identifiers),'Installed package UID metadata mismatch'
+    assert fields['dataDir'][1]=='/data/user/0/'+APP,'Unexpected app data directory'
+    return {'PackageUid':owner,'DataDirectory':fields['dataDir'][1],
+            'FirstInstallTime':fields['firstInstallTime'][1]}
 def scroll(up=True):
     raw=adb('shell','wm','size').decode();width,height=map(int,re.findall(r'(\d+)x(\d+)',raw)[-1]);x=str(width//2)
     y1,y2=(int(height*.78),int(height*.30)) if up else (int(height*.30),int(height*.78))
@@ -236,14 +265,19 @@ def arguments(argv=None):
     parser.add_argument('--through-file',type=Path)
     parser.add_argument('--accepted-version',type=int,choices=[ACCEPTED_VERSION])
     parser.add_argument('--accepted-file',type=Path)
+    parser.add_argument('--distributed-version',type=int,choices=[DISTRIBUTED_VERSION])
+    parser.add_argument('--distributed-file',type=Path)
     parser.add_argument('--download',action='store_true')
     parser.add_argument('--probe',action='store_true')
     parser.add_argument('--candidate',type=Path)
     args=parser.parse_args(argv)
     assert not args.through_file or args.through_version,'--through-file needs --through-version'
     assert not args.accepted_file or args.accepted_version,'--accepted-file needs --accepted-version'
+    assert not args.distributed_file or args.distributed_version,'--distributed-file needs --distributed-version'
     assert not args.through_version or (not args.probe and args.baseline<args.through_version),'Intermediate version must be newer than baseline'
-    assert not args.accepted_version or (not args.probe and args.accepted_version>max(args.baseline,args.through_version or 0)),'Accepted baseline must be the final pre-candidate upgrade'
+    assert not args.accepted_version or (not args.probe and args.accepted_version>max(args.baseline,args.through_version or 0)),'Accepted baseline must follow retained upgrades'
+    assert not args.distributed_version or (not args.probe and args.accepted_version==ACCEPTED_VERSION and
+        args.distributed_version>max(args.baseline,args.through_version or 0,args.accepted_version)), 'Distributed baseline must follow the actual accepted312 stage'
     return args
 
 def accepted_baseline(path,owner):
@@ -265,12 +299,38 @@ def accepted_baseline(path,owner):
     return {'acceptedBaselineVersionCode':ACCEPTED_VERSION,'acceptedBaselineApkSha256':ACCEPTED_SHA256,
             'acceptedBaselineTaskAndFinancialDataRetained':True,'directUpgradeFromVersionCode':ACCEPTED_VERSION}
 
+def distributed_baseline(path,owner):
+    assert hashlib.sha256(Path(path).read_bytes()).hexdigest()==DISTRIBUTED_SHA256,'Distributed355 APK bytes changed'
+    install=adb('install','-r',str(path),timeout=90)
+    assert install.strip().splitlines()[-1].strip()==b'Success' and b'Failure' not in install,'Distributed355 install failed'
+    assert uid()==owner,'Package identity changed before distributed355 stage'
+    installed=adb('shell','dumpsys','package',APP)
+    assert int(re.search(rb'versionCode=(\d+)',installed)[1])==DISTRIBUTED_VERSION,'Distributed355 version not installed'
+    identity=package_identity(installed,owner)
+    OUT.mkdir(exist_ok=True)
+    (OUT/'accepted-312001-to-distributed-355001-install.txt').write_bytes(install)
+    (OUT/'distributed-355001-package.txt').write_bytes(installed)
+    start();tap('Tasks');find(PROBE,reveal=True);find(ACCEPTED_PROBE,reveal=True)
+    screenshot('distributed-355001-control-task');(OUT/'distributed-355001-control-task.xml').write_bytes(ET.tostring(xml()))
+    start();tap('Finances');verify_financial_summary(xml())
+    screenshot('distributed-355001-finances');(OUT/'distributed-355001-finances.xml').write_bytes(ET.tostring(xml()))
+    start();legacy_editor('Task');enter_text(DISTRIBUTED_PROBE);tap('Save')
+    start();tap('Tasks');find(DISTRIBUTED_PROBE,reveal=True)
+    screenshot('distributed-355001-created-task');(OUT/'distributed-355001-created-task.xml').write_bytes(ET.tostring(xml()))
+    return {'distributedBaselineVersionCode':DISTRIBUTED_VERSION,'distributedBaselineApkSha256':DISTRIBUTED_SHA256,
+            'distributedBaselineSource':DISTRIBUTED_SOURCE,'distributedBaselineRunId':DISTRIBUTED_RUN_ID,
+            'distributedBaselineBuildArtifactId':DISTRIBUTED_ARTIFACT_ID,
+            'distributedBaselineBuildArtifactSha256':DISTRIBUTED_ARTIFACT_SHA256,
+            'distributedBaselineTaskAndFinancialDataRetained':True,'directUpgradeFromVersionCode':DISTRIBUTED_VERSION,
+            **{'distributedBaseline'+key:value for key,value in identity.items()}}
+
 def main():
     args=arguments()
     if args.download:
         print('Retained signed baseline verified:',args.baseline,previous(args.baseline,args.baseline_file))
         if args.through_version:print('Retained signed intermediate verified:',args.through_version,previous(args.through_version,args.through_file))
         if args.accepted_version:print('Accepted signed pre-candidate baseline verified:',args.accepted_version,previous(args.accepted_version,args.accepted_file))
+        if args.distributed_version:print('Distributed signed pre-candidate baseline verified:',args.distributed_version,previous(args.distributed_version,args.distributed_file))
         return
     assert args.candidate and args.candidate.is_file()
     old=previous(args.baseline,args.baseline_file) if args.baseline_file else Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.baseline}.apk';assert old.is_file()
@@ -292,11 +352,17 @@ def main():
         path=previous(args.accepted_version,args.accepted_file) if args.accepted_file else Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.accepted_version}.apk'
         assert path.is_file()
         accepted=accepted_baseline(path,owner)
+    distributed={}
+    if args.distributed_version:
+        path=previous(args.distributed_version,args.distributed_file) if args.distributed_file else Path(os.environ['RUNNER_TEMP'])/f'uladim-{args.distributed_version}.apk'
+        assert path.is_file()
+        distributed=distributed_baseline(path,owner)
     result=adb('install','-r',str(args.candidate),timeout=90)
-    if args.accepted_version:(OUT/'direct-312001-to-candidate-install.txt').write_bytes(result)
+    if args.distributed_version:(OUT/'direct-355001-to-candidate-install.txt').write_bytes(result)
+    elif args.accepted_version:(OUT/'direct-312001-to-candidate-install.txt').write_bytes(result)
     assert uid()==owner,'Package identity changed'
     installed=adb('shell','dumpsys','package',APP).decode();version=int(re.search(r'versionCode=(\d+)',installed)[1])
-    assert version==args.baseline if args.probe else version>max(args.baseline,args.through_version or 0,args.accepted_version or 0)
+    assert version==args.baseline if args.probe else version>max(args.baseline,args.through_version or 0,args.accepted_version or 0,args.distributed_version or 0)
     modern=not args.probe and version>303001
     tasks='Tasks' if modern else 'Plans'
     if not args.probe:device_timezone('Etc/UTC')
@@ -308,9 +374,20 @@ def main():
         start();tap('Tasks');find(ACCEPTED_PROBE,reveal=True)
         (OUT/'direct-upgrade-package.txt').write_text(installed)
         accepted['acceptedBaselineCreatedTaskRetainedAfterRestart']=True
-        accepted['upgradeVersionChain']=[args.baseline,*([args.through_version] if args.through_version else []),args.accepted_version,version]
+        accepted['upgradeVersionChain']=[args.baseline,*([args.through_version] if args.through_version else []),args.accepted_version,*([args.distributed_version] if args.distributed_version else []),version]
+    if args.distributed_version:
+        identity=package_identity(installed,owner)
+        assert all(distributed['distributedBaseline'+key]==value for key,value in identity.items()),'Distributed355 package identity/data directory/first install time changed'
+        start();tap('Tasks');find(DISTRIBUTED_PROBE,reveal=True)
+        screenshot('upgraded-355001-created-task');(OUT/'upgraded-355001-created-task.xml').write_bytes(ET.tostring(xml()))
+        start();tap('Tasks');find(DISTRIBUTED_PROBE,reveal=True)
+        (OUT/'distributed-upgrade-package.txt').write_text(installed)
+        distributed.update({'distributedBaselineCreatedTaskRetainedAfterRestart':True,
+                            'distributedBaselineIdentityRetainedAfterUpgrade':True,
+                            **{'distributedCandidate'+key:value for key,value in identity.items()}})
     evidence={'previousVersionCode':args.baseline,'installedVersionCode':version,'samePackageUid':True,'syntheticTaskSurvivesUpdateAndRestart':True,'uninstallOrDataClearUsed':False,'baselineDeviceTimezone':'Europe/Moscow','candidateDeviceTimezone':'Europe/Moscow' if args.probe else 'Etc/UTC'}
     evidence.update(accepted)
+    evidence.update(distributed)
     if args.through_version:evidence['intermediateVersionCode']=args.through_version;evidence['intermediateTaskAndFinancialDataRetained']=True
     if not args.probe:
         for theme in ['light','dark']:

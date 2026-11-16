@@ -13,8 +13,14 @@ import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/appearance_editor.dart';
 import 'package:lifeos/ui/family.dart';
 import 'package:lifeos/ui/cloud_record_detail.dart';
+import 'package:lifeos/ui/selection.dart';
 import 'controller_test.dart' show CountingStore, FakeNative;
 import 'family_completion_visual_test.dart' show familyFixture;
+
+class _VisualNative extends FakeNative {
+  @override
+  Future<String?> launchTarget() async => null;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -40,7 +46,7 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final c = AppController(CountingStore(), catalog, 'ru',
-            platform: FakeNative());
+            platform: _VisualNative());
         await c.load();
         c.preferences['active_scope'] = 'family';
         c.previewAppearance(
@@ -49,6 +55,8 @@ void main() {
         f.spaces.single.addAll(
             {'kind': 'personal', 'name': 'Моё пространство', 'role': 'owner'});
         f.roster!['space'].addAll({'kind': 'personal', 'role': 'owner'});
+        f.roster!['profiles'] = [];
+        f.account!['email'] = 'owner@example.test';
         f.records.first['data'].addAll({
           'name': 'TBank — основной счёт для повседневных расходов',
           'opening_minor': 0
@@ -137,6 +145,7 @@ void main() {
                     textScaler: TextScaler.linear(size.width > 600 ? 1.3 : 1)),
                 child: RepaintBoundary(key: boundary, child: child!))));
         await tester.pumpAndSettle();
+        expect(find.text(c.pack.t('read_failed')), findsNothing);
         Future<void> capture(String name) async {
           expect(tester.takeException(), isNull);
           final directory = Platform.environment['ULADIM_NATIVE_EVIDENCE'];
@@ -155,6 +164,31 @@ void main() {
         }
 
         await capture('today');
+        for (final (key, screen) in [
+          ('cloud_today_expenses', 'today-finance'),
+          ('cloud_today_calendar', 'today-upcoming'),
+        ]) {
+          await tester.ensureVisible(find.byKey(Key(key)));
+          await tester.pumpAndSettle();
+          await capture(screen);
+        }
+        Navigator.of(tester.element(find.byType(HomeShell))).push<void>(
+            MaterialPageRoute(
+                builder: (_) => FamilyPage(
+                    controller: f,
+                    pack: c.pack,
+                    region: c.region,
+                    clock: () => c.now)));
+        await tester.pumpAndSettle();
+        await capture('management');
+        await tester
+            .ensureVisible(find.byKey(const ValueKey('managed_space_family')));
+        await tester.pumpAndSettle();
+        await capture('management-space');
+        expect(find.text('Покупка продуктов'), findsNothing);
+        expect(find.text(c.pack.t('family_record_add')), findsNothing);
+        Navigator.of(tester.element(find.byType(FamilyPage))).pop();
+        await tester.pumpAndSettle();
         for (final (index, name) in [
           (1, 'tasks'),
           (2, 'calendar'),
@@ -171,6 +205,19 @@ void main() {
           await tester.pumpAndSettle();
           await capture(name);
         }
+        await tester.tap(find.byKey(const Key('cloud_add_record')));
+        await tester.pumpAndSettle();
+        final type = find
+            .widgetWithText(LifeSelect<String>, c.pack.t('family_record_type'))
+            .first;
+        await tester.ensureVisible(type);
+        await tester.tap(type);
+        await tester.pumpAndSettle();
+        await capture('type-menu');
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        Navigator.of(tester.element(find.byType(FamilyRecordEditor))).pop();
+        await tester.pumpAndSettle();
         await tester.ensureVisible(
             find.text('TBank — основной счёт для повседневных расходов'));
         await tester
@@ -185,6 +232,23 @@ void main() {
         expect(find.byType(FamilyRecordEditor), findsOneWidget);
         expect(find.widgetWithText(TextField, '0.00'), findsOneWidget);
         await capture('account-edit');
+        final currency =
+            find.widgetWithText(LifeSelect<String>, c.pack.t('currency'));
+        await tester.ensureVisible(currency);
+        await tester.tap(currency);
+        await tester.pumpAndSettle();
+        expect(find.byType(BottomSheet), findsNothing);
+        await capture('currency-menu');
+        await tester.enterText(
+            find.byKey(const Key('selection_search')), 'RUB');
+        if (size.width < 600) {
+          tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+          await tester.pumpAndSettle();
+          await capture('currency-menu-keyboard');
+          tester.view.resetViewInsets();
+        }
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
         if (size.width < 600) {
           tester.view.viewInsets = const FakeViewPadding(bottom: 300);
           addTearDown(tester.view.resetViewInsets);
@@ -202,7 +266,13 @@ void main() {
         expect(find.byType(Slider), findsOneWidget);
         await tester.ensureVisible(find.byType(Slider));
         await tester.pumpAndSettle();
-        await capture('appearance');
+        for (final intensity in [0, 100]) {
+          tester
+              .widget<Slider>(find.byType(Slider))
+              .onChanged!(intensity.toDouble());
+          await tester.pumpAndSettle();
+          await capture('appearance-$intensity');
+        }
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pumpAndSettle();
         c.dispose();

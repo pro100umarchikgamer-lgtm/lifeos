@@ -5,6 +5,7 @@ from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
 from tool.check_web_platform import fixture, login
+from tool.web_browser_navigation import choose_field
 
 
 def main():
@@ -24,9 +25,9 @@ def main():
         dialog.locator('[name=amount]').fill('2500')
         dialog.locator('[name=label]').fill('Category fixture purchase')
         dialog.locator('[name=direction]').select_option('income')
-        expect(dialog.get_by_label('Категория', exact=True)).to_be_visible()
+        expect(dialog.get_by_role('button', name='Категория', exact=True)).to_be_visible()
         dialog.locator('[name=direction]').select_option('expense')
-        dialog.get_by_label('Категория', exact=True).select_option('food')
+        choose_field(dialog.get_by_label('Категория', exact=True), 'food')
         page.screenshot(path=str(out / 'expense-category-phone.png'), full_page=True)
         dialog.get_by_role('button', name='Сохранить', exact=True).click()
         expect(dialog).to_have_count(0)
@@ -38,13 +39,13 @@ def main():
         page.reload()
         expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
         page.evaluate("id=>editRecord('transaction',records('transaction').find(r=>r.id===id))", row['id'])
-        expect(dialog.get_by_label('Категория', exact=True)).to_have_value('food')
-        dialog.get_by_label('Категория', exact=True).select_option('transport')
+        expect(dialog.locator('select[name=category]')).to_have_value('food')
+        choose_field(dialog.get_by_label('Категория', exact=True), 'transport')
         dialog.get_by_role('button', name='Сохранить', exact=True).click()
         expect(dialog).to_have_count(0)
         assert saved()['data']['category'] == 'transport' and saved()['data']['amount_minor'] == 250000
         page.evaluate("id=>editRecord('transaction',records('transaction').find(r=>r.id===id))", row['id'])
-        dialog.get_by_label('Категория', exact=True).select_option('')
+        choose_field(dialog.get_by_label('Категория', exact=True), '')
         dialog.get_by_role('button', name='Сохранить', exact=True).click()
         expect(dialog).to_have_count(0)
         assert 'category' not in saved()['data']

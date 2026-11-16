@@ -6,6 +6,7 @@ from urllib.parse import unquote, urlsplit
 from .control import Control
 from .service import Failure, identifier, require, text
 from . import inbox_retention as retention
+from . import announcement_targeting as targeting
 
 DAY = 86400
 PUBLIC_FIELDS = ('id', 'kind', 'title', 'body', 'presentation', 'created_at',
@@ -85,6 +86,7 @@ class Inbox:
         now = int(self.backend.clock())
         with self.backend.transaction() as db:
             self._account(db, actor)
+            targeting.allocate_in(db, actor['id'], now)
             retention.sweep_user(db, actor['id'], now)
             retention.sweep_announcements(db, now)
             from .budget_inbox import BudgetInbox
@@ -156,7 +158,7 @@ class Inbox:
         retention.sweep_user(db, sub['user_id'], now)
 
     def _eligible(self, db, now, user_ids=None):
-        sql = "SELECT u.id FROM users u LEFT JOIN account_state s ON s.user_id=u.id WHERE u.verified=1 AND COALESCE(s.deleted_at,0)=0"
+        sql = "SELECT u.id FROM users u LEFT JOIN account_state s ON s.user_id=u.id WHERE u.verified=1 AND COALESCE(s.deleted_at,0)=0 AND NOT EXISTS(SELECT 1 FROM deletion_jobs j WHERE j.user_id=u.id AND j.state='erasing')"
         params = ()
         if user_ids is not None:
             sql += ' AND u.id IN (' + ','.join('?' for _ in user_ids) + ')'
@@ -166,29 +168,36 @@ class Inbox:
     def _validate(self, db, body, now):
         title, message = plain(body.get('title'), 160), plain(body.get('body'), 4000)
         presentation, audience = body.get('presentation', 'inbox'), body.get('audience', 'users')
-        require(presentation in ('inbox', 'banner', 'fullscreen') and audience in ('all', 'users'), 'announcement_invalid')
+        require(presentation in ('inbox', 'banner', 'fullscreen') and audience in ('all', 'users', 'newcomers'), 'announcement_invalid')
+        no_expiry = body.get('no_expiry', False)
+        require(type(no_expiry) is bool and (not no_expiry or audience == 'newcomers'), 'announcement_schedule_invalid')
         recipients = body.get('user_ids', [])
         require(isinstance(recipients, list) and len(recipients) <= 100, 'announcement_audience_invalid')
         for recipient in recipients:
             identifier(recipient)
-        require(len(set(recipients)) == len(recipients) and (audience == 'all' and not recipients or audience == 'users' and recipients), 'announcement_audience_invalid')
+        require(len(set(recipients)) == len(recipients) and (audience in ('all', 'newcomers') and not recipients or audience == 'users' and recipients), 'announcement_audience_invalid')
         start = body.get('starts_at', now)
-        expiry = body.get('expires_at', start + 30 * DAY) if type(start) is int else None
+        expiry = targeting.EVERGREEN_EXPIRY if no_expiry else body.get('expires_at', start + 30 * DAY) if type(start) is int else None
         require(type(start) is int and 0 <= start <= now + 30 * DAY and type(expiry) is int
-            and max(start, now) < expiry <= start + 90 * DAY, 'announcement_schedule_invalid')
+            and max(start, now) < expiry and (no_expiry or expiry <= start + 90 * DAY), 'announcement_schedule_invalid')
         sql, params = self._eligible(db, now, recipients if audience == 'users' else None)
-        count = db.execute('SELECT COUNT(*) AS n FROM (' + sql + ') eligible', params).fetchone()['n']
-        require(audience == 'all' or count == len(recipients), 'announcement_audience_invalid')
+        count = 0 if audience == 'newcomers' else db.execute('SELECT COUNT(*) AS n FROM (' + sql + ') eligible', params).fetchone()['n']
+        require(audience in ('all', 'newcomers') or count == len(recipients), 'announcement_audience_invalid')
         return {'title': title, 'body': message, 'presentation': presentation, 'audience': audience,
-            'user_ids': recipients, 'starts_at': start, 'expires_at': expiry,
+            'user_ids': recipients, 'starts_at': start, 'expires_at': expiry, 'no_expiry': no_expiry,
             'link': app_link(body.get('link', '')), 'recipient_count': count}
 
     def _staff_value(self, db, row):
         value = dict(row)
+        target = targeting.targeting_in(db, row['id'])
+        value['no_expiry'] = bool(target and target['no_expiry'])
+        value['cohort_at'] = target['cohort_at'] if target else None
+        if target:
+            value['audience'] = target['mode']
         value['user_ids'] = [recipient['user_id'] for recipient in db.execute(
             'SELECT user_id FROM announcement_recipients WHERE announcement_id=? ORDER BY user_id',
-            (row['id'],)).fetchall()] if row['audience'] == 'users' else []
-        if row['state'] == 'draft' and row['audience'] == 'all':
+            (row['id'],)).fetchall()] if value['audience'] == 'users' else []
+        if row['state'] == 'draft' and value['audience'] == 'all':
             sql, params = self._eligible(db, int(self.backend.clock()))
             value['recipient_count'] = db.execute('SELECT COUNT(*) AS n FROM (' + sql + ') eligible', params).fetchone()['n']
         else:
@@ -212,7 +221,10 @@ class Inbox:
             nid = str(uuid.uuid4())
             db.execute("""INSERT INTO announcements(id,title,body,presentation,audience,link,starts_at,expires_at,state,created_at,created_by)
                 VALUES(?,?,?,?,?,?,?,?,'draft',?,?)""", (nid, value['title'], value['body'], value['presentation'],
-                value['audience'], value['link'], value['starts_at'], value['expires_at'], now, actor.id))
+                'all' if value['audience'] == 'newcomers' else value['audience'], value['link'], value['starts_at'], value['expires_at'], now, actor.id))
+            if value['audience'] == 'newcomers':
+                db.execute('INSERT INTO announcement_targeting(announcement_id,mode,no_expiry) VALUES(?,?,?)',
+                           (nid, 'newcomers', int(value['no_expiry'])))
             for recipient in value['user_ids']:
                 db.execute('INSERT INTO announcement_recipients VALUES(?,?)', (nid, recipient))
             self.control.audit(db, actor, nid, 'announcement.draft', {},
@@ -223,15 +235,18 @@ class Inbox:
         self.control.require(actor, 'announcements.manage')
         nid, revision, reason = identifier(body.get('id')), body.get('revision'), plain(body.get('reason'), 500)
         require(type(revision) is int and revision > 0)
-        now = int(self.backend.clock())
         with self.backend.transaction() as db:
+            now = int(self.backend.clock())
             row = db.execute('SELECT * FROM announcements WHERE id=?', (nid,)).fetchone()
             require(row is not None, 'not_found', 404)
             require(row['revision'] == revision and row['state'] != 'cancelled'
                 and (cancel or row['state'] == 'draft'), 'revision_conflict', 409)
+            target = targeting.targeting_in(db, nid)
             if not cancel:
                 require(row['expires_at'] > now, 'announcement_expired', 409)
-                if row['audience'] == 'all':
+                if target:
+                    targeting.publish_in(db, nid, now)
+                elif row['audience'] == 'all':
                     sql, params = self._eligible(db, now)
                     db.execute('INSERT INTO announcement_recipients(announcement_id,user_id) SELECT ?,eligible.id FROM (' + sql + ') eligible', (nid,) + params)
                 else:
@@ -239,11 +254,15 @@ class Inbox:
                     require(bool(targets), 'announcement_audience_invalid')
                     sql, params = self._eligible(db, now, targets)
                     require(db.execute('SELECT COUNT(*) AS n FROM (' + sql + ') eligible', params).fetchone()['n'] == len(targets), 'announcement_audience_invalid')
+            elif target and target['no_expiry']:
+                # An indefinite campaign ends at cancellation; its history still
+                # receives the normal finite retention period from that point.
+                db.execute('UPDATE announcements SET expires_at=? WHERE id=?', (now, nid))
             state, field = ('cancelled', 'cancelled_at') if cancel else ('published', 'published_at')
             db.execute('UPDATE announcements SET state=?,revision=revision+1,' + field + '=? WHERE id=?', (state, max(1, now), nid))
             updated = self._staff_value(db, db.execute('SELECT * FROM announcements WHERE id=?', (nid,)).fetchone())
             self.control.audit(db, actor, nid, 'announcement.' + ('cancel' if cancel else 'publish'),
                 {'state': row['state'], 'revision': row['revision']},
                 {'state': state, 'revision': updated['revision'], 'recipient_count': updated['recipient_count'],
-                 'presentation': row['presentation'], 'starts_at': row['starts_at'], 'expires_at': row['expires_at']}, reason)
+                 'presentation': row['presentation'], 'starts_at': row['starts_at'], 'expires_at': updated['expires_at']}, reason)
             return updated

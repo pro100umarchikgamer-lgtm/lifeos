@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "uz-Latn",
   "nativeName": "O‘zbekcha",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Uy va hisoblar",
     "cloud_category_health": "Salomatlik",
     "cloud_category_leisure": "Dam olish",
-    "cloud_category_education": "Ta’lim"
+    "cloud_category_education": "Ta’lim",
+    "today_month_expenses": "Shu oydagi xarajatlar",
+    "today_no_month_expenses": "Bu oyda hali xarajatlar qayd etilmagan.",
+    "today_no_open_tasks": "Ochiq vazifalar yo‘q.",
+    "today_next_seven_days": "Keyingi 7 kun",
+    "today_no_upcoming_events": "Keyingi 7 kun uchun tadbirlar rejalashtirilmagan."
   },
   "plurals": {
     "record_count": {

@@ -1,6 +1,5 @@
 'use strict';
-// Only decorative page and soft backgrounds consume these variables. Text,
-// surfaces, controls and palette accents keep their existing contrast colors.
+// Page, card and field surfaces change together; text and action colors stay stable.
 (() => {
  const copy=globalThis.UladimI18n.copy("grp_52ab76597086",{
   ru:['Насыщенность фона','Сдержанно','Ярче'],
@@ -16,6 +15,7 @@
   document.body.dataset.appearanceIntensity=String(value);
   document.body.style.setProperty('--appearance-intensity',String(value));
   document.body.style.setProperty('--appearance-tint',(20+value*.8)+'%');
+  window.UladimAppearanceBoot?.apply(state);
   return value;
  }
  function attachIntensity({container,state,save,E,append,input}){

@@ -1,0 +1,10 @@
+import {describe,it,expect} from 'vitest';
+import {JSDOM} from 'jsdom';
+import {existsSync,readFileSync} from 'node:fs';
+const path=new URL('../backend/webassets/app/appearance-boot.js',import.meta.url);
+function boot(saved,dark){const dom=new JSDOM('<html><head></head><body></body></html>',{url:'https://example.test/app',runScripts:'outside-only'}),w=dom.window;const media={matches:dark,addEventListener(_type,callback){this.changed=callback;}};w.matchMedia=()=>media;w.bootSystem=media;w.localStorage.setItem('uladim-interface',JSON.stringify(saved));if(existsSync(path))w.eval(readFileSync(path,'utf8'));return w;}
+describe('early appearance boot',()=>{
+ it('updates page and card colors when system mode changes and preserves explicit light mode',()=>{const w=boot({theme:'system',appearanceIntensity:100},false),initial=w.document.documentElement.style.getPropertyValue('--appearance-surface-color');w.bootSystem.matches=true;w.bootSystem.changed();expect(w.document.documentElement.dataset.bootTheme).toBe('dark');expect(w.document.documentElement.style.getPropertyValue('--appearance-surface-color')).not.toBe(initial);w.UladimAppearanceBoot.apply({theme:'light',appearanceIntensity:100});w.bootSystem.changed();expect(w.document.documentElement.dataset.bootTheme).toBe('light');});
+ it('paints a saved light theme before app startup even when the system is dark',()=>{const w=boot({theme:'light',palette:'rose',appearanceIntensity:100},true);expect(w.document.documentElement.dataset.bootTheme).toBe('light');expect(w.document.documentElement.style.colorScheme).toBe('light');expect(w.document.documentElement.style.getPropertyValue('--boot-page')).toMatch(/^#[\da-f]{6}$/);});
+ it('resolves system mode, bounds invalid preferences and reads only nonprivate interface preferences',()=>{const w=boot({theme:'system',palette:'invalid',appearanceIntensity:-1},true);expect(w.document.documentElement.dataset.bootTheme).toBe('dark');expect(w.document.documentElement.dataset.bootPalette).toBe('violet');expect(w.document.documentElement.dataset.bootIntensity).toBe('0');expect(w.localStorage.length).toBe(1);});
+});

@@ -23,10 +23,12 @@ class FamilyDashboard extends StatefulWidget {
       required this.controller,
       this.tab = 0,
       this.visibleKinds,
+      this.initialDay,
       this.onWorkspaceSelected});
   final AppController controller;
   final int tab;
   final Set<String>? visibleKinds;
+  final DateTime? initialDay;
   final Future<bool> Function(String)? onWorkspaceSelected;
   @override
   State<FamilyDashboard> createState() => _FamilyDashboardState();
@@ -34,7 +36,8 @@ class FamilyDashboard extends StatefulWidget {
 
 class _FamilyDashboardState extends State<FamilyDashboard> {
   String query = '', status = 'all', financeSection = 'accounts';
-  late DateTime day = DateTime(c.now.year, c.now.month, c.now.day);
+  late DateTime day =
+      widget.initialDay ?? DateTime(c.now.year, c.now.month, c.now.day);
   late DateTime month = DateTime(day.year, day.month);
   AppController get c => widget.controller;
   String t(String key) => c.pack.t(key);
@@ -59,12 +62,13 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
               clock: () => c.now,
               onWorkspaceSelected:
                   widget.onWorkspaceSelected ?? c.selectCloudWorkspace)));
-  Future<void> add([String? kind]) => Navigator.push<void>(
+  Future<void> add([String? kind, String? flow]) => Navigator.push<void>(
       context,
       MaterialPageRoute(
           builder: (_) => FamilyRecordEditor(
               controller: c.family!,
               pack: c.pack,
+              initialFlow: flow,
               initialKind: kind ??
                   (widget.visibleKinds?.length == 1
                       ? widget.visibleKinds!.single
@@ -120,7 +124,53 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Text(t(key), style: Theme.of(context).textTheme.bodyLarge));
 
-  List<Widget> summaries() {
+  Future<void> module(String title,
+          {Set<String>? kinds, int tab = 0, DateTime? initialDay}) =>
+      Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => Scaffold(
+                  appBar: AppBar(title: Text(t(title))),
+                  body: SafeArea(
+                      child: ListView(
+                          padding: settingsPagePadding(context),
+                          children: [
+                        FamilyDashboard(
+                            controller: c,
+                            tab: tab,
+                            visibleKinds: kinds,
+                            initialDay: initialDay,
+                            onWorkspaceSelected: widget.onWorkspaceSelected)
+                      ])))));
+
+  Future<void> openBalance() {
+    final accounts = rows.where((r) => r['kind'] == 'account').toList();
+    return accounts.length == 1
+        ? open(accounts.single)
+        : module('module_accounts', kinds: {'account'});
+  }
+
+  Widget amounts(Map<String, BigInt> totals, {bool prominent = false}) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final entry in totals.entries)
+          Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(entry.key,
+                        style: Theme.of(context).textTheme.labelMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                        formatMoney(Currency.fromCode(entry.key), entry.value,
+                            locale: c.region),
+                        style: prominent
+                            ? Theme.of(context).textTheme.headlineSmall
+                            : Theme.of(context).textTheme.titleLarge),
+                  ])),
+      ]);
+
+  List<Widget> summaries({bool actionable = true}) {
     final accounts = rows.where((r) => r['kind'] == 'account').toList();
     final totals = <String, BigInt>{};
     for (final account in accounts) {
@@ -131,18 +181,28 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     if (totals.isEmpty) return [];
     return [
       LifeCard(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(t('current_balance'),
-            style: Theme.of(context).textTheme.bodySmall),
-        for (final entry in totals.entries)
-          Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                  formatMoney(Currency.fromCode(entry.key), entry.value,
-                      locale: c.region),
-                  style: Theme.of(context).textTheme.headlineSmall)),
-      ])),
+          padding: EdgeInsets.zero,
+          child: InkWell(
+              key: const Key('cloud_current_balance'),
+              onTap: actionable ? openBalance : null,
+              child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.account_balance_wallet_outlined,
+                              color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child: Text(t('current_balance'),
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium)),
+                          if (actionable)
+                            const Icon(Icons.chevron_right_rounded),
+                        ]),
+                        amounts(totals, prominent: true),
+                      ])))),
       const SizedBox(height: 12)
     ];
   }
@@ -338,28 +398,215 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
   }
 
   List<Widget> today() {
-    final tasks = rows
-        .where((r) => r['kind'] == 'task' && !cloudTaskCompleted(r, c.family!))
-        .toList();
+    final allTasks = rows.where((r) => r['kind'] == 'task').toList();
+    final tasks =
+        allTasks.where((r) => !cloudTaskCompleted(r, c.family!)).toList();
+    final completed = allTasks.length - tasks.length;
     final now = c.now;
     final currentDay = DateTime(now.year, now.month, now.day);
     final upcoming =
         occurrences(currentDay, DateTime(now.year, now.month, now.day + 7));
     final notes = rows.where((r) => r['kind'] == 'note').toList();
+    final allowed = c.family!.creatableKinds;
+    final monthStart = dateOnly(DateTime(now.year, now.month));
+    final monthEnd = dateOnly(DateTime(now.year, now.month + 1));
+    final expenses = <String, BigInt>{};
+    final operations = rows
+        .where(
+            (r) => ['transaction', 'transfer', 'request'].contains(r['kind']))
+        .toList()
+      ..sort((a, b) => (b['data']['date'] as String? ?? '')
+          .compareTo(a['data']['date'] as String? ?? ''));
+    for (final row in rows.where((r) => r['kind'] == 'transaction')) {
+      final data = object(row['data']), date = data['date'] as String? ?? '';
+      if (data['kind'] != 'expense' ||
+          date.compareTo(monthStart) < 0 ||
+          date.compareTo(monthEnd) >= 0) {
+        continue;
+      }
+      final code = data['currency'] as String;
+      expenses[code] = (expenses[code] ?? BigInt.zero) +
+          BigInt.from(data['amount_minor'] as int);
+    }
+    Widget cardHeader(String title, IconData icon,
+            {String? action, VoidCallback? onTap}) =>
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Text(t(title),
+                    style: Theme.of(context).textTheme.titleMedium)),
+          ]),
+          if (action != null)
+            Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                    onPressed: onTap,
+                    iconAlignment: IconAlignment.end,
+                    icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                    label: Text(t(action)))),
+        ]);
+    Widget preview(Json record, {String? subtitle}) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(cloudRecordIcon(record['kind'] as String)),
+        title: Text(cloudRecordTitle(record, c.pack),
+            maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle: Text(subtitle ?? detail(record)),
+        trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+        onTap: () => open(record));
+    final financeCards = <Widget>[
+      LifeCard(
+          key: const Key('cloud_today_expenses'),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            cardHeader('today_month_expenses', Icons.bar_chart_rounded,
+                action: 'finances', onTap: () => module('finances', tab: 2)),
+            Text(MaterialLocalizations.of(context).formatMonthYear(now),
+                style: Theme.of(context).textTheme.bodySmall),
+            if (expenses.isEmpty) ...[
+              const SizedBox(height: 14),
+              Text(t('today_no_month_expenses')),
+            ] else
+              amounts(expenses),
+          ])),
+      ...summaries(actionable: true).where((widget) => widget is! SizedBox),
+    ];
     return [
-      ...summaries(),
-      heading(t('open_tasks')),
-      if (tasks.isEmpty) empty('empty_tasks'),
-      for (final row in tasks.take(4)) recordCard(row),
-      heading(t('nav_calendar')),
-      if (upcoming.isEmpty) empty('offline_empty'),
-      for (final occurrence in upcoming.take(4))
-        recordCard(occurrence.$1,
-            subtitle:
-                '${MaterialLocalizations.of(context).formatMediumDate(viewTime(occurrence.$2.at))} · ${occurrence.$2.entry.schedule.allDay ? t('all_day') : MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(viewTime(occurrence.$2.at)))}'),
-      if (notes.isNotEmpty) ...[
-        heading(t('recent_notes')),
-        for (final row in notes.take(2)) recordCard(row)
+      Text(MaterialLocalizations.of(context).formatFullDate(now),
+          style: Theme.of(context).textTheme.bodyMedium),
+      if (allowed.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final (kind, flow, label, icon) in [
+            ('task', '', 'create_task', Icons.add_task_rounded),
+            (
+              'transaction',
+              'expense',
+              'create_expense',
+              Icons.remove_circle_outline
+            ),
+            (
+              'transaction',
+              'income',
+              'create_income',
+              Icons.add_circle_outline
+            ),
+            ('note', '', 'create_note', Icons.edit_note_rounded),
+          ])
+            if (allowed.contains(kind) &&
+                !(flow == 'income' &&
+                    c.family!.roster?['space']?['role'] == 'child'))
+              Tooltip(
+                  message: t(label),
+                  child: FilledButton.tonalIcon(
+                      key: Key('cloud_quick_${flow.isEmpty ? kind : flow}'),
+                      onPressed: c.family!.busy
+                          ? null
+                          : () => add(kind, flow.isEmpty ? null : flow),
+                      icon: Icon(icon, size: 20),
+                      label: Text(t(flow.isEmpty ? kind : flow)))),
+        ]),
+      ],
+      const SizedBox(height: 20),
+      LifeCard(
+          key: const Key('cloud_today_tasks'),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            cardHeader('open_tasks', Icons.checklist_rounded,
+                action: 'all_tasks',
+                onTap: () => module('nav_tasks', kinds: {'task'})),
+            Text('${tasks.length}',
+                style: Theme.of(context).textTheme.headlineSmall),
+            if (allTasks.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text('${t('completed')}: $completed / ${allTasks.length}',
+                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 6),
+              LinearProgressIndicator(
+                  value: completed / allTasks.length,
+                  semanticsLabel:
+                      '${t('completed')}: $completed / ${allTasks.length}',
+                  borderRadius: BorderRadius.circular(8),
+                  minHeight: 6),
+            ],
+            if (tasks.isEmpty) ...[
+              const SizedBox(height: 16),
+              Text(t('today_no_open_tasks')),
+            ],
+            for (final row in tasks.take(3)) preview(row),
+          ])),
+      const SizedBox(height: 14),
+      LayoutBuilder(builder: (context, bounds) {
+        final columns = bounds.maxWidth >= 680 &&
+            MediaQuery.textScalerOf(context).scale(1) <= 1.3;
+        return columns && financeCards.length == 2
+            ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: financeCards[0]),
+                const SizedBox(width: 14),
+                Expanded(child: financeCards[1]),
+              ])
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var i = 0; i < financeCards.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 14),
+                  financeCards[i],
+                ]
+              ]);
+      }),
+      const SizedBox(height: 14),
+      LifeCard(
+          key: const Key('cloud_today_calendar'),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            cardHeader('today_next_seven_days', Icons.event_outlined,
+                action: 'nav_calendar',
+                onTap: () => module('nav_calendar', kinds: {'event'})),
+            SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(children: [
+                  for (var index = 0; index < 7; index++)
+                    Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ActionChip(
+                            backgroundColor: index == 0
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : null,
+                            label: Text(MaterialLocalizations.of(context)
+                                .formatShortMonthDay(DateTime(currentDay.year,
+                                    currentDay.month, currentDay.day + index))),
+                            onPressed: () => module('nav_calendar',
+                                kinds: {'event'},
+                                initialDay: DateTime(currentDay.year,
+                                    currentDay.month, currentDay.day + index))))
+                ])),
+            const SizedBox(height: 10),
+            if (upcoming.isEmpty) Text(t('today_no_upcoming_events')),
+            for (final occurrence in upcoming.take(3))
+              preview(occurrence.$1,
+                  subtitle:
+                      '${MaterialLocalizations.of(context).formatMediumDate(viewTime(occurrence.$2.at))} · ${occurrence.$2.entry.schedule.allDay ? t('all_day') : MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(viewTime(occurrence.$2.at)))}'),
+          ])),
+      const SizedBox(height: 14),
+      LifeCard(
+          key: const Key('cloud_today_notes'),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            cardHeader('recent_notes', Icons.notes_rounded,
+                action: 'all_notes',
+                onTap: () => module('nav_notes', kinds: {'note'})),
+            if (notes.isEmpty) Text(t('empty_notes')),
+            for (final row in notes.take(2)) preview(row),
+          ])),
+      if (operations.isNotEmpty) ...[
+        const SizedBox(height: 14),
+        LifeCard(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+              cardHeader('cloud_operations', Icons.receipt_long_outlined,
+                  action: 'finances', onTap: () => module('finances', tab: 2)),
+              for (final row in operations.take(3)) preview(row),
+            ])),
       ],
     ];
   }
@@ -398,6 +645,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
           'task' => 'nav_tasks',
           'note' => 'nav_notes',
           'event' => 'nav_calendar',
+          'account' => 'module_accounts',
           _ => 'all_sections'
         });
         final allowed = f.creatableKinds

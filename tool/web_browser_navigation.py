@@ -1,6 +1,43 @@
 """Shared selectors for the responsive workspace navigation."""
 
 
+def choose_field(field, value=None, *, label=None):
+    """Choose through the visible app menu, or an unchanged native select.
+
+    The shared menu keeps its native form carrier. Its visible trigger and
+    hidden listbox can share an accessible label, so resolve the trigger
+    explicitly rather than treating the labeled node as a native select.
+    """
+    if (value is None) == (label is None):
+        raise ValueError('Choose exactly one option value or label')
+    field.first.wait_for(state='attached')
+    nodes = field.all()
+    triggers = [node for node in nodes if node.evaluate(
+        "node => node.matches('button.field-menu-trigger')")]
+    if triggers:
+        assert len(triggers) == 1, 'Choice label must identify one visible field'
+        trigger = triggers[0]
+        wrapper = trigger.locator('..')
+        carrier = wrapper.locator(':scope > select')
+    else:
+        carriers = [node for node in nodes if node.evaluate(
+            "node => node.tagName === 'SELECT'")]
+        assert len(carriers) == 1, 'Choice must identify one native value carrier'
+        carrier = carriers[0]
+        if not carrier.evaluate('node => Boolean(node.choiceField)'):
+            return carrier.select_option(**({'value': value} if value is not None else {'label': label}))
+        wrapper = carrier.locator('..')
+        trigger = wrapper.locator(':scope > button.field-menu-trigger')
+    caption = carrier.evaluate("""(select, requested) => {
+        const option = Array.from(select.options).find(option =>
+            requested.value !== null ? option.value === requested.value : option.label === requested.label);
+        return option && !option.disabled && !option.parentElement.disabled ? option.textContent : null;
+    }""", {'value': value, 'label': label})
+    assert caption is not None, 'Requested choice must be available'
+    trigger.click()
+    wrapper.get_by_role('option', name=caption, exact=True).click()
+
+
 def open_tab(page, label):
     nav = page.locator('.nav')
     if label == 'Профиль':

@@ -87,3 +87,23 @@ def admit_control(page, origin, control):
         assert page.goto(control + path).status == 200, path
     assert page.goto(control + '/').status == 200
     expect(page.get_by_role('heading', name='ULADIM Control', exact=True)).to_be_visible()
+
+
+def choose_control_field(page, label, value):
+    """Choose through the app-owned menu and verify its native form carrier."""
+    trigger = page.get_by_role('button', name=label, exact=True)
+    carrier = trigger.locator('..').locator('select')
+    # Values are fixture constants; derive the visible translated label from the real carrier.
+    title = carrier.evaluate('(select,value)=>[...select.options].find(item=>item.value===value)?.textContent', value)
+    assert title is not None, (label, value)
+    trigger.click()
+    menu = page.get_by_role('listbox', name=label, exact=True)
+    expect(menu).to_be_visible(timeout=3000)
+    option = menu.get_by_role('option', name=title, exact=True)
+    expect(option).to_be_visible(timeout=3000)
+    option.click()
+    expect(carrier).to_have_value(value)
+
+
+def choose_control_section(page, value):
+    choose_control_field(page, 'Раздел Control', value)

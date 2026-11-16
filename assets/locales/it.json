@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "it",
   "nativeName": "Italiano",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Casa e bollette",
     "cloud_category_health": "Salute",
     "cloud_category_leisure": "Tempo libero",
-    "cloud_category_education": "Istruzione"
+    "cloud_category_education": "Istruzione",
+    "today_month_expenses": "Spese di questo mese",
+    "today_no_month_expenses": "Nessuna spesa registrata questo mese.",
+    "today_no_open_tasks": "Nessuna attività aperta.",
+    "today_next_seven_days": "Prossimi 7 giorni",
+    "today_no_upcoming_events": "Nessun evento previsto nei prossimi 7 giorni."
   },
   "plurals": {
     "record_count": {

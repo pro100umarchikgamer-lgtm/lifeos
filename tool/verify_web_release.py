@@ -7,6 +7,11 @@ from urllib.request import Request, urlopen
 ASSETS = {
     '/app/assets/auth-texture.webp': 'backend/webassets/app/auth-texture.webp',
     '/app/assets/app.js': 'backend/webassets/app/app.js',
+    '/app/assets/install.js': 'backend/webassets/app/install.js',
+    '/app/assets/appearance-boot.js': 'backend/webassets/app/appearance-boot.js',
+    '/app/assets/field-menu.js': 'backend/webassets/app/field-menu.js',
+    '/app/assets/field-menu.css': 'backend/webassets/app/field-menu.css',
+    '/app/assets/recovery.js': 'backend/webassets/app/recovery.js',
     '/app/assets/import.js': 'backend/webassets/app/import.js',
     '/app/assets/statement-formats.js': 'backend/webassets/app/statement-formats.js',
     '/app/assets/statement-worker.js': 'backend/webassets/app/statement-worker.js',

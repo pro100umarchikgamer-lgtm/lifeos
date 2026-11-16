@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "ka",
   "nativeName": "ქართული",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "სახლი და გადასახადები",
     "cloud_category_health": "ჯანმრთელობა",
     "cloud_category_leisure": "დასვენება",
-    "cloud_category_education": "განათლება"
+    "cloud_category_education": "განათლება",
+    "today_month_expenses": "ამ თვის ხარჯები",
+    "today_no_month_expenses": "ამ თვეში ხარჯები ჯერ არ არის აღრიცხული.",
+    "today_no_open_tasks": "ღია დავალებები არ არის.",
+    "today_next_seven_days": "მომდევნო 7 დღე",
+    "today_no_upcoming_events": "მომდევნო 7 დღისთვის მოვლენები დაგეგმილი არ არის."
   },
   "plurals": {
     "record_count": {

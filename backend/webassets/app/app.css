@@ -284,3 +284,8 @@ body[data-design=clarity] .registration-dialog.recovery-dialog .dialog-head h2 {
   text-wrap: balance;
 }
 .transaction-editor :is(label,select)[hidden] { display: none !important; }
+
+/* Saved appearance is resolved before this stylesheet, including pull refresh. */
+html[data-boot-theme] body:not([data-theme]){background:var(--boot-page);color:var(--boot-ink);color-scheme:inherit}
+html[data-boot-theme] body:not([data-theme]) p{color:var(--boot-ink)}
+html[data-boot-theme] #root>.boot-splash{display:grid;align-content:center;justify-items:center;gap:8px;min-height:100dvh;max-width:none;width:100%;margin:0;padding:24px;text-align:center}

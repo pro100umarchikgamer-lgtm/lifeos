@@ -267,3 +267,53 @@ CREATE TABLE IF NOT EXISTS record_erasure_intents (
  erased_at BIGINT NOT NULL CHECK(erased_at>0), operation_digest TEXT NOT NULL,
  UNIQUE(user_id,operation_id)
 );
+
+-- Optional account metadata; never inferred from private workspace records.
+CREATE TABLE IF NOT EXISTS account_identity (
+ user_id TEXT PRIMARY KEY REFERENCES users(id), display_name TEXT NOT NULL,
+ search_name TEXT NOT NULL, updated_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS staff_permission_restrictions (
+ staff_id TEXT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+ permission TEXT NOT NULL, PRIMARY KEY(staff_id,permission)
+);
+CREATE TABLE IF NOT EXISTS staff_invitation_restrictions (
+ invitation_hash TEXT NOT NULL REFERENCES staff_invitations(hash) ON DELETE CASCADE,
+ permission TEXT NOT NULL, PRIMARY KEY(invitation_hash,permission)
+);
+CREATE TABLE IF NOT EXISTS support_recovery_cases (
+ id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+ ticket_id TEXT REFERENCES support_tickets(id),
+ kind TEXT NOT NULL CHECK(kind IN ('access','records')),
+ state TEXT NOT NULL CHECK(state IN ('waiting_owner','confirmed','closed','cancelled')),
+ revision BIGINT NOT NULL DEFAULT 1, created_at BIGINT NOT NULL,
+ expires_at BIGINT NOT NULL, confirmed_at BIGINT NOT NULL DEFAULT 0,
+ updated_at BIGINT NOT NULL, created_by TEXT NOT NULL REFERENCES staff(id)
+);
+CREATE INDEX IF NOT EXISTS recovery_case_target ON support_recovery_cases(user_id,created_at,id);
+CREATE INDEX IF NOT EXISTS recovery_case_queue ON support_recovery_cases(created_at,id);
+
+-- Future cohorts are separate from the unchanged all/users audience snapshots.
+CREATE TABLE IF NOT EXISTS announcement_targeting (
+ announcement_id TEXT PRIMARY KEY REFERENCES announcements(id) ON DELETE CASCADE,
+ mode TEXT NOT NULL CHECK(mode='newcomers'),
+ no_expiry BIGINT NOT NULL DEFAULT 0 CHECK(no_expiry IN (0,1)),
+ cohort_at BIGINT NOT NULL DEFAULT 0
+);
+-- Only existing accounts tied in the publication second need exact exclusions.
+CREATE TABLE IF NOT EXISTS announcement_cohort_exclusions (
+ announcement_id TEXT NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+ user_id TEXT NOT NULL REFERENCES users(id),
+ PRIMARY KEY(announcement_id,user_id)
+);
+CREATE INDEX IF NOT EXISTS announcement_cohort_user ON announcement_cohort_exclusions(user_id,announcement_id);
+-- Retain the consumed welcome after its campaign expires or is reclaimed.
+CREATE TABLE IF NOT EXISTS newcomer_welcome_claims (
+ user_id TEXT PRIMARY KEY REFERENCES users(id),
+ announcement_id TEXT REFERENCES announcements(id) ON DELETE SET NULL,
+ claimed_at BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS users_created_history ON users(created_at,id);
+
+CREATE INDEX IF NOT EXISTS newcomer_welcome_announcement ON newcomer_welcome_claims(announcement_id,user_id);

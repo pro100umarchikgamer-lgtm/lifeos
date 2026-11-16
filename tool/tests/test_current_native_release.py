@@ -9,10 +9,14 @@ import zipfile
 
 from tool import publish_current_apk as current
 from tool import publish_retained_apk as retained
+from tool import check_release_upgrade as upgrade
 from tool.tests import test_retained_native_release as retained_tests
 
 
 SOURCE = 'a' * 40
+DISTRIBUTED_SHA256 = '5d4433dacf40bc678980d7b692321925e75c188f3e1f9cd0534cb4aa6209cb8b'
+DISTRIBUTED_SOURCE = '189a21885c31285a86fcc92d32931dab99e434ff'
+DISTRIBUTED_ARTIFACT_SHA256 = 'd274096f6f95e1539eb67241f7fe34187ed58f1d6755263165f795bbd229b252'
 ENV = {
     'GITHUB_REPOSITORY': 'pro100umarchikgamer-lgtm/lifeos',
     'GITHUB_REF': 'refs/heads/work/uladim-web-platform',
@@ -74,26 +78,45 @@ def artifacts_fixture():
 def accepted_upgrade_archive(changes=None, omitted=None):
     fields = {'installedVersionCode': 400001, 'acceptedBaselineVersionCode': 312001,
               'acceptedBaselineApkSha256': current.ACCEPTED_APK_SHA256,
-              'directUpgradeFromVersionCode': 312001, 'upgradeVersionChain': [134001,303001,312001,400001],
+              'directUpgradeFromVersionCode': 355001, 'upgradeVersionChain': [134001,303001,312001,355001,400001],
               'acceptedBaselineTaskAndFinancialDataRetained': True,
-              'acceptedBaselineCreatedTaskRetainedAfterRestart': True}
+              'acceptedBaselineCreatedTaskRetainedAfterRestart': True,
+              'distributedBaselineVersionCode':355001,'distributedBaselineApkSha256':DISTRIBUTED_SHA256,
+              'distributedBaselineSource':DISTRIBUTED_SOURCE,'distributedBaselineRunId':43896314650,
+              'distributedBaselineBuildArtifactId':14241261712,
+              'distributedBaselineBuildArtifactSha256':DISTRIBUTED_ARTIFACT_SHA256,
+              'distributedBaselineTaskAndFinancialDataRetained':True,
+              'distributedBaselineCreatedTaskRetainedAfterRestart':True,
+              'distributedBaselineIdentityRetainedAfterUpgrade':True,
+              'distributedBaselinePackageUid':'10001','distributedCandidatePackageUid':'10001',
+              'distributedBaselineDataDirectory':'/data/user/0/app.lifeos.lifeos',
+              'distributedCandidateDataDirectory':'/data/user/0/app.lifeos.lifeos',
+              'distributedBaselineFirstInstallTime':'2026-11-16 18:38:42',
+              'distributedCandidateFirstInstallTime':'2026-11-16 18:38:42'}
     fields.update(changes or {})
     data=io.BytesIO()
     with retained_tests.EvidenceTests().upgrade_archive(fields) as original, zipfile.ZipFile(data,'w') as archive:
         for name in original.namelist():archive.writestr(name,original.read(name))
         additional={'accepted-312001-package.txt':b'Package [app.lifeos.lifeos] versionCode=312001',
-                    'direct-312001-to-candidate-install.txt':b'Performing Streamed Install\nSuccess\n'}
+                    'accepted-312001-to-distributed-355001-install.txt':b'Performing Streamed Install\nSuccess\n',
+                    'direct-355001-to-candidate-install.txt':b'Performing Streamed Install\nSuccess\n',
+                    'distributed-355001-package.txt':b'Package [app.lifeos.lifeos]\n userId=10001\n versionCode=355001\n dataDir=/data/user/0/app.lifeos.lifeos\n firstInstallTime=2026-11-16 18:38:42\n',
+                    'distributed-upgrade-package.txt':b'Package [app.lifeos.lifeos]\n userId=10001\n versionCode=400001\n dataDir=/data/user/0/app.lifeos.lifeos\n firstInstallTime=2026-11-16 18:38:42\n'}
         for stage in ('accepted-312001-control-task','accepted-312001-finances',
                       'accepted-312001-created-task','upgraded-312001-created-task'):
             additional[stage+'.png']=b'\x89PNG\r\n\x1a\n'
             additional[stage+'.xml']=b'<hierarchy><node text="synthetic retained record"/></hierarchy>'
+        for stage in ('distributed-355001-control-task','distributed-355001-finances',
+                      'distributed-355001-created-task','upgraded-355001-created-task'):
+            additional[stage+'.png']=b'\x89PNG\r\n\x1a\n'
+            additional[stage+'.xml']=b'<hierarchy><node text="ULADIM_distributed_355001_upgrade"/><node text="$100"/><node text="$12.50"/><node text="$87.50"/></hierarchy>'
         for name,value in additional.items():
             if name!=omitted:archive.writestr(name,value)
     return data.getvalue()
 
 
 class AcceptedUpgradeTests(unittest.TestCase):
-    def test_direct_accepted_apk_and_data_retention_are_required(self):
+    def test_actual_distributed355_and_retained312_proof_are_required(self):
         current.verify_accepted_upgrade(accepted_upgrade_archive(),{'version_code':400001})
         for key,value in [('acceptedBaselineVersionCode',303001),('acceptedBaselineApkSha256','0'*64),
                           ('directUpgradeFromVersionCode',303001),('upgradeVersionChain',[134001,303001,400001]),
@@ -101,12 +124,56 @@ class AcceptedUpgradeTests(unittest.TestCase):
                           ('acceptedBaselineCreatedTaskRetainedAfterRestart',False)]:
             with self.subTest(key=key), self.assertRaises(ValueError):
                 current.verify_accepted_upgrade(accepted_upgrade_archive({key:value}),{'version_code':400001})
+        for key,value in [('directUpgradeFromVersionCode',312001),
+                          ('upgradeVersionChain',[134001,303001,312001,400001]),
+                          ('distributedBaselineVersionCode',312001),
+                          ('distributedBaselineApkSha256','0'*64),
+                          ('distributedBaselineSource','b'*40),
+                          ('distributedBaselineRunId',43367262708),
+                          ('distributedBaselineBuildArtifactId',1),
+                          ('distributedBaselineBuildArtifactSha256','0'*64),
+                          ('distributedBaselineTaskAndFinancialDataRetained',False),
+                          ('distributedBaselineCreatedTaskRetainedAfterRestart',False),
+                          ('distributedBaselineIdentityRetainedAfterUpgrade',False),
+                          ('distributedCandidatePackageUid','10002'),
+                          ('distributedCandidateDataDirectory','/data/user/0/other.app'),
+                          ('distributedCandidateFirstInstallTime','2026-11-17 18:38:42')]:
+            with self.subTest(key=key),self.assertRaises(ValueError):
+                current.verify_accepted_upgrade(accepted_upgrade_archive({key:value}),{'version_code':400001})
 
     def test_json_claims_without_installed_package_or_real_ui_files_are_rejected(self):
-        for missing in ('accepted-312001-package.txt','direct-312001-to-candidate-install.txt',
-                        'accepted-312001-created-task.xml','upgraded-312001-created-task.png'):
+        for missing in ('accepted-312001-package.txt','direct-355001-to-candidate-install.txt',
+                        'accepted-312001-to-distributed-355001-install.txt',
+                        'accepted-312001-created-task.xml','upgraded-312001-created-task.png',
+                        'distributed-355001-package.txt','distributed-upgrade-package.txt',
+                        'distributed-355001-created-task.xml','upgraded-355001-created-task.png'):
             with self.subTest(missing=missing), self.assertRaises(ValueError):
                 current.verify_accepted_upgrade(accepted_upgrade_archive(omitted=missing),{'version_code':400001})
+
+    def test_distributed_stage_is_pinned_and_requires_explicit_accepted312_sequence(self):
+        self.assertEqual(upgrade.RETAINED_RELEASES[355001],(
+            DISTRIBUTED_SOURCE,'43896314650',DISTRIBUTED_SHA256))
+        chain=['--baseline','134001','--through-version','303001',
+               '--accepted-version','312001','--distributed-version','355001']
+        args=upgrade.arguments(chain+['--download'])
+        self.assertEqual((args.baseline,args.through_version,args.accepted_version,args.distributed_version),
+                         (134001,303001,312001,355001))
+        for values in (['--distributed-version','355001'],
+                       ['--distributed-file','unverified.apk'],
+                       ['--probe',*chain],
+                       ['--baseline','355001','--accepted-version','312001','--distributed-version','355001']):
+            with self.subTest(values=values),self.assertRaises(AssertionError):upgrade.arguments(values)
+
+    def test_package_identity_accepts_actual_android35_app_id_and_binds_optional_uid_fields(self):
+        report='uid=10001 gids=[] type=0\n appId=10001\n dataDir=/data/user/0/app.lifeos.lifeos\n firstInstallTime=2026-11-16 18:38:42\n'
+        self.assertEqual(upgrade.package_identity(report,'10001'),{
+            'PackageUid':'10001','DataDirectory':'/data/user/0/app.lifeos.lifeos',
+            'FirstInstallTime':'2026-11-16 18:38:42'})
+        for changed in (report.replace('appId=10001','appId=10002'),
+                        report.replace('uid=10001','uid=10002'),
+                        report+'userId=10002\n',report.replace('appId=10001','other=10001')):
+            with self.subTest(changed=changed),self.assertRaises(AssertionError):
+                upgrade.package_identity(changed,'10001')
 
 
 class ContextTests(unittest.TestCase):
@@ -118,7 +185,7 @@ class ContextTests(unittest.TestCase):
                            ('GITHUB_SHA', 'a' * 12), ('GITHUB_WORKFLOW_SHA', 'b' * 40),
                            ('GITHUB_WORKFLOW_REF', 'other/workflow.yml@refs/heads/main'),
                            ('GITHUB_RUN_ATTEMPT', '0'), ('GITHUB_RUN_ATTEMPT', '1000'),
-                           ('GITHUB_RUN_NUMBER', '312'), ('GITHUB_RUN_ID', '0')]:
+                           ('GITHUB_RUN_NUMBER', '312'), ('GITHUB_RUN_NUMBER', '355'), ('GITHUB_RUN_ID', '0')]:
             with self.subTest(key=key, value=value), self.assertRaises(ValueError):
                 current.verify_context({**ENV, key: value}, EVENT, lambda *args: (SOURCE + '\n').encode())
         with self.assertRaisesRegex(ValueError, 'checkout'):

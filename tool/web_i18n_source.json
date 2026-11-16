@@ -9469,6 +9469,1212 @@
         "uz-Latn": "Filtrlarni tozalash",
         "uz-Cyrl": "Фильтрларни тозалаш"
       }
+    },
+    "pwa_install_title": {
+      "values": {
+        "ru": "ULADIM на вашем устройстве",
+        "en": "ULADIM on your device"
+      }
+    },
+    "pwa_install_button": {
+      "values": {
+        "ru": "Установить ULADIM",
+        "en": "Install ULADIM"
+      }
+    },
+    "pwa_install_open": {
+      "values": {
+        "ru": "Открыть ULADIM",
+        "en": "Open ULADIM"
+      }
+    },
+    "pwa_install_ready": {
+      "values": {
+        "ru": "Открывайте ULADIM с отдельного значка.",
+        "en": "Open ULADIM from its own icon."
+      }
+    },
+    "pwa_install_manual": {
+      "values": {
+        "ru": "Установка завершается через меню браузера.",
+        "en": "Complete installation through your browser menu."
+      }
+    },
+    "pwa_install_prompting": {
+      "values": {
+        "ru": "Подтвердите установку в окне браузера.",
+        "en": "Confirm installation in the browser window."
+      }
+    },
+    "pwa_install_accepted": {
+      "values": {
+        "ru": "Браузер принял запрос. Завершите установку по его подсказкам.",
+        "en": "The browser accepted your request. Follow its steps to finish installation."
+      }
+    },
+    "pwa_install_dismissed": {
+      "values": {
+        "ru": "Установка отменена. Можно повторить её через меню браузера.",
+        "en": "Installation cancelled. You can try again through the browser menu."
+      }
+    },
+    "pwa_install_error": {
+      "values": {
+        "ru": "Браузер не открыл установку. Воспользуйтесь инструкцией ниже.",
+        "en": "The browser could not open installation. Use the steps below."
+      }
+    },
+    "pwa_install_installed": {
+      "values": {
+        "ru": "ULADIM установлен на этом устройстве.",
+        "en": "ULADIM is installed on this device."
+      }
+    },
+    "pwa_install_guide": {
+      "values": {
+        "ru": "Как установить",
+        "en": "Installation steps"
+      }
+    },
+    "pwa_install_ios": {
+      "values": {
+        "ru": "Нажмите «Поделиться» → «На экран Домой» → «Добавить». Затем откройте ULADIM с нового значка.",
+        "en": "Tap Share → Add to Home Screen → Add. Then open ULADIM from the new icon."
+      }
+    },
+    "pwa_install_ios_chrome": {
+      "values": {
+        "ru": "В Chrome нажмите «Поделиться» рядом с адресной строкой → «На экран Домой» → «Добавить».",
+        "en": "In Chrome, tap Share beside the address bar → Add to Home Screen → Add."
+      }
+    },
+    "pwa_install_safari_fallback": {
+      "values": {
+        "ru": "Если пункта «На экран Домой» нет, откройте ULADIM в Safari и нажмите «Поделиться».",
+        "en": "If Add to Home Screen is missing, open ULADIM in Safari and tap Share."
+      }
+    },
+    "pwa_install_android": {
+      "values": {
+        "ru": "Откройте меню браузера → «Установить приложение» или «Добавить на главный экран» → «Установить».",
+        "en": "Open the browser menu → Install app or Add to Home screen → Install."
+      }
+    },
+    "pwa_install_mac": {
+      "values": {
+        "ru": "В Safari нажмите «Поделиться» → «Добавить в Dock» → «Добавить».",
+        "en": "In Safari, open Share → Add to Dock → Add."
+      }
+    },
+    "pwa_install_desktop": {
+      "values": {
+        "ru": "Нажмите значок установки рядом с адресной строкой или откройте меню браузера → «Установить ULADIM».",
+        "en": "Use the install icon beside the address bar or the browser menu → Install ULADIM."
+      }
+    },
+    "pwa_install_unavailable": {
+      "values": {
+        "ru": "Если установка недоступна, откройте ULADIM в актуальном Chrome, Edge или Safari. Можно продолжить работу в этой вкладке.",
+        "en": "If installation is unavailable, open ULADIM in a current Chrome, Edge or Safari browser. You can keep using this tab."
+      }
+    },
+    "control_users": {
+      "values": {
+        "ru": "Пользователи",
+        "en": "Users"
+      }
+    },
+    "control_directory_help": {
+      "values": {
+        "ru": "Аккаунты, имена, которые указали сами пользователи, и состояние доступа. Личные записи скрыты.",
+        "en": "Accounts, names supplied by users, and access status. Personal records stay private."
+      }
+    },
+    "control_search": {
+      "values": {
+        "ru": "Имя, почта или ID",
+        "en": "Name, email or ID"
+      }
+    },
+    "control_find": {
+      "values": {
+        "ru": "Найти",
+        "en": "Search"
+      }
+    },
+    "control_loading": {
+      "values": {
+        "ru": "Загружаем…",
+        "en": "Loading…"
+      }
+    },
+    "control_retry": {
+      "values": {
+        "ru": "Повторить",
+        "en": "Retry"
+      }
+    },
+    "control_empty_users": {
+      "values": {
+        "ru": "По этим условиям аккаунтов нет. Измените поиск.",
+        "en": "No accounts match. Try another search."
+      }
+    },
+    "control_name_missing": {
+      "values": {
+        "ru": "Имя не указано",
+        "en": "Name not provided"
+      }
+    },
+    "control_optional_name": {
+      "values": {
+        "ru": "Имя указано владельцем аккаунта",
+        "en": "Name supplied by the account owner"
+      }
+    },
+    "control_verified": {
+      "values": {
+        "ru": "Почта подтверждена",
+        "en": "Email verified"
+      }
+    },
+    "control_unverified": {
+      "values": {
+        "ru": "Почта не подтверждена",
+        "en": "Email not verified"
+      }
+    },
+    "control_restricted": {
+      "values": {
+        "ru": "Доступ временно ограничен",
+        "en": "Access temporarily restricted"
+      }
+    },
+    "control_joined": {
+      "values": {
+        "ru": "Регистрация",
+        "en": "Joined"
+      }
+    },
+    "control_seen": {
+      "values": {
+        "ru": "Последняя активность",
+        "en": "Last active"
+      }
+    },
+    "control_unknown": {
+      "values": {
+        "ru": "Нет данных",
+        "en": "No data"
+      }
+    },
+    "control_devices": {
+      "values": {
+        "ru": "Активные устройства",
+        "en": "Active devices"
+      }
+    },
+    "control_account_id": {
+      "values": {
+        "ru": "ID аккаунта",
+        "en": "Account ID"
+      }
+    },
+    "control_open_account": {
+      "values": {
+        "ru": "Открыть аккаунт",
+        "en": "Open account"
+      }
+    },
+    "control_next": {
+      "values": {
+        "ru": "Следующая страница",
+        "en": "Next page"
+      }
+    },
+    "control_previous": {
+      "values": {
+        "ru": "Предыдущая страница",
+        "en": "Previous page"
+      }
+    },
+    "control_back_users": {
+      "values": {
+        "ru": "К пользователям",
+        "en": "Back to users"
+      }
+    },
+    "control_page_count": {
+      "values": {
+        "ru": "На странице: {count}",
+        "en": "On this page: {count}"
+      }
+    },
+    "control_cases": {
+      "values": {
+        "ru": "Дела восстановления",
+        "en": "Recovery cases"
+      }
+    },
+    "control_cases_help": {
+      "values": {
+        "ru": "Помощь со входом и удалёнными записями. Исходный аккаунт всегда выбирается отдельно от автора обращения.",
+        "en": "Help with sign-in and deleted records. Always select the original account separately from the person contacting support."
+      }
+    },
+    "control_create_case": {
+      "values": {
+        "ru": "Создать дело восстановления",
+        "en": "Create a recovery case"
+      }
+    },
+    "control_create": {
+      "values": {
+        "ru": "Создать дело",
+        "en": "Create case"
+      }
+    },
+    "control_manual": {
+      "values": {
+        "ru": "Внешнее письмо или ручное обращение",
+        "en": "External email or manual contact"
+      }
+    },
+    "control_from_ticket": {
+      "values": {
+        "ru": "Из обращения поддержки",
+        "en": "From a support ticket"
+      }
+    },
+    "control_source": {
+      "values": {
+        "ru": "Источник обращения",
+        "en": "Contact source"
+      }
+    },
+    "control_source_author": {
+      "values": {
+        "ru": "ID автора обращения",
+        "en": "Contact author ID"
+      }
+    },
+    "control_original_account": {
+      "values": {
+        "ru": "Исходный аккаунт для восстановления",
+        "en": "Original account to recover"
+      }
+    },
+    "control_choose_original": {
+      "values": {
+        "ru": "Найдите и выберите исходный аккаунт. Автор обращения не выбирается автоматически.",
+        "en": "Find and select the original account. The ticket author is never selected automatically."
+      }
+    },
+    "control_choose_account": {
+      "values": {
+        "ru": "Выбрать аккаунт",
+        "en": "Select account"
+      }
+    },
+    "control_change_account": {
+      "values": {
+        "ru": "Выбрать другой аккаунт",
+        "en": "Choose another account"
+      }
+    },
+    "control_selected_account": {
+      "values": {
+        "ru": "Выбран исходный аккаунт",
+        "en": "Original account selected"
+      }
+    },
+    "control_kind": {
+      "values": {
+        "ru": "Вид помощи",
+        "en": "Help needed"
+      }
+    },
+    "control_access": {
+      "values": {
+        "ru": "Вход в аккаунт",
+        "en": "Account access"
+      }
+    },
+    "control_records": {
+      "values": {
+        "ru": "Удалённые записи",
+        "en": "Deleted records"
+      }
+    },
+    "control_reason": {
+      "values": {
+        "ru": "Причина для журнала аудита",
+        "en": "Reason for the audit log"
+      }
+    },
+    "control_cancel": {
+      "values": {
+        "ru": "Отменить",
+        "en": "Cancel"
+      }
+    },
+    "control_save": {
+      "values": {
+        "ru": "Сохранить",
+        "en": "Save"
+      }
+    },
+    "control_saving": {
+      "values": {
+        "ru": "Сохраняем…",
+        "en": "Saving…"
+      }
+    },
+    "control_all_states": {
+      "values": {
+        "ru": "Все состояния",
+        "en": "All states"
+      }
+    },
+    "control_state": {
+      "values": {
+        "ru": "Состояние",
+        "en": "Status"
+      }
+    },
+    "control_waiting_owner": {
+      "values": {
+        "ru": "Ожидает владельца",
+        "en": "Waiting for the owner"
+      }
+    },
+    "control_confirmed": {
+      "values": {
+        "ru": "Владелец подтвердил",
+        "en": "Confirmed by the owner"
+      }
+    },
+    "control_closed": {
+      "values": {
+        "ru": "Завершено",
+        "en": "Closed"
+      }
+    },
+    "control_cancelled": {
+      "values": {
+        "ru": "Отменено",
+        "en": "Cancelled"
+      }
+    },
+    "control_empty_cases": {
+      "values": {
+        "ru": "Дел по этим условиям пока нет. Создайте дело из аккаунта, обращения или вручную.",
+        "en": "No matching cases yet. Start from an account, a ticket, or a manual contact."
+      }
+    },
+    "control_open_case": {
+      "values": {
+        "ru": "Открыть дело",
+        "en": "Open case"
+      }
+    },
+    "control_case_title": {
+      "values": {
+        "ru": "Дело восстановления",
+        "en": "Recovery case"
+      }
+    },
+    "control_case_id": {
+      "values": {
+        "ru": "ID дела",
+        "en": "Case ID"
+      }
+    },
+    "control_created": {
+      "values": {
+        "ru": "Создано",
+        "en": "Created"
+      }
+    },
+    "control_expires": {
+      "values": {
+        "ru": "Действует до",
+        "en": "Expires"
+      }
+    },
+    "control_expired": {
+      "values": {
+        "ru": "Срок завершён",
+        "en": "Expired"
+      }
+    },
+    "control_back_cases": {
+      "values": {
+        "ru": "К делам восстановления",
+        "en": "Back to recovery cases"
+      }
+    },
+    "control_cross_account": {
+      "values": {
+        "ru": "Обращение отправлено из другого аккаунта. Оно не подтверждает владение выбранным исходным аккаунтом.",
+        "en": "The ticket was sent from a different account. It does not prove ownership of the selected original account."
+      }
+    },
+    "control_owner_steps": {
+      "values": {
+        "ru": "Владелец должен войти в исходный аккаунт и подтвердить дело в приложении. Для записей он сам выбирает данные в корзине и даёт отдельное согласие.",
+        "en": "The owner must sign into the original account and confirm the case in the app. For records, the owner selects items in Trash and gives separate consent."
+      }
+    },
+    "control_owner_route": {
+      "values": {
+        "ru": "Путь для владельца в приложении",
+        "en": "Owner path in the app"
+      }
+    },
+    "control_send_original": {
+      "values": {
+        "ru": "Отправить письмо на исходную почту",
+        "en": "Send a reset email to the original address"
+      }
+    },
+    "control_reset_help": {
+      "values": {
+        "ru": "Письмо придёт только на сохранённую подтверждённую почту выбранного аккаунта. Сотрудник не получит пароль или код; MFA сохраняется.",
+        "en": "The email goes only to the selected account’s stored verified address. Staff receive no password or code; MFA stays enabled."
+      }
+    },
+    "control_send_mail": {
+      "values": {
+        "ru": "Отправить письмо",
+        "en": "Send email"
+      }
+    },
+    "control_mail_requested": {
+      "values": {
+        "ru": "Письмо запрошено. Продолжить восстановление может только владелец.",
+        "en": "Email requested. Only the owner can continue recovery."
+      }
+    },
+    "control_close_case": {
+      "values": {
+        "ru": "Завершить дело",
+        "en": "Close case"
+      }
+    },
+    "control_cancel_case": {
+      "values": {
+        "ru": "Отменить дело",
+        "en": "Cancel case"
+      }
+    },
+    "control_close_help": {
+      "values": {
+        "ru": "Изменится состояние дела. Разрешение на восстановление записей не создаётся.",
+        "en": "This changes the case status. It does not grant record restoration."
+      }
+    },
+    "control_case_confirm": {
+      "values": {
+        "ru": "Подтвердить действие",
+        "en": "Confirm action"
+      }
+    },
+    "control_owner_requests": {
+      "values": {
+        "ru": "Запросы с согласием владельца",
+        "en": "Requests with owner consent"
+      }
+    },
+    "control_no_owner_requests": {
+      "values": {
+        "ru": "Владелец ещё не отправил подходящий запрос на восстановление записей. Дождитесь его выбора и согласия в исходном аккаунте.",
+        "en": "The owner has not submitted a matching record recovery request yet. Wait for the owner to select records and consent from the original account."
+      }
+    },
+    "control_requests": {
+      "values": {
+        "ru": "Запросы восстановления записей",
+        "en": "Record recovery requests"
+      }
+    },
+    "control_requests_help": {
+      "values": {
+        "ru": "Сотрудник проверяет только метаданные и согласие. Восстановление завершает владелец в своём аккаунте.",
+        "en": "Staff review only metadata and consent. The owner completes restoration in their own account."
+      }
+    },
+    "control_request_id": {
+      "values": {
+        "ru": "ID запроса",
+        "en": "Request ID"
+      }
+    },
+    "control_workspace_id": {
+      "values": {
+        "ru": "ID пространства",
+        "en": "Workspace ID"
+      }
+    },
+    "control_record_id": {
+      "values": {
+        "ru": "ID записи",
+        "en": "Record ID"
+      }
+    },
+    "control_pending": {
+      "values": {
+        "ru": "Ожидает проверки",
+        "en": "Pending review"
+      }
+    },
+    "control_approved": {
+      "values": {
+        "ru": "Одобрено",
+        "en": "Approved"
+      }
+    },
+    "control_rejected": {
+      "values": {
+        "ru": "Отклонено",
+        "en": "Rejected"
+      }
+    },
+    "control_completed": {
+      "values": {
+        "ru": "Восстановлено",
+        "en": "Restored"
+      }
+    },
+    "control_all_requests": {
+      "values": {
+        "ru": "Все запросы",
+        "en": "All requests"
+      }
+    },
+    "control_no_requests": {
+      "values": {
+        "ru": "Запросов по этим условиям пока нет.",
+        "en": "No matching requests yet."
+      }
+    },
+    "control_review": {
+      "values": {
+        "ru": "Рассмотреть запрос",
+        "en": "Review request"
+      }
+    },
+    "control_approve": {
+      "values": {
+        "ru": "Одобрить запрос",
+        "en": "Approve request"
+      }
+    },
+    "control_approval_help": {
+      "values": {
+        "ru": "Согласие относится к выбранной версии записи. Сотрудник не видит содержимое; восстановление выполняет владелец.",
+        "en": "Consent applies to the selected record version. Staff cannot see its content; the owner restores it."
+      }
+    },
+    "control_approved_help": {
+      "values": {
+        "ru": "Запрос одобрен. Восстановление выполнит владелец аккаунта.",
+        "en": "Request approved. The account owner will restore the record."
+      }
+    },
+    "control_record": {
+      "values": {
+        "ru": "Запись",
+        "en": "Record"
+      }
+    },
+    "control_team": {
+      "values": {
+        "ru": "Команда Control",
+        "en": "Control team"
+      }
+    },
+    "control_team_help": {
+      "values": {
+        "ru": "Роли задают максимум прав. Дополнительные ограничения могут только убрать действия. MFA обязателен каждому сотруднику.",
+        "en": "Roles set the maximum permissions. Additional restrictions can only remove actions. Every staff member needs MFA."
+      }
+    },
+    "control_role": {
+      "values": {
+        "ru": "Роль",
+        "en": "Role"
+      }
+    },
+    "control_role_owner": {
+      "values": {
+        "ru": "Владелец",
+        "en": "Owner"
+      }
+    },
+    "control_role_admin": {
+      "values": {
+        "ru": "Администратор",
+        "en": "Administrator"
+      }
+    },
+    "control_role_support": {
+      "values": {
+        "ru": "Поддержка",
+        "en": "Support"
+      }
+    },
+    "control_role_moderator": {
+      "values": {
+        "ru": "Модератор",
+        "en": "Moderator"
+      }
+    },
+    "control_role_billing_manager": {
+      "values": {
+        "ru": "Управление доступом",
+        "en": "Access manager"
+      }
+    },
+    "control_role_auditor": {
+      "values": {
+        "ru": "Аудитор",
+        "en": "Auditor"
+      }
+    },
+    "control_role_owner_help": {
+      "values": {
+        "ru": "Управляет всей системой и назначением команды. Права владельца здесь не изменяются.",
+        "en": "Manages the system and the team. Owner permissions cannot be changed here."
+      }
+    },
+    "control_role_admin_help": {
+      "values": {
+        "ru": "Управляет операциями и сотрудниками ниже своего ранга, в пределах собственных прав.",
+        "en": "Manages operations and lower-ranked staff within their own permissions."
+      }
+    },
+    "control_role_support_help": {
+      "values": {
+        "ru": "Помогает со входом, обращениями и согласованным восстановлением записей.",
+        "en": "Helps with sign-in, support tickets, and consented record recovery."
+      }
+    },
+    "control_role_moderator_help": {
+      "values": {
+        "ru": "Разбирает обращения и применяет временные ограничения.",
+        "en": "Handles tickets and applies temporary restrictions."
+      }
+    },
+    "control_role_billing_manager_help": {
+      "values": {
+        "ru": "Проверяет аккаунты и управляет ручным доступом; платежи не создаёт.",
+        "en": "Reviews accounts and manages manual access grants; does not create payments."
+      }
+    },
+    "control_role_auditor_help": {
+      "values": {
+        "ru": "Просматривает показатели и журнал действий.",
+        "en": "Views metrics and the activity log."
+      }
+    },
+    "control_effective": {
+      "values": {
+        "ru": "Действующие права",
+        "en": "Effective permissions"
+      }
+    },
+    "control_role_matrix": {
+      "values": {
+        "ru": "Какие действия даёт роль",
+        "en": "Permissions provided by each role"
+      }
+    },
+    "control_allowed": {
+      "values": {
+        "ru": "Разрешено",
+        "en": "Allowed"
+      }
+    },
+    "control_denied": {
+      "values": {
+        "ru": "Ограничено",
+        "en": "Restricted"
+      }
+    },
+    "control_edit_rights": {
+      "values": {
+        "ru": "Изменить права",
+        "en": "Edit permissions"
+      }
+    },
+    "control_active": {
+      "values": {
+        "ru": "Доступ активен",
+        "en": "Access active"
+      }
+    },
+    "control_inactive": {
+      "values": {
+        "ru": "Доступ отозван",
+        "en": "Access revoked"
+      }
+    },
+    "control_edit_staff": {
+      "values": {
+        "ru": "Права сотрудника",
+        "en": "Staff permissions"
+      }
+    },
+    "control_restriction_help": {
+      "values": {
+        "ru": "Отметка разрешает действие в пределах роли. Снимите её, чтобы ограничить сотрудника. Передать права, которых нет у вас, нельзя.",
+        "en": "A checked action is allowed within the role. Uncheck it to restrict the staff member. You cannot delegate permissions you do not have."
+      }
+    },
+    "control_role_ceiling": {
+      "values": {
+        "ru": "Недоступно для выбранных ролей или ваших полномочий",
+        "en": "Unavailable for the selected roles or your authority"
+      }
+    },
+    "control_lower_only": {
+      "values": {
+        "ru": "Изменять можно только сотрудников ниже своего ранга. Свои права и владельца здесь изменить нельзя.",
+        "en": "Only lower-ranked staff can be edited. You cannot edit your own permissions or the owner here."
+      }
+    },
+    "control_save_sessions": {
+      "values": {
+        "ru": "Сохранить и отозвать сессии",
+        "en": "Save and revoke sessions"
+      }
+    },
+    "control_save_sessions_help": {
+      "values": {
+        "ru": "После сохранения сотруднику понадобится войти в Control снова. Причина сохранится в аудите.",
+        "en": "After saving, this staff member must sign into Control again. The reason is recorded in the audit log."
+      }
+    },
+    "control_invite": {
+      "values": {
+        "ru": "Пригласить сотрудника",
+        "en": "Invite a staff member"
+      }
+    },
+    "control_invite_email": {
+      "values": {
+        "ru": "Почта получателя",
+        "en": "Recipient email"
+      }
+    },
+    "control_create_invite": {
+      "values": {
+        "ru": "Создать приглашение",
+        "en": "Create invitation"
+      }
+    },
+    "control_invitation_created": {
+      "values": {
+        "ru": "Приглашение создано",
+        "en": "Invitation created"
+      }
+    },
+    "control_invite_help": {
+      "values": {
+        "ru": "Передайте одноразовый код только выбранному получателю по защищённому каналу. Он должен войти в свой подтверждённый аккаунт и настроить MFA. Срок — 24 часа.",
+        "en": "Share the one-use code only with the intended recipient through a secure channel. They must sign into their verified account and set up MFA. It expires in 24 hours."
+      }
+    },
+    "control_invitation": {
+      "values": {
+        "ru": "Одноразовое приглашение",
+        "en": "One-use invitation"
+      }
+    },
+    "control_back_team": {
+      "values": {
+        "ru": "К команде",
+        "en": "Back to team"
+      }
+    },
+    "control_perm_dashboard_read": {
+      "values": {
+        "ru": "Показатели сервиса",
+        "en": "Service metrics"
+      }
+    },
+    "control_perm_users_read": {
+      "values": {
+        "ru": "Аккаунты и устройства",
+        "en": "Accounts and devices"
+      }
+    },
+    "control_perm_users_moderate": {
+      "values": {
+        "ru": "Временные ограничения",
+        "en": "Temporary restrictions"
+      }
+    },
+    "control_perm_users_recover": {
+      "values": {
+        "ru": "Письма восстановления входа",
+        "en": "Sign-in recovery emails"
+      }
+    },
+    "control_perm_records_recover": {
+      "values": {
+        "ru": "Одобрение восстановления записей",
+        "en": "Approve record recovery"
+      }
+    },
+    "control_perm_applications_manage": {
+      "values": {
+        "ru": "Заявки на тестирование",
+        "en": "Testing applications"
+      }
+    },
+    "control_perm_staff_manage": {
+      "values": {
+        "ru": "Команда и приглашения",
+        "en": "Staff and invitations"
+      }
+    },
+    "control_perm_plans_grant": {
+      "values": {
+        "ru": "Ручная выдача доступа",
+        "en": "Manual access grants"
+      }
+    },
+    "control_perm_plans_catalog": {
+      "values": {
+        "ru": "Каталог тарифов",
+        "en": "Plan catalog"
+      }
+    },
+    "control_perm_support_read": {
+      "values": {
+        "ru": "Чтение обращений",
+        "en": "Read support tickets"
+      }
+    },
+    "control_perm_support_reply": {
+      "values": {
+        "ru": "Ответы на обращения",
+        "en": "Reply to support tickets"
+      }
+    },
+    "control_perm_audit_read": {
+      "values": {
+        "ru": "Журнал аудита",
+        "en": "Audit log"
+      }
+    },
+    "control_perm_flags_manage": {
+      "values": {
+        "ru": "Настройки веб-интерфейса",
+        "en": "Web interface settings"
+      }
+    },
+    "control_perm_announcements_manage": {
+      "values": {
+        "ru": "Сообщения в приложении",
+        "en": "In-app announcements"
+      }
+    },
+    "control_perm_referrals_read": {
+      "values": {
+        "ru": "Результаты приглашений",
+        "en": "Referral results"
+      }
+    },
+    "control_settings": {
+      "values": {
+        "ru": "Настройки веб-интерфейса",
+        "en": "Web interface settings"
+      }
+    },
+    "control_settings_help": {
+      "values": {
+        "ru": "Изменения относятся к веб-приложению. Сначала проверьте предложенные значения, затем сохраните.",
+        "en": "Changes apply to the web app. Review the proposed values before saving."
+      }
+    },
+    "control_compact_onboarding": {
+      "values": {
+        "ru": "Короткое знакомство",
+        "en": "Short getting started"
+      }
+    },
+    "control_compact_onboarding_help": {
+      "values": {
+        "ru": "Сокращает экран знакомства, когда у аккаунта ещё нет пространства.",
+        "en": "Shortens the getting-started screen for accounts without a workspace."
+      }
+    },
+    "control_chart_styles": {
+      "values": {
+        "ru": "Выбор вида диаграмм",
+        "en": "Chart style selection"
+      }
+    },
+    "control_chart_styles_help": {
+      "values": {
+        "ru": "Добавляет выбор вида диаграмм в финансах. При выключении используется стандартный вид.",
+        "en": "Adds chart style selection in Finance. When disabled, the standard style is used."
+      }
+    },
+    "control_support_entry": {
+      "values": {
+        "ru": "Быстрый доступ к поддержке",
+        "en": "Quick support access"
+      }
+    },
+    "control_support_entry_help": {
+      "values": {
+        "ru": "Добавляет кнопку поддержки в верхнюю панель. Обычный вход через профиль сохраняется.",
+        "en": "Adds a support shortcut to the header. The regular Profile route remains available."
+      }
+    },
+    "control_enabled": {
+      "values": {
+        "ru": "Включить изменение",
+        "en": "Enable the change"
+      }
+    },
+    "control_rollout": {
+      "values": {
+        "ru": "Охват: 0–100%",
+        "en": "Reach: 0–100%"
+      }
+    },
+    "control_rollout_help": {
+      "values": {
+        "ru": "Процент выбирает постоянную группу аккаунтов. 0% — никто; 100% — все. При выключении изменение не получает никто.",
+        "en": "The percentage selects a stable group of accounts. 0% means nobody; 100% means everyone. When disabled, nobody receives the change."
+      }
+    },
+    "control_advanced": {
+      "values": {
+        "ru": "Охват и причина изменения",
+        "en": "Reach and reason"
+      }
+    },
+    "control_nobody": {
+      "values": {
+        "ru": "Изменение не получает никто",
+        "en": "Nobody receives the change"
+      }
+    },
+    "control_reach": {
+      "values": {
+        "ru": "Изменение получает {count}% аккаунтов",
+        "en": "{count}% of accounts receive the change"
+      }
+    },
+    "control_configure": {
+      "values": {
+        "ru": "Настроить",
+        "en": "Configure"
+      }
+    },
+    "control_preview": {
+      "values": {
+        "ru": "Проверить изменение",
+        "en": "Review change"
+      }
+    },
+    "control_check_change": {
+      "values": {
+        "ru": "Проверьте изменение",
+        "en": "Review the change"
+      }
+    },
+    "control_before": {
+      "values": {
+        "ru": "Сейчас",
+        "en": "Current"
+      }
+    },
+    "control_after": {
+      "values": {
+        "ru": "После сохранения",
+        "en": "After saving"
+      }
+    },
+    "control_commit": {
+      "values": {
+        "ru": "Подтвердить применение",
+        "en": "Apply change"
+      }
+    },
+    "control_proposal_help": {
+      "values": {
+        "ru": "Предложение действует 10 минут. Изменение сохранится только после подтверждения.",
+        "en": "The proposal expires in 10 minutes. The change is saved only after confirmation."
+      }
+    },
+    "control_back_edit": {
+      "values": {
+        "ru": "Вернуться к редактированию",
+        "en": "Back to editing"
+      }
+    },
+    "control_newcomers": {
+      "values": {
+        "ru": "Новые пользователи после регистрации",
+        "en": "New users after registration"
+      }
+    },
+    "control_newcomers_help": {
+      "values": {
+        "ru": "Будущие подтверждённые аккаунты: приветствие при первом подходящем входе в приложение. ID выбирать не нужно. Одно приветствие на аккаунт.",
+        "en": "Future verified accounts receive a welcome at their first eligible signed-in app open. No account IDs are needed. One welcome per account."
+      }
+    },
+    "control_future_users": {
+      "values": {
+        "ru": "Будущие пользователи. Сейчас 0 получателей — это ожидаемо; новые аккаунты подключатся после публикации.",
+        "en": "Future users. 0 recipients now is expected; new accounts become eligible after publication."
+      }
+    },
+    "control_no_expiry": {
+      "values": {
+        "ru": "Без даты завершения",
+        "en": "No end date"
+      }
+    },
+    "control_no_expiry_help": {
+      "values": {
+        "ru": "Для новых пользователей сообщение действует до остановки показа. Время начала можно запланировать.",
+        "en": "For new users, the message stays active until stopped. You can schedule its start time."
+      }
+    },
+    "control_snapshot_help": {
+      "values": {
+        "ru": "Для существующих аккаунтов получатели определяются при публикации. Будущие регистрации в эту аудиторию не входят.",
+        "en": "For existing accounts, recipients are fixed at publication. Future registrations are excluded."
+      }
+    },
+    "control_stale": {
+      "values": {
+        "ru": "Данные изменились. Вернитесь к списку и откройте актуальную версию перед повтором.",
+        "en": "The data changed. Return to the list and open the latest version before trying again."
+      }
+    },
+    "control_not_configured": {
+      "values": {
+        "ru": "Изменение ещё не настроено",
+        "en": "This change is not configured yet"
+      }
+    },
+    "web_feedback_shared_personal": {
+      "values": {
+        "ru": "В этом пространстве",
+        "en": "In this workspace"
+      }
+    },
+    "web_feedback_identity_name": {
+      "values": {
+        "ru": "Имя в аккаунте (необязательно)",
+        "en": "Display name (optional)"
+      }
+    },
+    "web_feedback_identity_hint": {
+      "values": {
+        "ru": "Имя видно поддержке. Пустое поле удалит имя; профили пространства не изменятся.",
+        "en": "Visible to support. Leave empty to remove; workspace profiles keep their names."
+      }
+    },
+    "web_feedback_identity_invalid": {
+      "values": {
+        "ru": "Используйте не более 120 символов.",
+        "en": "Use at most 120 characters."
+      }
+    },
+    "web_feedback_identity_error": {
+      "values": {
+        "ru": "Не удалось загрузить имя. Повторите попытку.",
+        "en": "Could not load your display name. Retry."
+      }
+    },
+    "web_feedback_case_title": {
+      "values": {
+        "ru": "Помощь с аккаунтом",
+        "en": "Account assistance"
+      }
+    },
+    "web_feedback_case_intro": {
+      "values": {
+        "ru": "Подтвердите, что это ваш исходный аккаунт. Содержимое записей остаётся личным.",
+        "en": "Confirm that this is your original account. Record contents stay private."
+      }
+    },
+    "web_feedback_case_waiting": {
+      "values": {
+        "ru": "Ожидает вашего подтверждения",
+        "en": "Awaiting your confirmation"
+      }
+    },
+    "web_feedback_case_confirmed": {
+      "values": {
+        "ru": "Исходный аккаунт подтверждён.",
+        "en": "Original account confirmed."
+      }
+    },
+    "web_feedback_case_closed": {
+      "values": {
+        "ru": "Обращение закрыто",
+        "en": "Case closed"
+      }
+    },
+    "web_feedback_case_cancelled": {
+      "values": {
+        "ru": "Обращение отменено",
+        "en": "Case cancelled"
+      }
+    },
+    "web_feedback_case_consent": {
+      "values": {
+        "ru": "Подтверждение не разрешает поддержке читать или восстанавливать записи. Выберите запись в корзине и отправьте отдельный запрос на её возврат.",
+        "en": "This confirmation does not allow staff to read or restore records. In Trash, choose a record and send its separate recovery request."
+      }
+    },
+    "web_feedback_case_access": {
+      "values": {
+        "ru": "Вы вошли в исходный аккаунт. Поддержка может отправить письмо для сброса пароля на его подтверждённую почту. Второй фактор остаётся включён.",
+        "en": "You are signed in to the original account. Support can send password reset mail to its verified address. MFA stays enabled."
+      }
+    },
+    "web_feedback_case_confirm": {
+      "values": {
+        "ru": "Подтвердить мой исходный аккаунт",
+        "en": "Confirm my original account"
+      }
+    },
+    "web_feedback_case_choose": {
+      "values": {
+        "ru": "Выбрать удалённую запись",
+        "en": "Choose a deleted record"
+      }
+    },
+    "web_feedback_cases": {
+      "values": {
+        "ru": "Обращения за помощью",
+        "en": "Assistance cases"
+      }
+    },
+    "web_feedback_cases_empty": {
+      "values": {
+        "ru": "Обращений за помощью пока нет.",
+        "en": "No assistance cases."
+      }
+    },
+    "web_feedback_case_unavailable": {
+      "values": {
+        "ru": "Это обращение недоступно для этого аккаунта.",
+        "en": "This case is unavailable for this account."
+      }
     }
   },
   "groups": {
@@ -11863,7 +13069,208 @@
     "editor_unsaved",
     "editor_keep",
     "editor_discard",
-    "editor_reset"
+    "editor_reset",
+    "pwa_install_title",
+    "pwa_install_button",
+    "pwa_install_open",
+    "pwa_install_ready",
+    "pwa_install_manual",
+    "pwa_install_prompting",
+    "pwa_install_accepted",
+    "pwa_install_dismissed",
+    "pwa_install_error",
+    "pwa_install_installed",
+    "pwa_install_guide",
+    "pwa_install_ios",
+    "pwa_install_ios_chrome",
+    "pwa_install_safari_fallback",
+    "pwa_install_android",
+    "pwa_install_mac",
+    "pwa_install_desktop",
+    "pwa_install_unavailable",
+    "control_users",
+    "control_directory_help",
+    "control_search",
+    "control_find",
+    "control_loading",
+    "control_retry",
+    "control_empty_users",
+    "control_name_missing",
+    "control_optional_name",
+    "control_verified",
+    "control_unverified",
+    "control_restricted",
+    "control_joined",
+    "control_seen",
+    "control_unknown",
+    "control_devices",
+    "control_account_id",
+    "control_open_account",
+    "control_next",
+    "control_previous",
+    "control_back_users",
+    "control_page_count",
+    "control_cases",
+    "control_cases_help",
+    "control_create_case",
+    "control_create",
+    "control_manual",
+    "control_from_ticket",
+    "control_source",
+    "control_source_author",
+    "control_original_account",
+    "control_choose_original",
+    "control_choose_account",
+    "control_change_account",
+    "control_selected_account",
+    "control_kind",
+    "control_access",
+    "control_records",
+    "control_reason",
+    "control_cancel",
+    "control_save",
+    "control_saving",
+    "control_all_states",
+    "control_state",
+    "control_waiting_owner",
+    "control_confirmed",
+    "control_closed",
+    "control_cancelled",
+    "control_empty_cases",
+    "control_open_case",
+    "control_case_title",
+    "control_case_id",
+    "control_created",
+    "control_expires",
+    "control_expired",
+    "control_back_cases",
+    "control_cross_account",
+    "control_owner_steps",
+    "control_owner_route",
+    "control_send_original",
+    "control_reset_help",
+    "control_send_mail",
+    "control_mail_requested",
+    "control_close_case",
+    "control_cancel_case",
+    "control_close_help",
+    "control_case_confirm",
+    "control_owner_requests",
+    "control_no_owner_requests",
+    "control_requests",
+    "control_requests_help",
+    "control_request_id",
+    "control_workspace_id",
+    "control_record_id",
+    "control_pending",
+    "control_approved",
+    "control_rejected",
+    "control_completed",
+    "control_all_requests",
+    "control_no_requests",
+    "control_review",
+    "control_approve",
+    "control_approval_help",
+    "control_approved_help",
+    "control_record",
+    "control_team",
+    "control_team_help",
+    "control_role",
+    "control_role_owner",
+    "control_role_admin",
+    "control_role_support",
+    "control_role_moderator",
+    "control_role_billing_manager",
+    "control_role_auditor",
+    "control_role_owner_help",
+    "control_role_admin_help",
+    "control_role_support_help",
+    "control_role_moderator_help",
+    "control_role_billing_manager_help",
+    "control_role_auditor_help",
+    "control_effective",
+    "control_role_matrix",
+    "control_allowed",
+    "control_denied",
+    "control_edit_rights",
+    "control_active",
+    "control_inactive",
+    "control_edit_staff",
+    "control_restriction_help",
+    "control_role_ceiling",
+    "control_lower_only",
+    "control_save_sessions",
+    "control_save_sessions_help",
+    "control_invite",
+    "control_invite_email",
+    "control_create_invite",
+    "control_invitation_created",
+    "control_invite_help",
+    "control_invitation",
+    "control_back_team",
+    "control_perm_dashboard_read",
+    "control_perm_users_read",
+    "control_perm_users_moderate",
+    "control_perm_users_recover",
+    "control_perm_records_recover",
+    "control_perm_applications_manage",
+    "control_perm_staff_manage",
+    "control_perm_plans_grant",
+    "control_perm_plans_catalog",
+    "control_perm_support_read",
+    "control_perm_support_reply",
+    "control_perm_audit_read",
+    "control_perm_flags_manage",
+    "control_perm_announcements_manage",
+    "control_perm_referrals_read",
+    "control_settings",
+    "control_settings_help",
+    "control_compact_onboarding",
+    "control_compact_onboarding_help",
+    "control_chart_styles",
+    "control_chart_styles_help",
+    "control_support_entry",
+    "control_support_entry_help",
+    "control_enabled",
+    "control_rollout",
+    "control_rollout_help",
+    "control_advanced",
+    "control_nobody",
+    "control_reach",
+    "control_configure",
+    "control_preview",
+    "control_check_change",
+    "control_before",
+    "control_after",
+    "control_commit",
+    "control_proposal_help",
+    "control_back_edit",
+    "control_newcomers",
+    "control_newcomers_help",
+    "control_future_users",
+    "control_no_expiry",
+    "control_no_expiry_help",
+    "control_snapshot_help",
+    "control_stale",
+    "control_not_configured",
+    "web_feedback_shared_personal",
+    "web_feedback_identity_name",
+    "web_feedback_identity_hint",
+    "web_feedback_identity_invalid",
+    "web_feedback_identity_error",
+    "web_feedback_case_title",
+    "web_feedback_case_intro",
+    "web_feedback_case_waiting",
+    "web_feedback_case_confirmed",
+    "web_feedback_case_closed",
+    "web_feedback_case_cancelled",
+    "web_feedback_case_consent",
+    "web_feedback_case_access",
+    "web_feedback_case_confirm",
+    "web_feedback_case_choose",
+    "web_feedback_cases",
+    "web_feedback_cases_empty",
+    "web_feedback_case_unavailable"
   ],
   "occurrences": [
     {

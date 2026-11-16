@@ -61,10 +61,15 @@ class StaffPrincipal:
     id: str
     user_id: str
     roles: tuple
+    denied_permissions: tuple = ()
+
+    @property
+    def base_permissions(self):
+        return set().union(*(ROLE_PERMISSIONS[role] for role in self.roles))
 
     @property
     def permissions(self):
-        return set().union(*(ROLE_PERMISSIONS[role] for role in self.roles))
+        return self.base_permissions - set(self.denied_permissions)
 
     @property
     def rank(self):
@@ -145,7 +150,8 @@ class Control:
             db.execute('UPDATE staff SET last_counter=? WHERE id=?', (max(counters), row['id']))
             raw = secrets.token_urlsafe(32)
             db.execute('INSERT INTO control_sessions VALUES(?,?,?,?,?,?)', (token_hash(raw), row['id'], now, now, now + 8 * 3600, token_hash(text(agent, 500))))
-            actor = StaffPrincipal(row['id'], row['user_id'], tuple(json.loads(row['roles'])))
+            from .staff_permissions import principal
+            actor = principal(db, row)
             self.audit(db, actor, row['user_id'], 'staff.login', {}, {}, 'MFA session established')
         return {'token': raw, 'expires_in': 8 * 3600, 'idle_seconds': 900}
 
@@ -157,7 +163,8 @@ class Control:
             require(row is not None and row['active'] == 1 and row['expires_at'] > now and row['last_seen_at'] > now - 900 and hmac.compare_digest(row['agent_hash'], token_hash(agent)), 'staff_unauthorized', 401)
             self.backend._account_available(db, row['user_id'])
             db.execute('UPDATE control_sessions SET last_seen_at=? WHERE hash=?', (now, token_hash(token)))
-        return StaffPrincipal(row['id'], row['user_id'], tuple(json.loads(row['roles'])))
+            from .staff_permissions import principal
+            return principal(db, row)
 
     def logout(self, raw):
         with self.backend.transaction() as db:
@@ -179,23 +186,19 @@ class Control:
                 'api_latency_ms': None, 'sync_errors': None, 'backup_last_success': None,
                 'metrics_scope': 'current_runtime', 'payments_enabled': False}
 
-    def users(self, actor, query=''):
-        self.require(actor, 'users.read')
-        require(isinstance(query, str) and len(query) <= 254)
-        pattern = '%' + query.casefold().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
-        with self.backend.connect() as db:
-            rows = db.execute("SELECT u.id,u.email,u.verified,u.created_at,COALESCE(a.disabled_until,0) AS disabled_until,COALESCE(a.deleted_at,0) AS deleted_at FROM users u LEFT JOIN account_state a ON a.user_id=u.id WHERE (LOWER(u.email) LIKE ? ESCAPE '\\' OR u.id=?) ORDER BY u.created_at DESC,u.id LIMIT 50", (pattern, query)).fetchall()
-        return {'users': [dict(row) for row in rows], 'limit': 50}
+    def users(self, actor, query='', before=None, limit=50):
+        from .account_identity import directory
+        return directory(self.backend, actor, query, before, limit)
 
     def user(self, actor, uid):
         self.require(actor, 'users.read')
         identifier(uid)
         with self.backend.connect() as db:
-            row = db.execute('SELECT u.id,u.email,u.verified,u.created_at,COALESCE(a.disabled_until,0) AS disabled_until FROM users u LEFT JOIN account_state a ON a.user_id=u.id WHERE u.id=?', (uid,)).fetchone()
-            require(row is not None, 'not_found', 404)
+            from .account_identity import user_in
+            row = user_in(db, uid)
             devices = db.execute('SELECT id,label,created_at,last_seen_at,revoked_at FROM devices WHERE user_id=? ORDER BY created_at DESC LIMIT 30', (uid,)).fetchall()
             access = entitlements.resolve(db, uid, int(self.backend.clock()))
-        return {'user': dict(row), 'devices': [dict(device) for device in devices], 'entitlements': access}
+        return {'user': row, 'devices': [dict(device) for device in devices], 'entitlements': access}
 
     def _target_not_erased(self, db, uid):
         state=db.execute('SELECT deleted_at FROM account_state WHERE user_id=?',(uid,)).fetchone()
@@ -232,30 +235,33 @@ class Control:
 
     def request_recovery(self, actor, uid, reason):
         """Queue recipient-owned recovery; staff never receives or sets credentials."""
+        with self.backend.transaction() as db:
+            return self._request_recovery_in(db, actor, uid, reason)
+
+    def _request_recovery_in(self, db, actor, uid, reason):
         self.require(actor, 'users.recover')
         identifier(uid); reason = text(reason, 500)
         require(self.backend.deliver is not None, 'verification_delivery_unconfigured', 503)
         now = int(self.backend.clock())
-        with self.backend.transaction() as db:
-            row = db.execute('SELECT email,verified FROM users WHERE id=?', (uid,)).fetchone()
-            require(row is not None, 'not_found', 404)
-            require(row['verified'] == 1, 'verified_account_required', 409)
-            self.backend._account_available(db, uid)
-            self._target_rank(db, actor, uid)
-            key = 'recovery:' + token_hash(row['email'])
-            prior = db.execute('SELECT until_at FROM auth_limits WHERE key=?', (key,)).fetchone()
-            require(prior is None or prior['until_at'] <= now, 'rate_limited', 429)
-            staff_key = token_hash('staff-recovery-request:' + actor.id)
-            limit = db.execute('SELECT count,until_at FROM auth_limits WHERE key=?', (staff_key,)).fetchone()
-            require(limit is None or limit['until_at'] <= now or limit['count'] < 10, 'rate_limited', 429)
-            count = limit['count'] + 1 if limit and limit['until_at'] > now else 1
-            db.execute('INSERT INTO auth_limits VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (staff_key, count, now + 900))
-            db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (key, now + 60))
-            code = secrets.token_urlsafe(32)
-            db.execute('DELETE FROM password_recovery WHERE user_id=?', (uid,))
-            db.execute('INSERT INTO password_recovery VALUES(?,?,?)', (token_hash(code), uid, now + 900))
-            self.backend._deliver(db, row['email'], code, 'recovery')
-            self.audit(db, actor, uid, 'user.recovery.request', {}, {'recovery_requested': True}, reason)
+        row = db.execute('SELECT email,verified FROM users WHERE id=?', (uid,)).fetchone()
+        require(row is not None, 'not_found', 404)
+        require(row['verified'] == 1, 'verified_account_required', 409)
+        self.backend._account_available(db, uid)
+        self._target_rank(db, actor, uid)
+        key = 'recovery:' + token_hash(row['email'])
+        prior = db.execute('SELECT until_at FROM auth_limits WHERE key=?', (key,)).fetchone()
+        require(prior is None or prior['until_at'] <= now, 'rate_limited', 429)
+        staff_key = token_hash('staff-recovery-request:' + actor.id)
+        limit = db.execute('SELECT count,until_at FROM auth_limits WHERE key=?', (staff_key,)).fetchone()
+        require(limit is None or limit['until_at'] <= now or limit['count'] < 10, 'rate_limited', 429)
+        count = limit['count'] + 1 if limit and limit['until_at'] > now else 1
+        db.execute('INSERT INTO auth_limits VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (staff_key, count, now + 900))
+        db.execute('INSERT INTO auth_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at', (key, now + 60))
+        code = secrets.token_urlsafe(32)
+        db.execute('DELETE FROM password_recovery WHERE user_id=?', (uid,))
+        db.execute('INSERT INTO password_recovery VALUES(?,?,?)', (token_hash(code), uid, now + 900))
+        self.backend._deliver(db, row['email'], code, 'recovery')
+        self.audit(db, actor, uid, 'user.recovery.request', {}, {'recovery_requested': True}, reason)
         return {'recovery_requested': True}
 
     def give_access(self, actor, uid, tier, source, until, reason):
@@ -317,40 +323,16 @@ class Control:
         return {'events': events, 'next_before': rows[-1]['seq'] if rows else None}
 
     def staff_list(self, actor):
-        self.require(actor, 'staff.manage')
-        with self.backend.connect() as db:
-            rows = db.execute('SELECT s.id,s.user_id,u.email,s.roles,s.active,s.revision FROM staff s JOIN users u ON u.id=s.user_id ORDER BY s.created_at,s.id').fetchall()
-        return {'staff': [dict(row, roles=json.loads(row['roles'])) for row in rows]}
+        from .staff_permissions import StaffPermissions
+        return StaffPermissions(self).staff(actor)
 
-    def update_staff(self, actor, sid, roles, active, revision, reason):
-        self.require(actor, 'staff.manage')
-        identifier(sid)
-        require(isinstance(roles, list) and roles and len(roles) == len(set(roles)) and set(roles) <= set(ROLE_RANK) - {'owner'})
-        require(type(active) is bool and type(revision) is int)
-        with self.backend.transaction() as db:
-            row = db.execute('SELECT * FROM staff WHERE id=?', (sid,)).fetchone()
-            require(row is not None, 'not_found', 404)
-            self._target_rank(db, actor, row['user_id'])
-            require(max(ROLE_RANK[r] for r in roles) < actor.rank, 'staff_hierarchy', 403)
-            require(row['revision'] == revision, 'revision_conflict', 409)
-            old = {'roles': json.loads(row['roles']), 'active': bool(row['active'])}
-            db.execute('UPDATE staff SET roles=?,active=?,revision=revision+1 WHERE id=?', (canonical(roles), int(active), sid))
-            db.execute('DELETE FROM control_sessions WHERE staff_id=?', (sid,))
-            self.audit(db, actor, row['user_id'], 'staff.update', old, {'roles': roles, 'active': active}, reason)
-        return {'revision': revision + 1}
+    def update_staff(self, actor, sid, roles, active, revision, reason, denied_permissions=None):
+        from .staff_permissions import StaffPermissions
+        return StaffPermissions(self).update(actor, sid, roles, active, revision, reason, denied_permissions)
 
-    def invite_staff(self, actor, email, roles, reason):
-        self.require(actor, 'staff.manage')
-        email = text(email, 254).casefold()
-        require(re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email))
-        require(isinstance(roles, list) and roles and all(isinstance(r, str) for r in roles) and len(roles) == len(set(roles)) and set(roles) <= set(ROLE_RANK) - {'owner'})
-        require(max(ROLE_RANK[r] for r in roles) < actor.rank, 'staff_hierarchy', 403)
-        code, now = secrets.token_urlsafe(32), int(self.backend.clock())
-        with self.backend.transaction() as db:
-            db.execute('INSERT INTO staff_invitations VALUES(?,?,?,?,?,0)', (token_hash(code), email, canonical(roles), actor.id, now + 86400))
-            self.audit(db, actor, None, 'staff.invite', {}, {'roles': roles, 'expires_at': now + 86400}, reason)
-        # Shared explicitly by the issuing owner; never sent to an arbitrary recipient.
-        return {'invitation': code, 'expires_at': now + 86400}
+    def invite_staff(self, actor, email, roles, reason, denied_permissions=None):
+        from .staff_permissions import StaffPermissions
+        return StaffPermissions(self).invite(actor, email, roles, reason, denied_permissions)
 
     def prepare_enrollment(self, user, invitation, password):
         require(user['verified'] == 1, 'verify_email', 403)
@@ -382,11 +364,16 @@ class Control:
             issuer = db.execute('SELECT * FROM staff WHERE id=? AND active=1', (invite['issued_by'],)).fetchone()
             roles = json.loads(invite['roles'])
             require(issuer is not None, 'invitation_invalid', 403)
-            principal = StaffPrincipal(issuer['id'], issuer['user_id'], tuple(json.loads(issuer['roles'])))
+            self.backend._account_available(db, issuer['user_id'])
+            from .staff_permissions import principal as load_principal, validate
+            principal = load_principal(db, issuer)
             self.require(principal, 'staff.manage')
-            require(max(ROLE_RANK[r] for r in roles) < principal.rank, 'staff_hierarchy', 403)
+            denied = [r['permission'] for r in db.execute('SELECT permission FROM staff_invitation_restrictions WHERE invitation_hash=? ORDER BY permission', (value['invitation'],)).fetchall()]
+            validate(principal, roles, denied)
             require(not db.execute('SELECT 1 FROM staff WHERE user_id=?', (user['id'],)).fetchone(), 'staff_exists', 409)
             db.execute('INSERT INTO staff(id,user_id,roles,mfa_secret,last_counter,created_at) VALUES(?,?,?,?,?,?)', (sid, user['id'], canonical(roles), self._cipher().encrypt(value['secret'].encode()), counter, now))
+            for permission in denied:
+                db.execute('INSERT INTO staff_permission_restrictions VALUES(?,?)', (sid, permission))
             db.execute('UPDATE staff_invitations SET used_at=? WHERE hash=?', (now, value['invitation']))
             for item in recovery: db.execute('INSERT INTO staff_recovery VALUES(?,?,0)', (token_hash(item), sid))
             self.audit(db, principal, user['id'], 'staff.enroll', {}, {'staff_id': sid, 'roles': roles}, 'Recipient confirmed MFA enrollment')

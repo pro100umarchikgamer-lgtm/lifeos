@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "az",
   "nativeName": "Azərbaycan dili",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Ev və ödənişlər",
     "cloud_category_health": "Sağlamlıq",
     "cloud_category_leisure": "İstirahət",
-    "cloud_category_education": "Təhsil"
+    "cloud_category_education": "Təhsil",
+    "today_month_expenses": "Bu ayın xərcləri",
+    "today_no_month_expenses": "Bu ay üçün hələ xərc qeydə alınmayıb.",
+    "today_no_open_tasks": "Açıq tapşırıq yoxdur.",
+    "today_next_seven_days": "Növbəti 7 gün",
+    "today_no_upcoming_events": "Növbəti 7 gün üçün tədbir planlaşdırılmayıb."
   },
   "plurals": {
     "record_count": {

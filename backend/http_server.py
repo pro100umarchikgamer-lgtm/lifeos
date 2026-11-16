@@ -11,7 +11,7 @@ MAX_BODY=2*1024*1024
 
 def dispatch(backend,method,path,body,auth):
     split=urllib.parse.urlsplit(path);route=split.path
-    query=urllib.parse.parse_qs(split.query,keep_blank_values=route.startswith('/v1/referrals') or route=='/v1/task-reminders')
+    query=urllib.parse.parse_qs(split.query,keep_blank_values=route.startswith('/v1/referrals') or route=='/v1/task-reminders' or route.startswith('/v1/account/identity') or route.startswith('/v1/account/recovery'))
     if route=='/v1/auth/signup' and method=='POST':
         from .account_lifecycle import AccountLifecycle
         result=AccountLifecycle(backend).signup(body.get('email'),body.get('password'))
@@ -39,6 +39,35 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/account/features' and method=='GET':
             from .control import Control
             result={'flags':Control(backend).flags(actor['id'])}
+        elif route=='/v1/account/identity' and method in ('GET','POST'):
+            from .account_identity import AccountIdentity
+            if query:raise Failure('invalid_fields')
+            result=AccountIdentity(backend).identity(actor,body if method=='POST' else None)
+        elif route in ('/v1/account/recovery-cases','/v1/account/recovery-case','/v1/account/recovery-cases/confirm'):
+            from .recovery_cases import RecoveryCases
+            cases=RecoveryCases(backend)
+            if route=='/v1/account/recovery-cases' and method=='GET':result=cases.listing(actor,query)
+            elif route=='/v1/account/recovery-case' and method=='GET':
+                if set(query)!={'id'} or len(query['id'])!=1:raise Failure('invalid_fields')
+                result=cases.read(actor,query['id'][0])
+            elif route=='/v1/account/recovery-cases/confirm' and method=='POST':
+                if query:raise Failure('invalid_fields')
+                result=cases.confirm(actor,body)
+            else:raise Failure('not_found',404)
+        elif route=='/v1/account/trash' and method=='GET':
+            from .record_recovery import RecordRecovery
+            if not set(query)<={'workspace','before','record'} or any(len(v)!=1 for v in query.values()):raise Failure('invalid_fields')
+            result=RecordRecovery(backend).trash(actor,query.get('workspace',[''])[0],query.get('before',[None])[0],query.get('record',[None])[0])
+        elif route.startswith('/v1/account/recovery/'):
+            from .record_recovery import RecordRecovery
+            recovery=RecordRecovery(backend);action=route.rsplit('/',1)[-1]
+            if action=='requests' and method=='GET':
+                if not set(query)<={'before'} or any(len(v)!=1 for v in query.values()):raise Failure('invalid_fields')
+                result=recovery.requests(actor,query.get('before',[None])[0])
+            else:
+                handlers={'request':recovery.request,'prepare':recovery.prepare,'commit':recovery.commit,'cancel':recovery.cancel}
+                if query or method!='POST' or action not in handlers:raise Failure('not_found',404)
+                result=handlers[action](body=body,actor=actor)
         elif route.startswith('/v1/referrals'):
             from .referrals import Referrals
             referrals=Referrals(backend)

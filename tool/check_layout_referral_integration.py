@@ -56,7 +56,7 @@ def main():
         toggle.click();page.locator('.account-balance').last.get_by_role('button',name='Поднять',exact=False).press('Enter')
         expect(page.locator('.layout-order-status')).to_contain_text('Порядок сохранён.')
         saved=layouts.get(actor,wid,'account')['order'];assert saved==[original[0],original[2],original[1]]
-        page.reload();expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+        page.reload();expect(page.locator('main.finance-page')).to_have_attribute('data-finance-view','accounts')
         open_tab(page,'Финансы');open_finance_section(page,'accounts');expect(page.locator('.layout-order-toggle')).to_be_visible()
         assert page.locator('.account-balance').evaluate_all('nodes=>nodes.map(n=>n.dataset.account)')==saved
         page.set_viewport_size({'width':390,'height':844})

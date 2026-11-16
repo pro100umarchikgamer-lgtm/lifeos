@@ -773,20 +773,18 @@ class _FamilyPageState extends State<FamilyPage> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
-                  SettingsGroup(children: [
-                    button(
-                      'account_manage',
-                      () => Navigator.of(context).push<void>(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AccountCenter(controller: c, pack: widget.pack),
-                        ),
+                  button(
+                    'account_manage',
+                    () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AccountCenter(controller: c, pack: widget.pack),
                       ),
-                      icon: Icons.manage_accounts_outlined,
                     ),
-                    button('family_logout', signOutPage, icon: Icons.logout),
-                    button('family_password_change', changePassword),
-                  ]),
+                    icon: Icons.manage_accounts_outlined,
+                  ),
+                  button('family_logout', signOutPage, icon: Icons.logout),
+                  button('family_password_change', changePassword),
                   if (!c.verified) ...[
                     Text(t('family_verify_hint')),
                     TextField(
@@ -852,29 +850,44 @@ class _FamilyPageState extends State<FamilyPage> {
                       }
                     }),
                     for (final space in c.spaces)
-                      ListTile(
-                        title: Text(space['name'] as String),
-                        subtitle: Text(t(space['kind'] == 'personal'
-                            ? 'workspace_account_personal'
-                            : 'family_${space['role']}')),
-                        leading: Icon(space['kind'] == 'personal'
-                            ? Icons.person_outline
-                            : Icons.people_outline),
-                        selected: c.workspace == space['id'],
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: c.busy
-                            ? null
-                            : () async {
-                                final selected = widget.onWorkspaceSelected;
-                                if (selected == null) {
-                                  await c.select(space['id'] as String);
-                                } else if (await selected(
-                                        space['id'] as String) &&
-                                    context.mounted) {
-                                  Navigator.pop(context);
-                                }
-                              },
-                      ),
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: SettingsGroup(children: [
+                            ListTile(
+                              key: ValueKey('managed_space_${space['id']}'),
+                              title: Text(space['name'] as String),
+                              subtitle: Text(t(space['kind'] == 'personal'
+                                  ? 'workspace_account_personal'
+                                  : 'family_${space['role']}')),
+                              leading: Icon(space['kind'] == 'personal'
+                                  ? Icons.person_outline
+                                  : Icons.people_outline),
+                              selected: c.workspace == space['id'],
+                              trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (c.workspace == space['id'])
+                                      Icon(Icons.check_circle_rounded,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary),
+                                    const Icon(Icons.chevron_right),
+                                  ]),
+                              onTap: c.busy
+                                  ? null
+                                  : () async {
+                                      final selected =
+                                          widget.onWorkspaceSelected;
+                                      if (selected == null) {
+                                        await c.select(space['id'] as String);
+                                      } else if (await selected(
+                                              space['id'] as String) &&
+                                          context.mounted) {
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                            )
+                          ])),
                     if (c.workspace != null) ...[
                       for (final raw in c.roster?['invitations'] as List? ?? [])
                         ListTile(
@@ -977,9 +990,6 @@ class _FamilyPageState extends State<FamilyPage> {
                               : null,
                         ),
                       ],
-                      if (c.roster != null)
-                        button('family_record_add', () => edit(),
-                            icon: Icons.add),
                       for (final issue in c.issues)
                         LifeCard(
                           child: Column(
@@ -1028,25 +1038,6 @@ class _FamilyPageState extends State<FamilyPage> {
                                 .toString(),
                             maxLines: 2,
                           ),
-                        ),
-                      for (final record in c.records)
-                        ListTile(
-                          leading: Icon(
-                            record['visibility'] == 'private'
-                                ? Icons.lock_outline
-                                : Icons.people_outline,
-                          ),
-                          title: Text(
-                            (record['data']['title'] ??
-                                    record['data']['name'] ??
-                                    record['data']['label'] ??
-                                    record['data']['body'] ??
-                                    t('family_kind_${record['kind']}'))
-                                .toString(),
-                            maxLines: 3,
-                          ),
-                          subtitle: Text(t('family_kind_${record['kind']}')),
-                          onTap: c.busy ? null : () => edit(record),
                         ),
                       if (cloudSpaceKind(c) == 'family' &&
                           c.roster?['space']?['creator_id'] ==

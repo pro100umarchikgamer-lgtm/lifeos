@@ -7,7 +7,7 @@ from pathlib import Path
 import json, os, sys, tempfile, threading, uuid
 from wsgiref.simple_server import make_server
 from cryptography.fernet import Fernet
-from tool.web_browser_navigation import open_tab, open_settings, open_finance_section
+from tool.web_browser_navigation import open_tab, open_settings, open_finance_section, choose_field
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.production import Application
@@ -135,7 +135,7 @@ def main():
             page.get_by_label('Поиск задач',exact=True).fill('заказ')
             expect(page.get_by_text('Забрать заказ',exact=True)).to_be_visible()
             expect(page.get_by_text('Подготовить план на неделю',exact=True)).to_have_count(0)
-            page.get_by_label('Статус задачи',exact=True).select_option('open')
+            choose_field(page.get_by_label('Статус задачи',exact=True), 'open')
             expect(page.get_by_text('Забрать заказ',exact=True)).to_have_count(0);checks.append('task_search_and_completion_filter')
             page.locator('.nav').get_by_role('button',name='Календарь',exact=True).click()
             page.get_by_role('button',name='Новое событие',exact=True).click()

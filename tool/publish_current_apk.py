@@ -16,10 +16,12 @@ import xml.etree.ElementTree as ET
 
 from tool.native_release_mode import BRANCH, REPOSITORY
 from tool import publish_retained_apk as retained
+from tool import check_release_upgrade as upgrade
 
 REPOSITORY_ID = 1413453356
 CERTIFICATE = '5fa37e4abf1ec90d5787bd0d7dc4cf0b3f49022172f9d25e91f4d8a76702a96e'
-MINIMUM_VERSION = 312001
+MINIMUM_VERSION = 355001
+ACCEPTED_VERSION = 312001
 ACCEPTED_APK_SHA256 = '66d123cef79f85b7b2665bdcad0e6309db4a694e9a5076ed871450154c762872'
 REQUIRED_JOBS = ('release_mode', 'production_backend / postgres', 'checks')
 SIGNED_STEPS = (
@@ -169,21 +171,29 @@ def verify_accepted_upgrade(raw, declaration):
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         proof = json.loads(retained.read_member(archive, 'upgrade-result.json'))
         expected = {
-            'acceptedBaselineVersionCode': MINIMUM_VERSION,
+            'acceptedBaselineVersionCode': ACCEPTED_VERSION,
             'acceptedBaselineApkSha256': ACCEPTED_APK_SHA256,
             'directUpgradeFromVersionCode': MINIMUM_VERSION,
-            'upgradeVersionChain': [134001, 303001, MINIMUM_VERSION, declaration['version_code']],
+            'upgradeVersionChain': [134001, 303001, ACCEPTED_VERSION, MINIMUM_VERSION, declaration['version_code']],
+            'distributedBaselineVersionCode': upgrade.DISTRIBUTED_VERSION,
+            'distributedBaselineApkSha256': upgrade.DISTRIBUTED_SHA256,
+            'distributedBaselineSource': upgrade.DISTRIBUTED_SOURCE,
+            'distributedBaselineRunId': upgrade.DISTRIBUTED_RUN_ID,
+            'distributedBaselineBuildArtifactId': upgrade.DISTRIBUTED_ARTIFACT_ID,
+            'distributedBaselineBuildArtifactSha256': upgrade.DISTRIBUTED_ARTIFACT_SHA256,
         }
         require(all(proof.get(key) == value for key, value in expected.items()),
-                'Accepted312 direct-upgrade evidence mismatch')
+                'Retained312/distributed355 upgrade evidence mismatch')
         for key in ('acceptedBaselineTaskAndFinancialDataRetained', 'acceptedBaselineCreatedTaskRetainedAfterRestart'):
             require(proof.get(key) is True, 'Accepted312 data retention not proven')
         package = retained.read_member(archive, 'accepted-312001-package.txt').decode()
         require(re.search(r'\bversionCode=312001\b', package) is not None and 'app.lifeos.lifeos' in package,
                 'Accepted312 installed package missing')
-        install = retained.read_member(archive, 'direct-312001-to-candidate-install.txt').strip().splitlines()
-        require(bool(install) and install[-1].strip() == b'Success' and not any(b'Failure' in line for line in install),
-                'Accepted312 direct install did not succeed')
+        for name in ('accepted-312001-to-distributed-355001-install.txt',
+                     'direct-355001-to-candidate-install.txt'):
+            install = retained.read_member(archive, name).strip().splitlines()
+            require(bool(install) and install[-1].strip() == b'Success' and not any(b'Failure' in line for line in install),
+                    'Distributed355 install did not succeed: '+name)
         for stage in ('accepted-312001-control-task', 'accepted-312001-finances',
                       'accepted-312001-created-task', 'upgraded-312001-created-task'):
             require(retained.read_member(archive, stage+'.png').startswith(b'\x89PNG\r\n\x1a\n'),
@@ -191,6 +201,42 @@ def verify_accepted_upgrade(raw, declaration):
             tree = ET.fromstring(retained.read_member(archive, stage+'.xml'))
             require(tree.tag == 'hierarchy' and tree.find('.//node') is not None,
                     'Accepted312 UI hierarchy missing')
+        for key in ('distributedBaselineTaskAndFinancialDataRetained',
+                    'distributedBaselineCreatedTaskRetainedAfterRestart',
+                    'distributedBaselineIdentityRetainedAfterUpgrade'):
+            require(proof.get(key) is True, 'Distributed355 data/identity retention not proven')
+        identities=[]
+        for prefix,name,version in (
+                ('distributedBaseline','distributed-355001-package.txt',MINIMUM_VERSION),
+                ('distributedCandidate','distributed-upgrade-package.txt',declaration['version_code'])):
+            package=retained.read_member(archive,name).decode()
+            require(re.search(r'\bversionCode='+str(version)+r'\b',package) is not None
+                    and 'app.lifeos.lifeos' in package,'Distributed355 installed package missing')
+            owner=proof.get(prefix+'PackageUid')
+            require(isinstance(owner,str) and re.fullmatch(r'[1-9][0-9]*',owner),
+                    'Distributed355 UID missing')
+            try:identity=upgrade.package_identity(package,owner)
+            except AssertionError as error:raise ValueError('Distributed355 package identity invalid') from error
+            require(all(proof.get(prefix+key)==value for key,value in identity.items()),
+                    'Distributed355 package identity does not match raw evidence')
+            require(re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',identity['FirstInstallTime']),
+                    'Distributed355 first-install timestamp invalid')
+            identities.append(identity)
+        require(identities[0]==identities[1],'Distributed355 UID/data directory/first install changed')
+        for stage in ('distributed-355001-control-task','distributed-355001-finances',
+                      'distributed-355001-created-task','upgraded-355001-created-task'):
+            require(retained.read_member(archive,stage+'.png').startswith(b'\x89PNG\r\n\x1a\n'),
+                    'Distributed355 screenshot missing')
+            tree=ET.fromstring(retained.read_member(archive,stage+'.xml'))
+            require(tree.tag=='hierarchy' and tree.find('.//node') is not None,
+                    'Distributed355 UI hierarchy missing')
+            if stage.endswith('created-task'):
+                labels=[line.strip() for node in tree.iter('node')
+                        for key in ('text','content-desc') for line in node.get(key,'').splitlines()]
+                require(upgrade.DISTRIBUTED_PROBE in labels,'Distributed355-created task not visible')
+            if stage.endswith('finances'):
+                try:upgrade.verify_financial_summary(tree)
+                except AssertionError as error:raise ValueError('Distributed355 finances not retained') from error
 
 
 def publish_current(api, pin):

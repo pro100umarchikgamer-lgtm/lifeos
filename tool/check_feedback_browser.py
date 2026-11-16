@@ -76,7 +76,7 @@ def main():
         checks.append('task editor explains entry, shows current privacy, aligns status, and has a plain Cancel action')
         page.set_viewport_size({'width': 390, 'height': 844})
         page.reload()
-        expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
+        expect(page.get_by_role('heading', name='Задачи', exact=True, level=1)).to_be_visible()
         open_tab(page, 'Календарь')
         expect(page.locator('.calendar-layout')).to_have_attribute('data-mode', 'month')
         today_button = page.locator('.calendar-today')

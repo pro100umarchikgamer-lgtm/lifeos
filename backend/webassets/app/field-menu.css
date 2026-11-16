@@ -1,0 +1,15 @@
+/* Shared by the customer app and staff forms. Native carriers retain form semantics. */
+.field-menu{position:relative;min-width:0;width:100%;color:var(--ux-ink,var(--ink));}
+.field-menu>.field-menu-carrier{position:absolute!important;display:block!important;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;pointer-events:none;}
+.field-menu>.field-menu-trigger{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;min-width:0;min-height:46px;padding:11px 13px;text-align:start;font:inherit;font-weight:500;line-height:1.5;white-space:normal;border:1px solid var(--ux-border,var(--line));border-radius:11px;background:var(--appearance-input-color,var(--ux-surface,var(--card)));color:inherit;}
+.field-menu-trigger::after{content:'';width:7px;height:7px;flex:none;border-inline-end:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:-4px 3px 0 8px;opacity:.65;}
+.field-menu-trigger[aria-expanded=true]::after{transform:rotate(225deg);margin-top:4px;}
+.field-menu-trigger:focus-visible,.field-menu-list:focus-visible{outline:3px solid var(--ux-green,var(--accent));outline-offset:3px;}
+.field-menu-list,.field-menu-list[popover]{box-sizing:border-box;position:fixed;inset:auto;z-index:1200;margin:0;padding:5px;border:1px solid var(--ux-border,var(--line));border-radius:12px;max-width:calc(100vw - 24px);max-height:280px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;box-shadow:0 10px 32px #0003;background:var(--ux-surface,var(--card));color:var(--ux-ink,var(--ink));font:inherit;text-align:start;}
+.field-menu-list[hidden]{display:none!important;}
+.field-menu-option{box-sizing:border-box;display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 12px;border-radius:8px;cursor:pointer;line-height:1.5;overflow-wrap:anywhere;}
+.field-menu-option[aria-selected=true]{font-weight:650;}
+.field-menu-option[aria-selected=true]::after{content:'✓';margin-inline-start:auto;}
+.field-menu-option:hover,.field-menu-option.is-active{background:var(--ux-soft,var(--soft));color:var(--ux-green,var(--accent));}
+.field-menu-trigger[aria-invalid=true]{border-color:var(--expense);}
+.field-menu-trigger:disabled{opacity:.55;cursor:default;}

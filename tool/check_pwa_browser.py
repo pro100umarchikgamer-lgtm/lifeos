@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 from cryptography.fernet import Fernet
-from tool.web_browser_navigation import open_tab, open_settings
+from tool.web_browser_navigation import open_tab, open_settings, choose_field
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.production import Application
@@ -103,18 +103,18 @@ def main():
                 # Completed tasks move into a collapsed group in the All view.
                 expect(page.locator('details.task-group[aria-labelledby="tasks-completed"]')).to_be_visible()
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_have_count(0)
-                page.get_by_label('Статус задачи',exact=True).select_option('open')
+                choose_field(page.get_by_label('Статус задачи',exact=True), 'open')
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_have_count(0)
-                page.get_by_label('Статус задачи',exact=True).select_option('done')
+                choose_field(page.get_by_label('Статус задачи',exact=True), 'done')
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_visible()
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_enabled()
                 completed=next(r for r in backend.pull(actor,wid,0)['records'] if r['id']==task['id'])
                 assert completed['data']['completed']==1 and completed['revision']==task['revision']+1
                 page.reload()
-                expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                expect(page.get_by_role('heading',name='Задачи',exact=True,level=1)).to_be_visible()
                 open_tab(page,'Задачи')
-                page.get_by_label('Статус задачи',exact=True).select_option('done')
+                choose_field(page.get_by_label('Статус задачи',exact=True), 'done')
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_visible()
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
                 page.screenshot(path=str(OUT/'iphone-tasks-completed-after-reload.png'),full_page=False)
@@ -179,7 +179,7 @@ def main():
                 checks.append('financial_text_contrast_all_themes_and_palettes')
                 page.emulate_media(color_scheme='light')
                 open_settings(page,'appearance')
-                page.get_by_label('Оформление',exact=True).select_option('dark')
+                choose_field(page.get_by_label('Оформление',exact=True), 'dark')
                 page.locator('button[data-palette-choice="ocean"]').click()
                 open_tab(page,'Финансы')
                 page.screenshot(path=str(OUT/'iphone-finance-dark.png'),full_page=False)

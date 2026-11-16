@@ -126,6 +126,11 @@ jobs:
           python -m tool.check_workspace_switch_focus
           python -m tool.check_focus_auth
           python -m tool.check_import_simple
+      - name: Control workflows, installation and owner feedback
+        run: |
+          python -m tool.check_control_workbench_browser
+          python -m tool.check_pwa_install_browser --built-styles
+          python -m tool.check_web_feedback_browser --built-styles --output web_evidence/web-feedback
       - name: November recorded feedback and private referrals
         run: |
           python -m tool.check_shared_editor_browser --output web_evidence/shared-editor

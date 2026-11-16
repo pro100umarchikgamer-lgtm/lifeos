@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "pt",
   "nativeName": "Português",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Casa e contas",
     "cloud_category_health": "Saúde",
     "cloud_category_leisure": "Lazer",
-    "cloud_category_education": "Educação"
+    "cloud_category_education": "Educação",
+    "today_month_expenses": "Despesas deste mês",
+    "today_no_month_expenses": "Ainda não há despesas registadas este mês.",
+    "today_no_open_tasks": "Não há tarefas pendentes.",
+    "today_next_seven_days": "Próximos 7 dias",
+    "today_no_upcoming_events": "Não há eventos agendados para os próximos 7 dias."
   },
   "plurals": {
     "record_count": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "tg",
   "nativeName": "Тоҷикӣ",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Хона ва ҳисобҳо",
     "cloud_category_health": "Тандурустӣ",
     "cloud_category_leisure": "Истироҳат",
-    "cloud_category_education": "Маориф"
+    "cloud_category_education": "Маориф",
+    "today_month_expenses": "Хароҷоти ин моҳ",
+    "today_no_month_expenses": "Дар ин моҳ ҳанӯз хароҷот сабт нашудааст.",
+    "today_no_open_tasks": "Вазифаҳои кушода нестанд.",
+    "today_next_seven_days": "7 рӯзи оянда",
+    "today_no_upcoming_events": "Барои 7 рӯзи оянда рӯйдоде ба нақша гирифта нашудааст."
   },
   "plurals": {
     "record_count": {

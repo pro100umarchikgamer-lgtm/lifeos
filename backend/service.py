@@ -112,10 +112,11 @@ class Backend(AccountSessions):
         require(isinstance(email,str) and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) and len(email)<=254)
         validate_password(password)
         require(self.deliver is not None,'verification_delivery_unconfigured',503)
-        uid=str(uuid.uuid4());salt=secrets.token_hex(16);now=int(self.clock())
+        uid=str(uuid.uuid4());salt=secrets.token_hex(16)
         encoded=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
         verify=secrets.token_urlsafe(32)
         with self.transaction() as db:
+            now=int(self.clock())
             require(not db.execute('SELECT id FROM users WHERE email=?',(email.casefold(),)).fetchone(),'account_exists',409)
             db.execute('INSERT INTO users VALUES(?,?,?,?,0,?)',(uid,email.casefold(),encoded,salt,now))
             db.execute('INSERT INTO verification VALUES(?,?,?)',(token_hash(verify),uid,now+3600))

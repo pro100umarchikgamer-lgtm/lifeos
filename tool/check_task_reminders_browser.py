@@ -85,7 +85,7 @@ def main():
         assert metadata['schedule']['localStart'] == '2026-12-15T18:35:00' and metadata['reminder']
         assert set(task['data']) == {'title', 'completed', 'assignment', 'assignees', 'review'}
         page.reload()
-        expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
+        expect(page.get_by_role('heading', name='Задачи', exact=True, level=1)).to_be_visible()
         editor = edit_task(task['data']['title'])
         expect(editor.get_by_label('Дата задачи', exact=True)).to_have_value('2026-12-15')
         expect(editor.get_by_label('Время (необязательно)', exact=True)).to_have_value('18:35')
@@ -190,7 +190,7 @@ def main():
         with backend.transaction() as db:
             db.execute('INSERT INTO grants VALUES(?,?,0)', (readonly, actor['id']))
         page.reload()
-        expect(page.get_by_role('heading', name='Сегодня', exact=True)).to_be_visible()
+        expect(page.get_by_role('heading', name='Задачи', exact=True, level=1)).to_be_visible()
         editor = edit_task('Read only scheduled task')
         expect(editor.get_by_label('Дата задачи', exact=True)).to_be_disabled()
         expect(editor.get_by_label('Напомнить об этой задаче', exact=True)).to_be_disabled()

@@ -145,8 +145,8 @@ class GoogleIdentity:
 
     def _consume(self, state, client, agent, binding):
         require(isinstance(state, str) and len(state) == 43, 'google_invalid', 401)
-        now = int(self.backend.clock())
         with self.backend.transaction() as db:
+            now = int(self.backend.clock())
             row = db.execute('SELECT * FROM oauth_challenges WHERE hash=?', (token_hash(state),)).fetchone()
             require(row and row['client'] == client and row['expires_at'] > now and not row['used_at']
                 and hmac.compare_digest(row['agent_hash'], token_hash(agent))
@@ -186,6 +186,8 @@ class GoogleIdentity:
         require(isinstance(email, str) and len(email) <= 254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email), 'google_invalid', 401)
         email = email.casefold()
         with self.backend.transaction() as db:
+            now = int(self.backend.clock())
+            require(claims['exp'] > now and now - 600 <= claims['iat'] <= now + 30, 'google_invalid', 401)
             identity = db.execute('SELECT * FROM google_identities WHERE subject=?', (claims['sub'],)).fetchone()
             if row['user_id']:
                 uid = row['user_id']
@@ -230,7 +232,8 @@ class GoogleIdentity:
                 digest = hashlib.pbkdf2_hmac('sha256', secrets.token_bytes(48), bytes.fromhex(salt), 600000).hex()
                 # Google is authoritative for Gmail and managed Workspace domains.
                 verified = int(email.endswith('@gmail.com') or bool(claims.get('hd')))
-                db.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (uid, email, digest, salt, verified, now))
+                created_at = int(self.backend.clock())
+                db.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (uid, email, digest, salt, verified, created_at))
                 db.execute('INSERT INTO account_credentials VALUES(?,0)', (uid,))
                 db.execute('INSERT INTO google_identities VALUES(?,?,?)', (claims['sub'], uid, now))
                 if not verified:

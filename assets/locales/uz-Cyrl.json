@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "uz-Cyrl",
   "nativeName": "Ўзбекча",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Уй ва ҳисоблар",
     "cloud_category_health": "Саломатлик",
     "cloud_category_leisure": "Дам олиш",
-    "cloud_category_education": "Таълим"
+    "cloud_category_education": "Таълим",
+    "today_month_expenses": "Шу ойдаги харажатлар",
+    "today_no_month_expenses": "Бу ойда ҳали харажатлар қайд этилмаган.",
+    "today_no_open_tasks": "Очиқ вазифалар йўқ.",
+    "today_next_seven_days": "Кейинги 7 кун",
+    "today_no_upcoming_events": "Кейинги 7 кун учун тадбирлар режалаштирилмаган."
   },
   "plurals": {
     "record_count": {

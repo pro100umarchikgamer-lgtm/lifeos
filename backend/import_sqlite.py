@@ -15,6 +15,9 @@ OPTIONAL_TABLES |= {'web_push_keys','web_push_subscriptions','web_push_deliverie
 OPTIONAL_TABLES |= {'inbox_notifications','announcements','announcement_recipients','announcement_states',
                     'inbox_settings','budget_inbox_notifications','budget_inbox_sources'}
 
+OPTIONAL_TABLES |= {'account_identity','staff_permission_restrictions','staff_invitation_restrictions','support_recovery_cases',
+                    'announcement_targeting','announcement_cohort_exclusions','newcomer_welcome_claims'}
+
 def import_server(backend,source,apply=False):
     path=Path(source).resolve()
     with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as old:

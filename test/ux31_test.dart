@@ -139,7 +139,7 @@ void main() {
     );
     await tester.tap(find.byType(LifeSelect<String>));
     await tester.pumpAndSettle();
-    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
     expect(find.byType(Dialog), findsNothing);
     expect(
       tester.getSize(find.byKey(const Key('selection_dialog_body'))).height,

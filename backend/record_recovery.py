@@ -117,14 +117,21 @@ class RecordRecovery:
             self.control.audit(db,'user:'+actor['id'],actor['id'],'record.recovery.request',{}, {'request_id':request_id,'record_id':rid,'kind':row['kind'],'record_revision':revision},'Record owner explicitly requested recovery after private preview')
             return {'request':self._metadata(db.execute('SELECT * FROM record_recovery_requests WHERE id=?',(request_id,)).fetchone())}
 
-    def requests(self, actor, before=None, staff=False):
+    def requests(self, actor, before=None, staff=False, user_id=None, state=None):
         stamp,last_id=self._cursor(before)
         if staff:self.control.require(actor,'records.recover')
+        if user_id is not None:
+            require(staff,'invalid_fields')
+            self.control.require(actor,'users.read')
+            identifier(user_id)
+        require(state is None or state in ('pending','approved','rejected','cancelled','completed'),'invalid_input')
         with self.backend.connect() as db:
             if not staff:self._account(db,actor)
             sql='SELECT '+','.join(REQUEST_FIELDS)+' FROM record_recovery_requests WHERE (created_at<? OR (created_at=? AND id<?))'
             params=(stamp,stamp,last_id)
             if not staff:sql+=' AND user_id=?';params+=(actor['id'],)
+            elif user_id is not None:sql+=' AND user_id=?';params+=(user_id,)
+            if state is not None:sql+=' AND state=?';params+=(state,)
             rows=db.execute(sql+' ORDER BY created_at DESC,id DESC LIMIT 101',params).fetchall()
         page=rows[:100]
         return {'requests':[self._metadata(row) for row in page],'next_before':str(page[-1]['created_at'])+':'+page[-1]['id'] if len(rows)>100 else None}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packVersion": 17,
+  "packVersion": 18,
   "locale": "ky",
   "nativeName": "Кыргызча",
   "strings": {
@@ -917,7 +917,12 @@
     "cloud_category_housing": "Үй жана төлөмдөр",
     "cloud_category_health": "Ден соолук",
     "cloud_category_leisure": "Эс алуу",
-    "cloud_category_education": "Билим берүү"
+    "cloud_category_education": "Билим берүү",
+    "today_month_expenses": "Бул айдагы чыгымдар",
+    "today_no_month_expenses": "Бул айда чыгымдар азырынча катталган жок.",
+    "today_no_open_tasks": "Ачык тапшырмалар жок.",
+    "today_next_seven_days": "Алдыдагы 7 күн",
+    "today_no_upcoming_events": "Алдыдагы 7 күнгө окуялар пландалган эмес."
   },
   "plurals": {
     "record_count": {

@@ -13,6 +13,7 @@ from wsgiref.simple_server import make_server, WSGIRequestHandler
 from cryptography.fernet import Fernet
 from tool.web_browser_navigation import open_tab, open_settings
 from tool.web_test_tls import enable_test_tls
+from tool.control_browser_fixture import choose_control_section, choose_control_field
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.control import Control, totp
@@ -125,20 +126,20 @@ def main():
                         expect(page.get_by_role('heading',name='Обзор сервиса')).to_be_visible()
                         page.screenshot(path=str(OUT/'control_dashboard_light.png'),full_page=True)
                         page.evaluate("dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))")
-                        assert page.locator('select[aria-label="Раздел Control"]').count()==0
+                        assert page.get_by_role('button',name='Раздел Control',exact=True).count()==0
                         page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
                         expect(page.get_by_role('heading',name='Обзор сервиса')).to_be_visible()
-                        page.get_by_label('Раздел Control',exact=True).select_option('users')
-                        page.get_by_label('ID или почта',exact=True).fill('tester@example.test')
+                        choose_control_section(page,'users')
+                        page.get_by_label('Имя, почта или ID',exact=True).fill('tester@example.test')
                         page.get_by_role('button',name='Найти',exact=True).click()
-                        expect(page.get_by_role('heading',name='tester@example.test')).to_be_visible()
+                        expect(page.get_by_text('tester@example.test',exact=True)).to_be_visible()
                         page.screenshot(path=str(OUT/'control_users_light.png'),full_page=True)
                         page.get_by_role('button',name='Открыть аккаунт',exact=True).click()
                         expect(page.get_by_role('heading',name='Доступ: Free',exact=True)).to_be_visible()
                         page.get_by_label('Причина выдачи',exact=True).fill('Synthetic 30-day closed test')
-                        page.get_by_label('Уровень',exact=True).select_option('Plus')
-                        page.get_by_label('Основание',exact=True).select_option('promo')
-                        page.get_by_label('Срок доступа',exact=True).select_option('30')
+                        choose_control_field(page,'Уровень','Plus')
+                        choose_control_field(page,'Основание','promo')
+                        choose_control_field(page,'Срок доступа','30')
                         page.get_by_role('button',name='Выдать доступ',exact=True).click()
                         expect(page.get_by_role('heading',name='Доступ: Plus',exact=True)).to_be_visible()
                         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')

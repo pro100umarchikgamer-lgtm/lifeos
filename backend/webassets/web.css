@@ -560,3 +560,70 @@ body.product-site #app.help-center>.help-lead{font-size:18px;line-height:1.7;max
 }
 @media(prefers-reduced-motion:reduce){.help-center *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 @media print{body.product-site>header,body.product-site>footer,.help-center :is(.help-toc,.help-related,.help-document-meta button){display:none!important}body.product-site #app.help-center{padding:0;max-width:none}.help-center .help-reader{display:block}.help-center .help-prose{break-inside:avoid}.help-center *{color:#111!important;background:#fff!important;box-shadow:none!important}.help-center a{color:#111!important;text-decoration:none}}
+
+/* Control workbench: account metadata, assistance and restrictive authority. */
+body[data-control=true] .cw-workbench{--cw-gap:18px;margin-block:24px;min-width:0}
+body[data-control=true] .cw-workbench :is(h2,h3,p,li,dd,code){overflow-wrap:anywhere}
+body[data-control=true] .cw-workbench h2{font-size:1.15rem;line-height:1.4;margin-block:0 10px}
+body[data-control=true] .cw-workbench h3{font-size:1rem;line-height:1.45;margin:0}
+body[data-control=true] .cw-workbench :is(button,input,textarea){font-size:1rem;min-height:46px;max-width:100%}
+body[data-control=true] .cw-workbench button{white-space:normal;text-align:center;line-height:1.4}
+body[data-control=true] .cw-workbench .cw-actions{justify-content:flex-start;gap:10px;margin-block:18px 0}
+body[data-control=true] .cw-workbench .cw-actions button{margin:0}
+body[data-control=true] .cw-workbench :is(.cw-user-list,.cw-case-list,.cw-team-list){display:grid;gap:var(--cw-gap);margin-block:18px}
+body[data-control=true] .cw-workbench :is(.cw-card,.cw-user-row){max-width:none;margin:0;padding:22px;border-radius:14px}
+body[data-control=true] .cw-workbench .cw-user-row{display:flex;align-items:center;justify-content:space-between;gap:20px}
+body[data-control=true] .cw-workbench .cw-identity{min-width:0;flex:1}
+body[data-control=true] .cw-workbench .cw-email{margin:4px 0;font-size:.95rem;color:var(--ink)}
+body[data-control=true] .cw-workbench .cw-id{display:block;font-size:.75rem;color:var(--muted);overflow-wrap:anywhere}
+body[data-control=true] .cw-workbench .cw-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+body[data-control=true] .cw-workbench .badge{display:inline-flex;align-items:center;font-size:.8rem;line-height:1.5}
+body[data-control=true] .cw-workbench .cw-metadata{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,2fr);gap:8px 20px;font-size:.875rem;margin-block:20px}
+body[data-control=true] .cw-workbench .cw-metadata dt{color:var(--muted)}
+body[data-control=true] .cw-workbench .cw-metadata dd{margin:0;min-width:0;color:var(--ink)}
+body[data-control=true] .cw-workbench .cw-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;padding:0;max-width:720px;margin-block:20px;background:none;border:0}
+body[data-control=true] .cw-workbench .cw-search .cw-field{margin:0}
+body[data-control=true] .cw-workbench .cw-search button{margin:0}
+body[data-control=true] .cw-workbench :is(.cw-editor,.cw-inline-editor){max-width:760px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin-block:24px}
+body[data-control=true] .cw-workbench .cw-inline-editor{margin-block:20px 0;padding:18px;background:var(--bg)}
+body[data-control=true] .cw-workbench .cw-field{min-width:0;margin-block:16px}
+body[data-control=true] .cw-workbench .cw-field>label{font-size:.875rem;margin-block:0 7px}
+body[data-control=true] .cw-workbench .cw-field textarea{min-height:100px;resize:vertical}
+body[data-control=true] .cw-workbench .cw-status{font-size:.875rem;min-height:1.5em;margin-block:12px}
+body[data-control=true] .cw-workbench .cw-status:empty{display:none}
+body[data-control=true] .cw-workbench [aria-busy=true]{cursor:progress}
+body[data-control=true] .cw-workbench .cw-target-picker{padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:20px}
+body[data-control=true] .cw-workbench .cw-picker-results{display:grid;gap:12px;max-height:min(520px,65dvh);overflow:auto;overscroll-behavior:contain}
+body[data-control=true] .cw-workbench .cw-target-row{border:1px solid var(--line);border-radius:12px;padding:16px}
+body[data-control=true] .cw-workbench .cw-target-row button{margin-top:12px}
+body[data-control=true] .cw-workbench .cw-selected{color:var(--accent);font-weight:600;font-size:.875rem;margin-bottom:8px}
+body[data-control=true] .cw-workbench .cw-owner-path{display:block;font-size:.8rem;border:1px solid var(--line);border-radius:8px;padding:12px;white-space:normal}
+body[data-control=true] .cw-workbench :is(.cw-roles,.cw-permissions){min-width:0;border:0;padding:0;margin:24px 0}
+body[data-control=true] .cw-workbench :is(.cw-roles,.cw-permissions) legend{font-weight:600;font-size:1rem;margin-bottom:10px}
+body[data-control=true] .cw-workbench :is(.cw-roles,.cw-permissions) label{display:flex;align-items:flex-start;gap:12px;min-height:48px;padding:10px 0;margin:0;border-bottom:1px solid var(--line);font-size:.875rem}
+body[data-control=true] .cw-workbench :is(.cw-roles,.cw-permissions) input[type=checkbox]{appearance:auto;min-height:20px;width:20px;height:20px;flex:0 0 20px;margin:3px 0;accent-color:var(--accent)}
+body[data-control=true] .cw-workbench .cw-permission small{display:block;font-size:.75rem;color:var(--muted);margin-top:4px}
+body[data-control=true] .cw-workbench .cw-permission:has(input:disabled){color:var(--muted)}
+body[data-control=true] .cw-workbench .cw-matrix{border-block:1px solid var(--line);padding:8px 0;margin-block:26px}
+body[data-control=true] .cw-workbench .cw-role-description{padding-block:16px;border-bottom:1px solid var(--line)}
+body[data-control=true] .cw-workbench .cw-role-description p{font-size:.875rem;margin-block:8px}
+body[data-control=true] .cw-workbench .cw-role-description ul{columns:2;column-gap:30px;padding-left:20px;font-size:.875rem;color:var(--muted)}
+body[data-control=true] .cw-workbench .cw-role-description li{break-inside:avoid;padding-bottom:6px}
+body[data-control=true] .cw-workbench .cw-matrix-scroll{overflow:auto;max-width:100%;border:1px solid var(--line);border-radius:10px;margin-block:16px}
+body[data-control=true] .cw-workbench .cw-matrix-scroll table{min-width:800px;font-size:.8rem}
+body[data-control=true] .cw-workbench .cw-matrix-scroll :is(td,th){padding:12px;text-align:start}
+body[data-control=true] .cw-workbench .cw-matrix-scroll td{text-align:center}
+body[data-control=true] .control-announcement-timing label:has(input[type=checkbox]){align-items:flex-start;gap:10px}
+body[data-control=true] .control-announcement-timing input[type=checkbox]{appearance:auto;min-height:20px;width:20px;height:20px;flex:0 0 20px;margin-top:3px;accent-color:var(--accent)}
+body[data-control=true] .control-announcement-form [hidden]{display:none!important}
+@media(max-width:600px){
+ body[data-control=true] .cw-workbench :is(.cw-card,.cw-user-row,.cw-editor){padding:18px}
+ body[data-control=true] .cw-workbench .cw-user-row{display:block}
+ body[data-control=true] .cw-workbench .cw-user-row>button{margin-top:18px;width:100%}
+ body[data-control=true] .cw-workbench .cw-metadata{grid-template-columns:1fr;gap:4px}
+ body[data-control=true] .cw-workbench .cw-metadata dd{margin-bottom:10px}
+ body[data-control=true] .cw-workbench .cw-actions>*{flex:1 1 180px}
+ body[data-control=true] .cw-workbench .cw-role-description ul{columns:1}
+}
+@media(max-width:360px){body[data-control=true] .cw-workbench .cw-search{grid-template-columns:1fr}body[data-control=true] .cw-workbench .cw-search button{width:100%}}
+@media(prefers-reduced-motion:reduce){body[data-control=true] .cw-workbench *{scroll-behavior:auto;transition:none;animation:none}}

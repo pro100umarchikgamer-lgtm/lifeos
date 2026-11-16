@@ -56,6 +56,24 @@ void main() {
         expect(low.colorScheme.onPrimary, high.colorScheme.onPrimary);
         expect(
             low.scaffoldBackgroundColor, isNot(high.scaffoldBackgroundColor));
+        expect(low.colorScheme.surface, isNot(high.colorScheme.surface));
+        expect(low.inputDecorationTheme.fillColor,
+            isNot(high.inputDecorationTheme.fillColor));
+        for (final surface in [
+          high.colorScheme.surface,
+          high.colorScheme.surfaceContainerLow,
+          high.colorScheme.surfaceContainerHigh,
+          high.colorScheme.surfaceContainerHighest,
+          high.inputDecorationTheme.fillColor!
+        ]) {
+          final text = high.colorScheme.onSurfaceVariant.computeLuminance();
+          final fill = surface.computeLuminance();
+          expect(
+              (text > fill ? text + .05 : fill + .05) /
+                  (text > fill ? fill + .05 : text + .05),
+              greaterThanOrEqualTo(4.5),
+              reason: '$palette $brightness secondary text at full intensity');
+        }
         final a = high.colorScheme.onSurface.computeLuminance(),
             b = high.scaffoldBackgroundColor.computeLuminance();
         expect((a > b ? a + .05 : b + .05) / (a > b ? b + .05 : a + .05),
