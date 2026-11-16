@@ -12,7 +12,7 @@ TREE='0f1b10b18e0a99466c5a06a84c4df4f7f3871209'
 RUN,JOB=43778466930,133010053963
 STEPS=('DOM integration with actual server records','Product CRUD, both themes and four viewport widths','Clarity hierarchy and selected-device revocation','Owner feedback regressions','Recorded feedback, inbox, safe Control recovery and public help','Focus settings, refresh status and delayed workspace switching')
 ADDED='tool/verify_frontend_evidence.py'
-MODIFIED=frozenset({'.github/workflows/web-platform.yml','tool/check_layout_referral_integration.py'})
+MODIFIED=frozenset({'.github/workflows/web-platform.yml','tool/check_layout_referral_integration.py','tool/check_task_reminders_browser.py'})
 WORKFLOW_BLOB='2d7bbdc23868571ccc138d92ee9c147622c5881c'
 
 def verify_manifest(previous,current):

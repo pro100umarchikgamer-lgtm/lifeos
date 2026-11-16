@@ -27,7 +27,9 @@ def main():
     with synthetic_notification_api() as (push_status, receipts, _), fixture() as (origin, backend, actor, workspace), sync_playwright() as p:
         scenario_clock=[int(backend.clock())]
         backend.clock=lambda:scenario_clock[0]
-        browser = p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
+        # Match the existing push acceptance: Headless Shell denies system
+        # notifications even with a grant; full Chromium exercises the real API.
+        browser = p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM') or p.chromium.executable_path)
         context = browser.new_context(viewport={'width': 390, 'height': 844}, locale='ru-RU',
                                       timezone_id='Europe/Moscow', service_workers='block', reduced_motion='reduce')
         styles = source_styles()
@@ -231,9 +233,20 @@ def main():
             'receipt_token': 'R' * 43, 'title': 'ULADIM', 'body': 'Напоминание о задаче', 'url': link,
             'tag': 'uladim-' + delivery, 'priority': 'high', 'sent_at': int(time.time() * 1000)}
         cdp.send('ServiceWorker.deliverPushMessage', {'origin': origin, 'registrationId': registration, 'data': json.dumps(payload)})
-        worker_page.wait_for_function('async()=> (await (await navigator.serviceWorker.ready).getNotifications()).length===1')
-        shown = worker_page.evaluate('async()=>{const item=(await (await navigator.serviceWorker.ready).getNotifications())[0];return {body:item.body,url:item.data.url};}')
-        assert shown == {'body': 'Напоминание о задаче', 'url': link}
+        deadline=time.monotonic()+8;shown=None
+        # wait_for_function treats an async predicate's Promise as truthy.
+        # Await each real Notification API result before deciding it exists.
+        while shown is None and time.monotonic()<deadline:
+            shown=worker_page.evaluate('''async delivery=>{
+                const items=await (await navigator.serviceWorker.ready).getNotifications();
+                const item=items.find(item=>item.data?.delivery_id===delivery);
+                return item ? {body:item.body,url:item.data.url} : null;
+            }''',delivery)
+            if shown is None:worker_page.wait_for_timeout(100)
+        assert shown == {'body': 'Напоминание о задаче', 'url': link},shown
+        deadline=time.monotonic()+8
+        while not any(receipt['delivery_id']==delivery and receipt['state']=='displayed' for receipt in receipts) and time.monotonic()<deadline:
+            worker_page.wait_for_timeout(100)
         assert any(receipt['delivery_id'] == delivery and receipt['state'] == 'displayed' for receipt in receipts)
         checks.append('actual_service_worker_shows_task_notification_and_posts_display_receipt_for_injected_push')
         assert not errors, errors
