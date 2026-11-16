@@ -42,6 +42,14 @@ function importStatement() {
  const sourceCopy=STATEMENT_SOURCE_COPY[state.lang]||STATEMENT_SOURCE_COPY.en;
  const [chooseStep,reviewStep,resultStep,savedLabel,failedLabel,historyLabel,reviewLabel,refreshLabel]=STATEMENT_FLOW_COPY[state.lang]||STATEMENT_FLOW_COPY.en;
  const copy=statementCopy;
+ const fieldElement=field=>field.choiceField||field;
+ function showField(field,visible){
+  const element=fieldElement(field),label=element.previousElementSibling;
+  element.hidden=!visible;if(label?.tagName==='LABEL')label.hidden=!visible;
+ }
+ function focusField(field){
+  const element=fieldElement(field);(field.choiceField?.querySelector(':scope > button')||field).focus();element.scrollIntoView({block:'center'});
+ }
  const ensureContext=()=>{if(closed||privateEpoch!==epoch||state.space!==workspace||state.session?.user_id!==user)throw {code:'view_changed'};};
  const d=dialog(copy('title'),container=>{
   container.classList.add('statement-dialog');
@@ -76,7 +84,7 @@ function importStatement() {
   const recognitionHelp=E('section',undefined,'statement-recognition-help');recognitionHelp.hidden=true;controls.insertBefore(recognitionHelp,advanced);
   const recognitionMessage=E('p',copy('recognition_help'));
   const recognitionFields=E('div',undefined,'statement-required-fields');
-  recognitionHelp.append(recognitionMessage,recognitionFields,button(copy('open_advanced'),()=>{advanced.open=true;const field=fields.date?.value==='-1'?fields.date:fields.amount?.value==='-1'?fields.amount:encoding;field.focus();field.scrollIntoView({block:'center'});},'text-button'));
+  recognitionHelp.append(recognitionMessage,recognitionFields,button(copy('open_advanced'),()=>{advanced.open=true;const field=fields.date?.value==='-1'?fields.date:fields.amount?.value==='-1'?fields.amount:encoding;focusField(field);},'text-button'));
   const encoding=select(advanced,'encoding',t('encoding'),[['auto',copy('auto')],['utf8','UTF-8'],['utf16','UTF-16 LE'],['utf-16be','UTF-16 BE'],['cp1251','Windows-1251'],['windows-1252','Windows-1252']],'auto');
   const delimiter=select(advanced,'delimiter',t('web_delimiter'),[['auto',copy('auto')],[';', ';'],[',',','],['\t','Tab'],['|','|']],'auto');
   const mapping=E('div',undefined,'statement-mapping');advanced.append(mapping);
@@ -121,8 +129,7 @@ function importStatement() {
    for(const a of accounts){const option=E('option',a.data.name+' · '+a.data.currency);option.value=a.id;account.append(option);}
    if(accounts.some(a=>a.id===selected))account.value=selected;
    need.hidden=accounts.length>0;controls.hidden=stage===2;actions.hidden=stage===2;
-   account.hidden=!accounts.length;
-   controls.querySelector('label[for="'+account.id+'"]').hidden=account.hidden;
+   showField(account,accounts.length>0);
   }
   syncAccounts(accounts[0]?.id);
   function openAccount() {
@@ -175,8 +182,7 @@ function importStatement() {
   function drawSourceAccounts(){
    sourceGroup.hidden=stage===2||!sourcePlans.length;
    need.hidden=accounts.length>0||!!sourcePlans.length;
-   account.hidden=!accounts.length||!!sourcePlans.length;
-   controls.querySelector('label[for="'+account.id+'"]').hidden=account.hidden;
+   showField(account,accounts.length>0&&!sourcePlans.length);
    sourceStrategy.value=sourceMode;sourceRows.replaceChildren();
    const selected=combineAccount.value||account.value;
    const currencies=new Set(sourcePlans.map(plan=>plan.currency));
@@ -184,8 +190,7 @@ function importStatement() {
     const option=E('option',item.data.name+' · '+item.data.currency);option.value=item.id;return option;
    }));
    if(accounts.some(item=>item.id===selected))combineAccount.value=selected;
-   combineAccount.hidden=sourceMode!=='combine';
-   sourceChoices.querySelector('label[for="'+combineAccount.id+'"]').hidden=combineAccount.hidden;
+   showField(combineAccount,sourceMode==='combine');
    let creating=0;
    for(const [index,plan] of sourcePlans.entries()){
     const line=E('div',undefined,'statement-source-row');
@@ -372,17 +377,17 @@ function importStatement() {
    // The mode determines which amount fields apply; hidden alternatives never
    // override it. Shared recognition changes always rebuild the complete file.
    function updateMapping(){
-    fields.direction.hidden=fields.amountMode.value!=='signed';mapping.querySelector('label[for="'+fields.direction.id+'"]').hidden=fields.direction.hidden;
+    showField(fields.direction,fields.amountMode.value==='signed');
     for(const [key] of mappingKeys){
      const field=fields[key],split=fields.amountMode.value==='split';
      const inactive=(key==='amount'&&split)||(['debit','credit'].includes(key)&&!split)||(key==='directionColumn'&&fields.amountMode.value!=='typed');
-     field.hidden=inactive;mapping.querySelector('label[for="'+field.id+'"]').hidden=inactive;
+     showField(field,!inactive);
      for(const option of field.options)option.disabled=!ULADIMStatement.columnCompatible(parsed,Number(option.value),key,Number(fields.header.value));
     }
    }
    updateMapping();
    for(const field of Object.values(fields))field.addEventListener('change',()=>{updateMapping();review();});
-   mapping.append(button(copy('show_date_format'),()=>{dateHelp.hidden=false;dateHelp.dataset.needed='true';fields.dateFormat.focus();dateHelp.scrollIntoView({block:'center'});},'text-button'),E('p',copy('mapping_help'),'small'),button(copy('apply_mapping'),review,'secondary'));
+   mapping.append(button(copy('show_date_format'),()=>{dateHelp.hidden=false;dateHelp.dataset.needed='true';focusField(fields.dateFormat);},'text-button'),E('p',copy('mapping_help'),'small'),button(copy('apply_mapping'),review,'secondary'));
   }
   async function review(){
    if(!parsed||running||pending)return;

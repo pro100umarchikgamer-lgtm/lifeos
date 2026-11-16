@@ -203,13 +203,22 @@ def main():
                 checks.append('all_16_locales_render')
                 # Leave selected language in RU for unambiguous logout assertion.
                 page.locator('select[name=language]').select_option('ru')
+                expect(page.locator('html')).to_have_attribute('lang','ru')
+                history_heading=page.locator('main h1').inner_text()
+                history_view=page.locator('main').get_attribute('data-view')
+                history_route=page.evaluate("""()=>{const url=new URL(location.href);if([...url.searchParams.keys()].some(key=>!['view','section','selectedspace'].includes(key)))throw Error('History destination has unexpected URL parameters');return url.pathname+url.search;}""")
+                assert history_view=='account/appearance/'
                 # A page entering history must not retain a readable private DOM.
                 page.evaluate("dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))")
                 assert page.locator('.nav').count()==0, 'private DOM retained in history snapshot'
                 assert actor['email'] not in page.locator('body').inner_text()
                 assert 'Подготовить план' not in page.locator('body').inner_text()
-                page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
-                expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                with page.expect_response(lambda response:response.url.split('?')[0]==origin+'/account/api/session' and response.request.method=='GET') as revalidation:
+                    page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
+                assert revalidation.value.status==200
+                expect(page.locator('main')).to_have_attribute('data-view',history_view)
+                expect(page.locator('main h1')).to_have_text(history_heading)
+                assert page.evaluate('location.pathname+location.search')==history_route
                 checks.append('history_snapshot_scrubbed_before_session_revalidation')
                 open_tab(page,'Профиль')
                 open_settings(page,'profile')

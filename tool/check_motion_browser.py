@@ -42,7 +42,7 @@ def main():
                     checks['legacy_idle_reset_hidden']=legacy['visibility']=='hidden' and legacy['opacity']=='0'
                     settle(page.locator('main'))
                 task_list=page.locator('.task-list');before=task_list.bounding_box()['y']
-                slots=page.locator('.task-filters').evaluate('''e=>{const status=e.querySelector('[name=task-status]').getBoundingClientRect(),reset=e.querySelector('.task-reset-filters').getBoundingClientRect();return {status:{top:status.top,bottom:status.bottom},reset:{top:reset.top,bottom:reset.bottom}};}''')
+                slots=page.locator('.task-filters').evaluate('''e=>{const field=e.querySelector('[name=task-status]'),status=(field.choiceField?.querySelector('button.field-menu-trigger')||field).getBoundingClientRect(),reset=e.querySelector('.task-reset-filters').getBoundingClientRect();return {status:{top:status.top,bottom:status.bottom},reset:{top:reset.top,bottom:reset.bottom}};}''')
                 observations['task_reset_slot']=slots
                 checks['task_reset_shares_status_row']=slots['reset']['top']<slots['status']['bottom'] and slots['reset']['bottom']>slots['status']['top']
                 page.locator('[name=task-search]').fill('Ничего совпадающего123')

@@ -150,7 +150,7 @@ def main():
                                 page.screenshot(path=str(OUT/'overflow.png'),full_page=True)
                                 print(page.locator('main *').evaluate_all('els=>els.filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,cls:e.className,w:e.getBoundingClientRect().width,r:e.getBoundingClientRect().right,text:e.textContent.slice(0,55)})).slice(0,25)'))
                                 raise AssertionError((width,theme,view,'overflow'))
-                            controls=page.locator('main button:visible,main select:visible').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();const scroll=e.closest('.finance-navigation');return !scroll&&(r.width<24||r.height<24||r.left<0||r.right>innerWidth+1);}).map(e=>e.textContent)''')
+                            controls=page.locator('main button:visible,main select:visible:not(.field-menu-carrier)').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();const scroll=e.closest('.finance-navigation');return !scroll&&(r.width<24||r.height<24||r.left<0||r.right>innerWidth+1);}).map(e=>e.textContent)''')
                             assert not controls,(width,theme,view,controls)
                             if width in [375,1440]:page.screenshot(path=str(OUT/(str(width)+'-'+theme+'-'+(view or 'overview')+'.png')),full_page=True)
                 checks.append('independent finance destinations fit 320/375/820/1440 pixels in both themes')

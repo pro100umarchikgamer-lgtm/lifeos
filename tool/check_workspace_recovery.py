@@ -108,7 +108,7 @@ def run(browser, origin, output, name, width, height):
         page.locator('.finance-filter-panel summary').click()
         expect(page.locator('.ledger-row').first).to_be_visible()
         assert page.locator('.finance-filters').evaluate(
-            '(filters) => [...filters.querySelectorAll("input, select")].every(field => field.getBoundingClientRect().right <= filters.getBoundingClientRect().right + 1)')
+            '(filters) => [...filters.querySelectorAll("input, select")].every(field => (field.choiceField?.querySelector("button.field-menu-trigger") || field).getBoundingClientRect().right <= filters.getBoundingClientRect().right + 1)')
         capture('finance')
 
         open_tab(page, 'Профиль')

@@ -67,7 +67,7 @@ def main():
                     panel.locator('select[name=finance-account]').select_option(account_id)
                     values = panel.locator('.finance-filters').evaluate('''grid => {
                         const rect = el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width}};
-                        const fields=[...grid.querySelectorAll('input,select')].map(el=>({name:el.name,box:rect(el),parent:rect(el.parentElement),value:el.value}));
+                        const fields=[...grid.querySelectorAll('input,select')].map(field=>{const el=field.choiceField?.querySelector('button.field-menu-trigger')||field;return {name:field.name,box:rect(el),parent:rect(el.parentElement),value:field.value};});
                         const overflow=document.documentElement.scrollWidth>innerWidth;
                         const offenders=overflow ? [...document.body.querySelectorAll('*')].filter(el=>{
                             const r=el.getBoundingClientRect(),s=getComputedStyle(el);

@@ -2489,9 +2489,9 @@ body.product-site :is(a.button,button){transition:background-color 160ms ease,co
 
 /* app/reference.css */
 /* Actual B12 video composition, applied to existing ULADIM records and actions. */
-body[data-design=clarity][data-reference-layout=b12]{--ux-bg:#f5f6f2;--ux-surface:#fff;--ux-ink:#25242d;--ux-muted:#686574;--ux-border:#e9e8ed;--ux-green:#6956bd;--ux-soft:#efebfa;--ux-radius:12px;--bg:var(--ux-bg);--card:var(--ux-surface);--ink:var(--ux-ink);--muted:var(--ux-muted);--line:var(--ux-border);--accent:var(--ux-green);--soft:var(--ux-soft);background:var(--ux-bg);font-size:14px}
-body[data-design=clarity][data-reference-layout=b12][data-theme=dark]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#a8a4b6;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}
-@media(prefers-color-scheme:dark){body[data-design=clarity][data-reference-layout=b12][data-theme=system]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#a8a4b6;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}}
+body[data-design=clarity][data-reference-layout=b12]{--ux-bg:#f5f6f2;--ux-surface:#fff;--ux-ink:#25242d;--ux-muted:#5b5866;--ux-border:#e9e8ed;--ux-green:#6956bd;--ux-soft:#efebfa;--ux-radius:12px;--bg:var(--ux-bg);--card:var(--ux-surface);--ink:var(--ux-ink);--muted:var(--ux-muted);--line:var(--ux-border);--accent:var(--ux-green);--soft:var(--ux-soft);background:var(--ux-bg);font-size:14px}
+body[data-design=clarity][data-reference-layout=b12][data-theme=dark]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#c9c5d1;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}
+@media(prefers-color-scheme:dark){body[data-design=clarity][data-reference-layout=b12][data-theme=system]{--ux-bg:#1e1c27;--ux-surface:#262431;--ux-ink:#f2f0f8;--ux-muted:#c9c5d1;--ux-border:#353240;--ux-green:#b3a1fb;--ux-soft:#373048}}
 body[data-reference-layout=b12][data-palette=forest]{--ux-green:#286550;--ux-soft:#e7f0e9}
 body[data-reference-layout=b12][data-palette=ocean]{--ux-green:#38729b;--ux-soft:#e6f0f7}
 body[data-reference-layout=b12][data-palette=pistachio]{--ux-green:#617d45;--ux-soft:#edf2e5}
@@ -3602,12 +3602,12 @@ body[data-design=clarity][data-reference-layout=b12] #root .finance-page .financ
 }
 
 /* Evening Web/PWA feedback: visible palettes and a proportionate task workspace. */
-body[data-palette=violet],.palette-choice[data-palette-choice=violet] { --palette-bg:#f5f3f9;--palette-surface:#fff;--palette-accent:#6956bd;--palette-soft:#efebfa;--palette-button:#6956bd;--palette-dark-bg:#1e1c27;--palette-dark-surface:#262431;--palette-dark-accent:#c1b1ff;--palette-dark-soft:#373048; }
-body[data-palette=forest],.palette-choice[data-palette-choice=forest] { --palette-bg:#f1f6f3;--palette-surface:#fff;--palette-accent:#286550;--palette-soft:#e3efe7;--palette-button:#286550;--palette-dark-bg:#19241f;--palette-dark-surface:#22302a;--palette-dark-accent:#a8d9bf;--palette-dark-soft:#2c4035; }
-body[data-palette=ocean],.palette-choice[data-palette-choice=ocean] { --palette-bg:#f0f5f9;--palette-surface:#fff;--palette-accent:#32688f;--palette-soft:#e3eef7;--palette-button:#32688f;--palette-dark-bg:#19232d;--palette-dark-surface:#222e3a;--palette-dark-accent:#a8d3ef;--palette-dark-soft:#2b3c4c; }
-body[data-palette=pistachio],.palette-choice[data-palette-choice=pistachio] { --palette-bg:#f4f6ee;--palette-surface:#fff;--palette-accent:#526b38;--palette-soft:#eaf0df;--palette-button:#526b38;--palette-dark-bg:#20251b;--palette-dark-surface:#2a3023;--palette-dark-accent:#c7dfa9;--palette-dark-soft:#303a28; }
-body[data-palette=rose],.palette-choice[data-palette-choice=rose] { --palette-bg:#f9f2f4;--palette-surface:#fff;--palette-accent:#9c4e67;--palette-soft:#f7e6ec;--palette-button:#9c4e67;--palette-dark-bg:#291e23;--palette-dark-surface:#34272d;--palette-dark-accent:#edb5c7;--palette-dark-soft:#49303b; }
-body[data-palette=sand],.palette-choice[data-palette-choice=sand] { --palette-bg:#f8f5ee;--palette-surface:#fff;--palette-accent:#816233;--palette-soft:#f2ebdc;--palette-button:#816233;--palette-dark-bg:#27221a;--palette-dark-surface:#322c23;--palette-dark-accent:#e4ca99;--palette-dark-soft:#453a29; }
+body[data-palette=violet],.palette-choice[data-palette-choice=violet] { --palette-bg:#f5f3f9;--palette-surface:#fff;--palette-accent:#5c4ca6;--palette-soft:#efebfa;--palette-button:#6956bd;--palette-light-income:#145f4a;--palette-light-expense:#923730;--palette-dark-bg:#1e1c27;--palette-dark-surface:#262431;--palette-dark-accent:#c1b1ff;--palette-dark-soft:#373048; }
+body[data-palette=forest],.palette-choice[data-palette-choice=forest] { --palette-bg:#f1f6f3;--palette-surface:#fff;--palette-accent:#235946;--palette-soft:#e3efe7;--palette-button:#286550;--palette-light-income:#145f4a;--palette-light-expense:#923730;--palette-dark-bg:#19241f;--palette-dark-surface:#22302a;--palette-dark-accent:#a8d9bf;--palette-dark-soft:#2c4035; }
+body[data-palette=ocean],.palette-choice[data-palette-choice=ocean] { --palette-bg:#f0f5f9;--palette-surface:#fff;--palette-accent:#2c5c7e;--palette-soft:#e3eef7;--palette-button:#32688f;--palette-light-income:#145e73;--palette-light-expense:#963837;--palette-dark-bg:#19232d;--palette-dark-surface:#222e3a;--palette-dark-accent:#a8d3ef;--palette-dark-soft:#2b3c4c; }
+body[data-palette=pistachio],.palette-choice[data-palette-choice=pistachio] { --palette-bg:#f4f6ee;--palette-surface:#fff;--palette-accent:#485e31;--palette-soft:#eaf0df;--palette-button:#526b38;--palette-light-income:#465d21;--palette-light-expense:#8f3558;--palette-dark-bg:#20251b;--palette-dark-surface:#2a3023;--palette-dark-accent:#c7dfa9;--palette-dark-soft:#303a28; }
+body[data-palette=rose],.palette-choice[data-palette-choice=rose] { --palette-bg:#f9f2f4;--palette-surface:#fff;--palette-accent:#89455b;--palette-soft:#f7e6ec;--palette-button:#9c4e67;--palette-light-income:#145f4a;--palette-light-expense:#923730;--palette-dark-bg:#291e23;--palette-dark-surface:#34272d;--palette-dark-accent:#edb5c7;--palette-dark-soft:#49303b; }
+body[data-palette=sand],.palette-choice[data-palette-choice=sand] { --palette-bg:#f8f5ee;--palette-surface:#fff;--palette-accent:#72562d;--palette-soft:#f2ebdc;--palette-button:#816233;--palette-light-income:#145f4a;--palette-light-expense:#923730;--palette-dark-bg:#27221a;--palette-dark-surface:#322c23;--palette-dark-accent:#e4ca99;--palette-dark-soft:#453a29; }
 body[data-design=clarity][data-reference-layout=b12][data-palette] { --ux-bg:var(--palette-bg);--ux-surface:var(--palette-surface);--ux-green:var(--palette-accent);--ux-soft:var(--palette-soft);--ux-button:var(--palette-button); }
 body[data-design=clarity][data-reference-layout=b12][data-theme=dark][data-palette] { --ux-bg:var(--palette-dark-bg);--ux-surface:var(--palette-dark-surface);--ux-green:var(--palette-dark-accent);--ux-soft:var(--palette-dark-soft); }
 body[data-design=clarity][data-theme=dark] .palette-choice { --preview-bg:var(--palette-dark-bg);--preview-surface:var(--palette-dark-surface);--preview-accent:var(--palette-dark-accent);--preview-soft:var(--palette-dark-soft); }
@@ -3709,7 +3709,10 @@ body[data-design=clarity][data-reference-layout=b12] #root .task-overview progre
 }
 
 /* The saved 0–100 preference tints the actual page, cards and fields together.
-   Foreground, error, focus and action colors retain their contrast roles. */
+   Light text roles keep >=4.5 contrast at the strongest tint. Button fills and
+   all surfaces retain their palette/intensity values. Dark roles stay distinct. */
+body[data-design=clarity][data-reference-layout=b12][data-theme=light]{--income:var(--palette-light-income);--expense:var(--palette-light-expense)}
+@media(prefers-color-scheme:light){body[data-design=clarity][data-reference-layout=b12][data-theme=system]{--income:var(--palette-light-income);--expense:var(--palette-light-expense)}}
 body[data-design=clarity][data-reference-layout=b12][data-palette][data-theme][data-appearance-intensity]{--ux-bg:var(--appearance-page-color,var(--palette-bg));--ux-surface:var(--appearance-surface-color,var(--palette-surface));--ux-soft:var(--appearance-soft-color,var(--palette-soft))}
 body[data-design=clarity][data-reference-layout=b12] #root :is(input:not([type=checkbox]):not([type=range]),textarea,select),body[data-design=clarity] dialog :is(input:not([type=checkbox]):not([type=range]),textarea,select){background:var(--appearance-input-color,var(--ux-surface))}
 body[data-design=clarity][data-reference-layout=b12] #root .field-menu-trigger,body[data-design=clarity] dialog .field-menu-trigger{background:var(--appearance-input-color,var(--ux-surface));color:var(--ux-ink);border:1px solid var(--ux-border);min-height:46px}

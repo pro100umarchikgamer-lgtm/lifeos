@@ -120,7 +120,7 @@ def main():
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(width,theme,'page overflow')
                         if width>=760:
                             assert page.evaluate('''()=>{const nav=document.querySelector('.nav').getBoundingClientRect(),header=document.querySelector('header').getBoundingClientRect(),main=document.querySelector('main').getBoundingClientRect();return nav.right<=header.left+1&&nav.right<=main.left+1;}'''),(width,theme,'sidebar overlaps header or content')
-                        violations=page.locator('.finance-filters input:visible,.finance-filters select:visible,.intro button:visible,.nav button:visible').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width<24||r.height<24||r.left<0||r.right>innerWidth+1;}).map(e=>e.name||e.textContent)''')
+                        violations=page.locator('.finance-filters input:visible,.finance-filters select:visible:not(.field-menu-carrier),.finance-filters .field-menu-trigger:visible,.intro button:visible,.nav button:visible').evaluate_all('''els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width<24||r.height<24||r.left<0||r.right>innerWidth+1;}).map(e=>e.name||e.textContent)''')
                         assert not violations,(width,theme,violations)
                         if width in [390,768,1440]:
                             page.locator('select[name=chart-mode]').select_option('bar')
