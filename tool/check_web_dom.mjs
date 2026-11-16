@@ -89,7 +89,16 @@ try{
  change(w.document.querySelector('[name=calendar-day]'),'2026-11-12');await wait(()=>w.document.querySelector('main').textContent.includes('DOM shared event'));
  button('Заметки').click();button('Редактировать').click();w.document.querySelector('textarea').value='DOM changed note';submit();await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM changed note'));
  assert.equal(w.document.querySelectorAll('.note-preview').length,0,'single-line note must not repeat its heading as body');
- button('Редактировать').click();button('Удалить').click();button('Отменить').click();assert(w.document.querySelector('main').textContent.includes('DOM changed note'));
+ button('Редактировать').click();
+ const noteEditor=w.document.querySelector('dialog'),more=noteEditor.querySelector('.editor-more');
+ more.querySelector('summary').click();assert(more.open,'Record actions open before deletion');
+ button('Удалить',more).click();
+ // Deletion is queued after the reviewed editor/history close completes.
+ await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('#alerts .toast.undo'));
+ const undoToast=w.document.querySelector('#alerts .toast.undo');
+ button('Отменить',undoToast).click();
+ assert(!undoToast.isConnected,'Undo removes the pending-deletion notice');
+ assert(w.document.querySelector('main').textContent.includes('DOM changed note'),'Undo preserves the saved note without another save');
  button('Финансы').click();await wait(()=>w.document.querySelector('.finance-metric-grid'));assert(w.document.querySelector('main').textContent.includes('RUB'));
  button('Добавить операцию').click();
  w.document.querySelector('[name=amount]').value='125,50';w.document.querySelector('[name=label]').value='DOM coffee';submit();
