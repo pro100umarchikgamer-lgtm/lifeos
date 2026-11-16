@@ -32,10 +32,11 @@ describe('current-session interface flags',()=>{
   api.state.session={interface_flags:{compact_onboarding:{enabled:true,active:true},support_entry:{enabled:true,active:false},chart_styles:{enabled:false,active:false}}};expect([api.flag('compact_onboarding'),api.flag('support_entry'),api.flag('chart_styles')]).toEqual([true,false,false]);
  });
 });
-describe('Web feedback localization packet',()=>{
+describe('Web feedback bundled localization',()=>{
  it('resolves every new label in all 16 locales through the real i18n loader',async()=>{
-  const packet=JSON.parse(readFileSync(new URL('../delivery/control-feedback-nov16/web-feedback-copy.json',import.meta.url),'utf8')),dom=new JSDOM('',{url:'https://example.test',runScripts:'outside-only'}),w=dom.window,api=loadI18n(w);
-  w.fetch=async()=>({ok:true,json:async()=>({schemaVersion:1,groups:{},...packet})});expect(await api.load({})).toBe(true);
-  expect(Object.keys(packet.translations)).toHaveLength(16);for(const locale of api.languages){api.setLanguage(locale);for(const key of packet.required)expect(api.text(key)).toBe(packet.translations[locale][key]);}
+  const catalog=JSON.parse(readFileSync(new URL('../backend/webassets/app/translations.json',import.meta.url),'utf8')),dom=new JSDOM('',{url:'https://example.test',runScripts:'outside-only'}),w=dom.window,api=loadI18n(w);
+  const keys=Object.keys(catalog.source).filter(key=>key.startsWith('web_feedback_'));expect(keys).toHaveLength(18);
+  w.fetch=async()=>({ok:true,json:async()=>catalog});expect(await api.load({})).toBe(true);
+  expect(catalog.languages).toHaveLength(16);for(const locale of api.languages){const reviewed=JSON.parse(readFileSync(new URL('../assets/web-locales/'+locale+'.json',import.meta.url),'utf8')).strings;api.setLanguage(locale);for(const key of keys)expect(api.text(key)).toBe(reviewed[key]);}
  });
 });
