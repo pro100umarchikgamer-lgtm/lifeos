@@ -3,6 +3,7 @@
 This proves UI/callback/cookie/MFA wiring, not Cloud Console or device acceptance.
 """
 import json
+import os
 import tempfile
 import threading
 from dataclasses import replace
@@ -46,7 +47,7 @@ def main():
         server.set_app(app);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             with sync_playwright() as p:
-                browser=p.chromium.launch()
+                browser=p.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
                 for index,(route,width,factor) in enumerate([('/app',390,False),('/account',1440,False),('/app',834,True)]):
                     context=browser.new_context(viewport={'width':width,'height':1000});page=context.new_page();errors=[]
                     page.on('pageerror',lambda e:errors.append(str(e)))
@@ -72,7 +73,11 @@ def main():
                     if factor:
                         session = page.request.get(origin+'/account/api/session')
                         assert session.ok and session.json()['user_id']==actor['id']
-                    assert urlsplit(page.url).query==''
+                    # These fixture accounts have no workspaces. Only the normal
+                    # Today route may remain; OAuth state, codes and proofs must not.
+                    authenticated_url = urlsplit(page.url)
+                    assert authenticated_url.path == '/app' and not authenticated_url.fragment
+                    assert parse_qs(authenticated_url.query, keep_blank_values=True) == {'view': ['today']}
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                     assert not page.evaluate("JSON.stringify(localStorage).includes('eyJ')")
                     if width==834:

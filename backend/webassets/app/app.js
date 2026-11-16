@@ -1489,8 +1489,8 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
    fields.direction=select(f,'direction',t('family_kind_transaction'),[['expense',t('expense')],['income',t('income')]],data.kind||'expense');
    fields.date=input(f,'date',t('family_date'),'date',data.date||localDate());fields.label=input(f,'label',t('family_name'),'text',data.label||'',false);
    fields.category=select(f,'category',(globalThis.UladimI18n.copy("grp_d09a67bcec30",{ru:'Категория',en:'Category','uz-Latn':'Toifa','uz-Cyrl':'Тоифа'})[state.lang]||'Category'),transactionCategoryChoices(),data.category||'');
-   const categoryLabel=fields.category.previousElementSibling;
-   const categoryVisibility=()=>{fields.category.hidden=false;categoryLabel.hidden=false;};
+   const categoryField=fields.category.choiceField||fields.category,categoryLabel=categoryField.previousElementSibling;
+   const categoryVisibility=()=>{categoryField.hidden=false;categoryLabel.hidden=false;};
    categoryVisibility();fields.direction.addEventListener('change',categoryVisibility);
    const accounts=records('account'),selected=r?data.account_id:(accounts.find(a=>a.id===accountId)||defaultTransactionAccount(accountKey,accounts))?.id;
    fields.account=select(f,'account',t('family_account_select'),[['',t('family_none')],...accounts.map(a=>[a.id,a.data.name+' · '+a.data.currency])],selected||'');
@@ -1506,7 +1506,7 @@ function editRecord(kind,r=null,{eventDay=localDate(),onSaved,accountId}={}){
     const dateField=fields.date.dateField||fields.date;
     append(f,pair('transaction-context',fields.direction,fields.account),
      pair('transaction-value',fields.amount,fields.currency),dateField.previousElementSibling,dateField,
-    fields.label.previousElementSibling,fields.label,categoryLabel,fields.category);
+    fields.label.previousElementSibling,fields.label,categoryLabel,categoryField);
   }
   if(kind==='budget'){
    const copy=BUDGET_EDITOR_COPY[state.lang]||BUDGET_EDITOR_COPY.en;

@@ -36,7 +36,7 @@ for(const script of scripts){
 }
 // Classic deferred scripts share one global lexical environment in a browser.
 // Separate window.eval calls would hide import.js's const bindings from app.js.
-w.eval(sources.join('\n;\n')+'\nglobalThis.fixtureSpace=()=>state.space;');
+w.eval(sources.join('\n;\n')+'\nglobalThis.fixtureSpace=()=>state.space;globalThis.fixtureErrors=[];const fixtureReport=report;report=error=>{fixtureErrors.push(error?.stack||String(error));fixtureReport(error);};');
 const wait=async predicate=>{for(let n=0;n<100;n++){if(predicate())return;await new Promise(r=>setTimeout(r,30));}throw new Error('DOM timeout: '+w.document.body.textContent.slice(0,1000));};
 const button=(text,scope=w.document)=>{const b=[...scope.querySelectorAll('button')].find(b=>b.textContent===text);assert(b,'Missing button '+text);return b;};
 const change=(field,value)=>{field.value=value;field.dispatchEvent(new w.Event('change',{bubbles:true}));};
@@ -101,6 +101,17 @@ try{
  assert(w.document.querySelector('main').textContent.includes('DOM changed note'),'Undo preserves the saved note without another save');
  button('Финансы').click();await wait(()=>w.document.querySelector('.finance-metric-grid'));assert(w.document.querySelector('main').textContent.includes('RUB'));
  button('Добавить операцию').click();
+ assert.equal(w.fixtureErrors.length,0,'Opening the transaction form must not report an application error: '+w.fixtureErrors.join('\n'));
+ const transactionEditor=w.document.querySelector('dialog');
+ assert(transactionEditor,'Adding a transaction opens its reviewed editor');
+ const category=transactionEditor.querySelector('[name=category]'),categoryField=category?.choiceField;
+ assert(categoryField?.contains(category),'The moved transaction category keeps its native carrier inside the app-owned field');
+ const categoryTrigger=categoryField.querySelector(':scope > button');
+ assert.equal(categoryField.previousElementSibling?.htmlFor,categoryTrigger.id,'The moved category label still targets its visible trigger');
+ categoryTrigger.click();
+ const foodOption=[...categoryField.querySelectorAll('[role=option]')].find(option=>option.textContent==='Питание');
+ assert(foodOption,'The visible category menu offers Food');foodOption.click();
+ assert.equal(new w.FormData(transactionEditor.querySelector('form')).get('category'),'food','Visible category selection reaches the original form value');
  w.document.querySelector('[name=amount]').value='125,50';w.document.querySelector('[name=label]').value='DOM coffee';submit();
  await wait(()=>!w.document.querySelector('dialog')&&w.document.querySelector('main').textContent.includes('DOM coffee'));
  button('Профиль',w.document.querySelector('.nav')).click();
@@ -109,6 +120,6 @@ try{
  assert.equal(w.document.querySelectorAll('.settings-content .settings-group').length,3);
  button('Оформление',w.document.querySelector('.settings-navigation')).click();await wait(()=>w.document.querySelector('[name=theme]'));change(w.document.querySelector('[name=theme]'),'dark');assert.equal(w.document.body.dataset.theme,'dark');
  change(w.document.querySelector('[name=language]'),'uz-Latn');await wait(()=>w.document.querySelector('.nav').textContent.includes('Taqvim'));assert.equal(w.document.documentElement.lang,'uz-Latn');
- const response=await w.fetch('/account/api/sync?workspace='+encodeURIComponent(w.fixtureSpace()));const data=await response.json();assert(data.records.some(r=>r.data.title==='DOM shared event'));assert(data.records.some(r=>r.data.body==='DOM changed note'&&!r.deleted));assert(data.records.some(r=>r.kind==='transaction'&&r.data.label==='DOM coffee'&&r.data.amount_minor===12550));
+ const response=await w.fetch('/account/api/sync?workspace='+encodeURIComponent(w.fixtureSpace()));const data=await response.json();assert(data.records.some(r=>r.data.title==='DOM shared event'));assert(data.records.some(r=>r.data.body==='DOM changed note'&&!r.deleted));assert(data.records.some(r=>r.kind==='transaction'&&r.data.label==='DOM coffee'&&r.data.amount_minor===12550&&r.data.category==='food'));
  assert(!w.localStorage.getItem('uladim-interface').includes('DOM changed'));console.log('DOM_INTEGRATION_PASSED: task filters, event save, note save/undo, finance, Google status, theme, Uzbek, real server records');
 }finally{w.close();}
