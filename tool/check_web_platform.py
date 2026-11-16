@@ -223,6 +223,7 @@ def main():
                             expect(page.get_by_role('heading',name='Поддержка',exact=True)).to_be_visible()
                         page.screenshot(path=str(OUT/f'{tab}-{width}-{theme}.png'),full_page=False)
                     open_tab(page,'Финансы')
+                    records_before_abandon=backend.pull(actor,wid,0)['records']
                     page.get_by_role('button',name='Добавить операцию',exact=True).click()
                     d=page.get_by_role('dialog');expect(d).to_be_visible()
                     d.locator('[name=amount]').fill('125,50');d.locator('[name=label]').fill('Проверка экранной формы')
@@ -240,6 +241,11 @@ def main():
                         page.screenshot(path=str(OUT/f'landscape-form-{theme}.png'))
                         page.set_viewport_size({'width':width,'height':900})
                     d.get_by_role('button',name='Закрыть',exact=True).click()
+                    expect(d.locator('.editor-discard-choice')).to_be_visible()
+                    expect(d.locator('[name=label]')).to_have_value('Проверка экранной формы')
+                    d.get_by_role('button',name='Не сохранять',exact=True).click()
+                    expect(d).to_have_count(0)
+                    assert backend.pull(actor,wid,0)['records']==records_before_abandon,'Discarding the screen form must not write records'
                 checks.append('responsive_'+theme)
             page.set_viewport_size({'width':375,'height':812});page.evaluate("document.documentElement.style.fontSize='24px'")
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')

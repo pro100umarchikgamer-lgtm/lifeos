@@ -39,6 +39,15 @@ def main():
             page.get_by_role('button', name='Добавить операцию', exact=True).first.click()
             return page.locator('dialog[open]')
 
+        def close_transaction(dialog, *, discard=False):
+            before=backend.pull(actor,workspace,0)['records']
+            dialog.get_by_role('button', name='Закрыть', exact=True).click()
+            if discard:
+                expect(dialog.locator('.editor-discard-choice')).to_be_visible()
+                dialog.get_by_role('button', name='Не сохранять', exact=True).click()
+            expect(dialog).to_have_count(0)
+            assert backend.pull(actor,workspace,0)['records']==before,'Closing an entry must not write records'
+
         dialog = new_transaction()
         expect(dialog.locator('[name=account]')).to_have_value(primary)
         expect(dialog.locator('[name=amount]')).to_have_value('')
@@ -71,14 +80,14 @@ def main():
         dialog.locator('[name=account]').select_option(secondary)
         expect(dialog.locator('[name=currency]')).to_have_value('KWD')
         expect(dialog.locator('[name=amount]')).to_have_attribute('placeholder', '0.000')
-        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        close_transaction(dialog,discard=True)
         dialog = new_transaction()
         expect(dialog.locator('[name=account]')).to_have_value(primary)
         dialog.locator('[name=account]').select_option(secondary)
         dialog.locator('[name=amount]').fill('0')
         dialog.get_by_role('button', name='Сохранить', exact=True).click()
         expect(dialog.locator('.error')).not_to_be_empty()
-        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        close_transaction(dialog,discard=True)
         dialog = new_transaction()
         expect(dialog.locator('[name=account]')).to_have_value(primary)
         checks.append('Cancelled and invalid entries do not remember their account')
@@ -98,7 +107,7 @@ def main():
         expect(dialog.locator('[name=currency]')).to_have_value('KWD')
         expect(dialog.locator('[name=amount]')).to_have_value('')
         expect(dialog.locator('[name=amount]')).to_have_attribute('placeholder', '0.000')
-        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        close_transaction(dialog)
         checks.append('Successful KWD entry remembers its account and currency after reload')
 
         # Editing keeps the saved amount/account rather than applying creation defaults.
@@ -106,20 +115,20 @@ def main():
         dialog = page.locator('dialog[open]')
         expect(dialog.locator('[name=account]')).to_have_value(primary)
         expect(dialog.locator('[name=amount]')).to_have_value('2500.00')
-        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        close_transaction(dialog)
         checks.append('Existing transaction retains its original account and amount')
 
         key = 'uladim-transaction-account:' + actor['id'] + ':' + workspace
         page.evaluate("([key,id])=>sessionStorage.setItem(key,id)", [key, str(uuid.uuid4())])
         dialog = new_transaction()
         expect(dialog.locator('[name=account]')).to_have_value(primary)
-        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        close_transaction(dialog)
         # No accounts is still a valid transaction flow; the preference cannot select a stale ID.
         page.evaluate("()=>{state.records=state.records.filter(r=>r.kind!=='account');render();}")
         dialog = new_transaction()
         expect(dialog.locator('[name=account]')).to_have_value('')
         expect(dialog.locator('[name=amount]')).to_have_value('')
-        dialog.get_by_role('button', name='Закрыть', exact=True).click()
+        close_transaction(dialog)
         checks.append('Unavailable remembered account falls back to an existing account or none')
         assert not errors, errors
         assert page.evaluate("Object.keys(localStorage).every(key=>key==='uladim-interface')")

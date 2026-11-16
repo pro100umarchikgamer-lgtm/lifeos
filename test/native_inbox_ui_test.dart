@@ -206,7 +206,11 @@ void main() {
     await tester.tap(toggle);
     await tester.pumpAndSettle();
     expect(c.inbox.budgetEnabled, isTrue);
-    final thresholds = find.byKey(const Key('budget_reminder_thresholds'));
+    // The selection label is passive; open the chooser from its visible field.
+    final thresholds = find.descendant(
+        of: find.byKey(const Key('budget_reminder_thresholds')),
+        matching: find.byType(InputDecorator));
+    expect(thresholds, findsOneWidget);
     await tester.ensureVisible(thresholds);
     await tester.tap(thresholds);
     await tester.pumpAndSettle();
