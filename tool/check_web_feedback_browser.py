@@ -4,6 +4,7 @@ Uses source CSS until the root performs the single final bundle build. Screens
 and requests contain synthetic fixture data only. No production access.
 """
 import argparse
+import base64
 import json
 import math
 import os
@@ -90,7 +91,12 @@ def main():
         boot = page.evaluate("({theme:document.documentElement.dataset.bootTheme,body:getComputedStyle(document.body).backgroundColor,page:getComputedStyle(document.documentElement).getPropertyValue('--boot-page').trim()})")
         assert color(boot['body']) == color(boot['page']), boot
         assert min(color(boot['body'])) > 190, boot
-        page.screenshot(path=str(OUT/'saved-light-before-app-390.png'))
+        # This intentionally held deferred script can keep document.fonts.ready pending.
+        # Capture the already asserted HTML splash without waiting for the held app.
+        capture = ctx.new_cdp_session(page)
+        frame = capture.send('Page.captureScreenshot', {'format':'png', 'captureBeyondViewport':False})
+        (OUT/'saved-light-before-app-390.png').write_bytes(base64.b64decode(frame['data']))
+        capture.detach()
         held['route'].continue_();page.wait_for_load_state('domcontentloaded');ctx.close()
         checks.append({'case':'saved-light-html-splash-before-deferred-app','system':'dark','boot':boot})
 
