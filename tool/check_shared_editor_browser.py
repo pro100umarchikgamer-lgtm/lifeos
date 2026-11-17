@@ -189,9 +189,13 @@ def main():
             elif scenario in ('security','deletion'):
                 page.goto(origin+'/app?setup=owner&settings='+scenario)
                 expect(page.locator('.settings-content')).to_have_attribute('data-section',scenario)
-                assert 'settings=' not in page.url and 'setup=owner' in page.url
+                destination=page.evaluate("()=>{const url=new URL(location.href);return {path:url.pathname,parameters:[...url.searchParams]};}")
+                (args.output/('setup-route-'+scenario+'-destination.json')).write_text(json.dumps(destination,indent=2)+'\n')
+                assert destination['path']=='/app'
+                assert sorted(destination['parameters'])==sorted([['view','account'],['section',scenario],['selectedspace',workspace]])
+                expect(page.get_by_role('button',name='Активировать ULADIM Control',exact=True)).to_have_count(0)
                 expect(page.get_by_role('dialog')).to_have_count(0)
-                checks.append(scenario+' deep link retains precedence and consumes only settings')
+                checks.append(scenario+' deep link retains precedence and consumes settings plus owner intent')
             elif scenario=='mfa':
                 from backend.customer_mfa import CustomerMFA
                 from backend.control import totp

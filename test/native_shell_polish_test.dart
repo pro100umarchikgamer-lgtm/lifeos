@@ -58,23 +58,48 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
     final capture = GlobalKey();
+    final changes = <int>[];
     await tester.pumpWidget(RepaintBoundary(
         key: capture,
         child: MaterialApp(
             debugShowCheckedModeBanner: false,
             home: Scaffold(
-                body: LifeSelect<int>(
-              label: 'Currency',
-              value: 2,
-              choices: {for (var i = 0; i < 30; i++) i: 'Currency $i'},
-              searchLabel: 'Search currencies',
-              dialog: true,
-              onChanged: (_) {},
-            )))));
+                body: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 160, 24, 0),
+                    child: LifeSelect<int>(
+                      label: 'Currency',
+                      value: 2,
+                      choices: {for (var i = 0; i < 30; i++) i: 'Currency $i'},
+                      searchLabel: 'Search currencies',
+                      dialog: true,
+                      onChanged: changes.add,
+                    ))))));
+    final field = tester.getRect(find.byType(InputDecorator));
     await tester.tap(find.byType(LifeSelect<int>));
     await tester.pumpAndSettle();
-    final search = tester.getRect(find.byKey(const Key('selection_search')));
+    final menu = find.byKey(const Key('selection_dialog_body'));
+    final search = find.byKey(const Key('selection_search'));
+    final choices =
+        find.descendant(of: menu, matching: find.byType(SingleChildScrollView));
+    expect(menu, findsOneWidget);
+    expect(choices, findsOneWidget);
+    final menuBounds = tester.getRect(menu);
+    final searchBounds = tester.getRect(search);
+    final choicesBounds = tester.getRect(choices);
+    expect(menuBounds.left, closeTo(field.left, 1));
+    expect(menuBounds.width, closeTo(field.width, 1));
+    expect(menuBounds.top - field.bottom, inInclusiveRange(0, 6));
+    expect(menuBounds.height, inInclusiveRange(180, 400));
+    expect(menuBounds.bottom, lessThanOrEqualTo(836));
+    expect(searchBounds.top, greaterThan(menuBounds.top));
+    expect(searchBounds.bottom, lessThanOrEqualTo(choicesBounds.top));
+    final selected = find.byKey(const ValueKey('choice_2'));
+    expect(selected.hitTestable(), findsOneWidget);
+    final scrollable = tester.state<ScrollableState>(
+        find.descendant(of: choices, matching: find.byType(Scrollable)));
+    final initialOffset = scrollable.position.pixels;
     Future<List<int>> headerPixels() async {
       final image = await (capture.currentContext!.findRenderObject()
               as RenderRepaintBoundary)
@@ -82,8 +107,11 @@ void main() {
       final data =
           (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
       final result = <int>[];
-      for (var y = search.top.toInt() - 42; y < search.bottom.toInt(); y++) {
-        for (var x = 24; x < 366; x++) {
+      // Compare the entire fixed header, including its bottom divider.
+      for (var y = menuBounds.top.ceil(); y < choicesBounds.top.floor(); y++) {
+        for (var x = menuBounds.left.ceil();
+            x < menuBounds.right.floor();
+            x++) {
           final offset = (y * image.width + x) * 4;
           result.addAll([
             data.getUint8(offset),
@@ -97,16 +125,39 @@ void main() {
     }
 
     final before = await tester.runAsync(headerPixels);
-    await tester.drag(
-        find.descendant(
-            of: find.byType(BottomSheet), matching: find.byType(ListView)),
-        const Offset(0, -205));
+    expect(before, isNotEmpty);
+    await tester.drag(choices, const Offset(0, -205));
     await tester.pumpAndSettle();
+    expect(scrollable.position.pixels, greaterThan(initialOffset + 150));
+    expect(
+        tester.getRect(selected).bottom, lessThanOrEqualTo(choicesBounds.top));
+    expect(tester.getRect(menu), menuBounds);
+    expect(tester.getRect(search), searchBounds);
+    expect(tester.getRect(choices), choicesBounds);
     expect(await tester.runAsync(headerPixels), before);
     if (const bool.fromEnvironment('ULADIM_CAPTURE')) {
       await expectLater(find.byType(MaterialApp),
           matchesGoldenFile('native_inbox_goldens/currency_scrolled.png'));
     }
+    await tester.enterText(search, 'Currency 29');
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+    final result = find.byKey(const ValueKey('choice_29'));
+    expect(result.hitTestable(), findsOneWidget);
+    expect(selected, findsNothing);
+    expect(find.byKey(const ValueKey('choice_28')), findsNothing);
+    final keyboardMenu = tester.getRect(menu);
+    expect(keyboardMenu.left, closeTo(field.left, 1));
+    expect(keyboardMenu.width, closeTo(field.width, 1));
+    expect(keyboardMenu.top - field.bottom, inInclusiveRange(0, 6));
+    expect(keyboardMenu.bottom, lessThanOrEqualTo(536));
+    expect(
+        tester.getRect(result).bottom, lessThanOrEqualTo(keyboardMenu.bottom));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(menu, findsNothing);
+    expect(changes, isEmpty);
+    expect(find.text('Currency 2'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -9,6 +9,30 @@ OUT=Path(os.environ.get('ULADIM_PUBLIC_HELP_EVIDENCE','web_evidence/public-help'
 PAGES={'/faq':'.help-question','/privacy':'.help-document','/terms':'.help-document','/delete-account':'.help-steps','/support':'.help-support-grid','/download':'.help-download-grid','/plans':'.help-plans'}
 ANCHORS=('today','tasks','calendar','notes','finances','account','security','notifications','recovery','family','import','support','privacy','deletion','plans','installation','delete-staff-account')
 
+
+def visit_help(page, origin, path, selector, errors):
+    response = None
+    try:
+        response = page.goto(origin + path)
+        page.wait_for_selector(selector)
+    except Exception:
+        diagnostic = {
+            'path': path, 'actual_url': page.url,
+            'response_status': response.status if response else None,
+            'selector': selector, 'page_errors': list(errors),
+            'body_excerpt': page.locator('body').inner_text(timeout=1000)[:1600],
+            'selector_nodes': page.locator(selector).evaluate_all("""nodes => nodes.slice(0,4).map(node => {
+                const style=getComputedStyle(node),rect=node.getBoundingClientRect();
+                return {tag:node.tagName,classes:node.className,display:style.display,
+                    visibility:style.visibility,width:rect.width,height:rect.height,
+                    text:node.textContent.slice(0,120)};
+            })"""),
+        }
+        (OUT / 'navigation-failure.json').write_text(json.dumps(diagnostic, ensure_ascii=False, indent=2)+'\n')
+        print(json.dumps({'public_help_navigation_failure': diagnostic}, ensure_ascii=False), flush=True)
+        raise
+
+
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
     results=[]
@@ -19,8 +43,7 @@ def main():
             errors=[]
             page.on('pageerror',lambda error:errors.append(str(error)))
             for path,selector in PAGES.items():
-                page.goto(origin+path)
-                page.wait_for_selector(selector)
+                visit_help(page,origin,path,selector,errors)
                 expect(page.locator('h1')).to_have_count(1)
                 assert page.locator('a:not([href]), button:not([type])').count()==0,path
                 for width in (320,390,768,1440):
@@ -61,7 +84,7 @@ def main():
             # The legal/help escape path must survive a failed account service.
             page.route('**/account/api/config',lambda route:route.fulfill(status=503,body='temporarily unavailable'))
             for path in ('/faq','/privacy','/terms','/support','/delete-account','/download'):
-                page.goto(origin+path);page.wait_for_selector(PAGES[path])
+                visit_help(page,origin,path,PAGES[path],errors)
                 assert page.locator('h1').inner_text()!='Не удалось загрузить',path
             # Publication never follows from one filled operator field alone.
             # These independent scenarios must not exhaust production's per-IP
