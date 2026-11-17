@@ -83,14 +83,18 @@ def main():
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             # The legal/help escape path must survive a failed account service.
             page.route('**/account/api/config',lambda route:route.fulfill(status=503,body='temporarily unavailable'))
+            # Each outage page is an independent scenario. Fast CI otherwise
+            # shares the preceding navigation burst's real per-IP minute budget.
+            next_window=int(backend.clock())
+            backend.clock=lambda:next_window
             for path in ('/faq','/privacy','/terms','/support','/delete-account','/download'):
+                next_window+=61
                 visit_help(page,origin,path,PAGES[path],errors)
                 assert page.locator('h1').inner_text()!='Не удалось загрузить',path
             # Publication never follows from one filled operator field alone.
             # These independent scenarios must not exhaust production's per-IP
             # budget by visiting dozens of pages within one synthetic minute.
-            next_window=int(backend.clock())+61
-            backend.clock=lambda:next_window
+            next_window+=61
             page.unroute('**/account/api/config')
             metadata={'published':True,'operatorName':'Synthetic fixture operator'}
             page.route('**/account/api/config',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps({'public_legal':metadata})))
