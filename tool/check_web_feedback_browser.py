@@ -11,6 +11,7 @@ import os
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright, expect
 from tool.check_finance_filter_fit import source_styles
@@ -58,7 +59,7 @@ def main():
     parser.add_argument('--output',type=Path,default=OUT)
     args=parser.parse_args();OUT=args.output
     OUT.mkdir(parents=True, exist_ok=True)
-    checks, errors, samples = [], [], []
+    checks, errors, samples, http_errors = [], [], [], []
     styles = None if args.built_styles else source_styles()
     with fixture() as (origin, backend, actor, wid), sync_playwright() as p:
         now = int(time.time())
@@ -71,12 +72,22 @@ def main():
         launch = {'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}
         browser = p.chromium.launch(**launch)
 
-        def context(**options):
-            # Independent browser journeys must not share one per-IP rate window.
+        def advance_window():
+            # Fast independent relaunches must not share one per-IP rate window.
             next_window = int(backend.clock()) + 61
             backend.clock = lambda: next_window
+
+        def response_seen(response):
+            if response.status == 429 or response.status >= 500:
+                failure = {'status':response.status, 'method':response.request.method, 'path':urlsplit(response.url).path}
+                http_errors.append(failure)
+                print(json.dumps({'web_feedback_http_failure':failure}), flush=True)
+
+        def context(**options):
+            advance_window()
             ctx = browser.new_context(service_workers='block', reduced_motion='reduce', **options)
             if styles is not None:ctx.route('**/assets/design.css', lambda route: route.fulfill(content_type='text/css', body=styles))
+            ctx.on('response', response_seen)
             ctx.on('page', lambda page: page.on('pageerror', lambda error: errors.append(str(error))))
             return ctx
 
@@ -106,7 +117,7 @@ def main():
             elif tab == 'money':open_tab(page,'Финансы');open_finance_section(page,section)
             else:open_tab(page,{'notes':'Заметки','calendar':'Календарь'}[tab])
             expect(page.locator('main#content')).to_have_attribute('data-view', tab+'/'+(section if tab=='account' else '')+'/'+(section if tab=='money' else ''))
-            page.reload();expect(page.locator('main#content')).to_have_attribute('data-view', tab+'/'+(section if tab=='account' else '')+'/'+(section if tab=='money' else ''))
+            advance_window();page.reload();expect(page.locator('main#content')).to_have_attribute('data-view', tab+'/'+(section if tab=='account' else '')+'/'+(section if tab=='money' else ''))
             assert 'selectedspace='+wid in page.url
         checks.append({'case':'refresh-keeps-five-real-sections','containsPrivateRecordData':False})
 
@@ -153,44 +164,45 @@ def main():
 
         open_tab(page,'Профиль');name=page.locator('input[name=display_name]');expect(name).to_be_visible()
         name.fill('  Cafe\u0301 <safe>  ');name.locator('xpath=ancestor::form').locator('button[type=submit]').click();expect(name).to_have_value('Café <safe>')
-        page.reload();name=page.locator('input[name=display_name]');expect(name).to_have_value('Café <safe>')
+        advance_window();page.reload();name=page.locator('input[name=display_name]');expect(name).to_have_value('Café <safe>')
         name.fill('');name.locator('xpath=ancestor::form').locator('button[type=submit]').click();expect(name).to_have_value('')
         result=page.request.get(origin+'/account/api/identity').json();assert result=={'display_name':None},result
         checks.append({'case':'optional-self-name-nfc-roundtrip-and-clear','profileNamesRead':False})
 
-        page.goto(origin+'/app?view=money&section=ledger&settings=recovery&case='+case_id)
+        advance_window();page.goto(origin+'/app?view=money&section=ledger&settings=recovery&case='+case_id)
         confirm=page.locator('.recovery-case-confirm');expect(confirm).to_be_visible();confirm.click()
         expect(page.locator('.recovery-cases')).to_contain_text('Исходный аккаунт подтверждён.')
         with backend.connect() as db:
             assert db.execute('SELECT COUNT(*) AS n FROM record_recovery_requests').fetchone()['n']==0
             assert db.execute('SELECT state FROM support_recovery_cases WHERE id=?',(case_id,)).fetchone()['state']=='confirmed'
-        page.reload();expect(page.locator('.recovery-cases')).to_contain_text('Исходный аккаунт подтверждён.')
+        advance_window();page.reload();expect(page.locator('.recovery-cases')).to_contain_text('Исходный аккаунт подтверждён.')
         # A different original target never appears in the current owner's list/detail.
         other_session=backend.register('other-fixture@example.test','valid-fixture-long-password')
         other_actor=backend.authenticate(other_session['token'])
         with backend.transaction() as db:
             db.execute('INSERT INTO support_recovery_cases VALUES(?,?,NULL,?,\'waiting_owner\',1,?,?,0,?,?)',
                        (other_case,other_actor['id'],'records',now,now+86400,now,staff))
-        page.goto(origin+'/app?settings=recovery&case='+other_case)
+        advance_window();page.goto(origin+'/app?settings=recovery&case='+other_case)
         expect(page.locator('.recovery-cases')).to_contain_text('Это обращение недоступно для этого аккаунта.')
         expect(page.locator('.recovery-case-confirm')).to_have_count(0)
         assert 'other-fixture@example.test' not in page.locator('main').inner_text()
         page.screenshot(path=str(OUT/'wrong-owner-case-820.png'),full_page=True)
         checks.append({'case':'real-owner-confirmation-and-wrong-account-404','recordConsentCreated':False,'refreshKeepsCase':True})
 
-        page.goto(origin+'/app?view=money&section=analysis');expect(page.locator('select[name=chart-mode] option')).to_have_count(6)
+        advance_window();page.goto(origin+'/app?view=money&section=analysis');expect(page.locator('select[name=chart-mode] option')).to_have_count(6)
         with backend.transaction() as db:
             for key,enabled in [('chart_styles',False),('support_entry',True),('compact_onboarding',True)]:
                 db.execute('INSERT INTO feature_flags VALUES(?,?,?,?,?)',(key,json.dumps({'enabled':enabled,'rollout':100}),1,staff,now))
-        page.reload();expect(page.locator('select[name=chart-mode] option')).to_have_count(1);expect(page.locator('select[name=chart-mode]')).to_have_value('bar');expect(page.locator('.header-support')).to_be_visible()
+        advance_window();page.reload();expect(page.locator('select[name=chart-mode] option')).to_have_count(1);expect(page.locator('select[name=chart-mode]')).to_have_value('bar');expect(page.locator('.header-support')).to_be_visible()
         page.locator('.header-support').click();expect(page.locator('.settings-content')).to_have_attribute('data-section','support')
         page.set_viewport_size({'width':320,'height':900});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');page.set_viewport_size({'width':820,'height':900})
         page.route('**/account/api/spaces',lambda route:route.fulfill(json={'spaces':[]}))
-        page.goto(origin+'/app?view=today');expect(page.locator('.setup-panel')).to_have_attribute('data-compact','true');expect(page.locator('.setup-panel > p')).to_have_count(0)
+        advance_window();page.goto(origin+'/app?view=today');expect(page.locator('.setup-panel')).to_have_attribute('data-compact','true');expect(page.locator('.setup-panel > p')).to_have_count(0)
         checks.append({'case':'actual-session-interface-flag-consumers','defaultChartStyles':6,'disabledChart':'bar','supportShortcut':True,'compactIntro':True,'emptySpaces':'fixture response'})
         assert errors==[],errors
+        assert http_errors==[],http_errors
         ctx.close();browser.close()
-    (OUT/'checks.json').write_text(json.dumps({'checks':checks,'surfaces':samples,'pageErrors':errors,'stylesheet':'built bundle' if args.built_styles else 'source layers'},ensure_ascii=False,indent=2)+'\n')
+    (OUT/'checks.json').write_text(json.dumps({'checks':checks,'surfaces':samples,'pageErrors':errors,'httpErrors':http_errors,'stylesheet':'built bundle' if args.built_styles else 'source layers'},ensure_ascii=False,indent=2)+'\n')
     print(json.dumps({'checks':len(checks),'pageErrors':errors,'output':str(OUT)},ensure_ascii=False))
 
 
