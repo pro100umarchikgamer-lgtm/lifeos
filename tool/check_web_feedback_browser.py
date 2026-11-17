@@ -67,7 +67,8 @@ def main():
                        (staff, actor['id'], '["support"]', 'fixture-not-used-for-sign-in', now))
             db.execute('INSERT INTO support_recovery_cases VALUES(?,?,NULL,?,\'waiting_owner\',1,?,?,0,?,?)',
                        (case_id, actor['id'], 'records', now, now+86400, now, staff))
-        browser = p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM', '/usr/bin/chromium'))
+        launch = {'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}
+        browser = p.chromium.launch(**launch)
 
         def context(**options):
             # Independent browser journeys must not share one per-IP rate window.
