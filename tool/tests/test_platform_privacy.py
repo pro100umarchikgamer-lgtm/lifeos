@@ -27,7 +27,7 @@ class PlatformPrivacyTests(unittest.TestCase):
             for category in ['cloud-backup', 'device-transfer']:
                 domains = {node.attrib['domain'] for node in rules.findall(category + '/exclude')}
                 self.assertEqual(domains, {'root', 'file', 'database', 'sharedpref', 'external'})
-            self.assertIn('minSdk = 23', gradle.read_text())
+            self.assertIn('minSdk = 24', gradle.read_text())
 
     def test_native_components_permissions_and_desugaring_are_injected_once(self):
         source = (ROOT / 'tool/configure_platforms.py').read_text()

@@ -8,7 +8,7 @@ import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/personal_modules.dart';
 import 'package:lifeos/ui/selection.dart';
 import 'package:lifeos/ui/finance_foundation.dart';
-import 'widget_test.dart' show UIStore;
+import 'widget_test.dart' show UIStore, openNativeProfile;
 
 void main() {
   timezone.initializeTimeZones();
@@ -39,6 +39,7 @@ void main() {
     c.offline[OfflineTable.checklists]=[{'id':'list-existing','name':'Покупки','kind':'shopping','revision':2}];
     c.offline[OfflineTable.checklistItems]=[{'id':'item-existing','checklist_id':'list-existing','name':'Молоко','quantity':'1 л','completed':0,'task_id':null,'revision':4}];
     await tester.pumpWidget(MaterialApp(home:PersonalModulesPage(controller:c,table:OfflineTable.checklists)));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('module_checklists_list-existing')));await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox));await tester.pumpAndSettle();
     final action=store.actions.single as SaveChecklistItem;
     expect(action.id,'item-existing');expect(action.expectedRevision,4);expect(action.checklistId,'list-existing');expect(action.name,'Молоко');expect(action.completed,isTrue);expect(action.quantity,'1 л');
@@ -66,7 +67,7 @@ void main() {
   testWidgets('profile offers human settings and no false family access controls', (tester) async {
     final store=UIStore();final c=AppController(store,catalog,'ru');await c.load();
     await tester.pumpWidget(LifeOSApp(controller:c));await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('profile_button')));await tester.pumpAndSettle();
+    await openNativeProfile(tester);await tester.pumpAndSettle();
     expect(find.byKey(const Key('settings_0')),findsOneWidget);expect(find.byKey(const Key('settings_1')),findsOneWidget);expect(find.byKey(const Key('settings_2')),findsOneWidget);
     expect(find.text(c.pack.t('module_memberships')),findsNothing);expect(find.text(c.pack.t('profiles_local_only')),findsNothing);expect(store.actions,isEmpty);
   });

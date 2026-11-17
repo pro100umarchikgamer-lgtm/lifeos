@@ -11,6 +11,11 @@ chat or screenshots:
 
 - `GOOGLE_OAUTH_CLIENT_ID`: Web application OAuth client ID.
 - `GOOGLE_OAUTH_CLIENT_SECRET`: that Web application's client secret.
+- `GOOGLE_OAUTH_ANDROID_CLIENT_IDS`: up to eight exact, comma-separated Android
+  OAuth client IDs from the same Google project. These public identifiers must
+  come from the existing Android OAuth client records; do not invent values or
+  substitute a package name, certificate fingerprint or Web client ID. Empty
+  trusts no additional Android authorized presenters.
 
 Without the configuration, login forms do not show an inoperative Google button.
 No Google/Drive access or refresh tokens are requested or stored. Only `openid
@@ -42,6 +47,26 @@ They are public certificate metadata, not private keys. Do not generate a new ke
 The Android client receives the Web client ID and one-time nonce from the server;
 it uses Credential Manager through the existing Flutter/native MethodChannel.
 No WebView or Firebase user store is introduced.
+
+Google supports hybrid tokens whose `aud` is the Web client ID and whose `azp`
+is a different Android client ID in the same project. The backend accepts that
+Android presenter only when it exactly matches `GOOGLE_OAUTH_ANDROID_CLIENT_IDS`.
+Web callbacks still require the Web presenter. Both paths keep signature, Web
+audience, issuer, nonce, expiry, one-use challenge, browser/device binding and MFA
+checks. A client ID in this list never grants staff or owner authority.
+
+An otherwise valid Android token from an unlisted presenter returns
+`google_android_client_untrusted` (403), without token contents or client IDs.
+The app can offer its existing alternate sign-in methods; retrying the same
+unconfigured Android client is not a password correction. Public
+`GET /v1/auth/google/config` exposes only the additional boolean
+`google_android_clients_configured`; this reports a configured list, not proof of
+a successful real device login.
+
+The new environment variable must reach the actual API process. The current
+Compose definition forwards it. Older immutable release overrides may not do so;
+the next reviewed release must explicitly preserve and forward it. Do not edit or
+rerun a previously pinned deployment helper to bypass that release check.
 
 Add the approved QA Google accounts as test users if the consent configuration is
 in testing. Complete the consent screen using real operator/contact details and
@@ -77,7 +102,9 @@ Deletion also removes Google identity metadata and pending link requests.
    rebuilds dependencies when requirements differ and passes Google environment
    variables through the retained Compose configuration. Never use a code-only
    overlay without PyJWT. Migrate 011 only after a
-   fresh verified backup and checks. Registration remains closed and payments off.
+   fresh verified backup and checks. Registration policy must match the deployed
+   configuration; public registration is open as verified on 16 November. Payments
+   remain off.
 2. Real browser Google signup/login, cancellation, relogin, email-collision linking,
    unlink and ULADIM MFA. Check production callback log redaction.
 3. Real signed Android Credential Manager login with the retained certificate,
@@ -93,3 +120,35 @@ Reference implementations/policies reviewed on 2026-11-10:
 - https://developer.android.com/jetpack/androidx/releases/credentials
 
 Stable Maven metadata was checked: Credential Manager 1.6.0, googleid 1.2.1.
+
+## Android report on 2026-11-15
+
+The supplied recording shows native Google verification failures early in the
+session. Later speech about successful Google login occurs in the browser; it
+does not establish native acceptance. The production public Google config was
+200 with `google_enabled:true`, which proves the route is enabled, not that the
+Android OAuth client, retained certificate or presenter list is correct.
+
+A synthetic RS256 token with the supported hybrid `aud`/`azp` combination
+reproduced the original backend's `google_invalid` rejection. The exact allowlist
+fix is covered by positive and negative tests, including retained Web strictness,
+nonce/audience rejection, replay/device binding and customer MFA. The owner's real
+token claims and Google Console client records were not inspected, so this is a
+confirmed compatibility defect and a possible cause of the recording, not proof
+of its sole cause. Configuration of the real Android client IDs and a successful
+signed physical Android login remain unobserved release gates. No app signing
+key, customer role, MFA rule or production data was changed during diagnosis.
+
+## Owner recording on 2026-11-16
+
+The new Android screen recording shows the Google account chooser followed by a
+signed-in ULADIM account. It then shows records after selecting the existing cloud
+personal space. This is evidence of a successful physical-device login in that
+session, rather than proof of every cancellation, relogin, linking or MFA case.
+The owner identifies the recording as APK334 feedback; the device binary itself
+was not independently attested from the video. The current UI correction makes
+an explicit successful verified login select the existing personal cloud space
+and open Today. It keeps local records separate and does not change OAuth,
+permissions or transport. Google-only accounts use existing email recovery to
+establish a password; an unknown old password is no longer requested by that
+shortcut. Signed release acceptance and owner activation remain separate checks.

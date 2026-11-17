@@ -10,7 +10,6 @@ import '../domain/models.dart';
 import '../domain/statement_import.dart';
 import '../domain/statement_detection.dart';
 import 'selection.dart';
-import 'design.dart';
 
 class StatementImportPage extends StatefulWidget {
   const StatementImportPage({super.key, required this.controller});
@@ -141,9 +140,8 @@ class _StatementImportPageState extends State<StatementImportPage> {
       defaultCurrency: importCurrency,
       direction: direction,
     );
-    final content = sourceKey.isEmpty
-        ? await importDigest(source.rows)
-        : sourceKey;
+    final content =
+        sourceKey.isEmpty ? await importDigest(source.rows) : sourceKey;
     final seen = <String>{};
     for (var i = header + 1; i < source.rows.length; i++) {
       final position = preview.length;
@@ -218,260 +216,310 @@ class _StatementImportPageState extends State<StatementImportPage> {
     T value,
     Map<T, String> choices,
     ValueChanged<T> onChanged,
-  ) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: LifeSelect<T>(
-      label: c.pack.t(key),
-      value: value,
-      choices: choices,
-      onChanged: busy ? null : onChanged,
-      searchLabel: c.pack.t('search'),
-    ),
-  );
+  ) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: LifeSelect<T>(
+          label: c.pack.t(key),
+          value: value,
+          choices: choices,
+          onChanged: busy ? null : onChanged,
+          searchLabel: c.pack.t('search'),
+        ),
+      );
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !busy,
-    child: Scaffold(
-      appBar: AppBar(
-        title: Text(c.pack.t('import_file')),
-        leading: step > 0
-            ? IconButton(
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onPressed: busy
-                    ? null
-                    : () => setState(() {
-                        step--;
-                        if (step == 0) {
-                          sheets.clear();
-                          table = null;
-                        }
-                        preview.clear();
-                        errors.clear();
-                        selected.clear();
-                        duplicates.clear();
-                        alreadyImported.clear();
-                      }),
-                icon: const Icon(Icons.arrow_back),
-              )
-            : null,
-      ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                c.pack.t('import_step_$step'),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            if (error.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  c.pack.t(error),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            Expanded(
-              child: step == 0
-                  ? ListView(
-                      key: const Key('import_choose'),
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        LifeCard(child: Text(c.pack.t('import_private'))),
-                        const SizedBox(height: 16),
-                        FilledButton.icon(
-                          onPressed: busy ? null : pick,
-                          icon: const Icon(Icons.file_open_outlined),
-                          label: Text(c.pack.t('choose_file')),
-                        ),
-                        const SizedBox(height: 12),
-                        ExpansionTile(
-                          title: Text(c.pack.t('ux_import_advanced')),
-                          children: [
-                            select('encoding', encoding, {
-                              'auto': c.pack.t('automatic'),
-                              'utf8': 'UTF-8',
-                              'utf16': 'UTF-16 (BOM)',
-                              'cp1251': 'Windows-1251',
-                            }, (v) => setState(() => encoding = v)),
-                            select('file_separator', delimiter, {
-                              'auto': c.pack.t('automatic'),
-                              ';': ';',
-                              ',': ',',
-                              '\t': 'TAB',
-                            }, (v) => setState(() => delimiter = v)),
-                          ],
-                        ),
-                      ],
-                    )
-                  : step == 1
-                  ? ListView(
-                      key: const Key('import_mapping'),
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        if (sheets.length > 1)
-                          select(
-                            'sheet',
-                            sheet,
-                            {for (final k in sheets.keys) k: k},
-                            (v) => setState(() {
-                              sheet = v;
-                              table = sheets[v];
-                              header = 0;
-                            }),
-                          ),
-                        select('header_row', header, {
-                          for (
-                            var i = 0;
-                            i < table!.rows.length - 1 && i < 20;
-                            i++
-                          )
-                            i: '${i + 1}: ${table!.rows[i].take(3).join(' · ')}',
-                        }, (v) => setState(() => header = v)),
-                        for (final field in [
-                          'date',
-                          'amount',
-                          'description',
-                          'currency',
-                        ])
-                          select<int>(
-                            field,
-                            switch (field) {
-                              'date' => date,
-                              'amount' => amount,
-                              'description' => description,
-                              _ => currency,
-                            },
-                            {
-                              if (field == 'currency' || field == 'description')
-                                -1: field == 'currency'
-                                    ? importCurrency
-                                    : c.pack.t('unassigned'),
-                              for (
-                                var i = 0;
-                                i < table!.rows[header].length;
-                                i++
-                              )
-                                i: '${i + 1}: ${table!.rows[header][i]}',
-                            },
-                            (v) => setState(() {
-                              switch (field) {
-                                case 'date':
-                                  date = v;
-                                case 'amount':
-                                  amount = v;
-                                case 'description':
-                                  description = v;
-                                default:
-                                  currency = v;
+        canPop: !busy,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(c.pack.t('import_file')),
+            leading: step > 0
+                ? IconButton(
+                    tooltip:
+                        MaterialLocalizations.of(context).backButtonTooltip,
+                    onPressed: busy
+                        ? null
+                        : () => setState(() {
+                              step--;
+                              if (step == 0) {
+                                sheets.clear();
+                                table = null;
                               }
+                              preview.clear();
+                              errors.clear();
+                              selected.clear();
+                              duplicates.clear();
+                              alreadyImported.clear();
                             }),
-                          ),
-                        if (currency < 0)
-                          select('currency', importCurrency, {
-                            for (final code in {
-                              c.currency,
-                              'RUB',
-                              'USD',
-                              'EUR',
-                              'KZT',
-                              'UZS',
-                              'UAH',
-                              'GBP',
-                              'GEL',
-                              'AZN',
-                              'AMD',
-                              'TJS',
-                              'KGS',
-                            })
-                              code: code,
-                          }, (v) => setState(() => importCurrency = v)),
-                        select('amount_direction', direction, {
-                          'signed': c.pack.t('sign_rules'),
-                          'expense': c.pack.t('expense'),
-                          'income': c.pack.t('income'),
-                        }, (v) => setState(() => direction = v)),
-                        select('date_format', format, {
-                          'iso': 'YYYY-MM-DD / YYYYMMDD',
-                          'dmy': 'DD.MM.YYYY',
-                          'mdy': 'MM/DD/YYYY',
-                          'excel': c.pack.t('excel_date'),
-                        }, (v) => setState(() => format = v)),
-                        select('decimal_separator', decimal, {
-                          '.': '1,234.56',
-                          ',': '1.234,56',
-                        }, (v) => setState(() => decimal = v)),
-                        select('account', account, {
-                          '': c.pack.t('unassigned'),
-                          for (final a
-                              in c.offline[OfflineTable.accounts] ?? [])
-                            a['id'] as String: a['name'] as String,
-                        }, (v) => setState(() => account = v)),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: preview.length,
-                      itemBuilder: (context, i) {
-                        final r = preview[i];
-                        return CheckboxListTile(
-                          value: selected.contains(i),
-                          onChanged:
-                              busy || r == null || alreadyImported.contains(i)
-                              ? null
-                              : (v) => setState(() {
-                                  if (v == true) {
-                                    selected.add(i);
-                                  } else {
-                                    selected.remove(i);
-                                  }
-                                }),
-                          title: Text(
-                            r == null
-                                ? '${i + header + 2}: ${errors[i]}'
-                                : '${c.pack.t(r.kind.name)} · ${r.date} · ${Currency.fromCode(r.currency).format(r.amountMinor)}',
-                          ),
-                          subtitle: Text(
-                            r == null
-                                ? ''
-                                : '${r.label}${alreadyImported.contains(i) ? ' · ${c.pack.t('already_imported')}' : ''}${duplicates.contains(i) ? ' · ${c.pack.t('import_duplicate')}' : ''}',
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            if (step == 2)
-              TextButton.icon(
-                onPressed: busy ? null : () => setState(() => step = 1),
-                icon: const Icon(Icons.tune),
-                label: Text(c.pack.t('ux_import_adjust')),
-              ),
-            if (step > 0)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: FilledButton(
-                  onPressed: busy
-                      ? null
-                      : step == 1
-                      ? review
-                      : selected.isEmpty
-                      ? null
-                      : confirm,
+                    icon: const Icon(Icons.arrow_back),
+                  )
+                : null,
+          ),
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
-                    busy
-                        ? c.pack.t('saving')
-                        : step == 1
-                        ? c.pack.t('import_preview')
-                        : '${c.pack.t('import_confirm')} (${selected.length})',
+                    c.pack.t('import_step_$step'),
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-              ),
-          ],
+                if (error.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      c.pack.t(error),
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                Expanded(
+                  child: step == 0
+                      ? ListView(
+                          key: const Key('import_choose'),
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            Icon(Icons.upload_file_outlined,
+                                size: 36,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                            const SizedBox(height: 16),
+                            Text(c.pack.t('import_private'),
+                                style: Theme.of(context).textTheme.bodyMedium),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: busy ? null : pick,
+                              icon: const Icon(Icons.file_open_outlined),
+                              label: Text(c.pack.t('choose_file')),
+                            ),
+                            const SizedBox(height: 12),
+                            ExpansionTile(
+                              title: Text(c.pack.t('ux_import_advanced')),
+                              children: [
+                                select(
+                                    'encoding',
+                                    encoding,
+                                    {
+                                      'auto': c.pack.t('automatic'),
+                                      'utf8': 'UTF-8',
+                                      'utf16': 'UTF-16 (BOM)',
+                                      'cp1251': 'Windows-1251',
+                                    },
+                                    (v) => setState(() => encoding = v)),
+                                select(
+                                    'file_separator',
+                                    delimiter,
+                                    {
+                                      'auto': c.pack.t('automatic'),
+                                      ';': ';',
+                                      ',': ',',
+                                      '\t': 'TAB',
+                                    },
+                                    (v) => setState(() => delimiter = v)),
+                              ],
+                            ),
+                          ],
+                        )
+                      : step == 1
+                          ? ListView(
+                              key: const Key('import_mapping'),
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                if (sheets.length > 1)
+                                  select(
+                                    'sheet',
+                                    sheet,
+                                    {for (final k in sheets.keys) k: k},
+                                    (v) => setState(() {
+                                      sheet = v;
+                                      table = sheets[v];
+                                      header = 0;
+                                    }),
+                                  ),
+                                for (final field in [
+                                  'date',
+                                  'amount',
+                                  'description',
+                                  'currency',
+                                ])
+                                  select<int>(
+                                    field,
+                                    switch (field) {
+                                      'date' => date,
+                                      'amount' => amount,
+                                      'description' => description,
+                                      _ => currency,
+                                    },
+                                    {
+                                      if (field == 'currency' ||
+                                          field == 'description')
+                                        -1: field == 'currency'
+                                            ? importCurrency
+                                            : c.pack.t('unassigned'),
+                                      for (var i = 0;
+                                          i < table!.rows[header].length;
+                                          i++)
+                                        i: '${i + 1}: ${table!.rows[header][i]}',
+                                    },
+                                    (v) => setState(() {
+                                      switch (field) {
+                                        case 'date':
+                                          date = v;
+                                        case 'amount':
+                                          amount = v;
+                                        case 'description':
+                                          description = v;
+                                        default:
+                                          currency = v;
+                                      }
+                                    }),
+                                  ),
+                                if (currency < 0)
+                                  select(
+                                      'currency',
+                                      importCurrency,
+                                      {
+                                        for (final code in {
+                                          c.currency,
+                                          'RUB',
+                                          'USD',
+                                          'EUR',
+                                          'KZT',
+                                          'UZS',
+                                          'UAH',
+                                          'GBP',
+                                          'GEL',
+                                          'AZN',
+                                          'AMD',
+                                          'TJS',
+                                          'KGS',
+                                        })
+                                          code: code,
+                                      },
+                                      (v) =>
+                                          setState(() => importCurrency = v)),
+                                ExpansionTile(
+                                  key: const Key('import_mapping_advanced'),
+                                  tilePadding: EdgeInsets.zero,
+                                  title: Text(c.pack.t('ux_import_advanced')),
+                                  children: [
+                                    select(
+                                        'header_row',
+                                        header,
+                                        {
+                                          for (var i = 0;
+                                              i < table!.rows.length - 1 &&
+                                                  i < 20;
+                                              i++)
+                                            i: '${i + 1}: ${table!.rows[i].take(3).join(' · ')}',
+                                        },
+                                        (v) => setState(() => header = v)),
+                                    select(
+                                        'amount_direction',
+                                        direction,
+                                        {
+                                          'signed': c.pack.t('sign_rules'),
+                                          'expense': c.pack.t('expense'),
+                                          'income': c.pack.t('income'),
+                                        },
+                                        (v) => setState(() => direction = v)),
+                                    select(
+                                        'date_format',
+                                        format,
+                                        {
+                                          'iso': 'YYYY-MM-DD / YYYYMMDD',
+                                          'dmy': 'DD.MM.YYYY',
+                                          'mdy': 'MM/DD/YYYY',
+                                          'excel': c.pack.t('excel_date'),
+                                        },
+                                        (v) => setState(() => format = v)),
+                                    select(
+                                        'decimal_separator',
+                                        decimal,
+                                        {
+                                          '.': '1,234.56',
+                                          ',': '1.234,56',
+                                        },
+                                        (v) => setState(() => decimal = v)),
+                                  ],
+                                ),
+                                select(
+                                    'account',
+                                    account,
+                                    {
+                                      '': c.pack.t('unassigned'),
+                                      for (final a
+                                          in c.offline[OfflineTable.accounts] ??
+                                              [])
+                                        a['id'] as String: a['name'] as String,
+                                    },
+                                    (v) => setState(() => account = v)),
+                              ],
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: preview.length,
+                              itemBuilder: (context, i) {
+                                final r = preview[i];
+                                return CheckboxListTile(
+                                  value: selected.contains(i),
+                                  onChanged: busy ||
+                                          r == null ||
+                                          alreadyImported.contains(i)
+                                      ? null
+                                      : (v) => setState(() {
+                                            if (v == true) {
+                                              selected.add(i);
+                                            } else {
+                                              selected.remove(i);
+                                            }
+                                          }),
+                                  title: Text(
+                                    r == null
+                                        ? '${i + header + 2}: ${errors[i]}'
+                                        : '${c.pack.t(r.kind.name)} · ${r.date} · ${Currency.fromCode(r.currency).format(r.amountMinor)}',
+                                  ),
+                                  subtitle: Text(
+                                    r == null
+                                        ? ''
+                                        : '${r.label}${alreadyImported.contains(i) ? ' · ${c.pack.t('already_imported')}' : ''}${duplicates.contains(i) ? ' · ${c.pack.t('import_duplicate')}' : ''}',
+                                  ),
+                                );
+                              },
+                            ),
+                ),
+                if (step == 2)
+                  TextButton.icon(
+                    onPressed: busy ? null : () => setState(() => step = 1),
+                    icon: const Icon(Icons.tune),
+                    label: Text(c.pack.t('ux_import_adjust')),
+                  ),
+                if (step > 0)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: FilledButton(
+                      onPressed: busy
+                          ? null
+                          : step == 1
+                              ? review
+                              : selected.isEmpty
+                                  ? null
+                                  : confirm,
+                      child: Text(
+                        busy
+                            ? c.pack.t('saving')
+                            : step == 1
+                                ? c.pack.t('import_preview')
+                                : '${c.pack.t('import_confirm')} (${selected.length})',
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }

@@ -10,7 +10,19 @@ if android.exists():
     source = re.sub(r'\s+android:(allowBackup|fullBackupContent|dataExtractionRules)="[^"]*"', '', source)
     source = re.sub(r'android:label="[^"]*"', 'android:label="ULADIM"', source, count=1)
     source = source.replace('<application', '<application android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules"', 1)
+    source = re.sub(r'android:icon="[^"]*"', 'android:icon="@mipmap/ic_launcher"', source, count=1)
+    source = re.sub(r'\s+android:roundIcon="[^"]*"', '', source)
+    source = source.replace('<application', '<application android:roundIcon="@mipmap/ic_launcher_round"', 1)
     android.write_text(source)
+    # Copy committed brand assets after every flutter-create/prepare invocation.
+    # The build needs no image library and can never restore the template logo.
+    import shutil
+    launcher = ROOT / 'tool/native/android/launcher/res'
+    for resource in launcher.rglob('*'):
+        if resource.is_file():
+            destination = ROOT / 'android/app/src/main/res' / resource.relative_to(launcher)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(resource, destination)
     rules = ROOT / 'android/app/src/main/res/xml/data_extraction_rules.xml'
     rules.parent.mkdir(parents=True, exist_ok=True)
     root = ET.Element('data-extraction-rules')

@@ -3,6 +3,7 @@ on:
   workflow_call:
 permissions:
   contents: read
+  actions: read
 jobs:
   postgres:
     # Playwright 1.56 supports this image; ubuntu-latest now selects 26.04.
@@ -43,7 +44,13 @@ jobs:
               db.execute("CREATE ROLE lifeos_ci LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'synthetic-ci-only-password'")
               db.execute('GRANT CONNECT,CREATE ON DATABASE lifeos_test TO lifeos_ci')
           PY
+      - name: Verify completed checks for identical backend bytes
+        id: backend_evidence
+        env:
+          ULADIM_READ_API_TOKEN: ${{ github.token }}
+        run: python3 tool/verify_backend_evidence.py
       - name: Backend tests and two-account authorization evidence
+        if: steps.backend_evidence.outputs.reused != 'true'
         run: python -m tool.run_security_audit --all
       - uses: subosito/flutter-action@v2
         with:
@@ -125,7 +132,7 @@ jobs:
       - name: Install isolated browser acceptance tools
         run: |
           python -m pip install -r tool/web-requirements.txt
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium
       - name: Render public, customer and MFA staff workflows
         run: python -m tool.check_web_browser
       - name: Verify PWA synchronization, retry, locales and safe caching
@@ -137,8 +144,10 @@ jobs:
       - name: Verify exact finance, local statement import, lost responses and deduplication
         run: |
           node tool/check_money.js
+          node tool/check_statement_formats.cjs
           python tool/check_statement_build.py
           python -m tool.check_finance_browser
+          python -m tool.check_statement_browser
       - name: Verify opt-in Clarity against the same accounts and API
         run: ULADIM_DESIGN=clarity python -m tool.check_pwa_browser
       - name: Render the three design concepts on phone, tablet and desktop

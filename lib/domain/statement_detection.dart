@@ -15,6 +15,12 @@ class StatementDetection {
         'дата',
         'дата операции',
         'operation date',
+        'transaction_datetime',
+        'transaction datetime',
+        'transaction_date',
+        'transaction date',
+        'posting_datetime',
+        'posting datetime',
         'дата платежа',
       },
       'amount': {'amount', 'сумма', 'сумма операции', 'transaction amount'},
@@ -27,14 +33,11 @@ class StatementDetection {
       },
       'currency': {'currency', 'валюта', 'код валюты'},
     };
-    for (
-      var header = 0;
-      header < table.rows.length - 1 && header < 20;
-      header++
-    ) {
-      final cells = table.rows[header]
-          .map((v) => v.trim().toLowerCase())
-          .toList();
+    for (var header = 0;
+        header < table.rows.length - 1 && header < 20;
+        header++) {
+      final cells =
+          table.rows[header].map((v) => v.trim().toLowerCase()).toList();
       int column(String key) {
         final matches = [
           for (var i = 0; i < cells.length; i++)
@@ -43,7 +46,19 @@ class StatementDetection {
         return matches.length == 1 ? matches.single : -1;
       }
 
-      final date = column('date'), amount = column('amount');
+      final preferredDate = [
+        for (var i = 0; i < cells.length; i++)
+          if (const {
+            'transaction_datetime',
+            'transaction datetime',
+            'transaction_date',
+            'transaction date'
+          }.contains(cells[i]))
+            i
+      ];
+      final date =
+          preferredDate.length == 1 ? preferredDate.single : column('date');
+      final amount = column('amount');
       if (date < 0 || amount < 0) continue;
       final samples = table.rows
           .skip(header + 1)
@@ -55,7 +70,9 @@ class StatementDetection {
       for (final row in samples) {
         final d = row[date].trim();
         String? candidate;
-        if (RegExp(r'^\d{4}-\d{2}-\d{2}$|^\d{8}$').hasMatch(d)) {
+        if (RegExp(
+                r'^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$|^\d{8}$')
+            .hasMatch(d)) {
           candidate = 'iso';
         } else if (RegExp(r'^\d{1,2}\.\d{1,2}\.\d{4}$').hasMatch(d)) {
           candidate = 'dmy';
@@ -64,10 +81,8 @@ class StatementDetection {
         }
         if (format != null && format != candidate) return null;
         format = candidate;
-        final value = row[amount]
-            .trim()
-            .replaceAll(' ', '')
-            .replaceAll('\u00a0', '');
+        final value =
+            row[amount].trim().replaceAll(' ', '').replaceAll('\u00a0', '');
         final comma = value.lastIndexOf(','), dot = value.lastIndexOf('.');
         if (comma >= 0 || dot >= 0) {
           final chosen = comma > dot ? ',' : '.';

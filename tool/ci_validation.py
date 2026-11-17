@@ -6,9 +6,11 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import zipfile
 from urllib.parse import urlencode
 from release_policy import permits_signed_build
+import validation_evidence as passed
 
 REPO = os.environ['GITHUB_REPOSITORY']
 API = f'repos/{REPO}/actions'
@@ -29,6 +31,35 @@ def output(name, value):
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
         stream.write(f'{name}={value}\n')
 
+
+def passed_prebuild_prefix(proof):
+    """Only the reviewed direct child may reuse the successful prefix of #352."""
+    passed.require(os.environ.get('GITHUB_REPOSITORY') == passed.REPO
+                   and os.environ.get('GITHUB_REF') == 'refs/heads/' + passed.BRANCH
+                   and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
+                   and os.environ.get('GITHUB_SHA') == proof['sha']
+                   and os.environ.get('GITHUB_WORKFLOW_SHA') == proof['sha'], 'Untrusted current validation context')
+    parents = command('git', 'rev-list', '--parents', '-n', '1', 'HEAD').split()[1:]
+    passed.require(parents == [passed.BASE_SOURCE], 'Not the reviewed direct child')
+    baseline = command('git', 'ls-tree', '-r', passed.BASE_SOURCE).splitlines()
+    candidate = command('git', 'ls-tree', '-r', 'HEAD').splitlines()
+    before, after = passed.entries(baseline), passed.entries(candidate)
+    changed = {name for name in before.keys() | after.keys() if before.get(name) != after.get(name)}
+    passed.require(changed == set(passed.APPROVED_FILE_SHA256), 'Outside approved automation delta')
+    blobs = {name: subprocess.check_output(['git', 'cat-file', 'blob', 'HEAD:' + name]) for name in changed}
+    run = api(f'{API}/runs/{passed.BASE_RUN_ID}/attempts/1')
+    listing = api(f'{API}/runs/{passed.BASE_RUN_ID}/attempts/1/jobs?per_page=100')
+    passed.require(isinstance(listing, dict) and isinstance(listing.get('jobs'), list)
+                   and listing.get('total_count') == len(listing['jobs']) < 100, 'Incomplete prior job evidence')
+    artifact = api(f'{API}/artifacts/{passed.BASE_ARTIFACT_ID}')
+    passed.require(isinstance(artifact, dict) and artifact.get('id') == passed.BASE_ARTIFACT_ID and artifact.get('size_in_bytes') == 319
+                   and artifact.get('digest') == 'sha256:' + passed.BASE_ARTIFACT_SHA256,
+                   'Unexpected prior proof artifact')
+    raw = subprocess.check_output(['gh', 'api', '--allow-escape-sequences',
+                                   f'{API}/artifacts/{passed.BASE_ARTIFACT_ID}/zip'], timeout=60)
+    return passed.verify_prebuild_evidence(run, listing['jobs'], artifact, raw,
+                                           baseline, candidate, blobs, proof, parents)
+
 sdk = json.loads(command('flutter', '--version', '--machine'))['frameworkVersion']
 lock = hashlib.sha256(Path('pubspec.lock').read_bytes()).hexdigest()
 proof = {'inputs': inputs('HEAD'), 'lock': lock, 'flutter': sdk, 'sha': command('git', 'rev-parse', 'HEAD').strip()}
@@ -37,6 +68,20 @@ reuse = False
 apk_exists = False
 trusted = permits_signed_build(os.environ['GITHUB_REF'], os.environ['GITHUB_EVENT_NAME'])
 branch = os.environ['GITHUB_REF'].removeprefix('refs/heads/')
+if trusted:
+    # Changed automation is checked fresh even when the unchanged app checks can
+    # reuse proof. Test failure aborts this decision before any skip/build output.
+    subprocess.run([sys.executable, '-m', 'unittest', 'tool.tests.test_validation_evidence',
+                    'tool.tests.test_release_upgrade', '-v', '-b'], check=True)
+    if os.environ.get('FORCE_FULL_VALIDATION') != 'true':
+        try:
+            receipt = passed_prebuild_prefix(proof)
+            receipt['fresh_changed_tool_tests_passed'] = True
+            Path('validation-step-reuse.json').write_text(json.dumps(receipt, sort_keys=True) + '\n')
+            reuse = True
+            print('Reusing only the verified pre-build prefix of run #352; its later upgrade remains failed.')
+        except (passed.EvidenceRejected, subprocess.SubprocessError, KeyError, ValueError, OSError) as error:
+            print(f'Passed-step evidence not reusable ({type(error).__name__}); checking complete validation evidence.')
 run_query = urlencode({'branch': branch, 'status': 'success', 'per_page': 100})
 try:
     runs = api(f'{API}/workflows/stage1.yml/runs?{run_query}')['workflow_runs'] if trusted else []

@@ -5,12 +5,13 @@ import json
 import os
 from pathlib import Path
 import urllib.parse
-from .service import Backend, Failure
+from .service import Backend, Failure, token_hash
 
 MAX_BODY=2*1024*1024
 
 def dispatch(backend,method,path,body,auth):
-    split=urllib.parse.urlsplit(path);route=split.path;query=urllib.parse.parse_qs(split.query)
+    split=urllib.parse.urlsplit(path);route=split.path
+    query=urllib.parse.parse_qs(split.query,keep_blank_values=route.startswith('/v1/referrals') or route=='/v1/task-reminders' or route.startswith('/v1/account/identity') or route.startswith('/v1/account/recovery'))
     if route=='/v1/auth/signup' and method=='POST':
         from .account_lifecycle import AccountLifecycle
         result=AccountLifecycle(backend).signup(body.get('email'),body.get('password'))
@@ -27,6 +28,7 @@ def dispatch(backend,method,path,body,auth):
     elif route=='/v1/auth/login' and method=='POST':result=backend.login(body.get('email'),body.get('password'),body.get('code'))
     else:
         token=auth[7:] if auth.startswith('Bearer ') else '';actor=backend.authenticate(token)
+        actor['_auth_hash'] = token_hash(token)
         if route=='/v1/auth/verify' and method=='POST':result=backend.verify(actor,body.get('code'))
         elif route=='/v1/auth/verification/resend' and method=='POST':result=backend.resend_verification(actor)
         elif route=='/v1/auth/password' and method=='POST':result=backend.password(actor,body.get('old_password'),body.get('new_password'))
@@ -37,6 +39,66 @@ def dispatch(backend,method,path,body,auth):
         elif route=='/v1/account/features' and method=='GET':
             from .control import Control
             result={'flags':Control(backend).flags(actor['id'])}
+        elif route=='/v1/account/identity' and method in ('GET','POST'):
+            from .account_identity import AccountIdentity
+            if query:raise Failure('invalid_fields')
+            result=AccountIdentity(backend).identity(actor,body if method=='POST' else None)
+        elif route in ('/v1/account/recovery-cases','/v1/account/recovery-case','/v1/account/recovery-cases/confirm'):
+            from .recovery_cases import RecoveryCases
+            cases=RecoveryCases(backend)
+            if route=='/v1/account/recovery-cases' and method=='GET':result=cases.listing(actor,query)
+            elif route=='/v1/account/recovery-case' and method=='GET':
+                if set(query)!={'id'} or len(query['id'])!=1:raise Failure('invalid_fields')
+                result=cases.read(actor,query['id'][0])
+            elif route=='/v1/account/recovery-cases/confirm' and method=='POST':
+                if query:raise Failure('invalid_fields')
+                result=cases.confirm(actor,body)
+            else:raise Failure('not_found',404)
+        elif route=='/v1/account/trash' and method=='GET':
+            from .record_recovery import RecordRecovery
+            if not set(query)<={'workspace','before','record'} or any(len(v)!=1 for v in query.values()):raise Failure('invalid_fields')
+            result=RecordRecovery(backend).trash(actor,query.get('workspace',[''])[0],query.get('before',[None])[0],query.get('record',[None])[0])
+        elif route.startswith('/v1/account/recovery/'):
+            from .record_recovery import RecordRecovery
+            recovery=RecordRecovery(backend);action=route.rsplit('/',1)[-1]
+            if action=='requests' and method=='GET':
+                if not set(query)<={'before'} or any(len(v)!=1 for v in query.values()):raise Failure('invalid_fields')
+                result=recovery.requests(actor,query.get('before',[None])[0])
+            else:
+                handlers={'request':recovery.request,'prepare':recovery.prepare,'commit':recovery.commit,'cancel':recovery.cancel}
+                if query or method!='POST' or action not in handlers:raise Failure('not_found',404)
+                result=handlers[action](body=body,actor=actor)
+        elif route.startswith('/v1/referrals'):
+            from .referrals import Referrals
+            referrals=Referrals(backend)
+            if route=='/v1/referrals' and method=='GET':result=referrals.summary(actor,query)
+            else:
+                if query:raise Failure('invalid_fields')
+                if route=='/v1/referrals/alias' and method=='GET':result=referrals.alias(actor)
+                elif route=='/v1/referrals/code' and method=='POST':result=referrals.create_code(actor,body)
+                elif route=='/v1/referrals/claim' and method=='POST':result=referrals.claim(actor,body)
+                elif route=='/v1/referrals/alias' and method=='POST':result=referrals.alias(actor,body)
+                else:raise Failure('not_found',404)
+        elif route=='/v1/task-reminders':
+            from .task_reminders import TaskReminders
+            reminders=TaskReminders(backend)
+            if method=='GET':
+                if not set(query)<= {'workspace','task_id'} or any(len(v)!=1 for v in query.values()) or 'workspace' not in query:raise Failure('invalid_fields')
+                result=reminders.get(actor,query['workspace'][0],query['task_id'][0]) if 'task_id' in query else reminders.list(actor,query['workspace'][0])
+            elif method=='POST':
+                if query:raise Failure('invalid_fields')
+                result=reminders.save(actor,body)
+            else:raise Failure('not_found',404)
+        elif route.startswith('/v1/account/inbox'):
+            from .inbox import Inbox
+            inbox = Inbox(backend)
+            if route == '/v1/account/inbox/settings' and method in ('GET', 'POST'):
+                result = inbox.settings(actor, body if method == 'POST' else None)
+            elif route == '/v1/account/inbox' and method == 'GET':
+                result = inbox.list(actor, query.get('before', [None])[0], int(query.get('limit', ['50'])[0]))
+            elif route in ('/v1/account/inbox/read', '/v1/account/inbox/dismiss', '/v1/account/inbox/presented') and method == 'POST':
+                result = inbox.mutate(actor, route.rsplit('/', 1)[-1], body)
+            else: raise Failure('not_found', 404)
         elif route=='/v1/account/entitlements' and method=='GET':
             from .entitlements import resolve
             with backend.connect() as db:result=resolve(db,actor['id'],int(backend.clock()))
@@ -67,12 +129,13 @@ def dispatch(backend,method,path,body,auth):
             from .account_lifecycle import AccountLifecycle
             lifecycle=AccountLifecycle(backend);action=route.rsplit('/',1)[-1]
             if action=='deletion' and method=='GET':result=lifecycle.deletion_status(actor)
-            elif action=='deletion' and method=='POST':result=lifecycle.request_deletion(actor,body.get('password'),body.get('confirmation'))
-            elif action=='cancel-deletion' and method=='POST':result=lifecycle.cancel_deletion(actor,body.get('password'))
+            elif action=='deletion' and method=='POST':result=lifecycle.request_deletion(actor,body.get('password'),body.get('confirmation'),body.get('reauth_token'),body.get('code'))
+            elif action=='cancel-deletion' and method=='POST':result=lifecycle.cancel_deletion(actor,body.get('password'),body.get('reauth_token'),body.get('code'))
+            elif action=='close-family' and method=='POST':result=lifecycle.close_family(actor,body.get('workspace_id'),body.get('revision'),body.get('password'),body.get('confirmation'),body.get('reauth_token'),body.get('code'))
             elif action=='email' and method=='POST':result=lifecycle.change_email(actor,body.get('email'),body.get('password'))
             elif action=='confirm-email' and method=='POST':result=lifecycle.confirm_email(actor,body.get('code'),body.get('password'))
-            elif action=='transfer' and method=='POST':result=lifecycle.transfer(actor,body.get('workspace_id'),body.get('user_id'),body.get('password'))
-            elif action=='accept-transfer' and method=='POST':result=lifecycle.accept_transfer(actor,body.get('transfer_id'),body.get('password'))
+            elif action=='transfer' and method=='POST':result=lifecycle.transfer(actor,body.get('workspace_id'),body.get('user_id'),body.get('password'),body.get('reauth_token'),body.get('code'))
+            elif action=='accept-transfer' and method=='POST':result=lifecycle.accept_transfer(actor,body.get('transfer_id'),body.get('password'),body.get('reauth_token'),body.get('code'))
             else:raise Failure('not_found',404)
         elif route=='/v1/me' and method=='GET':result={'user_id':actor['id'],'email':actor['email'],'verified':bool(actor['verified'])}
         elif route=='/v1/spaces' and method=='GET':result={'spaces':backend.spaces(actor)}
@@ -108,7 +171,9 @@ def handler(backend):
                         return value
                     body=json.loads(self.rfile.read(length),object_pairs_hook=unique)
                     if not isinstance(body,dict):raise Failure('invalid_input')
-                result=dispatch(backend,method,self.path,body,self.headers.get('Authorization',''))
+                from .request_locale import request_locale
+                with request_locale(self.headers.get('Accept-Language','')):
+                    result=dispatch(backend,method,self.path,body,self.headers.get('Authorization',''))
                 self.respond(200,result)
             except Failure as error:self.respond(error.status,{'error':error.code})
             except (ValueError,TypeError,KeyError):self.respond(400,{'error':'invalid_input'})

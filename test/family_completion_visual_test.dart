@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as timezone;
 import 'package:lifeos/app_controller.dart';
 import 'package:lifeos/localization/language_pack.dart';
+import 'package:lifeos/sync/api.dart';
+import 'package:lifeos/sync/contracts.dart';
 import 'package:lifeos/sync/controller.dart';
 import 'package:lifeos/ui/app.dart';
 import 'package:lifeos/ui/family.dart';
@@ -14,21 +16,42 @@ import 'package:lifeos/ui/statement_import.dart';
 
 import 'support/sync_memory.dart';
 import 'visual_snapshot_test.dart' show SnapshotStore;
+import 'widget_test.dart' show openNativeProfile, openNativeSections;
+
+// Cloud registration uses the production API contract without network access.
+class _RegistrationVisualApi extends FamilyApi {
+  _RegistrationVisualApi(super.endpoint);
+  @override
+  Future<Json> request(String path, {Json? body}) async {
+    expect(path, '/v1/auth/google/config');
+    return {'google_enabled': false};
+  }
+}
 
 // Synthetic identities and records; this fixture never contacts a server.
-FamilyController familyFixture({bool child = false}) {
-  final f = FamilyController(MemorySyncStore());
+FamilyController familyFixture({bool child = false, bool configured = false}) {
+  final f = FamilyController(MemorySyncStore(),
+      apiFactory: configured ? _RegistrationVisualApi.new : null);
+  if (configured) {
+    f.api = _RegistrationVisualApi('https://api.example.test');
+  }
   f.account = {
     'user_id': child ? 'child-user' : 'parent-user',
     'verified': true,
   };
   f.workspace = 'family';
   f.spaces = [
-    {'id': 'family', 'name': 'Наша семья', 'role': child ? 'child' : 'parent'},
+    {
+      'id': 'family',
+      'kind': 'family',
+      'name': 'Наша семья',
+      'role': child ? 'child' : 'parent'
+    },
   ];
   f.roster = {
     'space': {
       'id': 'family',
+      'kind': 'family',
       'role': child ? 'child' : 'parent',
       'profile_id': child ? 'child-profile' : null,
     },
@@ -95,10 +118,12 @@ void main() {
     final bytes = await File('test/fonts/NotoSans-Regular.ttf').readAsBytes();
     await (FontLoader(
       'Roboto',
-    )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+    )..addFont(Future.value(ByteData.sublistView(bytes))))
+        .load();
     await (FontLoader(
       'MaterialIcons',
-    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf')))
+        .load();
     catalog = await PackCatalog.load();
   });
   for (final width in [320, 430]) {
@@ -125,7 +150,9 @@ void main() {
           addTearDown(tester.view.resetDevicePixelRatio);
           final c = AppController(SnapshotStore([], theme), catalog, 'ru');
           await c.load();
-          c.family = familyFixture(child: screen.startsWith('child'));
+          c.family = familyFixture(
+              child: screen.startsWith('child'),
+              configured: screen == 'register');
           if (['login', 'register'].contains(screen)) c.family!.account = null;
           if (['family', 'child'].contains(screen)) {
             c.preferences['active_scope'] = 'family';
@@ -150,7 +177,7 @@ void main() {
           Widget? page;
           switch (screen) {
             case 'modules':
-              await tester.tap(find.byKey(const Key('nav_modules')));
+              await openNativeSections(tester);
             case 'search':
               page = GlobalSearchPage(controller: c, family: false);
             case 'import':
@@ -212,6 +239,30 @@ void main() {
       }
     }
   }
+  testWidgets('configured account opens from profile without build exceptions',
+      (tester) async {
+    final c = AppController(SnapshotStore([], 'light'), catalog, 'ru');
+    await c.load();
+    c.family = familyFixture(configured: true)..account = null;
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      c.dispose();
+    });
+    await tester.pumpWidget(LifeOSApp(controller: c));
+    await tester.pumpAndSettle();
+    await openNativeProfile(tester);
+    await tester.tap(find.text(c.pack.t('account_manage')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FamilyPage), findsOneWidget);
+    expect(find.text(c.pack.t('account_google_disabled')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text(c.pack.t('family_register')));
+    await tester.pumpAndSettle();
+    expect(find.text(c.pack.t('repeat_password')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   test('child creation choices reflect granted permissions', () {
     final f = familyFixture(child: true);
     expect(f.creatableKinds, {'transaction', 'request'});

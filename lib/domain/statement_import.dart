@@ -96,7 +96,7 @@ class ImportMapping {
     if(decimal==','){number=number.replaceAll('.','').replaceAll(',','.');}else{number=number.replaceAll(',','');}
     final minor=code.parse(number),raw=cell(date);DateTime parsed;
     if(dateFormat=='iso') {
-      final match=RegExp(r'^(\d{4})-?(\d{2})-?(\d{2})(?:T.*)?$').firstMatch(raw);
+      final match=RegExp(r'^(\d{4})-?(\d{2})-?(\d{2})(?:T.*| \d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$').firstMatch(raw);
       if(match==null)throw const DomainFailure('invalid_date');parsed=_date(int.parse(match[1]!),int.parse(match[2]!),int.parse(match[3]!));
     }else if(dateFormat=='excel') {
       final serial=int.tryParse(raw);if(serial==null||serial<1||serial>109575||serial==60)throw const DomainFailure('invalid_date');

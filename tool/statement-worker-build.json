@@ -1,14 +1,14 @@
 {
-  "sdk": "Dart SDK version: 3.10.3 (stable) (Tue Dec 2 01:04:53 2025 -0800) on \"linux_x64\"",
+  "sdk": "Dart SDK version: 3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on \"linux_x64\"",
   "sha256": {
     "tool/statement_worker.dart": "e9f3d829d1b021a0d1b45efe74978b2d2ab26f86ffd0ac39d5ca93d846930abe",
     "tool/statement_worker.pubspec.lock": "bddd5c769e8a085840c0df883916684f4931c5d289dc8d57d200867847d1f5b5",
-    "lib/domain/statement_import.dart": "b5019050fc2f6cf9db5deefdf40d14ee7815495a7e6f915cac7281777221b6a5",
-    "lib/domain/statement_detection.dart": "449f75a5b5b141e6e8e99c93963b5a21efbade47987855e14d889b340d48e766",
+    "lib/domain/statement_import.dart": "27c975998a1db0010b992a52f4e6fa4335fec7f340136f8057fab9f5ed02b619",
+    "lib/domain/statement_detection.dart": "6eb6f579e15f4d0f86abfac6fe820254d871af121d566a31e3605d08d112f013",
     "lib/domain/models.dart": "043ac35bf72bd556c161d125c832969d81b16d9ba760c6b3ec06c5750b3644f0",
     "lib/domain/calendar_models.dart": "e17643c20e435c800cc360542c660481985a939cb5d5e96c4881669d20c77d02",
     "lib/domain/offline_models.dart": "5a38e140bdfb3745d7b39c76e57528e0ceb700984f845d60a47722883be22610",
     "lib/domain/finance_engine.dart": "5822b223ab9601628ee9ba278ca040ac54d1067f2de04c0e3b24fca484f1eb76",
-    "backend/webassets/app/statement-worker.js": "e11b19522b979b309cf34ee95a93ffa6beea87142c812b8d25415b87464121d9"
+    "backend/webassets/app/statement-worker.js": "fc781924be206dd448986fb6cc99d7bb563046ac91197fcdcb2213003d11d624"
   }
 }

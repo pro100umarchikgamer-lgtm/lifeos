@@ -1,4 +1,5 @@
 import 'package:lifeos/sync/contracts.dart';
+import 'package:lifeos/sync/record_projection.dart';
 
 // A deterministic stand-in for the SQLCipher adapter, used only by protocol tests.
 class MemorySyncStore implements SyncStore {
@@ -14,6 +15,16 @@ class MemorySyncStore implements SyncStore {
 
   @override
   Future<void> enqueue(String s, String w, Json op) async {
+    final erased = (await records(s, w))
+        .where(isImmutableSyncTombstone)
+        .map((row) => row['id'] as String)
+        .toSet();
+    if (erased.contains(op['record_id'])) {
+      throw const SyncFailure('record_forbidden');
+    }
+    if (queuedOperationReferencesErasure(op, erased)) {
+      throw const SyncFailure('invalid_reference');
+    }
     final k = '${key(s, w)}|${op['id']}';
     if (outbox.containsKey(k)) return;
     outbox[k] = {
@@ -65,6 +76,33 @@ class MemorySyncStore implements SyncStore {
 
   @override
   Future<void> receive(String s, String w, Json page) async {
+    final projected =
+        (page['records'] as List).map(object).map(projectSyncRecord).toList();
+    if (projected.any((record) => record['workspace_id'] != w)) {
+      throw const SyncFailure('invalid_sync_response');
+    }
+    final erased = (await records(s, w))
+        .where(isImmutableSyncTombstone)
+        .map((row) => row['id'] as String)
+        .toSet()
+      ..addAll(projected
+          .where(isImmutableSyncTombstone)
+          .map((row) => row['id'] as String));
+    outbox.removeWhere((_, row) =>
+        row['scope'] == s &&
+        row['workspace'] == w &&
+        erased.contains(row['operation']['record_id']));
+    for (final row in scoped(s, w)) {
+      if (queuedOperationReferencesErasure(object(row['operation']), erased)) {
+        row['state'] = 'rejected';
+        row['result'] = {
+          'id': row['operation']['id'],
+          'status': 'rejected',
+          'error': 'invalid_reference',
+          'privacy_erased': true
+        };
+      }
+    }
     final incremental = page['protocol'] == 2;
     final visible = incremental ? null : (page['visible_ids'] as List).toSet();
     mirror.removeWhere(
@@ -75,9 +113,9 @@ class MemorySyncStore implements SyncStore {
               ? page['reset'] == true
               : !visible!.contains(v['record']['id'])),
     );
-    for (final raw in page['records'] as List) {
-      final r = object(raw);
-      if (r['deleted'] == 0 && (incremental || visible!.contains(r['id']))) {
+    for (final r in projected) {
+      if ((r['deleted'] == 0 || isImmutableSyncTombstone(r)) &&
+          (incremental || visible!.contains(r['id']))) {
         mirror['${key(s, w)}|${r['id']}'] = {
           'scope': s,
           'workspace': w,

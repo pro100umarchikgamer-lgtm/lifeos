@@ -6,16 +6,20 @@ extension EncryptedSyncStore on LocalStore {
       'sync_metadata',
       where: 'scope=? AND key=?',
       whereArgs: [scope, key],
-    )).firstOrNull;
+    ))
+        .firstOrNull;
     return row == null ? null : object(jsonDecode(row['payload'] as String));
   }
 
   Future<void> syncSaveMetadata(String scope, String key, Json value) async {
-    await _db.insert('sync_metadata', {
-      'scope': scope,
-      'key': key,
-      'payload': jsonEncode(value),
-    }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+    await _db.insert(
+        'sync_metadata',
+        {
+          'scope': scope,
+          'key': key,
+          'payload': jsonEncode(value),
+        },
+        conflictAlgorithm: sql.ConflictAlgorithm.replace);
   }
 
   Future<void> syncEnqueue(String scope, String workspace, Json operation) =>
@@ -28,6 +32,16 @@ extension EncryptedSyncStore on LocalStore {
   ) async {
     final id = operation['id'] as String,
         record = operation['record_id'] as String;
+    final mirrored = (await tx.query('sync_records',
+            where: 'scope=? AND workspace_id=?', whereArgs: [scope, workspace]))
+        .map((row) => object(jsonDecode(row['payload'] as String)))
+        .where(isImmutableSyncTombstone)
+        .map((row) => row['id'] as String)
+        .toSet();
+    if (mirrored.contains(record)) throw const SyncFailure('record_forbidden');
+    if (queuedOperationReferencesErasure(operation, mirrored)) {
+      throw const SyncFailure('invalid_reference');
+    }
     final payload = jsonEncode(operation);
     final prior = await tx.query(
       'sync_outbox',
@@ -50,75 +64,116 @@ extension EncryptedSyncStore on LocalStore {
   }
 
   Future<List<Json>> syncPending(String scope, String workspace) async => [
-    for (final row in await _db.query(
-      'sync_outbox',
-      where: 'scope=? AND workspace_id=? AND state=?',
-      whereArgs: [scope, workspace, 'pending'],
-      orderBy: 'seq',
-      limit: 100,
-    ))
-      object(jsonDecode(row['payload'] as String)),
-  ];
+        for (final row in await _db.query(
+          'sync_outbox',
+          where: 'scope=? AND workspace_id=? AND state=?',
+          whereArgs: [scope, workspace, 'pending'],
+          orderBy: 'seq',
+          limit: 100,
+        ))
+          object(jsonDecode(row['payload'] as String)),
+      ];
   Future<List<Json>> syncIssues(String scope, String workspace) async => [
-    for (final row in await _db.query(
-      'sync_outbox',
-      where: 'scope=? AND workspace_id=? AND state<>?',
-      whereArgs: [scope, workspace, 'pending'],
-      orderBy: 'seq',
-    ))
-      {
-        'operation': object(jsonDecode(row['payload'] as String)),
-        'result': object(jsonDecode(row['result'] as String)),
-      },
-  ];
+        for (final row in await _db.query(
+          'sync_outbox',
+          where: 'scope=? AND workspace_id=? AND state<>?',
+          whereArgs: [scope, workspace, 'pending'],
+          orderBy: 'seq',
+        ))
+          {
+            'operation': object(jsonDecode(row['payload'] as String)),
+            'result': object(jsonDecode(row['result'] as String)),
+          },
+      ];
   Future<List<Json>> syncRecords(String scope, String workspace) async => [
-    for (final row in await _db.query(
-      'sync_records',
-      where: 'scope=? AND workspace_id=?',
-      whereArgs: [scope, workspace],
-    ))
-      object(jsonDecode(row['payload'] as String)),
-  ];
+        for (final row in await _db.query(
+          'sync_records',
+          where: 'scope=? AND workspace_id=?',
+          whereArgs: [scope, workspace],
+        ))
+          object(jsonDecode(row['payload'] as String)),
+      ];
   Future<int> syncCursor(String scope, String workspace) async =>
       (await _db.query(
-            'sync_cursors',
-            where: 'scope=? AND workspace_id=?',
-            whereArgs: [scope, workspace],
-          )).firstOrNull?['cursor']
-          as int? ??
+        'sync_cursors',
+        where: 'scope=? AND workspace_id=?',
+        whereArgs: [scope, workspace],
+      ))
+          .firstOrNull?['cursor'] as int? ??
       0;
   Future<void> syncAcknowledge(
     String scope,
     String workspace,
     List<Json> results,
-  ) => _db.transaction((tx) async {
-    for (final result in results) {
-      final rows = await tx.query(
-        'sync_outbox',
-        where: 'scope=? AND workspace_id=? AND operation_id=?',
-        whereArgs: [scope, workspace, result['id']],
-      );
-      if (rows.isEmpty) throw const SyncFailure('invalid_sync_response');
-      if (result['status'] == 'accepted') {
-        await tx.delete(
-          'sync_outbox',
-          where: 'seq=?',
-          whereArgs: [rows.single['seq']],
-        );
-      } else if (['conflict', 'rejected'].contains(result['status'])) {
-        await tx.update(
-          'sync_outbox',
-          {'state': result['status'], 'result': jsonEncode(result)},
-          where: 'seq=?',
-          whereArgs: [rows.single['seq']],
-        );
-      } else {
-        throw const SyncFailure('invalid_sync_response');
-      }
-    }
-  });
+  ) =>
+      _db.transaction((tx) async {
+        for (final result in results) {
+          final rows = await tx.query(
+            'sync_outbox',
+            where: 'scope=? AND workspace_id=? AND operation_id=?',
+            whereArgs: [scope, workspace, result['id']],
+          );
+          if (rows.isEmpty) throw const SyncFailure('invalid_sync_response');
+          if (result['status'] == 'accepted') {
+            await tx.delete(
+              'sync_outbox',
+              where: 'seq=?',
+              whereArgs: [rows.single['seq']],
+            );
+          } else if (['conflict', 'rejected'].contains(result['status'])) {
+            await tx.update(
+              'sync_outbox',
+              {'state': result['status'], 'result': jsonEncode(result)},
+              where: 'seq=?',
+              whereArgs: [rows.single['seq']],
+            );
+          } else {
+            throw const SyncFailure('invalid_sync_response');
+          }
+        }
+      });
   Future<void> syncReceive(String scope, String workspace, Json page) =>
       _db.transaction((tx) async {
+        final projected = (page['records'] as List)
+            .map(object)
+            .map(projectSyncRecord)
+            .toList();
+        if (projected.any((record) => record['workspace_id'] != workspace)) {
+          throw const SyncFailure('invalid_sync_response');
+        }
+        final erased = (await tx.query('sync_records',
+                where: 'scope=? AND workspace_id=?',
+                whereArgs: [scope, workspace]))
+            .map((row) => object(jsonDecode(row['payload'] as String)))
+            .where(isImmutableSyncTombstone)
+            .map((row) => row['id'] as String)
+            .toSet()
+          ..addAll(projected
+              .where(isImmutableSyncTombstone)
+              .map((row) => row['id'] as String));
+        for (final row in await tx.query('sync_outbox',
+            where: 'scope=? AND workspace_id=?',
+            whereArgs: [scope, workspace])) {
+          final operation = object(jsonDecode(row['payload'] as String));
+          if (erased.contains(operation['record_id'])) {
+            await tx
+                .delete('sync_outbox', where: 'seq=?', whereArgs: [row['seq']]);
+          } else if (queuedOperationReferencesErasure(operation, erased)) {
+            await tx.update(
+                'sync_outbox',
+                {
+                  'state': 'rejected',
+                  'result': jsonEncode({
+                    'id': operation['id'],
+                    'status': 'rejected',
+                    'error': 'invalid_reference',
+                    'privacy_erased': true
+                  })
+                },
+                where: 'seq=?',
+                whereArgs: [row['seq']]);
+          }
+        }
         final incremental = page['protocol'] == 2;
         final visible = incremental
             ? null
@@ -139,19 +194,21 @@ extension EncryptedSyncStore on LocalStore {
             );
           }
         }
-        for (final raw in page['records'] as List) {
-          final record = object(raw);
+        for (final record in projected) {
           if (record['workspace_id'] != workspace) {
             throw const SyncFailure('invalid_sync_response');
           }
-          if (record['deleted'] == 0 &&
+          if ((record['deleted'] == 0 || isImmutableSyncTombstone(record)) &&
               (incremental || visible!.contains(record['id']))) {
-            await tx.insert('sync_records', {
-              'scope': scope,
-              'workspace_id': workspace,
-              'id': record['id'],
-              'payload': jsonEncode(record),
-            }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+            await tx.insert(
+                'sync_records',
+                {
+                  'scope': scope,
+                  'workspace_id': workspace,
+                  'id': record['id'],
+                  'payload': jsonEncode(record),
+                },
+                conflictAlgorithm: sql.ConflictAlgorithm.replace);
           } else if (record['deleted'] == 1) {
             await tx.delete(
               'sync_records',
@@ -160,17 +217,23 @@ extension EncryptedSyncStore on LocalStore {
             );
           }
         }
-        await tx.insert('sync_cursors', {
-          'scope': scope,
-          'workspace_id': workspace,
-          'cursor': page['cursor'],
-        }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+        await tx.insert(
+            'sync_cursors',
+            {
+              'scope': scope,
+              'workspace_id': workspace,
+              'cursor': page['cursor'],
+            },
+            conflictAlgorithm: sql.ConflictAlgorithm.replace);
         if (incremental) {
-          await tx.insert('sync_metadata', {
-            'scope': scope,
-            'key': 'epoch:$workspace',
-            'payload': jsonEncode({'value': page['epoch']}),
-          }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+          await tx.insert(
+              'sync_metadata',
+              {
+                'scope': scope,
+                'key': 'epoch:$workspace',
+                'payload': jsonEncode({'value': page['epoch']}),
+              },
+              conflictAlgorithm: sql.ConflictAlgorithm.replace);
         }
       });
   Future<void> syncResolve(
@@ -178,22 +241,23 @@ extension EncryptedSyncStore on LocalStore {
     String workspace,
     String operationId,
     Json? replacement,
-  ) => _db.transaction((tx) async {
-    final rows = await tx.query(
-      'sync_outbox',
-      where: 'scope=? AND workspace_id=? AND operation_id=? AND state<>?',
-      whereArgs: [scope, workspace, operationId, 'pending'],
-    );
-    if (rows.length != 1) throw const SyncFailure('record_missing');
-    if (replacement != null) {
-      await _enqueueSync(tx, scope, workspace, replacement);
-    }
-    await tx.delete(
-      'sync_outbox',
-      where: 'seq=?',
-      whereArgs: [rows.single['seq']],
-    );
-  });
+  ) =>
+      _db.transaction((tx) async {
+        final rows = await tx.query(
+          'sync_outbox',
+          where: 'scope=? AND workspace_id=? AND operation_id=? AND state<>?',
+          whereArgs: [scope, workspace, operationId, 'pending'],
+        );
+        if (rows.length != 1) throw const SyncFailure('record_missing');
+        if (replacement != null) {
+          await _enqueueSync(tx, scope, workspace, replacement);
+        }
+        await tx.delete(
+          'sync_outbox',
+          where: 'seq=?',
+          whereArgs: [rows.single['seq']],
+        );
+      });
   Future<void> syncForgetAccess(String scope, String workspace) =>
       _db.transaction((tx) async {
         await tx.delete(

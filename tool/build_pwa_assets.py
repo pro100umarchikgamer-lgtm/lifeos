@@ -115,19 +115,28 @@ TOTALS = {
 
 def main():
     source = (OUT / 'app.js').read_text() + (OUT / 'import.js').read_text()
+    # App-owned web_* labels are provided by the reviewed Web catalog, not the
+    # Native packs. Only accept aliases from groups actually used in this app.
+    web_source = json.loads((ROOT / 'tool/web_i18n_source.json').read_text())
+    group_ids = set(re.findall(r'\.copy\(["\'](grp_[A-Za-z0-9_]+)', source))
+    reviewed_web_keys = {key for group in group_ids
+                         for key in web_source['groups'][group]
+                         if key.startswith('web_')}
     release_keys = ('web_import_help','web_previous','web_next','web_chart_type','web_smooth','web_compact','web_accounts','web_all_accounts','web_period_start','web_period_end','web_delimiter','web_password')
     release_strings = json.loads((ROOT / 'tool/web_release_strings.json').read_text())
     keys = set(re.findall(r"\bt\('([a-zA-Z0-9_]+)'\)", source))
-    # Dynamic keys are explicit families of existing, Android-tested strings.
-    prefixes = ('family_', 'account_', 'currency_', 'import_')
+    # Validate direct app labels against Native strings or reviewed Web labels.
     keys.update(['remaining','budget_limit','amount_precision','invalid_currency','invalid_date','required_text','description','date','already_imported','profile','today','widget_tasks','widget_notes','finances','account_manage','name','task_title','note_text','opening_balance','amount','family_kind_transaction','theme','palette','system','light','dark','income','expense','completed','save','cancel','delete','close','add','search','retry','edit','complete','home','feature_finance_hint'])
     packs = {}
     for path in sorted((ROOT / 'assets/locales').glob('*.json')):
         data = json.loads(path.read_text())
         strings = data['strings']
-        missing = keys - strings.keys() - set(release_keys) - {'web_online', 'web_install','web_bar','web_donut','web_line','web_totals','web_mfa_hint','web_personal_create','web_onboarding'}
+        missing = keys - strings.keys() - set(release_keys) - reviewed_web_keys - {'web_online', 'web_install','web_bar','web_donut','web_line','web_totals','web_mfa_hint','web_personal_create','web_onboarding'}
         if missing: raise ValueError((path, missing))
-        selected = {k:v for k,v in strings.items() if k in keys or k.startswith(prefixes)}
+        # Shared modules and server notification templates also read this
+        # catalog. Retain the canonical pack instead of inferring dynamic keys
+        # from only the two app entrypoints.
+        selected = dict(strings)
         selected.update(zip(release_keys, release_strings[data['locale']]))
         selected.update(zip(('web_online', 'web_install'), EXTRA[data['locale']]))
         selected.update(zip(('web_bar','web_donut','web_line'), CHARTS[data['locale']]))

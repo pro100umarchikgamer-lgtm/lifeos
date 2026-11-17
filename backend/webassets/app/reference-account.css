@@ -1,0 +1,80 @@
+/* Account and workspaces follow the B12 composition with real account data. */
+body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro{align-items:flex-end;gap:24px;margin-bottom:26px;min-height:0}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro .eyebrow{font-size:10px;font-weight:650;letter-spacing:.12em;line-height:1.4;text-transform:uppercase;margin:0 0 8px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro h1{font-size:29px;font-weight:700;line-height:1.25;margin:0 0 8px;letter-spacing:-.035em}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-account-description{font-size:13px;line-height:1.5;color:var(--ux-muted);margin:0;max-width:65ch}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .settings-layout{display:block}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .settings-content{display:block}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page :is(.settings-navigation,.settings-back){display:none}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.reference-family-panel{padding:0;border:0;border-radius:0;background:none;box-shadow:none;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;min-width:0;min-height:200px;padding:20px;text-align:start;border:1px solid var(--ux-border);border-radius:11px;background:var(--ux-surface);box-shadow:none;color:var(--ux-ink);font-weight:400;line-height:1.5;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card[aria-pressed=true]{border-color:var(--ux-green);box-shadow:0 0 0 2px var(--ux-soft)}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card:hover{background:var(--ux-surface);border-color:var(--ux-green)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin-bottom:17px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-card .reference-avatar{width:40px;height:40px;border-radius:12px;font-size:18px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-active{font-size:10px;line-height:1.5;background:var(--ux-soft);color:var(--ux-green);border-radius:20px;padding:4px 8px;font-weight:500}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-name{display:block;font-size:14px;font-weight:650;line-height:1.5;margin-bottom:6px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-kind{font-size:12px;color:var(--ux-muted);font-weight:400;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-member-count{font-size:11px;color:var(--ux-muted);margin-top:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-detail{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--ux-muted);border-top:1px solid var(--ux-border);padding-top:13px;margin-top:auto;width:100%;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-detail svg{flex:none;width:15px;height:15px}
+body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-create{justify-content:center;align-items:center;text-align:center;border-style:dashed;gap:9px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-create>svg{width:24px;height:24px;padding:10px;box-sizing:content-box;background:var(--ux-soft);color:var(--ux-green);border-radius:12px;margin-bottom:4px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-space-create>strong{font-size:14px;font-weight:650}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-panel>.family-workspace-actions{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0 18px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-panel>.family-workspace-actions>button{font-size:11px;background:none;color:var(--ux-green);padding:6px 0;min-height:36px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .intro>.reference-family-invite{min-height:40px;border-radius:7px;padding:10px 16px;background:var(--ux-button,var(--ux-green));color:var(--ux-button-ink,#fff);font-size:12px;line-height:1.4;flex:none;box-shadow:0 3px 8px #55409112}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-invite svg{width:17px;height:17px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-panel>.reference-family-roster{padding:20px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:11px;box-shadow:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-roster>h2{font-size:15px;font-weight:650;margin:0 0 5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-roster-space{font-size:11px;color:var(--ux-muted);margin:0 0 14px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-member{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--ux-border);border-bottom:0;min-width:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-member>.reference-avatar{width:34px;height:34px;border-radius:10px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-family-member>.reference-avatar svg{width:18px;height:18px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy{flex:1;min-width:0;display:grid;gap:3px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy>strong{font-size:12px;font-weight:600;overflow-wrap:anywhere;line-height:1.5}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-copy>span{font-size:10px;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-member-role{font-size:11px;color:var(--ux-muted);text-align:end;max-width:28%;line-height:1.5}
+
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-content>.profile-summary{padding:22px;border:1px solid var(--ux-border);border-radius:10px;background:var(--ux-surface);box-shadow:none;margin-bottom:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-summary>h2{font-size:15px;font-weight:650;margin:0 0 22px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:22px;margin-bottom:8px;border-bottom:1px solid var(--ux-border)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity>.reference-avatar{width:48px;height:48px;border-radius:50%;font-size:21px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-summary .profile-identity{flex:1;min-width:0;background:none;border:0;padding:0;margin:0;gap:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-identity dt{font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin:0;color:var(--ux-muted)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .profile-identity dd.account-email{font-size:14px;font-weight:550;line-height:1.6;margin:0;overflow-wrap:anywhere}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified{font-size:10px;color:var(--ux-muted);font-weight:400;display:flex;align-items:center;gap:5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified[data-verified=true]{color:var(--income)}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified[data-verified=true]::before{content:'✓';font-size:12px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-options{display:grid}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-options>.reference-profile-option{display:flex;align-items:center;justify-content:flex-start;gap:12px;min-height:64px;padding:14px 0;border:0;border-bottom:1px solid var(--ux-border);border-radius:0;background:none;color:var(--ux-ink);font-size:12px;font-weight:500;text-align:start}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-option>svg:first-child{width:19px;height:19px;padding:8px;box-sizing:content-box;flex:none;background:var(--ux-soft);color:var(--ux-green);border-radius:8px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-option>svg:last-child{width:16px;height:16px;margin-inline-start:auto;color:var(--ux-muted);flex:none}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-options>.reference-profile-option:last-child{border-bottom:0;padding-bottom:0}
+body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.reference-profile-signout{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 22px;border:1px solid var(--ux-border);border-radius:10px;background:var(--ux-surface);box-shadow:none;margin-bottom:16px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout h2{font-size:12px;font-weight:600;margin:0 0 5px}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout p{font-size:11px;line-height:1.5;color:var(--ux-muted);margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout .profile-logout{color:var(--expense);background:none;border:1px solid var(--ux-border);border-radius:7px;font-size:11px;padding:7px 10px;min-height:36px;flex:none;margin:0}
+body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-signout .profile-logout svg{width:16px;height:16px}
+
+@media(max-width:1099px){
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-layout{grid-template-columns:190px minmax(0,1fr);gap:18px}
+}
+@media(max-width:759px){
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-bottom:22px}
+ body[data-design=clarity][data-reference-layout=b12] #root :is(.reference-family-page,.reference-profile-page) .intro h1{font-size:25px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-space-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+ body[data-design=clarity][data-reference-layout=b12] #root button.reference-space-card{min-height:190px;padding:20px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-family-page .settings-layout{display:block}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-layout{display:block}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page[data-settings-detail=false] .settings-navigation{display:flex;flex-direction:row;overflow-x:auto;gap:4px;padding:6px;margin-bottom:18px;scrollbar-width:thin}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-navigation>.settings-item{flex:none;white-space:nowrap;padding:8px 10px;font-size:11px;min-height:38px;gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page[data-settings-detail=false] .settings-content{display:block}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-page .settings-content>.profile-summary{padding:18px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-identity{gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-profile-verified{flex:0 0 calc(100% - 60px);margin-inline-start:60px}
+ body[data-design=clarity][data-reference-layout=b12] #root .settings-content>.reference-profile-signout{align-items:flex-start;flex-direction:column;padding:18px;gap:12px}
+ body[data-design=clarity][data-reference-layout=b12] #root .reference-member-role{max-width:30%;font-size:10px}
+}

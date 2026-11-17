@@ -100,13 +100,21 @@ class GoogleIdentity:
             valid = accept(self.backend, db, actor['id'], code)
         require(valid, 'invalid_credentials', 401)
 
-    def start(self, client, agent='', binding='', invitation=None, actor=None, password=None, code=None, auth_hash=''):
+    def start(self, client, agent='', binding='', invitation=None, actor=None, password=None, code=None, auth_hash='', purpose='link'):
         require(self.enabled and (client != 'web' or self.web_enabled), 'google_unconfigured', 503)
         require(client in ('web', 'android'), 'invalid_input')
         require(client != 'web' or (isinstance(binding, str) and len(binding) == 43), 'google_invalid', 401)
         if actor:
             require(actor['verified'], 'verify_email', 403)
-            self._reauth(actor, password, code)
+            require(purpose in ('link', 'reauth'), 'invalid_input')
+            if purpose == 'reauth':
+                self.backend.reserve_reauth(actor)
+                with self.backend.connect() as db:
+                    self.backend._account_available(db, actor['id'])
+                    require(db.execute('SELECT 1 FROM google_identities WHERE user_id=?', (actor['id'],)).fetchone(), 'google_not_linked', 409)
+                    self._active_session(db, actor['id'], auth_hash)
+            else:
+                self._reauth(actor, password, code)
         state, nonce, verifier = (secrets.token_urlsafe(32) for _ in range(3))
         now = int(self.backend.clock())
         payload = {'nonce_hash': token_hash(nonce), 'verifier': verifier,
@@ -114,7 +122,7 @@ class GoogleIdentity:
         if actor:
             with self.backend.connect() as db:
                 user, factor = LoginFlow(self.backend)._principal(db, actor['id'], False)
-                payload.update(version=LoginFlow(self.backend)._version(user, factor, False), auth_hash=auth_hash)
+                payload.update(version=LoginFlow(self.backend)._version(user, factor, False), auth_hash=auth_hash, purpose=purpose)
         with self.backend.transaction() as db:
             db.execute('DELETE FROM oauth_challenges WHERE expires_at<=?', (now,))
             db.execute('INSERT INTO oauth_challenges VALUES(?,?,?,?,?,?,?,0)',
@@ -126,13 +134,19 @@ class GoogleIdentity:
         url = AUTHORIZE_ENDPOINT + '?' + urlencode({'client_id': self.settings.google_client_id,
             'redirect_uri': self.redirect, 'response_type': 'code', 'scope': 'openid email',
             'state': state, 'nonce': nonce, 'code_challenge': challenge, 'code_challenge_method': 'S256',
-            'prompt': 'select_account'})
+            'prompt': 'select_account', **({'max_age': '0'} if actor and purpose == 'reauth' else {})})
         return {'authorization_url': url, 'expires_in': 300}
+
+    def _active_session(self, db, uid, auth):
+        now = int(self.backend.clock())
+        active = db.execute('SELECT 1 FROM sessions WHERE hash=? AND user_id=? AND expires_at>?', (auth, uid, now)).fetchone()
+        web = db.execute('SELECT 1 FROM web_sessions w JOIN devices d ON d.id=w.device_id WHERE w.hash=? AND w.user_id=? AND w.expires_at>? AND d.revoked_at=0', (auth, uid, now)).fetchone()
+        require(active or web, 'unauthorized', 401)
 
     def _consume(self, state, client, agent, binding):
         require(isinstance(state, str) and len(state) == 43, 'google_invalid', 401)
-        now = int(self.backend.clock())
         with self.backend.transaction() as db:
+            now = int(self.backend.clock())
             row = db.execute('SELECT * FROM oauth_challenges WHERE hash=?', (token_hash(state),)).fetchone()
             require(row and row['client'] == client and row['expires_at'] > now and not row['used_at']
                 and hmac.compare_digest(row['agent_hash'], token_hash(agent))
@@ -153,18 +167,27 @@ class GoogleIdentity:
         # These policy checks are separate from cryptographic JWT verification so
         # test providers cannot accidentally bypass the account boundary rules.
         now = int(self.backend.clock())
+        presenter = claims.get('azp', self.settings.google_client_id)
         require(claims.get('iss') in ISSUERS and claims.get('aud') == self.settings.google_client_id
-            and claims.get('azp', self.settings.google_client_id) == self.settings.google_client_id
+            and isinstance(presenter, str)
             and type(claims.get('exp')) is int and claims['exp'] > now
             and type(claims.get('iat')) is int and now - 600 <= claims['iat'] <= now + 30
             and isinstance(claims.get('nonce'), str)
             and hmac.compare_digest(token_hash(claims['nonce']), payload['nonce_hash'])
             and isinstance(claims.get('sub'), str) and 1 <= len(claims['sub']) <= 255
             and claims.get('email_verified') is True, 'google_invalid', 401)
+        # Hybrid Android tokens can name the Android OAuth client as azp while
+        # aud remains our Web client. Trust only explicitly configured presenters;
+        # a signed token alone must not extend this application's client set.
+        if presenter != self.settings.google_client_id:
+            require(client == 'android', 'google_invalid', 401)
+            require(presenter in getattr(self.settings, 'google_android_client_ids', ()), 'google_android_client_untrusted', 403)
         email = claims.get('email')
         require(isinstance(email, str) and len(email) <= 254 and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email), 'google_invalid', 401)
         email = email.casefold()
         with self.backend.transaction() as db:
+            now = int(self.backend.clock())
+            require(claims['exp'] > now and now - 600 <= claims['iat'] <= now + 30, 'google_invalid', 401)
             identity = db.execute('SELECT * FROM google_identities WHERE subject=?', (claims['sub'],)).fetchone()
             if row['user_id']:
                 uid = row['user_id']
@@ -174,9 +197,15 @@ class GoogleIdentity:
                 require(user and hmac.compare_digest(flow._version(user, factor, False), payload['version']), 'invalid_credentials', 401)
                 # Linking must still belong to an active originating session.
                 auth = payload['auth_hash']
-                active = db.execute('SELECT 1 FROM sessions WHERE hash=? AND user_id=? AND expires_at>?', (auth, uid, now)).fetchone()
-                web = db.execute('SELECT 1 FROM web_sessions w JOIN devices d ON d.id=w.device_id WHERE w.hash=? AND w.user_id=? AND w.expires_at>? AND d.revoked_at=0', (auth, uid, now)).fetchone()
-                require(active or web, 'unauthorized', 401)
+                self._active_session(db, uid, auth)
+                if payload.get('purpose') == 'reauth':
+                    require(identity and identity['user_id'] == uid, 'google_identity_mismatch', 403)
+                    # A fresh nonce-bound ID token proves the already linked
+                    # subject. The proof cannot sign in, link, or grant Control.
+                    raw = secrets.token_urlsafe(32)
+                    db.execute('DELETE FROM account_reauth_grants WHERE expires_at<=? OR (user_id=? AND auth_hash=?)', (now, uid, auth))
+                    db.execute('INSERT INTO account_reauth_grants VALUES(?,?,?,?,?)', (token_hash(raw), uid, auth, payload['version'], now + 300))
+                    return {'reauth_token': raw, 'expires_in': 300}
                 require(identity is None or identity['user_id'] == uid, 'google_already_linked', 409)
                 existing = db.execute('SELECT subject FROM google_identities WHERE user_id=?', (uid,)).fetchone()
                 require(existing is None or existing['subject'] == claims['sub'], 'google_already_linked', 409)
@@ -203,7 +232,8 @@ class GoogleIdentity:
                 digest = hashlib.pbkdf2_hmac('sha256', secrets.token_bytes(48), bytes.fromhex(salt), 600000).hex()
                 # Google is authoritative for Gmail and managed Workspace domains.
                 verified = int(email.endswith('@gmail.com') or bool(claims.get('hd')))
-                db.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (uid, email, digest, salt, verified, now))
+                created_at = int(self.backend.clock())
+                db.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (uid, email, digest, salt, verified, created_at))
                 db.execute('INSERT INTO account_credentials VALUES(?,0)', (uid,))
                 db.execute('INSERT INTO google_identities VALUES(?,?,?)', (claims['sub'], uid, now))
                 if not verified:

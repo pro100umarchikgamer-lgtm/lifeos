@@ -10,53 +10,81 @@ import 'support/sync_memory.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late PackCatalog catalog;
-  setUpAll(() async {catalog = await PackCatalog.load();});
+  setUpAll(() async {
+    catalog = await PackCatalog.load();
+  });
   for (final width in [320.0, 390.0, 430.0]) {
     for (final brightness in Brightness.values) {
-      testWidgets('account navigation all locales $width $brightness large text', (tester) async {
+      testWidgets(
+          'account navigation all locales $width $brightness large text',
+          (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = Size(width, 844);
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        final c = FamilyController(MemorySyncStore())..account = {'email': 'fixture@example.test'};
+        final c = FamilyController(MemorySyncStore())
+          ..account = {'email': 'fixture@example.test'};
         addTearDown(c.dispose);
         for (final pack in catalog.packs.values) {
-          await tester.pumpWidget(MaterialApp(theme: lifeTheme(brightness),
-            builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.4)), child: child!),
-            home: AccountCenter(controller: c, pack: pack)));
+          await tester.pumpWidget(MaterialApp(
+              theme: lifeTheme(brightness),
+              builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: const TextScaler.linear(1.4)),
+                  child: child!),
+              home: AccountCenter(controller: c, pack: pack)));
           await tester.pumpAndSettle();
           expect(find.text(pack.t('account_access')), findsOneWidget);
           await tester.ensureVisible(find.text(pack.t('account_privacy')));
           await tester.pumpAndSettle();
           expect(find.text(pack.t('account_privacy')), findsOneWidget);
-          final target = find.ancestor(of: find.text(pack.t('account_privacy')), matching: find.byType(ListTile));
+          final target = find.ancestor(
+              of: find.text(pack.t('account_privacy')),
+              matching: find.byType(ListTile));
           expect(tester.getSize(target).height, greaterThanOrEqualTo(48));
-          expect(tester.getRect(find.text(pack.t('account_privacy'))).bottom, lessThanOrEqualTo(844));
+          expect(tester.getRect(find.text(pack.t('account_privacy'))).bottom,
+              lessThanOrEqualTo(844));
           expect(tester.takeException(), isNull, reason: pack.tag);
           await tester.pumpWidget(const SizedBox());
         }
       });
     }
   }
-  testWidgets('device revoke needs password and sends exactly the selected ID', (tester) async {
+  testWidgets('device revoke needs password and sends exactly the selected ID',
+      (tester) async {
     final calls = <Json>[];
-    final c = FamilyController(MemorySyncStore())..account = {'email': 'fixture@example.test'};
+    final c = FamilyController(MemorySyncStore())
+      ..account = {'email': 'fixture@example.test'};
     addTearDown(c.dispose);
     final pack = catalog.packs['en']!;
     Future<Json> request(String path, {Json? body}) async {
       if (body != null) calls.add(body);
-      return {'devices': [{'id': 'fixture-device', 'label': 'Test Android', 'last_seen_at': 1700000000, 'revoked_at': calls.isEmpty ? 0 : 1}]};
+      return {
+        'devices': [
+          {
+            'id': 'fixture-device',
+            'label': 'Test Android',
+            'last_seen_at': 1700000000,
+            'revoked_at': calls.isEmpty ? 0 : 1
+          }
+        ]
+      };
     }
-    await tester.pumpWidget(MaterialApp(home: AccountCenter(controller: c, pack: pack, request: request)));
+
+    await tester.pumpWidget(MaterialApp(
+        home: AccountCenter(controller: c, pack: pack, request: request)));
     await tester.tap(find.text(pack.t('account_devices')));
     await tester.pumpAndSettle();
     await tester.tap(find.text(pack.t('account_revoke')));
     await tester.pumpAndSettle();
     expect(calls, isEmpty);
     await tester.enterText(find.byType(TextField), 'synthetic-password');
+    await tester.pump();
     await tester.tap(find.text(pack.t('confirm')));
     await tester.pumpAndSettle();
-    expect(calls, [{'device_id': 'fixture-device', 'password': 'synthetic-password'}]);
+    expect(calls, [
+      {'device_id': 'fixture-device', 'password': 'synthetic-password'}
+    ]);
     expect(find.text(pack.t('account_revoke')), findsNothing);
     await tester.pump(const Duration(seconds: 1));
   });

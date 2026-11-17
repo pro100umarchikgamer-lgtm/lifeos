@@ -157,7 +157,8 @@ class EarlyAccessHTTPTests(unittest.TestCase):
         self.assertEqual(status,200)
         self.assertEqual(json.loads(body)['state'],'pending')
         self.assertEqual(self.request('/account/api/signup',{'email':data['email'],'password':'valid-test-passphrase'})[0],403)
-        self.assertEqual(self.request('/control/api/applications',host='control.getuladim.space')[0],401)
+        # Control must remain undiscoverable before same-browser staff admission.
+        self.assertEqual(self.request('/control/api/applications',host='control.getuladim.space')[0],404)
 
     def test_archive_recovery_route_is_generic_and_origin_protected(self):
         import json

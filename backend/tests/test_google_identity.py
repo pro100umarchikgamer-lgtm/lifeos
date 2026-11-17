@@ -21,6 +21,7 @@ from backend.customer_mfa import CustomerMFA
 from backend.control import totp
 
 CLIENT = 'synthetic-google-client.apps.googleusercontent.com'
+ANDROID_CLIENT = 'synthetic-android-client.apps.googleusercontent.com'
 
 
 class SyntheticGoogle(GoogleVerifier):
@@ -107,6 +108,50 @@ class GoogleIdentityScenarios:
         with self.backend.transaction() as db:db.execute('UPDATE oauth_challenges SET expires_at=0')
         with self.assertRaises(Failure):self.finish(value)
 
+    def test_android_hybrid_presenter_requires_exact_configured_client(self):
+        self.google.settings = replace(self.settings, google_android_client_ids=(ANDROID_CLIENT,))
+        first = self.finish(self.start(), azp=ANDROID_CLIENT)
+        self.assertEqual(self.backend.authenticate(first['token'])['id'], first['user_id'])
+        self.assertEqual(self.finish(self.start(), azp=CLIENT)['user_id'], first['user_id'])
+        self.assertEqual(self.finish(self.start())['user_id'], first['user_id'])
+        for unknown in ('unlisted-android.apps.googleusercontent.com', ANDROID_CLIENT + '.evil'):
+            with self.subTest(azp=unknown):
+                with self.assertRaises(Failure) as denied:
+                    self.finish(self.start(), azp=unknown)
+                self.assertEqual((denied.exception.code, denied.exception.status), ('google_android_client_untrusted', 403))
+        self.google.settings = self.settings
+        with self.assertRaises(Failure) as missing:
+            self.finish(self.start(), azp=ANDROID_CLIENT)
+        self.assertEqual((missing.exception.code, missing.exception.status), ('google_android_client_untrusted', 403))
+        with self.backend.connect() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) AS n FROM staff').fetchone()['n'], 0)
+
+    def test_android_presenter_allowlist_never_replaces_jwt_or_challenge_checks(self):
+        self.google.settings = replace(self.settings, google_android_client_ids=(ANDROID_CLIENT,))
+        for changes in ({'aud': 'wrong-client'}, {'nonce': 'wrong-nonce'}, {'iss': 'https://evil.invalid'},
+                        {'email_verified': False}, {'azp': []}):
+            with self.subTest(changes=changes):
+                with self.assertRaises(Failure) as denied:
+                    self.finish(self.start(), **dict({'azp': ANDROID_CLIENT}, **changes))
+                self.assertEqual((denied.exception.code, denied.exception.status), ('google_invalid', 401))
+        grant = self.start()
+        self.finish(grant, azp=ANDROID_CLIENT)
+        with self.assertRaises(Failure): self.finish(grant, azp=ANDROID_CLIENT)
+        grant = self.start()
+        with self.assertRaises(Failure):
+            self.google.finish(grant['challenge'], 'android', 'other-device', id_token=self.provider.sign(grant['nonce'], azp=ANDROID_CLIENT))
+        self.finish(grant, azp=ANDROID_CLIENT)
+
+    def test_web_cannot_use_an_allowlisted_android_presenter(self):
+        self.google.settings = replace(self.settings, google_android_client_ids=(ANDROID_CLIENT,))
+        binding = 'b' * 43
+        grant = self.google.start('web', 'browser', binding)
+        params = parse_qs(urlsplit(grant['authorization_url']).query)
+        token = self.provider.sign(params['nonce'][0], azp=ANDROID_CLIENT)
+        with self.assertRaises(Failure) as denied:
+            self.google.finish(params['state'][0], 'web', 'browser', binding, authorization_code=token)
+        self.assertEqual((denied.exception.code, denied.exception.status), ('google_invalid', 401))
+
     def test_closed_registration_enforced_but_existing_identity_can_login(self):
         first=self.finish(self.start())
         self.google.settings=replace(self.settings,registration_mode='closed')
@@ -134,11 +179,12 @@ class GoogleIdentityScenarios:
         with self.assertRaises(Failure):self.finish(value)
 
     def test_google_primary_still_requires_customer_mfa(self):
+        self.google.settings = replace(self.settings, google_android_client_ids=(ANDROID_CLIENT,))
         actor,session=self.user()
         self.finish(self.start(actor=actor,password=self.password,auth_hash=token_hash(session['token'])))
         mfa=CustomerMFA(self.backend); enrollment=mfa.begin(actor,self.password)
         recovery=mfa.enable(actor,self.password,enrollment['enrollment'],totp(enrollment['totp_secret'],int(self.backend.clock())//30))
-        result=self.finish(self.start())
+        result=self.finish(self.start(), azp=ANDROID_CLIENT)
         self.assertTrue(result['mfa_required']);self.assertNotIn('token',result)
         from backend.login_flow import LoginFlow
         session=LoginFlow(self.backend).finish(result['challenge'],recovery['recovery_codes'][0],'test-device')
@@ -210,3 +256,38 @@ class GoogleIdentityTests(GoogleIdentityScenarios, unittest.TestCase):
         self.backend=Backend(Path(folder.name)/'google.db',deliver=lambda e,c:self.mail.update({e:c}))
         self.backend.cipher=Fernet(Fernet.generate_key())
         self.prepare_google()
+
+    def test_android_presenter_configuration_is_exact_bounded_and_not_public(self):
+        env = {'DATABASE_URL': 'postgresql://unused/test', 'EMAIL_QUEUE_KEY': Fernet.generate_key().decode(),
+               'RATE_LIMIT_KEY': 'r' * 48, 'SMTP_HOST': '127.0.0.1', 'SMTP_TLS': 'none',
+               'EMAIL_FROM': 'fixture@example.test', 'GOOGLE_OAUTH_CLIENT_ID': CLIENT}
+        settings = Settings.load(env)
+        self.assertEqual(settings.google_android_client_ids, ())
+        for raw in ('*', ANDROID_CLIENT + '.evil', 'https://' + ANDROID_CLIENT,
+                    ANDROID_CLIENT + ',' + ANDROID_CLIENT, CLIENT,
+                    ','.join(f'android-client-{i}.apps.googleusercontent.com' for i in range(9))):
+            with self.subTest(value=raw):
+                with self.assertRaises(ValueError): Settings.load(dict(env, GOOGLE_OAUTH_ANDROID_CLIENT_IDS=raw))
+        settings = Settings.load(dict(env, GOOGLE_OAUTH_ANDROID_CLIENT_IDS=' ' + ANDROID_CLIENT + ' '))
+        self.assertEqual(settings.google_android_client_ids, (ANDROID_CLIENT,))
+        with self.assertRaises(ValueError):
+            Settings.load(dict(env, GOOGLE_OAUTH_CLIENT_ID='', GOOGLE_OAUTH_ANDROID_CLIENT_IDS=ANDROID_CLIENT))
+        path = {'PATH_INFO': '/v1/auth/google/config', 'REQUEST_METHOD': 'GET'}
+        self.assertEqual(Application(None, self.settings).google_request(path, {}),
+                         {'google_enabled': True, 'google_android_clients_configured': False})
+        self.assertEqual(Application(None, settings).google_request(path, {}),
+                         {'google_enabled': True, 'google_android_clients_configured': True})
+
+    def test_native_api_reports_untrusted_presenter_without_token_or_claims(self):
+        app = Application(self.backend, self.settings)
+        app.google.verifier = self.provider
+        grant = self.start()
+        body = json.dumps({'challenge': grant['challenge'], 'id_token': self.provider.sign(grant['nonce'], azp=ANDROID_CLIENT)}).encode()
+        env = {'PATH_INFO': '/v1/auth/google/finish', 'REQUEST_METHOD': 'POST', 'REMOTE_ADDR': '172.30.30.2',
+               'HTTP_X_FORWARDED_PROTO': 'https', 'HTTP_USER_AGENT': 'test-device',
+               'CONTENT_TYPE': 'application/json', 'CONTENT_LENGTH': str(len(body)), 'wsgi.input': io.BytesIO(body)}
+        captured = []
+        with patch.object(app, 'limit'):
+            result = b''.join(app(env, lambda status, headers: captured.append(status)))
+        self.assertEqual(captured, ['403 Forbidden'])
+        self.assertEqual(json.loads(result), {'error': 'google_android_client_untrusted'})

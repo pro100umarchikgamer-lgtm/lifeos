@@ -11,6 +11,18 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+/// Shared controls use the same selected pack as the surrounding application.
+class LanguagePackScope extends InheritedWidget {
+  const LanguagePackScope(
+      {super.key, required this.pack, required super.child});
+  final LanguagePack pack;
+  static LanguagePack? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LanguagePackScope>()?.pack;
+  @override
+  bool updateShouldNotify(LanguagePackScope oldWidget) =>
+      oldWidget.pack != pack;
+}
+
 class LanguagePack {
   LanguagePack._(this.tag, this.name, this.strings, this.plurals);
   final String tag;
@@ -75,14 +87,13 @@ class PackCatalog {
     await initializeDateFormatting();
     initializeLaunchFormats();
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
-    final paths =
-        manifest
-            .listAssets()
-            .where(
-              (p) => p.startsWith('assets/locales/') && p.endsWith('.json'),
-            )
-            .toList()
-          ..sort();
+    final paths = manifest
+        .listAssets()
+        .where(
+          (p) => p.startsWith('assets/locales/') && p.endsWith('.json'),
+        )
+        .toList()
+      ..sort();
     final packs = <String, LanguagePack>{};
     for (final path in paths) {
       final pack = LanguagePack.decode(await rootBundle.loadString(path));
@@ -107,24 +118,18 @@ class PackCatalog {
 
   LanguagePack resolve(String? tag) {
     final parts = tag?.replaceAll('_', '-').split('-');
-    tag = parts
-        ?.asMap()
-        .entries
-        .map((entry) {
-          final value = entry.value;
-          if (entry.key == 0) return value.toLowerCase();
-          if (value.length == 4) {
-            return '${value[0].toUpperCase()}${value.substring(1).toLowerCase()}';
-          }
-          return value.toUpperCase();
-        })
-        .join('-');
+    tag = parts?.asMap().entries.map((entry) {
+      final value = entry.value;
+      if (entry.key == 0) return value.toLowerCase();
+      if (value.length == 4) {
+        return '${value[0].toUpperCase()}${value.substring(1).toLowerCase()}';
+      }
+      return value.toUpperCase();
+    }).join('-');
     if (tag != null && packs.containsKey(tag)) return packs[tag]!;
     final language = tag?.split('-').first;
-    final script = tag
-        ?.split('-')
-        .where((part) => part.length == 4)
-        .firstOrNull;
+    final script =
+        tag?.split('-').where((part) => part.length == 4).firstOrNull;
     final scripted = packs['$language-$script'];
     if (scripted != null) return scripted;
     if (language == 'uz' && packs.containsKey('uz-Latn')) {

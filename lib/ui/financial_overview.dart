@@ -56,7 +56,9 @@ class _FinancialOverviewState extends State<FinancialOverview> {
       c.allocations,
     );
     final buckets = data.buckets(grain);
-    final index = selected?.clamp(0, buckets.length - 1);
+    final index = buckets.isEmpty
+        ? null
+        : selected?.clamp(0, buckets.length - 1);
     final currencies = {
       widget.currency,
       c.currency,
@@ -77,15 +79,24 @@ class _FinancialOverviewState extends State<FinancialOverview> {
     };
     String name(String id) =>
         names[id] ?? t(id.isEmpty ? 'insight_uncategorized' : 'category');
+    Widget amountText(BigInt value, TextStyle? style, {Key? key}) => FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Text(money(value), key: key, maxLines: 1, style: style),
+    );
     Widget metric(String title, BigInt value, Color color) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(t(title), style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 3),
         Text(
-          money(value),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+          t(title),
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 4),
+        amountText(
+          value,
+          Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
             color: lifeAccent(context, color),
           ),
         ),
@@ -98,63 +109,77 @@ class _FinancialOverviewState extends State<FinancialOverview> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  Text(
-                    t(data.hasAccounts ? 'insight_balance' : 'difference'),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  SizedBox(
-                    key: const Key('insight_currency'),
-                    width: 76 + MediaQuery.textScalerOf(context).scale(40),
-                    child: LifeSelect<String>(
-                      label: t('currency'),
-                      showLabel: false,
-                      value: widget.currency,
-                      choices: {for (final code in currencies) code: code},
-                      dialog: true,
-                      onChanged: widget.onCurrency,
+              LayoutBuilder(
+                builder: (context, bounds) => Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    Text(
+                      t(data.hasAccounts ? 'insight_balance' : 'difference'),
+                      style: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(color: scheme.onSurfaceVariant),
                     ),
-                  ),
-                ],
-              ),
-              Text(
-                money(
-                  data.hasAccounts ? data.balance : data.income - data.expense,
+                    SizedBox(
+                      key: const Key('insight_currency'),
+                      width: (112 * MediaQuery.textScalerOf(context).scale(1))
+                          .clamp(112.0, bounds.maxWidth),
+                      child: LifeSelect<String>(
+                        label: t('currency'),
+                        showLabel: false,
+                        value: widget.currency,
+                        choices: {for (final code in currencies) code: code},
+                        dialog: true,
+                        onChanged: widget.onCurrency,
+                      ),
+                    ),
+                  ],
                 ),
-                key: const Key('insight_balance'),
-                style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
               ),
-              if (!data.hasAccounts && !widget.compact)
+              const SizedBox(height: 8),
+              amountText(
+                data.hasAccounts ? data.balance : data.income - data.expense,
+                Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -.6),
+                key: const Key('insight_balance'),
+              ),
+              if (!data.hasAccounts && !widget.compact) ...[
+                const SizedBox(height: 4),
                 Text(
                   t('insight_no_accounts'),
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
-              TextButton.icon(
-                key: const Key('financial_period'),
-                onPressed: widget.onPeriod,
-                icon: const Icon(Icons.date_range_outlined, size: 18),
-                label: Text(
-                  '${date(widget.period.start)} — ${date(widget.period.end)}',
+              ],
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  key: const Key('financial_period'),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  onPressed: widget.onPeriod,
+                  icon: const Icon(Icons.date_range_outlined, size: 18),
+                  label: Text(
+                    '${date(widget.period.start)} — ${date(widget.period.end)}',
+                  ),
                 ),
               ),
+              const SizedBox(height: 4),
               LayoutBuilder(
                 builder: (context, bounds) {
                   final metrics = [
                     metric('income', data.income, LifePalette.green),
                     metric('expense', data.expense, LifePalette.red),
                   ];
-                  return MediaQuery.textScalerOf(context).scale(1) > 1.4
+                  return MediaQuery.textScalerOf(context).scale(1) > 1.4 ||
+                          bounds.maxWidth < 300 &&
+                              (money(data.income).length > 15 ||
+                                  money(data.expense).length > 15)
                       ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             metrics[0],
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 12),
                             metrics[1],
                           ],
                         )
@@ -162,20 +187,60 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(child: metrics[0]),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 16),
                             Expanded(child: metrics[1]),
                           ],
                         );
                 },
               ),
-              const SizedBox(height: 12),
               if (!widget.compact) ...[
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => widget.onAdd(EntryKind.expense),
+                      icon: const Icon(Icons.remove, size: 18),
+                      label: Text(t('expense')),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => widget.onAdd(EntryKind.income),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(t('income')),
+                    ),
+                  ],
+                ),
+              ],
+              if (data.records.isEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  t('empty_money'),
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ] else if (widget.compact) ...[
+                const SizedBox(height: 16),
+                _chart(buckets, index, scheme),
+              ],
+            ],
+          ),
+        ),
+        if (!widget.compact && data.records.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          LifeCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Text(
                   t('insight_dynamics'),
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 6,
+                  runSpacing: 4,
                   children: [
                     for (final g in ChartGrain.values)
                       ChoiceChip(
@@ -188,107 +253,55 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                       ),
                   ],
                 ),
-              ],
-              if (data.records.isEmpty)
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: widget.compact ? 6 : 12,
-                  ),
-                  child: Text(t('empty_money')),
-                )
-              else
-                Semantics(
-                  label: t('insight_dynamics'),
-                  value: index == null
-                      ? t('insight_select')
-                      : '${date(buckets[index].date)} ${t('income')} ${money(buckets[index].income)} ${t('expense')} ${money(buckets[index].expense)}',
-                  child: LayoutBuilder(
-                    builder: (context, bounds) => GestureDetector(
-                      key: const Key('cashflow_chart'),
-                      behavior: HitTestBehavior.opaque,
-                      onTapDown: (d) => setState(
-                        () => selected =
-                            (d.localPosition.dx /
-                                    bounds.maxWidth *
-                                    (buckets.length - 1))
-                                .round()
-                                .clamp(0, buckets.length - 1),
-                      ),
-                      child: SizedBox(
-                        height: widget.compact ? 56 : 144,
-                        width: double.infinity,
-                        child: CustomPaint(
-                          painter: CashflowPainter(
-                            buckets,
-                            lifeAccent(context, LifePalette.green),
-                            lifeAccent(context, LifePalette.red),
-                            scheme.outlineVariant,
-                            index,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (!widget.compact && buckets.isNotEmpty)
-                Slider(
-                  semanticFormatterCallback: (value) =>
-                      date(buckets[value.round()].date),
-                  min: 0,
-                  max: math.max(1, buckets.length - 1).toDouble(),
-                  value: (index ?? 0).toDouble(),
-                  onChanged: (v) => setState(
-                    () => selected = v.round().clamp(0, buckets.length - 1),
-                  ),
-                ),
-              if (index != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
+                const SizedBox(height: 16),
+                _chart(buckets, index, scheme),
+                if (index != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
                     '${date(buckets[index].date)} · ${t('income')}: ${money(buckets[index].income)} · ${t('expense')}: ${money(buckets[index].expense)}',
                   ),
-                ),
-              const SizedBox(height: 8),
-              if (!widget.compact)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => widget.onAdd(EntryKind.expense),
-                      icon: const Icon(Icons.remove_circle_outline),
-                      label: Text(t('expense')),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => widget.onAdd(EntryKind.income),
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: Text(t('income')),
-                    ),
-                  ],
-                ),
-            ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .previousPageTooltip,
+                        onPressed: index > 0
+                            ? () => setState(() => selected = index - 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .nextPageTooltip,
+                        onPressed: index < buckets.length - 1
+                            ? () => setState(() => selected = index + 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-        if (!widget.compact) ...[
-          const SizedBox(height: 12),
-          LifeCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  t('insight_categories'),
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                if (parts.isEmpty)
-                  Text(t('empty_money'))
-                else ...[
+          if (parts.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            LifeCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    t('insight_categories'),
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 20),
                   Center(
                     child: SizedBox(
                       key: const Key('expense_categories_chart'),
-                      width: 160,
-                      height: 160,
+                      width: 144,
+                      height: 144,
                       child: Semantics(
                         label: t('insight_categories'),
                         value: money(data.expense),
@@ -298,41 +311,24 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                             scheme.surfaceContainerHighest,
                           ),
                           child: Center(
-                            child:
-                                MediaQuery.textScalerOf(context).scale(1) <=
-                                        1.4 &&
-                                    money(data.expense).length < 14
-                                ? Text(
-                                    money(data.expense),
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                  )
-                                : const Icon(
-                                    Icons.pie_chart_outline_rounded,
-                                    size: 32,
-                                  ),
+                            child: Icon(
+                              Icons.pie_chart_outline_rounded,
+                              size: 28,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  if (MediaQuery.textScalerOf(context).scale(1) > 1.4 ||
-                      money(data.expense).length >= 14)
-                    Text(
-                      money(data.expense),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
                   const SizedBox(height: 12),
                   for (var i = 0; i < parts.length; i++)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      minVerticalPadding: 10,
+                      minLeadingWidth: 12,
                       leading: Container(
-                        width: 12,
-                        height: 12,
+                        width: 8,
+                        height: 8,
                         decoration: BoxDecoration(
                           color: chartColor(i),
                           shape: BoxShape.circle,
@@ -342,7 +338,12 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                       subtitle: Text(
                         '${money(parts[i].value)} · ${formatShare(parts[i].value, data.expense, locale: c.region)}',
                       ),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Icon(
+                        category == parts[i].key
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                        size: 20,
+                      ),
                       selected: category == parts[i].key,
                       onTap: () => setState(
                         () => category = category == parts[i].key
@@ -360,19 +361,63 @@ class _FinancialOverviewState extends State<FinancialOverview> {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(r.text.isEmpty ? t('expense') : r.text),
-                        subtitle: Text(date(DateTime.parse(r.date!))),
-                        trailing: const Icon(Icons.open_in_new),
+                        subtitle: Text(
+                          '${date(DateTime.parse(r.date!))} · ${money(BigInt.from(r.amountMinor!))}',
+                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 20),
                         onTap: () => widget.onRecord(r),
                       ),
                   ],
                 ],
-              ],
+              ),
             ),
-          ),
+          ],
         ],
       ],
     );
   }
+
+  Widget _chart(
+    List<CashBucket> buckets,
+    int? index,
+    ColorScheme scheme,
+  ) => Semantics(
+    label: t('insight_dynamics'),
+    value: index == null
+        ? t('insight_select')
+        : '${date(buckets[index].date)} ${t('income')} ${money(buckets[index].income)} ${t('expense')} ${money(buckets[index].expense)}',
+    child: LayoutBuilder(
+      builder: (context, bounds) => GestureDetector(
+        key: const Key('cashflow_chart'),
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (d) => setState(
+          () => selected =
+              (d.localPosition.dx / bounds.maxWidth * (buckets.length - 1))
+                  .round()
+                  .clamp(0, buckets.length - 1),
+        ),
+        onHorizontalDragUpdate: (d) => setState(
+          () => selected =
+              (d.localPosition.dx / bounds.maxWidth * (buckets.length - 1))
+                  .round()
+                  .clamp(0, buckets.length - 1),
+        ),
+        child: SizedBox(
+          height: widget.compact ? 48 : 128,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: CashflowPainter(
+              buckets,
+              lifeAccent(context, LifePalette.green),
+              lifeAccent(context, LifePalette.red),
+              scheme.outlineVariant,
+              index,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 Color chartColor(int i) => const [

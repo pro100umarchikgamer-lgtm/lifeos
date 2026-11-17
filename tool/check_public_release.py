@@ -25,7 +25,8 @@ for path in ('/', '/early-access', '/account', '/plans', '/privacy', '/terms',
     add(path)
 for name in ('app.js', 'app.css', 'locales.json', 'manifest.webmanifest',
              'offline.html', 'offline.js', 'icon-192.png', 'icon-512.png',
-             'apple-touch-icon.png'):
+             'apple-touch-icon.png', 'install.js', 'appearance-boot.js',
+             'field-menu.js', 'field-menu.css'):
     add('/app/assets/' + name, asset='backend/webassets/app/' + name)
 add('/app/sw.js', asset='backend/webassets/app/sw.js')
 for name in ('web.js', 'web.css'):

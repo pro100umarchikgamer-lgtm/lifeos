@@ -17,6 +17,8 @@ class AccountSessions:
         from .service import require
         row = db.execute('SELECT * FROM account_state WHERE user_id=?', (uid,)).fetchone()
         require(row is None or (not row['deleted_at'] and row['disabled_until'] <= int(self.clock())), 'account_unavailable', 403)
+        erasing=db.execute("SELECT 1 FROM deletion_jobs WHERE user_id=? AND state='erasing'",(uid,)).fetchone()
+        require(not erasing, 'account_unavailable', 403)
 
     def authenticate(self, token):
         from .service import require, token_hash
@@ -58,6 +60,7 @@ class AccountSessions:
     def revoke_all_in(self, db, uid):
         now = max(1, int(self.clock()))
         db.execute('DELETE FROM oauth_challenges WHERE user_id=?', (uid,))
+        db.execute('DELETE FROM account_reauth_grants WHERE user_id=?', (uid,))
         db.execute('DELETE FROM login_challenges WHERE user_id=?', (uid,))
         db.execute('DELETE FROM sessions WHERE user_id=?', (uid,))
         db.execute('DELETE FROM control_sessions WHERE staff_id IN (SELECT id FROM staff WHERE user_id=?)', (uid,))
@@ -87,6 +90,7 @@ class AccountSessions:
 
     def reauthenticate(self, db, actor, password):
         from .service import require, token_hash
+        self._account_available(db, actor['id'])
         require(isinstance(password, str) and len(password) <= 256, 'invalid_credentials', 401)
         now = int(self.clock())
         key = token_hash('reauth:' + actor['id'])
@@ -102,6 +106,7 @@ class AccountSessions:
     def reserve_reauth(self, actor):
         from .service import require, token_hash
         with self.transaction() as db:
+            self._account_available(db, actor['id'])
             now, key = int(self.clock()), token_hash('reauth:' + actor['id'])
             row = db.execute('SELECT * FROM auth_limits WHERE key=?', (key,)).fetchone()
             require(row is None or row['until_at'] <= now or row['count'] < 10, 'rate_limited', 429)

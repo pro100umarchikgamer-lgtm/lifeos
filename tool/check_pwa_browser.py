@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 from cryptography.fernet import Fernet
+from tool.web_browser_navigation import open_tab, open_settings, choose_field
 from playwright.sync_api import sync_playwright, expect
 from backend.config import Settings
 from backend.production import Application
@@ -46,7 +47,10 @@ def main():
         server.set_app(app);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             with sync_playwright() as p:
-                browser=getattr(p,ENGINE).launch(args=['--no-sandbox'] if ENGINE=='chromium' else [])
+                launch={'args':['--no-sandbox'] if ENGINE=='chromium' else []}
+                if ENGINE=='chromium' and os.environ.get('ULADIM_CHROMIUM'):
+                    launch['executable_path']=os.environ['ULADIM_CHROMIUM']
+                browser=getattr(p,ENGINE).launch(**launch)
                 context=browser.new_context(viewport={'width':390,'height':844},color_scheme='light')
                 page=context.new_page();errors=[];responses=[];page.on('pageerror',lambda e:errors.append(str(e)))
                 page.on('response',lambda r:responses.append({'path':r.url.split(origin)[-1].split('?')[0],'status':r.status}) if '/account/api/' in r.url else None)
@@ -68,19 +72,24 @@ def main():
                     (OUT/'login-failure.json').write_text(json.dumps({'engine':ENGINE,'fixture':'HTTP loopback only; no production credentials','responses':responses,'cookies':[{'name':c['name'],'secure':c['secure'],'httpOnly':c['httpOnly']} for c in context.cookies()],'body':page.locator('body').inner_text(),'page_errors':errors},ensure_ascii=False,indent=2))
                     raise
                 page.screenshot(path=str(OUT/'iphone-today-light.png'),full_page=False)
-                assert page.locator('.nav svg[aria-hidden=true]').count()==5
-                for nav_button in page.locator('.nav button').all():
+                assert page.locator('.nav svg[aria-hidden=true]:visible').count()==6
+                assert set(page.locator('.nav button[data-tab][data-section=""]:visible').evaluate_all('(items)=>items.map(item=>item.dataset.tab)'))=={'today','tasks','calendar','notes','money','account'}
+                for nav_button in page.locator('.nav button:visible,.nav-more > summary:visible').all():
                     box=nav_button.bounding_box();assert box['width']>=44 and box['height']>=44
                 for w,h,n in [(820,1180,'ipad'),(1440,960,'desktop')]:
                     page.set_viewport_size({'width':w,'height':h})
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                     if DESIGN:
-                        nav=page.locator('.nav').bounding_box();assert nav['x']==0 and nav['width']<250 and nav['height']>500
+                        nav=page.locator('.nav').bounding_box()
+                        if w>=760:
+                            assert nav['x']==0 and nav['y']==0 and 0<nav['width']<w/3 and nav['height']==h
+                            assert page.locator('main').bounding_box()['x']>=nav['width']
+                        else:assert nav['width']==w and nav['height']>=44 and nav['y']+nav['height']==h
                     page.screenshot(path=str(OUT/(n+'-today-light.png')),full_page=False)
                 page.set_viewport_size({'width':390,'height':844})
                 checks.append('svg_navigation_named_controls_and_tablet_desktop_layout')
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-                page.get_by_role('button',name='Задачи',exact=True).click()
+                open_tab(page,'Задачи')
                 page.get_by_role('button',name='Добавить',exact=True).click()
                 dialog=page.get_by_role('dialog')
                 heading_id=dialog.get_attribute('aria-labelledby')
@@ -89,12 +98,29 @@ def main():
                 page.get_by_label('Название задачи',exact=True).fill('Новая задача из веба')
                 page.get_by_role('button',name='Сохранить',exact=True).click()
                 expect(page.get_by_text('Новая задача из веба',exact=True)).to_be_visible()
-                assert any(r['data'].get('title')=='Новая задача из веба' for r in backend.pull(actor,wid,0)['records'])
-                page.get_by_role('checkbox',name='Новая задача из веба',exact=True).check()
+                task=next(r for r in backend.pull(actor,wid,0)['records'] if r['data'].get('title')=='Новая задача из веба')
+                page.get_by_role('checkbox',name='Новая задача из веба',exact=True).click()
+                # Completed tasks move into a collapsed group in the All view.
+                expect(page.locator('details.task-group[aria-labelledby="tasks-completed"]')).to_be_visible()
+                expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_have_count(0)
+                choose_field(page.get_by_label('Статус задачи',exact=True), 'open')
+                expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_have_count(0)
+                choose_field(page.get_by_label('Статус задачи',exact=True), 'done')
+                expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_visible()
                 expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
+                expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_enabled()
+                completed=next(r for r in backend.pull(actor,wid,0)['records'] if r['id']==task['id'])
+                assert completed['data']['completed']==1 and completed['revision']==task['revision']+1
+                page.reload()
+                expect(page.get_by_role('heading',name='Задачи',exact=True,level=1)).to_be_visible()
+                open_tab(page,'Задачи')
+                choose_field(page.get_by_label('Статус задачи',exact=True), 'done')
+                expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_visible()
+                expect(page.get_by_role('checkbox',name='Новая задача из веба',exact=True)).to_be_checked()
+                page.screenshot(path=str(OUT/'iphone-tasks-completed-after-reload.png'),full_page=False)
                 checks.append('create_and_complete_task_shared_with_android_protocol')
-                page.get_by_role('button',name='Заметки',exact=True).click()
-                page.get_by_role('button',name='Добавить',exact=True).click()
+                open_tab(page,'Заметки')
+                page.get_by_role('button',name='Новая заметка',exact=True).click()
                 page.get_by_label('Текст заметки',exact=True).fill('Одна запись при повторе после потери ответа')
                 def lose_response(route):
                     route.fetch();route.abort()
@@ -106,8 +132,8 @@ def main():
                 self_records=backend.pull(actor,wid,0)['records']
                 assert sum(r['data'].get('body')=='Одна запись при повторе после потери ответа' for r in self_records)==1
                 checks.append('lost_response_retry_is_idempotent')
-                page.get_by_role('button',name='Финансы',exact=True).click()
-                expect(page.get_by_role('heading',name='Финансы',exact=True,level=1)).to_be_visible()
+                open_tab(page,'Финансы')
+                expect(page.get_by_role('heading',name='Обзор финансов',exact=True,level=1)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-finance-light.png'),full_page=False)
                 for width,height,name in [(320,740,'small-phone'),(820,1180,'ipad'),(1100,900,'compact-desktop'),(1440,960,'desktop')]:
                     page.set_viewport_size({'width':width,'height':height})
@@ -115,33 +141,47 @@ def main():
                     page.screenshot(path=str(OUT/(name+'-finance.png')),full_page=True)
                 checks.append('responsive_320_390_820_1100_1440')
                 page.set_viewport_size({'width':390,'height':844})
-                page.get_by_role('button',name='Профиль',exact=True).click()
-                expect(page.get_by_role('heading',name='Управление аккаунтом',exact=True)).to_be_visible()
+                open_tab(page,'Профиль')
+                expect(page.get_by_role('heading',name='Профиль',exact=True,level=1)).to_be_visible()
                 page.screenshot(path=str(OUT/'iphone-account-light.png'),full_page=False)
-                def luminance(hex_color):
-                    if len(hex_color)==4:hex_color='#'+''.join(c*2 for c in hex_color[1:])
-                    assert len(hex_color)==7 and hex_color.startswith('#'),hex_color
-                    channels=[int(hex_color[i:i+2],16)/255 for i in (1,3,5)]
+                def luminance(rgb):
+                    assert len(rgb)==3 and all(isinstance(channel,(int,float)) and 0<=channel<=255 for channel in rgb),rgb
+                    channels=[channel/255 for channel in rgb]
                     return sum((c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4)*w for c,w in zip(channels,(.2126,.7152,.0722)))
+                open_settings(page,'appearance')
                 for scheme in ('light','dark'):
                     page.emulate_media(color_scheme=scheme)
                     for theme in ('system','light','dark'):
                         page.locator('select[name=theme]').select_option(theme)
-                        for palette in ('forest','ocean','pistachio'):
-                            page.locator('select[name=palette]').select_option(palette)
-                            colors=page.evaluate('''()=>{const s=getComputedStyle(document.body);return Object.fromEntries(['ink','muted','income','expense','bg','card','soft'].map(k=>[k,s.getPropertyValue('--'+k).trim()]));}''')
+                        for palette in ('violet','forest','ocean','pistachio','rose','sand'):
+                            page.locator(f'button[data-palette-choice="{palette}"]').click()
+                            colors=page.evaluate('''()=>{
+                                const style=getComputedStyle(document.body);
+                                const resolve=css=>{
+                                    if(!CSS.supports('color',css))throw new Error('Unsupported contrast color: '+css);
+                                    const probe=document.createElement('span');probe.style.color=css;probe.style.position='fixed';probe.style.visibility='hidden';
+                                    document.body.append(probe);let computed;try{computed=getComputedStyle(probe).color;}finally{probe.remove();}
+                                    const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+                                    const context=canvas.getContext('2d');context.fillStyle=computed;context.fillRect(0,0,1,1);
+                                    const rgba=[...context.getImageData(0,0,1,1).data];
+                                    if(rgba[3]!==255)throw new Error('Contrast color requires explicit alpha compositing: '+css);
+                                    return rgba.slice(0,3);
+                                };
+                                return Object.fromEntries(['ink','muted','income','expense','bg','card','soft'].map(key=>[key,resolve(style.getPropertyValue('--'+key).trim())]));
+                            }''')
                             backgrounds=['bg','card']+(['soft'] if DESIGN else [])
                             for fg in ('ink','muted','income','expense'):
                                 for bg in backgrounds:
                                     low,high=sorted((luminance(colors[fg]),luminance(colors[bg])))
                                     ratio=(high+.05)/(low+.05)
-                                    contrast_evidence.append({'scheme':scheme,'theme':theme,'palette':palette,'foreground':fg,'background':bg,'ratio':round(ratio,3),'minimum':4.5,'passed':ratio>=4.5})
-                                    assert ratio>=4.5,(scheme,theme,palette,fg,bg,ratio)
+                                    contrast_evidence.append({'scheme':scheme,'theme':theme,'palette':palette,'foreground':fg,'background':bg,'foreground_rgb':colors[fg],'background_rgb':colors[bg],'ratio':round(ratio,3),'minimum':4.5,'passed':ratio>=4.5})
+                                    assert ratio>=4.5,(scheme,theme,palette,fg,bg,colors[fg],colors[bg],ratio)
                 checks.append('financial_text_contrast_all_themes_and_palettes')
                 page.emulate_media(color_scheme='light')
-                page.get_by_label('Оформление',exact=True).select_option('dark')
-                page.get_by_label('Цветовая палитра',exact=True).select_option('ocean')
-                page.get_by_role('button',name='Финансы',exact=True).click()
+                open_settings(page,'appearance')
+                choose_field(page.get_by_label('Оформление',exact=True), 'dark')
+                page.locator('button[data-palette-choice="ocean"]').click()
+                open_tab(page,'Финансы')
                 page.screenshot(path=str(OUT/'iphone-finance-dark.png'),full_page=False)
                 await_sw=page.evaluate('navigator.serviceWorker.ready.then(()=>true)')
                 assert await_sw
@@ -152,8 +192,9 @@ def main():
                 stored=page.evaluate('Object.keys(localStorage)')
                 assert stored==['uladim-interface'],stored
                 checks.append('cache_contains_only_interface_and_preferences')
+                open_tab(page,'Профиль')
+                open_settings(page,'appearance')
                 for locale in json.loads(Path('backend/webassets/app/locales.json').read_text()):
-                    page.locator('.nav button').last.click()
                     page.locator('select[name=language]').select_option(locale)
                     expect(page.locator('h1')).to_be_visible()
                     assert page.locator('html').get_attribute('lang')==locale
@@ -162,16 +203,38 @@ def main():
                 checks.append('all_16_locales_render')
                 # Leave selected language in RU for unambiguous logout assertion.
                 page.locator('select[name=language]').select_option('ru')
+                expect(page.locator('html')).to_have_attribute('lang','ru')
+                history_heading=page.locator('main h1').inner_text()
+                history_view=page.locator('main').get_attribute('data-view')
+                history_route=page.evaluate("""design=>{
+                    const url=new URL(location.href),allowed=['view','section','selectedspace'];
+                    if(design==='clarity')allowed.push('design');
+                    const values=url.searchParams.getAll('design');
+                    if(design==='clarity' ? values.length!==1||values[0]!=='clarity' : values.length!==0)
+                        throw Error('History destination has an unexpected design mode');
+                    if([...url.searchParams.keys()].some(key=>!allowed.includes(key)))
+                        throw Error('History destination has unexpected URL parameters');
+                    return url.pathname+url.search;
+                }""",DESIGN)
+                assert history_view=='account/appearance/'
                 # A page entering history must not retain a readable private DOM.
                 page.evaluate("dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))")
                 assert page.locator('.nav').count()==0, 'private DOM retained in history snapshot'
                 assert actor['email'] not in page.locator('body').inner_text()
                 assert 'Подготовить план' not in page.locator('body').inner_text()
-                page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
-                expect(page.get_by_role('heading',name='Сегодня',exact=True)).to_be_visible()
+                with page.expect_response(lambda response:response.url.split('?')[0]==origin+'/account/api/session' and response.request.method=='GET') as revalidation:
+                    page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
+                assert revalidation.value.status==200
+                expect(page.locator('main')).to_have_attribute('data-view',history_view)
+                expect(page.locator('main h1')).to_have_text(history_heading)
+                assert page.evaluate('location.pathname+location.search')==history_route
                 checks.append('history_snapshot_scrubbed_before_session_revalidation')
-                page.get_by_role('button',name='Профиль',exact=True).click()
+                open_tab(page,'Профиль')
+                open_settings(page,'profile')
                 page.get_by_role('button',name='Выйти',exact=True).click()
+                expect(page.get_by_role('heading',name='Выйти из аккаунта?',exact=True)).to_be_visible()
+                expect(page.locator('dialog[open]')).to_have_count(0)
+                page.locator('.signout-panel button[type=submit]').click()
                 expect(page.get_by_role('heading',name='Войти',exact=True)).to_be_visible()
                 assert 'Подготовить план' not in page.locator('body').inner_text()
                 checks.append('logout_clears_rendered_personal_data')

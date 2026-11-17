@@ -2,6 +2,24 @@ import 'dart:io';
 import 'dart:typed_data' as typed;
 import 'package:flutter/services.dart';
 
+enum NotificationTestStatus { posted, blocked, unconfirmed }
+
+class NotificationTestResult {
+  const NotificationTestResult(this.status, {this.channelBlocked = false});
+  final NotificationTestStatus status;
+  final bool channelBlocked;
+
+  factory NotificationTestResult.fromMap(Map<String, Object?>? value) =>
+      NotificationTestResult(
+        switch (value?['status']) {
+          'posted' => NotificationTestStatus.posted,
+          'blocked' => NotificationTestStatus.blocked,
+          _ => NotificationTestStatus.unconfirmed,
+        },
+        channelBlocked: value?['reason'] == 'channel',
+      );
+}
+
 class NativeBridge {
   static const channel = MethodChannel('lifeos/native');
   bool get supported => Platform.isAndroid;
@@ -26,6 +44,39 @@ class NativeBridge {
             Map<String, Object?>.from(raw as Map)
         ]
       : [];
+  Future<List<Map<String, dynamic>>> reminderHistory() async => supported
+      ? [
+          for (final raw
+              in await channel.invokeListMethod<Object?>('reminderHistory') ??
+                  [])
+            Map<String, dynamic>.from(raw as Map)
+        ]
+      : [];
+  Future<void> acknowledgeReminderHistory(List<String> ids) async {
+    if (supported) await channel.invokeMethod<void>('ackReminderHistory', ids);
+  }
+
+  Future<void> openExternalLink(Uri uri) async {
+    if (!supported ||
+        !['https', 'http'].contains(uri.scheme) ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty) {
+      throw PlatformException(code: 'link_unavailable');
+    }
+    await channel.invokeMethod<void>('openExternalLink', uri.toString());
+  }
+
+  Future<void> shareReferralLink(Uri uri) async {
+    final codes = uri.queryParametersAll['ref'];
+    if (!supported || uri.scheme != 'https' || uri.host != 'getuladim.space' ||
+        uri.port != 443 || uri.userInfo.isNotEmpty || uri.path != '/app' ||
+        uri.hasFragment || uri.queryParametersAll.length != 1 || codes == null ||
+        codes.length != 1 || !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(codes.single)) {
+      throw PlatformException(code: 'link_unavailable');
+    }
+    await channel.invokeMethod<void>('shareText', uri.toString());
+  }
+
   Future<void> acknowledge(List<String> ids) async {
     if (supported) await channel.invokeMethod<void>('ackActions', ids);
   }
@@ -59,9 +110,11 @@ class NativeBridge {
     if (supported) await channel.invokeMethod<void>(permission);
   }
 
-  Future<void> testNotification(Map<String, Object?> labels) async {
+  Future<NotificationTestResult> testNotification(
+      Map<String, Object?> labels) async {
     if (!supported) throw PlatformException(code: 'unsupported');
-    await channel.invokeMethod<void>('testNotification', labels);
+    return NotificationTestResult.fromMap(await channel
+        .invokeMapMethod<String, Object?>('testNotification', labels));
   }
 
   Future<bool> saveBackup(typed.Uint8List bytes) async {

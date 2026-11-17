@@ -25,3 +25,5 @@ backend/.dev/
 backups/
 .venv/
 web_evidence/
+node_modules/
+.lighthouseci/

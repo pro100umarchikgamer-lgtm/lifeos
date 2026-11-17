@@ -30,6 +30,8 @@ class Application:
         from .web import Web
         self.web=Web(backend,settings)
         self.google=self.web.google
+        from .native_download import NativeDownload
+        self.native_download=NativeDownload(getattr(settings, 'native_download_dir', ''))
         self.started=time.time()
         self.networks=[ipaddress.ip_network(v.strip()) for v in settings.trusted_proxy_cidrs.split(',')]
     def trusted(self,environ):
@@ -66,6 +68,10 @@ class Application:
         finally:db.close()
         if row['count']>maximum:raise Failure('rate_limited',429)
     def __call__(self,environ,start_response):
+        from .request_locale import request_locale
+        with request_locale(environ.get('HTTP_ACCEPT_LANGUAGE','')):
+            return self._request(environ,start_response)
+    def _request(self,environ,start_response):
         status=200
         headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
             'X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'X-Request-ID':str(uuid.uuid4())}
@@ -78,6 +84,9 @@ class Application:
             environ = dict(environ, REQUEST_METHOD='GET')
             method = 'GET'
         try:
+            control_redeem = self.web.is_control(environ) and path == '/admit' and method == 'POST'
+            if self.web.is_control(environ) and not control_redeem:
+                environ['uladim.admitted'] = self.web.admitted(environ)
             if head and path == '/account/api/google/callback':raise Failure('method_not_allowed',405)
             if method not in ('GET','POST'):raise Failure('method_not_allowed',405)
             if path=='/health/live' and method=='GET':value={'status':'ok'}
@@ -95,15 +104,39 @@ class Application:
                 is_web=self.web.handles(environ)
                 if not is_web and not path.startswith('/v1/'):raise Failure('not_found',404)
                 self.limit(environ,path)
+                if path.startswith('/download/android/'):
+                    from urllib.parse import urlsplit
+                    if environ.get('HTTP_HOST', '') != urlsplit(self.settings.site_origin).netloc:
+                        raise Failure('not_found', 404)
+                    download_env = dict(environ, REQUEST_METHOD='HEAD') if head else environ
+                    status, download_headers, body = self.native_download.response(download_env)
+                    headers.update(download_headers)
+                    start_response(str(status)+' '+HTTPStatus(status).phrase,list(headers.items()))
+                    return body
                 body={}
-                if method=='POST':
+                if control_redeem:
+                    from urllib.parse import parse_qs
+                    require_type = environ.get('CONTENT_TYPE', '').split(';')[0].strip().lower() == 'application/x-www-form-urlencoded'
+                    length = int(environ.get('CONTENT_LENGTH', '0'))
+                    if not require_type or not 0 < length <= 512: raise Failure('not_found', 404)
+                    try:
+                        values = parse_qs(environ['wsgi.input'].read(length).decode('ascii'), strict_parsing=True, max_num_fields=1)
+                    except (ValueError, UnicodeError): raise Failure('not_found', 404)
+                    if set(values) != {'ticket'} or len(values['ticket']) != 1: raise Failure('not_found', 404)
+                    value, web_headers = self.web.redeem_admission(environ, values['ticket'][0])
+                    cookies = [(key, value) for key, value in web_headers if key.lower() == 'set-cookie']
+                    headers.update({key: value for key, value in web_headers if key.lower() != 'set-cookie'})
+                    status = int(headers.pop('X-ULADIM-Status', '200'))
+                elif method=='POST':
                     if environ.get('CONTENT_TYPE','').split(';')[0].strip().lower()!='application/json':raise Failure('content_type',415)
                     length=int(environ.get('CONTENT_LENGTH','0'))
                     if not 0<length<=MAX_BODY:raise Failure('body_limit',413)
                     raw=environ['wsgi.input'].read(length)
                     if len(raw)!=length:raise Failure('invalid_input')
                     body=decode_json(raw)
-                if is_web:
+                if control_redeem:
+                    pass
+                elif is_web:
                     environ['uladim.client'] = self.client(environ)
                     value,web_headers=self.web.request(environ,body)
                     cookies=[(key,value) for key,value in web_headers if key.lower()=='set-cookie']
@@ -134,7 +167,8 @@ class Application:
     def google_request(self, env, body):
         path, method = env.get('PATH_INFO'), env.get('REQUEST_METHOD')
         if path == '/v1/auth/google/config' and method == 'GET':
-            return {'google_enabled': self.google.enabled}
+            return {'google_enabled': self.google.enabled,
+                    'google_android_clients_configured': bool(self.settings.google_android_client_ids)}
         if path == '/v1/auth/google/start' and method == 'POST':
             return self.google.start('android', env.get('HTTP_USER_AGENT','')[:500], invitation=body.get('invitation'))
         if path == '/v1/auth/google/finish' and method == 'POST':
@@ -142,6 +176,10 @@ class Application:
         auth = env.get('HTTP_AUTHORIZATION', '')
         token = auth[7:] if auth.startswith('Bearer ') else ''
         actor = self.backend.authenticate(token)
+        if path == '/v1/auth/google/reauth/start' and method == 'POST':
+            from .service import token_hash
+            return self.google.start('android', env.get('HTTP_USER_AGENT','')[:500], actor=actor,
+                auth_hash=token_hash(token), purpose='reauth')
         if path == '/v1/account/google' and method == 'GET':
             return self.google.status(actor)
         if path == '/v1/account/google/link' and method == 'POST':
@@ -165,7 +203,12 @@ def create_app():
     from .config import Settings
     from .postgres import PostgresBackend
     settings=Settings.load()
-    return Application(PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()),pool_size=settings.pool_size),settings)
+    backend=PostgresBackend(settings.database_url,Fernet(settings.email_queue_key.encode()),pool_size=settings.pool_size)
+    from .account_erasure import initialize
+    initialize(backend, settings.account_erasure_ledger, settings.account_erasure_ack_socket)
+    from .record_erasure import initialize as initialize_record_erasure
+    initialize_record_erasure(backend,settings.record_erasure_ledger,settings.record_erasure_ack_socket,settings.record_erasure_required)
+    return Application(backend,settings)
 
 def main():
     import sys

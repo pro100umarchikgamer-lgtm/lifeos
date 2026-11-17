@@ -1,0 +1,129 @@
+/* Focus workspace: one visual system; existing actions and record models stay intact. */
+body[data-design=clarity]{
+ --ux-bg:#f5f6f2;--ux-surface:#ffffff;--ux-ink:#20352c;--ux-muted:#64736b;
+ --ux-border:#e0e7df;--ux-green:#155c46;--ux-soft:#e8f2e9;--ux-radius:18px;
+ --bg:var(--ux-bg);--card:var(--ux-surface);--ink:var(--ux-ink);--muted:var(--ux-muted);--line:var(--ux-border);--accent:var(--ux-green);--soft:var(--ux-soft);
+ font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+ background:var(--ux-bg);color:var(--ux-ink);font-size:15px;
+}
+body[data-design=clarity][data-theme=dark]{--ux-bg:#101c18;--ux-surface:#192a23;--ux-ink:#edf5ef;--ux-muted:#afc1b5;--ux-border:#31483b;--ux-green:#a0dfba;--ux-soft:#263f30}
+@media(prefers-color-scheme:dark){body[data-design=clarity][data-theme=system]{--ux-bg:#101c18;--ux-surface:#192a23;--ux-ink:#edf5ef;--ux-muted:#afc1b5;--ux-border:#31483b;--ux-green:#a0dfba;--ux-soft:#263f30}}
+body[data-design=clarity] #root h1,body[data-design=clarity] #root h2,body[data-design=clarity] #root h3{font-family:inherit;letter-spacing:-.035em;color:var(--ux-ink)}
+body[data-design=clarity] #root h1{font-size:clamp(28px,3vw,40px);font-weight:720;line-height:1.15}
+body[data-design=clarity] #root h2{font-size:20px;font-weight:700;line-height:1.3}
+body[data-design=clarity] #root h3{font-size:15px;line-height:1.4}
+body[data-design=clarity] #root>header{background:var(--ux-surface);border-bottom:1px solid var(--ux-border);padding-inline:28px;box-shadow:0 2px 16px #173a2003}
+body[data-design=clarity] .brand{font-size:24px;letter-spacing:-.06em;font-weight:800}
+body[data-design=clarity] .header-tools{gap:8px}
+body[data-design=clarity] .header-tools .workspace{border-radius:12px;background:var(--ux-bg);font-weight:550}
+body[data-design=clarity] button.icon{border-radius:12px}
+body[data-design=clarity] button.icon:hover{background:var(--ux-soft);color:var(--ux-green)}
+body[data-design=clarity] .workspace-sync{font-size:11px}
+body[data-design=clarity] button{font-size:14px;font-weight:650;border-radius:11px;transition:background .15s,border-color .15s}
+body[data-design=clarity] button.text-button{min-height:44px}
+body[data-design=clarity] button.secondary{background:var(--ux-surface)}
+body[data-design=clarity] input,body[data-design=clarity] select,body[data-design=clarity] textarea{border-radius:11px;border:1px solid var(--ux-border);min-height:46px;background:var(--ux-surface);font-size:15px}
+body[data-design=clarity] input:focus,body[data-design=clarity] textarea:focus{border-color:var(--ux-green)}
+body[data-design=clarity] input[type=checkbox]{min-height:22px;width:22px;height:22px;accent-color:var(--ux-green);flex:none}
+body[data-design=clarity] .intro{margin-bottom:24px;align-items:center}
+body[data-design=clarity] .eyebrow{font-size:12px;text-transform:none;letter-spacing:.01em;margin-bottom:9px}
+body[data-design=clarity] .nav{background:var(--ux-surface)}
+body[data-design=clarity] .nav button{font-size:14px;font-weight:550;border-radius:12px;color:var(--ux-muted)}
+body[data-design=clarity] .nav button[aria-current=page]{background:var(--ux-soft);color:var(--ux-green);font-weight:750}
+body[data-design=clarity] .nav button:hover{background:var(--ux-bg)}
+body[data-design=clarity] .nav button[aria-current=page]:hover{background:var(--ux-soft)}
+body[data-design=clarity] .today-page .intro{position:relative;min-height:106px;padding:12px 0;overflow:hidden}
+body[data-design=clarity] .today-page .intro::after{content:'';position:absolute;pointer-events:none;right:0;bottom:0;width:42%;height:100%;opacity:.65;border-radius:50% 50% 14px 45%;background:radial-gradient(ellipse at 80% 110%,#7ab990 0 30%,transparent 31%),radial-gradient(ellipse at 35% 110%,#b2d6b3 0 48%,transparent 49%),radial-gradient(circle at 65% 15%,#f2dd9f 0 9%,transparent 10%)}
+body[data-design=clarity] .today-page .intro h1{font-size:clamp(32px,3.6vw,46px);margin-bottom:0}
+body[data-design=clarity] .today-page .today-grid{border:0;padding:0;gap:22px;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:'tasks side' 'notes side';grid-template-rows:auto 1fr}
+body[data-design=clarity] .today-page .today-side{border:0;padding:0;gap:22px;display:grid;align-content:start}
+body[data-design=clarity] .today-page .today-grid .card,
+body[data-design=clarity] .today-page .today-grid .today-side .card{background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:20px;padding:24px!important;box-shadow:0 5px 20px #173a2004;min-width:0}
+body[data-design=clarity] .today-page .today-grid h2{font-family:inherit;font-size:21px;letter-spacing:-.03em;margin-bottom:14px}
+body[data-design=clarity] .today-page .today-grid .today-notes,
+body[data-design=clarity] .today-page .today-grid .today-side .today-agenda,
+body[data-design=clarity] .today-page .today-grid .today-side .today-schedule{border:1px solid var(--ux-border);padding:24px!important}
+body[data-design=clarity] .today-page .today-grid .today-side .today-finance{background:var(--ux-surface);padding:24px!important}
+body[data-design=clarity] .today-page .today-task-head{gap:8px;margin-bottom:14px}
+body[data-design=clarity] .today-page .today-task-head>span{background:var(--ux-soft);padding:5px 10px;border-radius:8px;color:var(--ux-green);font-weight:650}
+body[data-design=clarity] .today-page .today-progress{gap:4px;margin-bottom:18px}
+body[data-design=clarity] .today-page progress{height:7px;border:0;border-radius:8px;overflow:hidden;accent-color:var(--ux-green)}
+body[data-design=clarity] .today-page progress::-webkit-progress-bar{background:var(--ux-bg);border-radius:8px}
+body[data-design=clarity] .today-page progress::-webkit-progress-value{background:var(--ux-green);border-radius:8px}
+body[data-design=clarity] .today-page .quick-capture{gap:10px;margin-bottom:12px}
+body[data-design=clarity] .today-page .quick-capture input{background:var(--ux-bg)}
+body[data-design=clarity] .today-page .quick-capture button{background:var(--ux-green);color:var(--ux-surface)}
+body[data-design=clarity] .today-page .task-row{padding:16px 0;min-height:62px}
+body[data-design=clarity] .today-page .task-actions{margin-top:12px;padding-top:4px;gap:18px}
+body[data-design=clarity] .today-page .today-finance-head{gap:6px 12px;margin-bottom:12px}
+body[data-design=clarity] .today-page .today-finance-head h2{font-size:21px}
+body[data-design=clarity] .today-page .today-money-row>div{padding:13px 0;gap:8px;align-items:center}
+body[data-design=clarity] .today-page .today-money-row strong{font-size:19px;font-weight:720;font-variant-numeric:tabular-nums}
+body[data-design=clarity] .today-page .today-money-row>.total{margin-top:8px;padding:13px 12px;border:0;border-radius:11px;background:var(--ux-soft)}
+body[data-design=clarity] .today-page .today-grid .today-add-operation{justify-content:center;background:var(--ux-soft);border-radius:10px;width:100%;padding:10px;margin-top:16px}
+body[data-design=clarity] .today-page .today-week{margin:16px 0;gap:5px}
+body[data-design=clarity] .today-page .today-week button{border-radius:10px;min-height:58px;gap:5px}
+body[data-design=clarity] .today-page .today-week button[aria-current=date]{background:var(--ux-soft);border:1px solid var(--ux-green)}
+body[data-design=clarity] .today-page .today-agenda .row{background:var(--ux-bg);border:0;border-radius:12px;padding:14px;margin:8px 0}
+body[data-design=clarity] .today-page .today-notes .note{background:var(--ux-bg);border:0;border-radius:12px;padding:15px;margin:8px 0}
+body[data-design=clarity] .today-page .today-notes .note-link{font-weight:650;color:var(--ux-ink);font-size:15px}
+body[data-design=clarity] #root .empty{font-size:14px;line-height:1.6}
+body[data-design=clarity] dialog{border-radius:20px;border:1px solid var(--ux-border);background:var(--ux-surface);padding:28px;box-shadow:0 24px 80px #081b2130}
+body[data-design=clarity] dialog .dialog-head{border-bottom:1px solid var(--ux-border);padding-bottom:18px;margin-bottom:20px}
+body[data-design=clarity] dialog .dialog-head h2{font-family:inherit;font-size:23px}
+@media(min-width:1000px){
+ body[data-design=clarity] #root>.nav{width:224px;padding:26px 16px;border-inline-end:1px solid var(--ux-border)}
+ body[data-design=clarity] #root>.nav button{padding:13px 16px;min-height:48px;gap:14px}
+ body[data-design=clarity] #root>main:not(.login){margin-left:224px;width:calc(100% - 224px);max-width:calc(100% - 224px);padding:30px clamp(24px,3vw,48px) 64px}
+}
+@media(min-width:760px) and (max-width:999px){
+ body[data-design=clarity] #root>main:not(.login){padding:26px 24px 48px}
+ body[data-design=clarity] .today-page .today-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:'tasks' 'side' 'notes';grid-template-rows:auto}
+ body[data-design=clarity] .today-page .today-side{grid-template-columns:minmax(0,1fr);gap:18px}
+ body[data-design=clarity] .today-page .intro::after{width:48%}
+}
+@media(max-width:759px){
+ body[data-design=clarity] #root>header{padding:10px 16px;gap:4px 10px}
+ body[data-design=clarity] .brand{font-size:21px}
+ body[data-design=clarity] .header-tools{gap:0}
+ body[data-design=clarity] #root>main:not(.login){padding:20px 14px calc(var(--nav-height,78px) + 26px)}
+ body[data-design=clarity] #root h1{font-size:29px}
+ body[data-design=clarity] .today-page .intro{min-height:84px;margin-bottom:18px}
+ body[data-design=clarity] .today-page .intro h1{font-size:34px}
+ body[data-design=clarity] .today-page .intro::after{width:43%;opacity:.5}
+ body[data-design=clarity] .today-page .today-grid{display:flex;flex-direction:column;gap:16px}
+ body[data-design=clarity] .today-page .today-side{display:contents}
+ body[data-design=clarity] .today-page .today-grid .card,
+ body[data-design=clarity] .today-page .today-grid .today-notes,
+ body[data-design=clarity] .today-page .today-grid .today-side .card{padding:18px!important;border-radius:17px}
+ body[data-design=clarity] .today-page .today-grid h2{font-size:19px}
+ body[data-design=clarity] .today-page .today-money-row strong{font-size:18px}
+ body[data-design=clarity] .nav button{font-size:11px}
+ body[data-design=clarity] dialog{padding:20px;border-radius:18px}
+}
+@media(prefers-reduced-motion:reduce){body[data-design=clarity] button{transition:none}}
+
+body[data-design=clarity] .today-actionbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 24px}
+body[data-design=clarity] .today-actionbar button{justify-content:flex-start;padding:14px 16px;gap:12px;min-height:60px;background:var(--ux-surface);border:1px solid var(--ux-border);border-radius:14px}
+body[data-design=clarity] .today-actionbar .ui-icon{padding:7px;box-sizing:content-box;border-radius:10px;background:var(--ux-soft);color:var(--ux-green);width:20px;height:20px}
+body[data-design=clarity] .today-page .today-notes button.note-link{display:flex;width:100%;padding:16px 0;gap:14px;justify-content:flex-start;border-bottom:1px solid var(--ux-border);border-radius:0}
+body[data-design=clarity] .today-page .today-notes .note-link>.ui-icon{padding:10px;box-sizing:content-box;background:var(--ux-soft);border-radius:12px;color:var(--ux-green)}
+.today-note-text{display:grid;gap:5px;text-align:start;min-width:0}
+body[data-design=clarity] .today-page .note-excerpt{font-size:13px;font-weight:400;line-height:1.5;color:var(--ux-muted)}
+@media(max-width:999px){body[data-design=clarity] .today-actionbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+@media(max-width:759px){body[data-design=clarity] .today-actionbar{margin-bottom:18px}body[data-design=clarity] .today-actionbar button{font-size:13px;padding:12px;min-height:56px;gap:9px}}
+
+/* One compact currency search shared by all record and import forms. */
+.currency-picker{position:relative;min-width:0}
+.currency-picker>input{padding-inline-end:48px!important}
+.currency-picker .currency-picker-toggle{position:absolute;inset-inline-end:3px;top:3px;width:40px;height:40px;min-height:40px;padding:0;border:0;background:transparent;color:var(--ux-muted,var(--muted));border-radius:8px;font-size:22px;line-height:1}
+.currency-picker .currency-picker-toggle:hover{background:var(--ux-soft,var(--soft))}
+.currency-picker:has(input[readonly]) .currency-picker-toggle,.currency-picker:has(input:disabled) .currency-picker-toggle{display:none}
+.currency-picker-list{position:absolute;z-index:12;top:calc(100% + 5px);inset-inline:0;max-height:220px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:5px;border:1px solid var(--ux-border,var(--line));border-radius:12px;background:var(--ux-surface,var(--card));box-shadow:0 8px 28px #17142826}
+.currency-picker-list[hidden]{display:none!important}
+.currency-picker-list.opens-above{top:auto;bottom:calc(100% + 5px)}
+.currency-picker-list .currency-picker-option{display:grid;grid-template-columns:3.3rem minmax(0,1fr);align-items:center;gap:8px;width:100%;min-height:42px;padding:9px 10px;text-align:start;border:0;border-radius:7px;background:transparent;color:var(--ux-ink,var(--ink));font-size:13px;font-weight:400}
+.currency-picker-option strong{font-size:12px;font-variant-numeric:tabular-nums}
+.currency-picker-option span{overflow-wrap:anywhere;line-height:1.35}
+.currency-picker-list .currency-picker-option:hover,.currency-picker-list .currency-picker-option.is-active{background:var(--ux-soft,var(--soft));color:var(--ux-green,var(--accent))}
+.currency-picker-empty{padding:10px;font-size:13px;margin:0}
