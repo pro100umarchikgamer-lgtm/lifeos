@@ -70,6 +70,9 @@ def main():
         browser = p.chromium.launch(executable_path=os.environ.get('ULADIM_CHROMIUM', '/usr/bin/chromium'))
 
         def context(**options):
+            # Independent browser journeys must not share one per-IP rate window.
+            next_window = int(backend.clock()) + 61
+            backend.clock = lambda: next_window
             ctx = browser.new_context(service_workers='block', reduced_motion='reduce', **options)
             if styles is not None:ctx.route('**/assets/design.css', lambda route: route.fulfill(content_type='text/css', body=styles))
             ctx.on('page', lambda page: page.on('pageerror', lambda error: errors.append(str(error))))

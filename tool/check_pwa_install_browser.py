@@ -34,16 +34,20 @@ def main():
         packet=json.loads(args.translation_packet.read_text());catalog['source'].update(packet['source'])
         catalog['required']=list(dict.fromkeys(catalog['required']+packet['required']))
         for locale,strings in packet['translations'].items():catalog['translations'].setdefault(locale,{}).update(strings)
-    checks=[];errors=[];forbidden=[]
+    checks=[];errors=[];forbidden=[];documents={}
     styles=None if args.built_styles else source_styles()
     with fixture() as (origin,backend,_actor,_wid),sync_playwright() as playwright:
         browser=playwright.chromium.launch(**({'executable_path':os.environ['ULADIM_CHROMIUM']} if os.environ.get('ULADIM_CHROMIUM') else {}))
 
         def context(service_workers='block',**options):
+            # Independent devices must not share one disposable per-IP rate window.
+            next_window=int(backend.clock())+61
+            backend.clock=lambda:next_window
             value=browser.new_context(service_workers=service_workers,reduced_motion='reduce',**options)
             if styles is not None:value.route('**/assets/design.css',lambda route:route.fulfill(content_type='text/css',body=styles))
             if args.translation_packet:value.route('**/app/assets/translations.json',lambda route:route.fulfill(json=catalog))
             value.on('page',lambda page:page.on('pageerror',lambda error:errors.append(str(error))))
+            value.on('response',lambda response:documents.update({value:{'url':response.url,'status':response.status}}) if response.request.resource_type=='document' else None)
             value.on('request',lambda request:forbidden.append(request.url) if any(path in request.url for path in ('/notifications/enable','/notifications/test')) else None)
             return value
 
@@ -123,7 +127,16 @@ def main():
         page.screenshot(path=str(args.output/'onboarding-install-390.png'),full_page=True,animations='disabled')
         checks.append({'case':'onboarding','setupStillAvailable':True});ctx.close()
 
-        ctx=context(service_workers='allow',viewport={'width':390,'height':844});page=ctx.new_page();login(page,origin)
+        ctx=context(service_workers='allow',viewport={'width':390,'height':844});page=ctx.new_page()
+        try:
+            login(page,origin)
+        except Exception:
+            diagnostic={'case':'worker-precache-login','actual_url':page.url,'document':documents.get(ctx),
+                        'email_input_count':page.locator('input[name=email]').count(),
+                        'body_excerpt':page.locator('body').inner_text(timeout=1000)[:1600],'pageErrors':errors[-5:]}
+            (args.output/'login-failure.json').write_text(json.dumps(diagnostic,ensure_ascii=False,indent=2)+'\n')
+            print(json.dumps({'pwa_install_failure':diagnostic},ensure_ascii=False),flush=True)
+            raise
         page.evaluate('navigator.serviceWorker.ready.then(()=>true)')
         page.wait_for_function('Boolean(navigator.serviceWorker.controller)')
         cached=page.evaluate('''async()=>{
