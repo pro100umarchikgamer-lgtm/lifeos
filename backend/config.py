@@ -25,6 +25,7 @@ class Settings:
     google_client_secret: str = ''
     google_android_client_ids: tuple[str, ...] = ()
     native_download_dir: str = ''
+    native_publish_dir: str = ''
     registration_mode: str = 'closed'
     registration_allowlist: tuple[str, ...] = ()
     account_erasure_ledger: str = ''
@@ -54,6 +55,7 @@ class Settings:
             google_client_secret=e.get('GOOGLE_OAUTH_CLIENT_SECRET',''),
             google_android_client_ids=tuple(v.strip() for v in e.get('GOOGLE_OAUTH_ANDROID_CLIENT_IDS','').split(',') if v.strip()),
             native_download_dir=e.get('NATIVE_DOWNLOAD_DIR',''),
+            native_publish_dir=e.get('NATIVE_PUBLISH_DIR',''),
             registration_mode=e.get('REGISTRATION_MODE','closed'),
             account_erasure_ledger=e.get('ACCOUNT_ERASURE_LEDGER',''),
             account_erasure_ack_socket=e.get('ACCOUNT_ERASURE_ACK_SOCKET',''),
@@ -80,6 +82,10 @@ class Settings:
         if value.native_download_dir:
             from .native_download import safe_root
             if not safe_root(value.native_download_dir): raise ValueError('NATIVE_DOWNLOAD_DIR requires a normalized absolute cache directory')
+        if value.native_publish_dir:
+            from .native_download import safe_root
+            if not safe_root(value.native_publish_dir) or value.native_publish_dir == value.native_download_dir:
+                raise ValueError('NATIVE_PUBLISH_DIR requires a separate normalized absolute private directory')
         if bool(value.record_erasure_ledger) != bool(value.record_erasure_ack_socket) or value.record_erasure_required and not value.record_erasure_ledger:
             raise ValueError('Record erasure requires its independent journal and root ACK socket')
         if value.record_erasure_ledger:

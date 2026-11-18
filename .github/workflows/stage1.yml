@@ -1,8 +1,8 @@
 name: Offline Core validation and final signed test APK
 on:
   push:
-    # This release branch has the mandatory PR run; avoid running it twice.
-    branches-ignore: [work/uladim-web-platform]
+    # These work branches have the mandatory PR run; avoid running it twice.
+    branches-ignore: [work/uladim-web-platform, work/uladim-control-publishing]
   pull_request:
   workflow_dispatch:
     inputs:

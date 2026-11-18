@@ -19,7 +19,7 @@ ACCOUNT_COOKIE = '__Host-uladim_account'
 
 
 class Web:
-    def __init__(self, backend, settings):
+    def __init__(self, backend, settings, *, native_download=None):
         self.backend, self.settings = backend, settings
         from .google_identity import GoogleIdentity
         self.google = GoogleIdentity(backend, settings)
@@ -30,6 +30,35 @@ class Web:
         self.staff = getattr(settings, 'control_origin', 'https://control.getuladim.space')
         from .web_push import WebPush
         self.push = WebPush(backend, self.site)
+        from .native_download import NativeDownload
+        self.native_download = native_download or NativeDownload(getattr(settings, 'native_download_dir', ''))
+        self._android = None
+        self._pages = None
+
+    def android(self):
+        if self._android is None:
+            from .android_releases import AndroidReleases
+            self._android = AndroidReleases(self.backend, self.settings, self.native_download)
+        return self._android
+
+    def pages(self):
+        if self._pages is None:
+            from .public_pages import PublicPages
+            self._pages = PublicPages(self.backend)
+        return self._pages
+
+    def upload_android(self, env):
+        """Authenticate the ordinary Control principal before consuming bytes."""
+        require(self.is_control(env) and env.get('uladim.admitted'), 'not_found', 404)
+        require(env.get('REQUEST_METHOD') == 'POST' and not env.get('QUERY_STRING'), 'not_found', 404)
+        require(env.get('HTTP_ORIGIN') == self.staff, 'origin_forbidden', 403)
+        token = self.token(env, True)
+        actor = self.control.authenticate(token, env.get('HTTP_USER_AGENT', '')[:500])
+        require(actor.user_id == env['uladim.admitted']['user_id'], 'not_found', 404)
+        require(hmac.compare_digest(env.get('HTTP_X_CSRF_TOKEN', ''), self.csrf(token)), 'csrf_invalid', 403)
+        self.control.require(actor, 'android.upload')
+        value = self.android().upload(actor, env)
+        return value, [('Content-Type', 'application/json; charset=utf-8'), ('Cache-Control', 'no-store')]
 
     def is_control(self, env):
         return env.get('HTTP_HOST', '') == urlsplit(self.staff).netloc
@@ -87,6 +116,26 @@ class Web:
             headers = [(key, value.replace("form-action 'self'", "form-action 'self' " + self.staff) if key == 'Content-Security-Policy' else value) for key, value in headers]
         if not staff and method == 'GET' and (path in ('/app', '/app/') or path.startswith('/app/assets/') or path == '/app/sw.js'):
             return self.app_asset(path, headers)
+        if method == 'GET' and path in ('/assets/public-pages.js', '/assets/control-publishing.css'):
+            headers[0] = ('Content-Type', 'text/javascript; charset=utf-8' if path.endswith('.js') else 'text/css; charset=utf-8')
+            return (ASSETS / path.rsplit('/', 1)[-1]).read_bytes(), headers
+        if staff and method == 'GET' and path in ('/assets/control-publishing.js', '/assets/control-publishing-copy.json'):
+            headers[0] = ('Content-Type', 'application/json; charset=utf-8' if path.endswith('.json') else 'text/javascript; charset=utf-8')
+            return (ASSETS / path.rsplit('/', 1)[-1]).read_bytes(), headers
+        if not staff and method == 'GET' and path == '/public-pages/document':
+            query = parse_qs(env.get('QUERY_STRING', ''), keep_blank_values=True)
+            require(set(query) == {'page', 'lang'} and all(len(values) == 1 for values in query.values()), 'invalid_fields')
+            return self.pages().public_document(query['page'][0], query['lang'][0]), headers
+        if not staff and method == 'GET' and path.startswith('/public-pages/media/'):
+            require(not env.get('QUERY_STRING'), 'not_found', 404)
+            raw, mime = self.pages().public_media(path[len('/public-pages/media/'):])
+            headers[0] = ('Content-Type', mime)
+            return raw, headers
+        if not staff and method == 'GET' and path == '/download/release.json':
+            require(not env.get('QUERY_STRING'), 'not_found', 404)
+            value = self.android().public_manifest()
+            require(value is not None, 'release_unavailable', 503)
+            return value, headers
         # The Control document uses only these shared UI assets. Admission above
         # still gates every Control-host request, including these static files.
         if staff and method == 'GET' and path in {'/app/assets/' + name for name in ('i18n.js', 'translations.json', 'referrals.js', 'referrals.css', 'password-policy.js', 'install.js', 'field-menu.js', 'field-menu.css', 'appearance-boot.js')}:
@@ -210,7 +259,15 @@ class Web:
                     if row: self.backend._revoke_device(db, actor['id'], row['device_id'])
                     db.execute('DELETE FROM web_sessions WHERE hash=?', (token_hash(token),))
             return {'logged_out': True}, headers + [self.cookie('', staff, True)]
-        query = parse_qs(env.get('QUERY_STRING', ''), keep_blank_values=action in ('layout-order', 'recovery/purge-preview', 'recovery/purge'))
+        query = parse_qs(env.get('QUERY_STRING', ''), keep_blank_values=(
+            action in ('layout-order', 'recovery/purge-preview', 'recovery/purge')
+            or action == 'pages' or action.startswith('pages/')
+            or action == 'android-releases' or action.startswith('android-releases/')))
+        if staff and method == 'GET' and action.startswith('pages/media/'):
+            require(not env.get('QUERY_STRING'), 'not_found', 404)
+            raw, mime = self.pages().preview_media(actor, action[len('pages/media/'):])
+            headers[0] = ('Content-Type', mime)
+            return raw, headers
         if staff: value = self.staff_action(actor, action, method, body, query)
         else: value = self.account_action(actor, action, method, body, query)
         return value, headers
@@ -283,6 +340,10 @@ class Web:
 
     def staff_action(self, actor, action, method, b, q):
         c = self.control
+        if action == 'pages' or action.startswith('pages/'):
+            return self.pages().handle(actor, action, method, b, q)
+        if action == 'android-releases' or action.startswith('android-releases/'):
+            return self.android().handle(actor, action, method, b, q)
         if action == 'permissions' and method == 'GET':
             from .staff_permissions import catalog
             return catalog(actor)

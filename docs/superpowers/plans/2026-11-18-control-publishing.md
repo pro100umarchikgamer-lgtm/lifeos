@@ -48,10 +48,10 @@ cryptography, official Android verifier tools and a bounded raster decoder.
 `pages/restore`, `pages/media`. Pin the typed content/catalog wire shape with the
 frontend implementer and record it in the ledger before implementation.
 
-- [ ] Write failing scoped draft/publish/restore/baseline/validation/media tests.
-- [ ] Implement immutable source/revisions, CAS state and same-tx audit.
-- [ ] Validate raster decoding, text/URL bounds and current-public media references.
-- [ ] Run focused tests and independent scope/security review.
+- [x] Write failing scoped draft/publish/restore/baseline/validation/media tests.
+- [x] Implement immutable source/revisions, CAS state and same-tx audit.
+- [x] Validate raster decoding, text/URL bounds and current-public media references.
+- [x] Run focused tests and independent scope/security review.
 
 ## Task 2: Signed APK service and immutable byte serving
 
@@ -67,11 +67,11 @@ small signed fixtures/generator, `docs/NATIVE_APK_DOWNLOAD.md` additions.
 `POST /control/api/android-releases/upload`; JSON body limits stay unchanged.
 `NativeDownload.manifest()` resolves only a verified actual mounted legacy tuple.
 
-- [ ] Write real signed-fixture verifier, old/new manifest and transition tests.
-- [ ] Implement streaming, bounded verification, state/CAS and atomic publication.
-- [ ] Preserve legacy reader and HEAD/Range/descriptors for new immutable files.
-- [ ] Test wrong signer/package/version, tamper, interrupted uploads and races.
-- [ ] Run focused tests and independent security/concurrency review.
+- [x] Write real signed-fixture verifier, old/new manifest and transition tests.
+- [x] Implement streaming, bounded verification, state/CAS and atomic publication.
+- [x] Preserve legacy reader and HEAD/Range/descriptors for new immutable files.
+- [x] Test wrong signer/package/version, tamper, interrupted uploads and races.
+- [x] Run focused tests and independent security/concurrency review.
 
 ## Task 3: Control/public frontend and source baseline
 
@@ -79,14 +79,14 @@ small signed fixtures/generator, `docs/NATIVE_APK_DOWNLOAD.md` additions.
 `backend/webassets/public-pages.js`, source catalog; hook existing `web.js` and
 `index.html` without changing existing functional handlers.
 
-- [ ] Map all existing editorial fields/regions, including account story and
+- [x] Map all existing editorial fields/regions, including account story and
       early-access variants; source defaults preserve the unedited rendering.
-- [ ] Add scoped page/language draft editor, ordered typed blocks, media,
+- [x] Add scoped page/language draft editor, ordered typed blocks, media,
       shared-renderer preview, publish and restore-to-draft history.
-- [ ] Add APK file/drop selection, streaming progress, verified status, explicit
+- [x] Add APK file/drop selection, streaming progress, verified status, explicit
       publish/cancel/history and honest manifest-variant download validation.
-- [ ] Preserve forms, FAQ indexing/anchors, locale epochs and legal readiness.
-- [ ] Add browser scenarios using ordinary Control/public entry points.
+- [x] Preserve forms, FAQ indexing/anchors, locale epochs and legal readiness.
+- [x] Add browser scenarios using ordinary Control/public entry points.
 
 ## Task 4: Server, schema, permissions and runtime integration
 
@@ -94,21 +94,21 @@ small signed fixtures/generator, `docs/NATIVE_APK_DOWNLOAD.md` additions.
 `staff_permissions.py`, `schema.sql`, `backend/Dockerfile`,
 `deploy/hostinger/Caddyfile.control-platform`, deployment docs/tests.
 
-- [ ] Add only the specified capabilities/narrow roles and existing audit use.
-- [ ] Mount public APIs and authenticated service routes behind current authority.
-- [ ] Authenticate the exact binary route before the first body read; stream
+- [x] Add only the specified capabilities/narrow roles and existing audit use.
+- [x] Mount public APIs and authenticated service routes behind current authority.
+- [x] Authenticate the exact binary route before the first body read; stream
       directly to service; preserve normal JSON bounds and host/HTTPS handling.
-- [ ] Mirror migrations in SQLite schema, configure private persistent storage,
+- [x] Mirror migrations in SQLite schema, configure private persistent storage,
       fixed verifier tools and narrow edge upload/manifest routing.
-- [ ] Run WSGI denial/no-read, manifest/download and PostgreSQL concurrency tests.
+- [x] Run WSGI denial/no-read, manifest/download and PostgreSQL concurrency tests.
 
 ## Task 5: Integrated acceptance and delivery
 
-- [ ] Exercise draft-hidden, exact page/language publish and historical restore
+- [x] Exercise draft-hidden, exact page/language publish and historical restore
       through the real panel and public pages.
-- [ ] Exercise genuine signed test APK validation/publication and compare
+- [x] Exercise genuine signed test APK validation/publication and compare
       manifest, headers, ranges and complete downloaded bytes.
-- [ ] Verify rejected APKs and missing permissions have no public side effects.
+- [x] Verify rejected APKs and missing permissions have no public side effects.
 - [ ] Run selected existing Control/help/auth/native regressions and normal CI.
 - [ ] Review the complete diff; commit/push the feature branch and create the
       normal reviewable change if the existing authorized channel permits it.

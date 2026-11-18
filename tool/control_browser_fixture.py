@@ -6,6 +6,7 @@ The Control document and assets always come from the real WSGI application.
 from contextlib import contextmanager
 from dataclasses import replace
 import os
+from pathlib import Path
 import tempfile
 import threading
 from wsgiref.simple_server import make_server
@@ -22,7 +23,7 @@ from tool.web_test_tls import enable_test_tls
 
 
 @contextmanager
-def control_fixture():
+def control_fixture(*, configure=None):
     # Reuse the existing disposable product data without changing its HTTP fixture.
     with fixture() as (customer_origin, backend, actor, wid), tempfile.TemporaryDirectory() as directory:
         Control(backend).bootstrap(actor['email'])
@@ -37,8 +38,11 @@ def control_fixture():
         pin = enable_test_tls(server, directory, ('app.uladim.test', 'control.uladim.test'))
         origin = 'https://app.uladim.test:' + str(server.server_port)
         control = 'https://control.uladim.test:' + str(server.server_port)
-        server.set_app(Application(backend, replace(settings, site_origin=origin,
-                                                    control_origin=control, require_https=False)))
+        application = Application(backend, replace(settings, site_origin=origin,
+                                                   control_origin=control, require_https=False))
+        if configure is not None:
+            configure(application, Path(directory))
+        server.set_app(application)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         launch = {

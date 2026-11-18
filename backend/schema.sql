@@ -317,3 +317,62 @@ CREATE TABLE IF NOT EXISTS newcomer_welcome_claims (
 CREATE INDEX IF NOT EXISTS users_created_history ON users(created_at,id);
 
 CREATE INDEX IF NOT EXISTS newcomer_welcome_announcement ON newcomer_welcome_claims(announcement_id,user_id);
+
+-- Control publishing: 026_public_pages.sql
+CREATE TABLE IF NOT EXISTS public_page_revisions (
+ page TEXT NOT NULL, locale TEXT NOT NULL, revision BIGINT NOT NULL CHECK(revision>0),
+ source_generation TEXT NOT NULL,
+ kind TEXT NOT NULL CHECK(kind IN ('draft','published','restored')),
+ from_revision BIGINT CHECK(from_revision>=0 AND from_revision<revision),
+ content TEXT NOT NULL, created_at BIGINT NOT NULL,
+ author_id TEXT NOT NULL REFERENCES staff(id),
+ PRIMARY KEY(page,locale,revision)
+);
+
+CREATE TABLE IF NOT EXISTS public_page_states (
+ page TEXT NOT NULL, locale TEXT NOT NULL, version BIGINT NOT NULL CHECK(version>0),
+ draft_revision BIGINT CHECK(draft_revision>0 AND draft_revision<=version),
+ published_revision BIGINT CHECK(published_revision>0 AND published_revision<=version),
+ PRIMARY KEY(page,locale),
+ FOREIGN KEY(page,locale,draft_revision) REFERENCES public_page_revisions(page,locale,revision),
+ FOREIGN KEY(page,locale,published_revision) REFERENCES public_page_revisions(page,locale,revision)
+);
+
+CREATE TABLE IF NOT EXISTS public_page_media (
+ id TEXT PRIMARY KEY, data BYTEA NOT NULL, mime TEXT NOT NULL CHECK(mime='image/webp'),
+ width BIGINT NOT NULL CHECK(width>0), height BIGINT NOT NULL CHECK(height>0),
+ created_at BIGINT NOT NULL, author_id TEXT NOT NULL REFERENCES staff(id)
+);
+
+CREATE TABLE IF NOT EXISTS public_page_revision_media (
+ page TEXT NOT NULL, locale TEXT NOT NULL, revision BIGINT NOT NULL,
+ media_id TEXT NOT NULL REFERENCES public_page_media(id),
+ PRIMARY KEY(page,locale,revision,media_id),
+ FOREIGN KEY(page,locale,revision) REFERENCES public_page_revisions(page,locale,revision)
+);
+
+CREATE INDEX IF NOT EXISTS public_page_media_visibility
+ ON public_page_revision_media(media_id,page,locale,revision);
+
+
+-- Control publishing: 027_android_releases.sql
+CREATE TABLE IF NOT EXISTS android_releases (
+ id TEXT PRIMARY KEY,
+ state TEXT NOT NULL CHECK(state IN ('draft','uploaded','validated','rejected','published','cancelled')),
+ revision BIGINT NOT NULL CHECK(revision>=1),
+ bytes BIGINT, apk_sha256 TEXT, package_name TEXT, certificate_sha256 TEXT,
+ version_name TEXT, version_code BIGINT, error TEXT,
+ created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL, published_at BIGINT,
+ created_by TEXT NOT NULL REFERENCES staff(id)
+);
+CREATE INDEX IF NOT EXISTS android_release_history ON android_releases(state,updated_at,id);
+CREATE UNIQUE INDEX IF NOT EXISTS android_published_version ON android_releases(version_code) WHERE state='published';
+CREATE UNIQUE INDEX IF NOT EXISTS android_published_digest ON android_releases(apk_sha256) WHERE state='published';
+CREATE TABLE IF NOT EXISTS android_release_current (
+ singleton BIGINT PRIMARY KEY CHECK(singleton=1),
+ release_id TEXT NOT NULL REFERENCES android_releases(id)
+);
+-- Committed cancellation survives a worker exit between DB commit and unlink.
+CREATE TABLE IF NOT EXISTS android_release_cleanup (
+ release_id TEXT PRIMARY KEY REFERENCES android_releases(id)
+);

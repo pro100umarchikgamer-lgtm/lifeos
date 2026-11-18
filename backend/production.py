@@ -28,10 +28,10 @@ class Application:
     def __init__(self, backend, settings):
         self.backend,self.settings=backend,settings
         from .web import Web
-        self.web=Web(backend,settings)
-        self.google=self.web.google
         from .native_download import NativeDownload
         self.native_download=NativeDownload(getattr(settings, 'native_download_dir', ''))
+        self.web=Web(backend,settings,native_download=self.native_download)
+        self.google=self.web.google
         self.started=time.time()
         self.networks=[ipaddress.ip_network(v.strip()) for v in settings.trusted_proxy_cidrs.split(',')]
     def trusted(self,environ):
@@ -109,7 +109,12 @@ class Application:
                     if environ.get('HTTP_HOST', '') != urlsplit(self.settings.site_origin).netloc:
                         raise Failure('not_found', 404)
                     download_env = dict(environ, REQUEST_METHOD='HEAD') if head else environ
-                    status, download_headers, body = self.native_download.response(download_env)
+                    if path.startswith('/download/android/sha256/'):
+                        status, download_headers, body = self.web.android().download_response(download_env)
+                    else:
+                        # Keep the retained source-based reader and its
+                        # configured immutable cache unchanged.
+                        status, download_headers, body = self.native_download.response(download_env)
                     headers.update(download_headers)
                     start_response(str(status)+' '+HTTPStatus(status).phrase,list(headers.items()))
                     return body
@@ -127,6 +132,10 @@ class Application:
                     cookies = [(key, value) for key, value in web_headers if key.lower() == 'set-cookie']
                     headers.update({key: value for key, value in web_headers if key.lower() != 'set-cookie'})
                     status = int(headers.pop('X-ULADIM-Status', '200'))
+                elif method=='POST' and path == '/control/api/android-releases/upload':
+                    # The exact binary route authenticates before its first
+                    # stream read; ordinary POSTs retain the small JSON limit.
+                    pass
                 elif method=='POST':
                     if environ.get('CONTENT_TYPE','').split(';')[0].strip().lower()!='application/json':raise Failure('content_type',415)
                     length=int(environ.get('CONTENT_LENGTH','0'))
@@ -138,7 +147,10 @@ class Application:
                     pass
                 elif is_web:
                     environ['uladim.client'] = self.client(environ)
-                    value,web_headers=self.web.request(environ,body)
+                    if method == 'POST' and path == '/control/api/android-releases/upload':
+                        value,web_headers=self.web.upload_android(environ)
+                    else:
+                        value,web_headers=self.web.request(environ,body)
                     cookies=[(key,value) for key,value in web_headers if key.lower()=='set-cookie']
                     headers.update({key:value for key,value in web_headers if key.lower()!='set-cookie'})
                     status=int(headers.pop('X-ULADIM-Status', '200'))

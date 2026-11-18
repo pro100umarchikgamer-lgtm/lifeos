@@ -2,7 +2,7 @@ name: ULADIM Web client
 on:
   pull_request:
     branches: [feature/uladim-hostinger-launch]
-    paths: ['backend/webassets/**', 'backend/web.py', 'backend/account_lifecycle.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/web_browser_navigation.py', 'tool/web_test_tls.py', 'tool/check_google_browser.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'tool/check_statement*', 'backend/tests/**', 'tool/check_focus*', 'tool/check_workspace_switch_focus.py', 'tool/check_*_browser.py', 'tool/check_session_experience.py', 'tool/check_currency_picker.py', 'tool/test_publish_feedback_guard.py', 'deploy/hostinger/publish-focus-ui.sh', 'tool/verify_web_release.py', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
+    paths: ['backend/webassets/**', 'backend/web.py', 'backend/account_lifecycle.py', 'backend/android_releases.py', 'backend/apk_verifier.py', 'backend/native_download.py', 'backend/public_pages.py', 'web-tests/**', 'package*.json', 'tool/check_web*.py', 'tool/web_browser_navigation.py', 'tool/web_test_tls.py', 'tool/check_google_browser.py', 'tool/check_pwa*.py', 'tool/check_finance_browser.py', 'tool/check_chart_theme.py', 'tool/check_workspace_recovery.py', 'tool/check_statement*', 'backend/tests/**', 'tool/testdata/android-releases/**', 'tool/check_focus*', 'tool/check_workspace_switch_focus.py', 'tool/check_*_browser.py', 'tool/check_session_experience.py', 'tool/check_currency_picker.py', 'tool/test_publish_feedback_guard.py', 'deploy/hostinger/publish-focus-ui.sh', 'tool/verify_web_release.py', 'tool/check_web_dom.mjs', 'tool/serve_web_fixture.py', '.github/workflows/web-platform.yml', 'lighthouserc.cjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,6 +30,7 @@ jobs:
     env:
       LIFEOS_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@postgres:5432/lifeos_test
       ULADIM_WEB_TEST_DATABASE_URL: postgresql://lifeos_ci:synthetic-web-ci-only@postgres:5432/lifeos_test
+      ULADIM_REQUIRE_APK_TOOLS: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,6 +51,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r backend/requirements.txt -r tool/web-requirements.txt
+      - name: Install Android APK verification tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends default-jre-headless apksigner aapt
+          apksigner version
+          aapt version
       - name: Create isolated non-admin PostgreSQL role
         run: |
           python - <<'PY'
@@ -129,6 +136,7 @@ jobs:
       - name: Control workflows, installation and owner feedback
         run: |
           python -m tool.check_control_workbench_browser
+          ULADIM_PUBLISHING_EVIDENCE=web_evidence/control-publishing python -m tool.check_control_publishing_browser
           python -m tool.check_pwa_install_browser --built-styles
           python -m tool.check_web_feedback_browser --built-styles --output web_evidence/web-feedback
       - name: November recorded feedback and private referrals

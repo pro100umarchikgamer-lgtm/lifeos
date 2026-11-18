@@ -74,6 +74,23 @@ def main():
             expect(page.locator('.help-android-release')).to_have_attribute('data-version-code','400001')
             assert snapshot(page)['url']==NEXT['apk_url']
             results.append({'wrong_cache_digest':'verified external release remains available; mismatched cache rejected'})
+            next_case()
+            managed_path='/download/android/sha256/'+NEXT['apk_sha256']+'/ULADIM.apk'
+            managed={key:value for key,value in NEXT.items() if key!='source'}
+            managed.update(origin='control',apk_url=managed_path)
+            state['body']=json.dumps(managed)
+            native_headers.pop('X-ULADIM-Source')
+            native_headers.update({'X-ULADIM-Origin':'control','X-ULADIM-APK-SHA256':NEXT['apk_sha256'],
+                                   'Content-Disposition':'attachment; filename="ULADIM-400001.apk"'})
+            page.goto(origin+'/download')
+            expect(page.locator('[data-release-download]')).to_have_attribute('data-delivery','same-origin')
+            assert snapshot(page)['url']==origin+managed_path
+            native_headers['X-ULADIM-Origin']='wrong'
+            next_case()
+            page.goto(origin+'/download');page.wait_for_selector('.help-android-release')
+            page.wait_for_load_state('networkidle')
+            assert_fallback(page)
+            results.append({'control_manifest':'managed digest URL requires every bound HEAD field'})
             page.unroute('**/download/android/**/ULADIM.apk')
             # Missing cosmetic versionName never reuses the old version or size.
             for name in (None,''):

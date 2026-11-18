@@ -1,4 +1,6 @@
 # Candidate only: activate after migration015 + browser-admission acceptance.
+# Publishing additionally requires migrations026/027, the verified legacy APK
+# cache and the private publications mount; see docs/CONTROL_PUBLISHING.md.
 # No registration policy, DNS, database volume or secret change.
 {$ULADIM_CONTROL_DOMAIN} {
     encode zstd gzip
@@ -12,6 +14,19 @@
     @private path /metrics /health/*
     handle @private {
         respond 404
+    }
+    @android_upload {
+        path /control/api/android-releases/upload
+        method POST
+    }
+    handle @android_upload {
+        request_body {
+            max_size 512MiB
+        }
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
     }
     handle {
         request_body {
@@ -58,9 +73,11 @@
     header @app_document >Referrer-Policy strict-origin
     # BEGIN ULADIM VERIFIED ANDROID RELEASE
     handle /download/release.json {
-        header Content-Type application/json
         header Cache-Control no-store
-        respond "Release metadata is not activated." 503
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
     }
     # END ULADIM VERIFIED ANDROID RELEASE
     @private path /metrics /health/* /control/*

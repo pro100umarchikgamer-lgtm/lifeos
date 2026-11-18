@@ -17,6 +17,8 @@ OPTIONAL_TABLES |= {'inbox_notifications','announcements','announcement_recipien
 
 OPTIONAL_TABLES |= {'account_identity','staff_permission_restrictions','staff_invitation_restrictions','support_recovery_cases',
                     'announcement_targeting','announcement_cohort_exclusions','newcomer_welcome_claims'}
+OPTIONAL_TABLES |= {'public_page_revisions', 'public_page_states', 'public_page_media',
+                   'public_page_revision_media', 'android_releases', 'android_release_current', 'android_release_cleanup'}
 
 def import_server(backend,source,apply=False):
     path=Path(source).resolve()
