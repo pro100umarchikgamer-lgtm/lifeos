@@ -20,7 +20,9 @@ class PriorServerImportTests(unittest.TestCase):
             self.assertEqual(counts['users'], 1)
             for table in ('inbox_notifications', 'announcements', 'announcement_recipients',
                           'announcement_states', 'inbox_settings', 'budget_inbox_notifications',
-                          'budget_inbox_sources', 'control_handoffs', 'control_admissions', 'record_recovery_requests'):
+                          'budget_inbox_sources', 'control_handoffs', 'control_admissions', 'record_recovery_requests',
+                          'public_page_revisions', 'public_page_states', 'public_page_media',
+                          'public_page_revision_media', 'android_releases', 'android_release_current', 'android_release_cleanup'):
                 self.assertEqual(counts[table], 0)
 
 

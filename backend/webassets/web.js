@@ -30,7 +30,18 @@ function globalLanguagePicker(){
   }catch(error){notice(error.message);}finally{select.disabled=false;}
  });
 }
-function authLanguages(){const f=el('div',undefined,'auth-language');const label=el('label',tr('language'));const select=el('select');select.setAttribute('aria-label',tr('language'));for(const [key,value]of Object.entries(authPacks)){const option=el('option',value.name);option.value=key;select.append(option);}select.value=authLanguage;select.addEventListener('change',async()=>{authLanguage=select.value;await globalThis.UladimI18n.load(authPacks);globalThis.UladimI18n.setLanguage(authLanguage);try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');saved.lang=authLanguage;localStorage.setItem('uladim-interface',JSON.stringify(saved));}catch{}login();});add(f,label,select);app.append(f);document.documentElement.lang=authLanguage;}
+function authLanguages(){const f=el('div',undefined,'auth-language');const label=el('label',tr('language'));const select=el('select');select.setAttribute('aria-label',tr('language'));for(const [key,value]of Object.entries(authPacks)){const option=el('option',value.name);option.value=key;select.append(option);}select.value=authLanguage;select.addEventListener('change',async()=>{authLanguage=select.value;await globalThis.UladimI18n.load(authPacks);globalThis.UladimI18n.setLanguage(authLanguage);try{const saved=JSON.parse(localStorage.getItem('uladim-interface')||'{}');saved.lang=authLanguage;localStorage.setItem('uladim-interface',JSON.stringify(saved));}catch{}
+ if(!select.isConnected)return;
+ if(!staff&&location.pathname==='/account'){
+  const fields=['email','password'];
+  const value=name=>app.querySelector(`.auth-form-panel input[name="${name}"]`);
+  const previous=fields.map(name=>value(name)?.value||'');
+  viewEpoch++;
+  login();
+  fields.forEach((name,index)=>{const input=value(name);if(input)input.value=previous[index];});
+  requestPublicEditorial();
+ }else login();
+ });add(f,label,select);app.append(f);document.documentElement.lang=authLanguage;}
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const add=(parent,...children)=>{for(const c of children)parent.append(c);return parent;};
 const link=(label,path,secondary=false)=>{const a=el('a',label,'button'+(secondary?' secondary':''));a.href=path;return a;};
@@ -58,7 +69,7 @@ function focusAuthHeading(title,description){
 }
 
 function login(){
- if(staff)controlNavigation=null;
+ if(staff){controlNavigation=null;stopControlPublishing();}
  document.body.dataset.auth='true';
  app.classList.add('auth');
  if(staff)heading('ULADIM Control');
@@ -151,7 +162,7 @@ async function supportThread(id){
   selectField(triage,'state',globalThis.UladimI18n.text("literal_ca285db3dd75",{},"Состояние"),Object.entries(labels.states)).value=result.ticket.state;
  }
 }
-async function dashboard(){const session=await api('session');csrf=session.csrf;if(!staff){location.replace('/app');return;}controlNavigation=null;delete document.body.dataset.auth;heading(staff?globalThis.UladimI18n.text("literal_bc3e379e3e73",{},"Обзор сервиса"):globalThis.UladimI18n.text("literal_506d1e756366",{},"Ваш ULADIM"),staff?globalThis.UladimI18n.text("literal_7222d3680fa1",{},"Операционные показатели без доступа к личным записям пользователей."):session.email);const tabs=el('div',undefined,'tabs');app.append(tabs);action(globalThis.UladimI18n.text("literal_5690c2e63b9d",{},"Выйти"),async()=>{await api('logout',{});csrf='';login();},tabs);if(staff){await controlWorkbench();controlNavigation=makeControlNavigation(session,tabs);app.append(controlOverview(session));if(session.permissions.includes('dashboard.read')){const data=await api('dashboard');const grid=el('div',undefined,'grid metrics');for(const [key,value]of Object.entries(data)){if(typeof value==='number'||value===null)grid.append(metricCard(key,value));}app.append(grid);}else notice(globalThis.UladimI18n.text("literal_4e0881874cb6",{},"Выберите доступный раздел."));}else{action(globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),support,tabs);action(globalThis.UladimI18n.text("literal_af3e10c88b50",{},"Аккаунт и приватность"),accountPrivacy,tabs);const ent=await api('entitlements');const grid=el('div',undefined,'grid');grid.append(panel(globalThis.UladimI18n.text("literal_d26e20d8ad2b",{},"Ваш доступ: ")+ent.tier,ent.billing_managed_by?globalThis.UladimI18n.text("literal_0b377e3c7368",{},"Управляется через ")+ent.billing_managed_by:globalThis.UladimI18n.text("literal_47d084a7f892",{},"Платёж не оформлен. Текущий доступ не означает платную подписку.")));grid.append(panel(globalThis.UladimI18n.text("literal_47e443cadb08",{},"Данные на устройстве"),globalThis.UladimI18n.text("literal_93ea9b01d6d8",{},"Личные записи остаются в зашифрованной базе Android. Кабинет не предоставляет к ним доступ.")));app.append(grid);const devices=await api('devices');app.append(el('h2',globalThis.UladimI18n.text("literal_2e29ee032cc0",{},"Устройства")));for(const device of devices.devices){const row=add(el('div',undefined,'row'),el('span',device.label||globalThis.UladimI18n.text("literal_dba20ab53801",{},"Устройство")),el('span',new Date(device.last_seen_at*1000).toLocaleString(authLanguage),'badge'));if(!device.revoked_at)action(globalThis.UladimI18n.text("literal_de1aec86abbf",{},"Отозвать доступ"),async()=>{heading(globalThis.UladimI18n.text("literal_0da26522986c",{},"Отозвать доступ устройства"));form(device.label,[['password',globalThis.UladimI18n.text("literal_065cafb3b330",{},"Ваш пароль"),'password']],globalThis.UladimI18n.text("literal_6b6b8fbd6925",{},"Подтвердить отзыв"),async b=>{await api('devices/revoke',{device_id:device.id,password:b.password});await dashboard();});},row);app.append(row);}notice(globalThis.UladimI18n.text("literal_a668164aa6e2",{},"Покупки пока отключены. Free, Plus и Premium используют единый серверный каталог."));}}
+async function dashboard(){const session=await api('session');csrf=session.csrf;if(!staff){location.replace('/app');return;}controlNavigation=null;delete document.body.dataset.auth;heading(staff?globalThis.UladimI18n.text("literal_bc3e379e3e73",{},"Обзор сервиса"):globalThis.UladimI18n.text("literal_506d1e756366",{},"Ваш ULADIM"),staff?globalThis.UladimI18n.text("literal_7222d3680fa1",{},"Операционные показатели без доступа к личным записям пользователей."):session.email);const tabs=el('div',undefined,'tabs');app.append(tabs);action(globalThis.UladimI18n.text("literal_5690c2e63b9d",{},"Выйти"),async()=>{await api('logout',{});csrf='';stopControlPublishing();login();},tabs);if(staff){await controlWorkbench();if(session.permissions.includes('staff.manage')||publishingSections.some(([permission])=>session.permissions.includes(permission)))await controlPublishing();controlNavigation=makeControlNavigation(session,tabs);app.append(controlOverview(session));if(session.permissions.includes('dashboard.read')){const data=await api('dashboard');const grid=el('div',undefined,'grid metrics');for(const [key,value]of Object.entries(data)){if(typeof value==='number'||value===null)grid.append(metricCard(key,value));}app.append(grid);}else notice(globalThis.UladimI18n.text("literal_4e0881874cb6",{},"Выберите доступный раздел."));}else{action(globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),support,tabs);action(globalThis.UladimI18n.text("literal_af3e10c88b50",{},"Аккаунт и приватность"),accountPrivacy,tabs);const ent=await api('entitlements');const grid=el('div',undefined,'grid');grid.append(panel(globalThis.UladimI18n.text("literal_d26e20d8ad2b",{},"Ваш доступ: ")+ent.tier,ent.billing_managed_by?globalThis.UladimI18n.text("literal_0b377e3c7368",{},"Управляется через ")+ent.billing_managed_by:globalThis.UladimI18n.text("literal_47d084a7f892",{},"Платёж не оформлен. Текущий доступ не означает платную подписку.")));grid.append(panel(globalThis.UladimI18n.text("literal_47e443cadb08",{},"Данные на устройстве"),globalThis.UladimI18n.text("literal_93ea9b01d6d8",{},"Личные записи остаются в зашифрованной базе Android. Кабинет не предоставляет к ним доступ.")));app.append(grid);const devices=await api('devices');app.append(el('h2',globalThis.UladimI18n.text("literal_2e29ee032cc0",{},"Устройства")));for(const device of devices.devices){const row=add(el('div',undefined,'row'),el('span',device.label||globalThis.UladimI18n.text("literal_dba20ab53801",{},"Устройство")),el('span',new Date(device.last_seen_at*1000).toLocaleString(authLanguage),'badge'));if(!device.revoked_at)action(globalThis.UladimI18n.text("literal_de1aec86abbf",{},"Отозвать доступ"),async()=>{heading(globalThis.UladimI18n.text("literal_0da26522986c",{},"Отозвать доступ устройства"));form(device.label,[['password',globalThis.UladimI18n.text("literal_065cafb3b330",{},"Ваш пароль"),'password']],globalThis.UladimI18n.text("literal_6b6b8fbd6925",{},"Подтвердить отзыв"),async b=>{await api('devices/revoke',{device_id:device.id,password:b.password});await dashboard();});},row);app.append(row);}notice(globalThis.UladimI18n.text("literal_a668164aa6e2",{},"Покупки пока отключены. Free, Plus и Premium используют единый серверный каталог."));}}
 function publicNavigation(path,entry='guest') {
  const header=document.querySelector('body > header');
  const nav=header.querySelector('nav');
@@ -216,7 +227,62 @@ function startLink(config) {
  if(config.entry==='unavailable')return link(globalThis.UladimI18n.text("literal_17cc8a5ee310",{},"Открыть ULADIM"),'/app');
  return config.registration_open ? link(globalThis.UladimI18n.text("literal_4c78b1822b88",{},"Создать аккаунт"),'/app?action=signup') : link(globalThis.UladimI18n.text("literal_17cc8a5ee310",{},"Открыть ULADIM"),'/app');
 }
+let liveEditorial=null,editorialRequest=null,publicRender=null,refreshEarlyEditorial=null;
+const publicContentRoutes=new Set(['/','/account','/delete-account','/docs','/download','/early-access','/faq','/plans','/privacy','/status','/support','/terms']);
+const publicEditor=()=>globalThis.UladimPublicPages;
+const editorialContent=()=>liveEditorial?.epoch===viewEpoch&&liveEditorial.page===location.pathname&&liveEditorial.locale===authLanguage?liveEditorial.content:null;
+const pageCopy=(id,fallback)=>publicEditor()?.field(editorialContent(),id,fallback)??fallback;
+const sourceBlock=(id,fields)=>({id,kind:'source',fields});
+function editorialLink({fields},className){
+ const href=publicEditor()?.safeLink(fields.href)??null;
+ if(!href&&publicEditor())return null;
+ const anchor=el('a',fields.label,className);anchor.href=href||fields.href;return anchor;
+}
+function editorialRegion(host,id,baseline,source,wrap){
+ const blocks=publicEditor()?.region(editorialContent(),id,baseline)??baseline;
+ if(publicEditor())publicEditor().renderRegion(host,blocks,{source,wrap});
+ else for(const block of baseline){const node=source(block);if(node)host.append(node);}
+}
+function currentEditorialRequest(request){
+ return editorialRequest===request&&request.epoch===viewEpoch&&request.page===location.pathname&&request.locale===authLanguage;
+}
+async function refreshPublicEditorial(request){
+ try{
+  const content=await publicEditor().load(request.page,request.locale,request.controller.signal);
+  if(!content||!currentEditorialRequest(request))return;
+  await publicRender;
+  if(!currentEditorialRequest(request))return;
+  liveEditorial={...request,content};
+  if(request.page==='/account'){
+   const story=app.querySelector('.focus-login-story');
+   if(story)story.replaceWith(focusLoginStory(el,authLanguage));
+   return;
+  }
+  if(request.page==='/early-access'){refreshEarlyEditorial?.();return;}
+  const search=app.querySelector('#help-search');
+  const query=search?.value,focused=search===document.activeElement;
+  await renderPublicPage(lastPublicConfig);
+  if(search&&currentEditorialRequest(request)){
+   const next=app.querySelector('#help-search');
+   if(next){next.value=query;next.dispatchEvent(new Event('input'));if(focused)next.focus({preventScroll:true});}
+  }
+ }catch{/* Baseline content remains available if the publication cannot be loaded. */}
+}
+function requestPublicEditorial(){
+ const page=location.pathname;
+ if(publicEditor()&&publicContentRoutes.has(page)&&(editorialRequest?.epoch!==viewEpoch||editorialRequest?.page!==page||editorialRequest?.locale!==authLanguage)){
+  editorialRequest?.controller.abort();
+  const request={page,locale:authLanguage,epoch:viewEpoch,controller:new AbortController()};
+  editorialRequest=request;
+  refreshPublicEditorial(request);
+ }
+}
 async function publicPage(config={}) {
+ publicRender=renderPublicPage(config);
+ requestPublicEditorial();
+ return publicRender;
+}
+async function renderPublicPage(config={}) {
  lastPublicConfig=config;
  publicExperience.configure(config.public_legal);
  const path=location.pathname;
@@ -224,7 +290,12 @@ async function publicPage(config={}) {
   try{await dashboard();}catch(e){if(e.code==='unauthorized'||e.code==='staff_unauthorized')login();else throw e;}
   return;
  }
- if(path==='/')config={...config,entry:await customerEntryStatus()};
+ if(path==='/'){
+  const epoch=viewEpoch,language=authLanguage;
+  const entry=await customerEntryStatus();
+  if(epoch!==viewEpoch||language!==authLanguage)return;
+  config={...config,entry};
+ }
  document.body.classList.add('product-site');
  publicNavigation(path,config.entry);
  if(path==='/'){await landing(config);return;}
@@ -233,12 +304,15 @@ async function publicPage(config={}) {
  if(['/privacy','/terms'].includes(path)){publicExperience.legal(path);return;}
  if(path==='/early-access'){await earlyAccess();return;}
  if(path==='/docs') {
-  heading(globalThis.UladimI18n.text("literal_70918141d80e",{},"Порядок в ваших делах"),globalThis.UladimI18n.text("literal_646a7b3c6654",{},"Записывайте задачи и идеи, планируйте события и ведите финансы в одном аккаунте. Для общих дел можно создать семейное пространство."));
+  heading(pageCopy("title",globalThis.UladimI18n.text("literal_70918141d80e",{},"Порядок в ваших делах")),pageCopy("lead",globalThis.UladimI18n.text("literal_646a7b3c6654",{},"Записывайте задачи и идеи, планируйте события и ведите финансы в одном аккаунте. Для общих дел можно создать семейное пространство.")));
   const links=el('nav',undefined,'guide-navigation');links.setAttribute('aria-label',globalThis.UladimI18n.text("literal_140ed324f282",{},"Разделы руководства"));
-  for(const [label,href] of [[globalThis.UladimI18n.text("literal_b5b75c376dc8",{},"Начало работы"),'#first-record'],[globalThis.UladimI18n.text("literal_a95642d636d1",{},"Установка"),'#installation'],[globalThis.UladimI18n.text("literal_c39c1b4d5d52",{},"Импорт данных"),'#import'],[globalThis.UladimI18n.text("literal_a3ca1c94161e",{},"Вопросы и ответы"),'/faq']]){
-   const jump=el('a',label);jump.href=href;links.append(jump);
-  }
-  const first=panel(globalThis.UladimI18n.text("literal_6da878c95d8d",{},"Начните с одной записи"),globalThis.UladimI18n.text("literal_bd5072b2079b",{},"Добавьте задачу, заметку или финансовый счёт в личном пространстве. Если хотите планировать вместе с близкими, создайте семейное пространство и пригласите их."));
+  editorialRegion(links,'resources',[
+  sourceBlock("first-record",{label:globalThis.UladimI18n.text("literal_b5b75c376dc8",{},"Начало работы"),href:"#first-record"}),
+  sourceBlock("installation",{label:globalThis.UladimI18n.text("literal_a95642d636d1",{},"Установка"),href:"#installation"}),
+  sourceBlock("import",{label:globalThis.UladimI18n.text("literal_c39c1b4d5d52",{},"Импорт данных"),href:"#import"}),
+  sourceBlock("faq",{label:globalThis.UladimI18n.text("literal_a3ca1c94161e",{},"Вопросы и ответы"),href:"/faq"})
+ ],editorialLink);
+  const first=panel(pageCopy("first-record.title",globalThis.UladimI18n.text("literal_6da878c95d8d",{},"Начните с одной записи")),pageCopy("first-record.body",globalThis.UladimI18n.text("literal_bd5072b2079b",{},"Добавьте задачу, заметку или финансовый счёт в личном пространстве. Если хотите планировать вместе с близкими, создайте семейное пространство и пригласите их.")));
   first.id='first-record';
   add(app,startLink(config),links,first);
   installGuide(app);
@@ -250,20 +324,17 @@ async function publicPage(config={}) {
  if(path==='/support'){publicExperience.support();return;}
  if(path==='/delete-account'){publicExperience.deletion();return;}
  if(path==='/plans') {
-  heading(globalThis.UladimI18n.text("literal_67540d638d82",{},"Место для ваших планов"),globalThis.UladimI18n.text("literal_b3cdec462745",{},"Начните бесплатно. Все текущие возможности доступны без подписки и банковской карты."));
+  heading(pageCopy("title",globalThis.UladimI18n.text("literal_67540d638d82",{},"Место для ваших планов")),pageCopy("lead",globalThis.UladimI18n.text("literal_b3cdec462745",{},"Начните бесплатно. Все текущие возможности доступны без подписки и банковской карты.")));
   await planComparison(app);
   app.append(startLink(config));
   return;
  }
- const pages={
-  '/support':[globalThis.UladimI18n.text("literal_1fabc98b1337",{},"Поможем разобраться"),globalThis.UladimI18n.text("literal_59b7cccc1734",{},"Войдите в аккаунт, чтобы отправить обращение и прочитать ответ."),globalThis.UladimI18n.text("literal_c286f88778ef",{},"Опишите, что вы пытались сделать и на каком шаге возникла проблема. Пароли, коды и банковские выписки для обращения не нужны.")],
-  '/delete-account':[globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта"),globalThis.UladimI18n.text("literal_81299659ddfc",{},"Удаление облачного аккаунта и очистка локальной базы — разные действия. Эта операция не должна удалять данные других участников семьи."),globalThis.UladimI18n.text("literal_fb4c1e2aac6a",{},"Запрос на удаление доступен в кабинете и имеет 24-часовой срок отмены. Владение семьёй нужно заранее передать с согласием второго родителя. Сроки очистки резервных копий ещё не подтверждены.")],
-  '/status':[globalThis.UladimI18n.text("literal_fb3af7870fa3",{},"Состояние сервиса"),globalThis.UladimI18n.text("literal_5371a22b5c09",{},"Если страница не загружается или синхронизация не завершается, повторите действие после восстановления соединения и обратитесь в поддержку. Эта страница не показывает внутренние метрики сервера."),globalThis.UladimI18n.text("literal_114507413f4e",{},"Локальные функции Android работают независимо от облачного аккаунта.")]
- };
- const [title,description,details]=pages[path];
- heading(title,description);
- app.append(panel(path==='/support'?globalThis.UladimI18n.text("literal_9755f4b567c5",{},"Как описать проблему"):globalThis.UladimI18n.text("literal_74740f3ee8dc",{},"Что важно знать"),details));
- if(path==='/support'||path==='/delete-account')app.append(link(globalThis.UladimI18n.text("literal_612f724ec00f",{},"Открыть аккаунт"),'/account'));
+ if(path==='/status'){
+  heading(pageCopy('title',globalThis.UladimI18n.text("literal_fb3af7870fa3",{},"Состояние сервиса")),pageCopy('lead',globalThis.UladimI18n.text("literal_5371a22b5c09",{},"Если страница не загружается или синхронизация не завершается, повторите действие после восстановления соединения и обратитесь в поддержку. Эта страница не показывает внутренние метрики сервера.")));
+  editorialRegion(app,'guidance',[
+  sourceBlock("offline",{title:globalThis.UladimI18n.text("literal_74740f3ee8dc",{},"Что важно знать"),body:globalThis.UladimI18n.text("literal_114507413f4e",{},"Локальные функции Android работают независимо от облачного аккаунта.")})
+ ],({fields})=>panel(fields.title,fields.body));
+ }
 }
 (async()=>{
  await Promise.resolve();
@@ -348,10 +419,54 @@ function recovery(){
 }
 
 async function accountPrivacy(){location.assign('/app?settings=security');}
+const publishingSections=[['pages.edit','public-pages'],['android.read','android-releases']];
+let controlPublishingPromise=null,loadedPublishing=null,publishingTitle=null,publishingCopies=null;
+const getPublishingCopy=()=>publishingCopies?.locales?.[authLanguage];
+const runningUploads=new Set();
+function stopControlPublishing(){
+ loadedPublishing?.clear();
+ for(const request of runningUploads)request.abort();
+}
+function uploadApk(release,file,progress){
+ const epoch=viewEpoch;
+ return new Promise((resolve,reject)=>{
+  const request=new XMLHttpRequest();
+  request.open('POST','/control/api/android-releases/upload');
+  request.responseType='json';
+  request.setRequestHeader('Content-Type','application/vnd.android.package-archive');
+  request.setRequestHeader('Accept-Language',authLanguage);
+  request.setRequestHeader('X-CSRF-Token',csrf);
+  request.setRequestHeader('X-Release-Id',release.id);
+  request.setRequestHeader('X-Release-Revision',String(release.revision));
+  request.upload.addEventListener('progress',event=>{if(event.lengthComputable)progress(event.loaded/event.total);});
+  request.addEventListener('load',()=>{
+   if(epoch===viewEpoch&&request.status>=200&&request.status<300&&request.response){resolve(request.response);return;}
+   const code=request.response?.error;
+   const error=new Error(errors[code]||tr('family_error_'+(code||'invalid_input')));
+   error.code=code;reject(error);
+  });
+  for(const event of ['error','abort','timeout'])request.addEventListener(event,()=>reject(new Error(tr('retry'))));
+  request.addEventListener('loadend',()=>runningUploads.delete(request));
+  runningUploads.add(request);
+  request.send(file);
+ });
+}
+async function controlPublishing(){
+ if(!controlPublishingPromise)controlPublishingPromise=Promise.all([
+  import('/assets/control-publishing.js'),
+  fetch('/assets/control-publishing-copy.json',{credentials:'same-origin',cache:'no-store'}).then(response=>response.ok?response.json():null).catch(()=>null),
+ ]).then(([module,copies])=>{
+  if(copies?.schemaVersion===1)publishingCopies=copies;
+  publishingTitle=module.publishingTitle;
+  loadedPublishing=module.createControlPublishing({app,heading,api,uploadApk,getLanguage:()=>authLanguage,getLanguages:()=>authPacks,getCopy:getPublishingCopy});
+  return loadedPublishing;
+ }).catch(error=>{controlPublishingPromise=null;throw error;});
+ return controlPublishingPromise;
+}
 let controlWorkbenchPromise=null,loadedControlWorkbench=null;
 async function controlWorkbench(){
  if(!controlWorkbenchPromise)controlWorkbenchPromise=import('/assets/control-workbench.js').then(module=>{
-  loadedControlWorkbench=module.createControlWorkbench({app,api,el,add,heading,staffUser,supportThread,getLanguage:()=>authLanguage});return loadedControlWorkbench;
+  loadedControlWorkbench=module.createControlWorkbench({app,api,el,add,heading,staffUser,supportThread,getLanguage:()=>authLanguage,getPublishingCopy});return loadedControlWorkbench;
  }).catch(error=>{controlWorkbenchPromise=null;throw error;});
  return controlWorkbenchPromise;
 }
@@ -504,6 +619,11 @@ function controlOverview(session){
  for(const [permission,title,description,path]of [['users.read',globalThis.UladimI18n.text("literal_845595d6e899",{},"Пользователи"),globalThis.UladimI18n.text("literal_75a5eccb3985",{},"Аккаунты, устройства, доступ и ограничения."),'users'],['applications.manage',globalThis.UladimI18n.text("literal_4cba08a1baae",{},"Заявки на тест"),globalThis.UladimI18n.text("literal_638191739767",{},"Приглашения и решения по заявкам."),'applications'],['staff.manage',globalThis.UladimI18n.text("literal_8b372c12c268",{},"Команда"),globalThis.UladimI18n.text("literal_3eaafd2845fa",{},"Роли сотрудников и защищённые приглашения."),'staff'],['support.read',globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),globalThis.UladimI18n.text("literal_8a70afa7533e",{},"Обращения пользователей и ответы команды."),'support'],['announcements.manage',globalThis.UladimI18n.text("literal_d4baf8f6b173",{},"Уведомления"),globalThis.UladimI18n.text("literal_a833bfd7a2ad",{},"Черновики сообщений, аудитория и время показа."),'announcements'],['records.recover',globalThis.UladimI18n.text("literal_306587ae17a0",{},"Восстановление записей"),globalThis.UladimI18n.text("literal_3557cbec6df5",{},"Запросы владельцев без доступа к содержимому."),'record-recovery'],['referrals.read',globalThis.UladimI18n.text("literal_b0b0c93a7c1e",{},"Приглашения"),globalThis.UladimI18n.text("literal_5d5ab455fe85",{},"Кто приглашает пользователей и как они пользуются платформой."),'referrals'],['audit.read',globalThis.UladimI18n.text("literal_f02dd0fa22cd",{},"Аудит"),globalThis.UladimI18n.text("literal_37dfd2721fea",{},"Журнал действий с причинами и изменениями."),'audit'],['flags.manage',globalThis.UladimI18n.text("literal_574528b98c2f",{},"Настройки интерфейса"),globalThis.UladimI18n.text("literal_02dac3d6b5f4",{},"Разрешённые настройки и предварительная проверка."),'flags']]){
   if(!session.permissions.includes(permission))continue;const card=el('button',undefined,'secondary control-overview-link');card.type='button';add(card,el('strong',title),el('span',description));card.addEventListener('click',()=>{const select=controlNavigation?.querySelector('select');if(select){select.value=path;select.dispatchEvent(new Event('change'));}});section.append(card);
  }
+ for(const [permission,route]of publishingSections){
+  if(!session.permissions.includes(permission))continue;
+  const card=el('button',undefined,'secondary control-overview-link');card.type='button';card.append(el('strong',publishingTitle(route,authLanguage)));
+  card.addEventListener('click',()=>{const select=controlNavigation?.querySelector('select');if(select){select.value=route;select.dispatchEvent(new Event('change'));}});section.append(card);
+ }
  if(session.permissions.includes('users.read')&&session.permissions.some(value=>['users.recover','records.recover'].includes(value))){const card=el('button',undefined,'secondary control-overview-link');card.type='button';add(card,el('strong',controlText('cases')),el('span',controlText('cases_help')));card.addEventListener('click',()=>{const select=controlNavigation?.querySelector('select');if(select){select.value='recovery-cases';select.dispatchEvent(new Event('change'));}});section.append(card);}
  return section;
 }
@@ -512,8 +632,8 @@ function staffRecovery(id,email){
  const f=form(globalThis.UladimI18n.text("literal_1e53ee1273ea",{},"Подтверждение запроса"),[['reason',globalThis.UladimI18n.text("literal_09304513f121",{},"Причина для журнала аудита"),'text']],globalThis.UladimI18n.text("literal_74bdd15eedbd",{},"Отправить письмо"),async body=>{await api('user/recovery',{user_id:id,reason:body.reason});heading(globalThis.UladimI18n.text("literal_a6d9096f3c1a",{},"Письмо восстановления запрошено"),globalThis.UladimI18n.text("literal_5b1c834c72af",{},"Запрос поставлен в очередь. Дальнейшие действия выполняет владелец аккаунта."));action(globalThis.UladimI18n.text("literal_587a908fd236",{},"К аккаунту"),()=>staffUser(id));});f.elements.reason.maxLength=500;action(globalThis.UladimI18n.text("literal_7c47f7292ba4",{},"Отменить"),()=>staffUser(id));
 }
 
-function makeControlNavigation(session,container){container.replaceChildren();const select=el('select');select.setAttribute('aria-label',globalThis.UladimI18n.text("literal_f18e0846eae8",{},"Раздел Control"));const routes=[['dashboard.read',globalThis.UladimI18n.text("literal_bd3a5be11e2a",{},"Обзор"),'dashboard'],['users.read',globalThis.UladimI18n.text("literal_845595d6e899",{},"Пользователи"),'users'],['applications.manage',globalThis.UladimI18n.text("literal_4cba08a1baae",{},"Заявки на тест"),'applications'],['staff.manage',globalThis.UladimI18n.text("literal_8b372c12c268",{},"Команда"),'staff'],['support.read',globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),'support'],['referrals.read',globalThis.UladimI18n.text("literal_b0b0c93a7c1e",{},"Приглашения"),'referrals'],['audit.read',globalThis.UladimI18n.text("literal_f02dd0fa22cd",{},"Аудит"),'audit'],['flags.manage',globalThis.UladimI18n.text("literal_574528b98c2f",{},"Настройки интерфейса"),'flags'],['announcements.manage',globalThis.UladimI18n.text("literal_d4baf8f6b173",{},"Уведомления"),'announcements'],['records.recover',globalThis.UladimI18n.text("literal_306587ae17a0",{},"Восстановление записей"),'record-recovery']];for(const [permission,title,path]of routes)if(session.permissions.includes(permission)){const option=el('option',title);option.value=path;select.append(option);}if(!session.permissions.includes('dashboard.read')){const choose=el('option',globalThis.UladimI18n.text("literal_ddbb4b70bb4d",{},"Выберите раздел"));choose.value='';choose.disabled=true;choose.selected=true;select.prepend(choose);}if(session.permissions.includes('users.read')&&session.permissions.some(value=>['users.recover','records.recover'].includes(value))){const option=el('option',controlText('cases'));option.value='recovery-cases';select.append(option);}
- container.append(select);loadedControlWorkbench?.enhanceSelect(select,globalThis.UladimI18n.text("literal_f18e0846eae8",{},"Раздел Control"));select.addEventListener('change',async()=>{try{const path=select.value;controlSection=path;if(path==='dashboard'){await dashboard();return;}if(path==='users'){await staffUsers();return;}if(path==='applications'){await staffApplications();return;}if(path==='staff'){await staffTeam();return;}if(path==='support'){await support();return;}if(path==='flags'){await staffFlags();return;}if(path==='announcements'){await staffAnnouncements();return;}if(path==='record-recovery'){await staffRecordRecovery();return;}if(path==='recovery-cases'){await staffRecoveryCases();return;}if(path==='referrals'){await staffReferrals();return;}heading(globalThis.UladimI18n.text("literal_6211d2fa390b",{},"Журнал аудита"));const result=await api('audit');for(const event of result.events){const card=panel(event.action,new Date(event.created_at*1000).toLocaleString(authLanguage));card.append(el('p',event.reason));const details=el('details');details.append(el('summary',globalThis.UladimI18n.text("literal_c7951fd569fc",{},"Изменения")));details.append(el('pre',JSON.stringify({before:JSON.parse(event.before_value),after:JSON.parse(event.after_value)},null,2)));card.append(details);app.append(card);}}catch(e){notice(e.message);}});action(globalThis.UladimI18n.text("literal_5690c2e63b9d",{},"Выйти"),async()=>{await api('logout',{});csrf='';login();},container);return container;}
+function makeControlNavigation(session,container){container.replaceChildren();const select=el('select');select.setAttribute('aria-label',globalThis.UladimI18n.text("literal_f18e0846eae8",{},"Раздел Control"));const routes=[['dashboard.read',globalThis.UladimI18n.text("literal_bd3a5be11e2a",{},"Обзор"),'dashboard'],['users.read',globalThis.UladimI18n.text("literal_845595d6e899",{},"Пользователи"),'users'],['applications.manage',globalThis.UladimI18n.text("literal_4cba08a1baae",{},"Заявки на тест"),'applications'],['staff.manage',globalThis.UladimI18n.text("literal_8b372c12c268",{},"Команда"),'staff'],['support.read',globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),'support'],['referrals.read',globalThis.UladimI18n.text("literal_b0b0c93a7c1e",{},"Приглашения"),'referrals'],['audit.read',globalThis.UladimI18n.text("literal_f02dd0fa22cd",{},"Аудит"),'audit'],['flags.manage',globalThis.UladimI18n.text("literal_574528b98c2f",{},"Настройки интерфейса"),'flags'],['announcements.manage',globalThis.UladimI18n.text("literal_d4baf8f6b173",{},"Уведомления"),'announcements'],['records.recover',globalThis.UladimI18n.text("literal_306587ae17a0",{},"Восстановление записей"),'record-recovery']] ;for(const [permission,route]of publishingSections)if(session.permissions.includes(permission))routes.push([permission,publishingTitle(route,authLanguage),route]);for(const [permission,title,path]of routes)if(session.permissions.includes(permission)){const option=el('option',title);option.value=path;select.append(option);}if(!session.permissions.includes('dashboard.read')){const choose=el('option',globalThis.UladimI18n.text("literal_ddbb4b70bb4d",{},"Выберите раздел"));choose.value='';choose.disabled=true;choose.selected=true;select.prepend(choose);}if(session.permissions.includes('users.read')&&session.permissions.some(value=>['users.recover','records.recover'].includes(value))){const option=el('option',controlText('cases'));option.value='recovery-cases';select.append(option);}
+ container.append(select);loadedControlWorkbench?.enhanceSelect(select,globalThis.UladimI18n.text("literal_f18e0846eae8",{},"Раздел Control"));select.addEventListener('change',async()=>{try{const path=select.value;controlSection=path;if(path==='dashboard'){await dashboard();return;}if(path==='users'){await staffUsers();return;}if(path==='applications'){await staffApplications();return;}if(path==='staff'){await staffTeam();return;}if(path==='support'){await support();return;}if(path==='flags'){await staffFlags();return;}if(path==='announcements'){await staffAnnouncements();return;}if(path==='public-pages'){await (await controlPublishing()).pages(session);return;}if(path==='android-releases'){await (await controlPublishing()).android(session);return;}if(path==='record-recovery'){await staffRecordRecovery();return;}if(path==='recovery-cases'){await staffRecoveryCases();return;}if(path==='referrals'){await staffReferrals();return;}heading(globalThis.UladimI18n.text("literal_6211d2fa390b",{},"Журнал аудита"));const result=await api('audit');for(const event of result.events){const card=panel(event.action,new Date(event.created_at*1000).toLocaleString(authLanguage));card.append(el('p',event.reason));const details=el('details');details.append(el('summary',globalThis.UladimI18n.text("literal_c7951fd569fc",{},"Изменения")));details.append(el('pre',JSON.stringify({before:JSON.parse(event.before_value),after:JSON.parse(event.after_value)},null,2)));card.append(details);app.append(card);}}catch(e){notice(e.message);}});action(globalThis.UladimI18n.text("literal_5690c2e63b9d",{},"Выйти"),async()=>{await api('logout',{});csrf='';login();},container);return container;}
 
 
 const HOME_ICON_PATHS = {
@@ -590,30 +710,30 @@ async function landing(config) {
  app.classList.add('landing');
  const hero=el('section',undefined,'product-hero');
  const copy=el('div',undefined,'hero-copy');
- const title=add(el('h1'),el('span',globalThis.UladimI18n.text("literal_89b6d34cb65a",{},"Важное —")),' ',el('span',globalThis.UladimI18n.text("literal_653aaacf3b2d",{},"в одном месте.")));
- add(copy,el('p',globalThis.UladimI18n.text("literal_f681e9d89ea8",{},"ULADIM · Личное и семейное пространство"),'hero-eyebrow'),title,
-  el('p',globalThis.UladimI18n.text("literal_3b798334ab05",{},"Задачи, заметки, календарь и финансы. Соберите повседневные дела в одном спокойном пространстве."),'hero-description'));
+ const title=add(el('h1'),el('span',pageCopy("title",globalThis.UladimI18n.text("literal_89b6d34cb65a",{},"Важное —"))),' ',el('span',pageCopy("title-accent",globalThis.UladimI18n.text("literal_653aaacf3b2d",{},"в одном месте."))));
+ add(copy,el('p',pageCopy("kicker",globalThis.UladimI18n.text("literal_f681e9d89ea8",{},"ULADIM · Личное и семейное пространство")),'hero-eyebrow'),title,
+  el('p',pageCopy("lead",globalThis.UladimI18n.text("literal_3b798334ab05",{},"Задачи, заметки, календарь и финансы. Соберите повседневные дела в одном спокойном пространстве.")),'hero-description'));
  const actions=el('div',undefined,'hero-actions');
  actions.append(startLink(config));copy.append(actions);
- copy.append(el('p',config.entry==='signed-in'?globalThis.UladimI18n.text("literal_91a004c79995",{},"Ваш аккаунт уже открыт в этом браузере."):globalThis.UladimI18n.text("literal_6f4d88788598",{},"Сейчас все возможности доступны бесплатно."),'hero-caption'));
+ copy.append(el('p',config.entry==='signed-in'?globalThis.UladimI18n.text("literal_91a004c79995",{},"Ваш аккаунт уже открыт в этом браузере."):pageCopy("guest-note",globalThis.UladimI18n.text("literal_6f4d88788598",{},"Сейчас все возможности доступны бесплатно.")),'hero-caption'));
  app.append(add(hero,copy,todayPreview()));
 
  const overview=el('section',undefined,'welcome-overview');
  overview.setAttribute('aria-label',globalThis.UladimI18n.text("literal_356b36b87ada",{},"Возможности ULADIM"));
- for(const [symbol,title,description]of [
-  ['calendar',globalThis.UladimI18n.text("literal_736e8b8178ad",{},"Планируйте день"),globalThis.UladimI18n.text("literal_df9bf0f7f1a0",{},"Задачи, заметки и события рядом.")],
-  ['money',globalThis.UladimI18n.text("literal_e9042c3f5512",{},"Ведите финансы"),globalThis.UladimI18n.text("literal_016f5d4e2585",{},"Счета, операции и бюджеты без суеты.")],
-  ['account',globalThis.UladimI18n.text("literal_5a0699214354",{},"Делайте вместе"),globalThis.UladimI18n.text("literal_f0666a80a518",{},"Личное пространство и общие семейные дела.")]
- ]){
-  const item=el('div',undefined,'welcome-capability');
-  add(item,homeIcon(symbol),add(el('div'),el('h2',title),el('p',description)));
-  overview.append(item);
- }
+ editorialRegion(overview,'capabilities',[
+  sourceBlock("calendar",{title:globalThis.UladimI18n.text("literal_736e8b8178ad",{},"Планируйте день"),body:globalThis.UladimI18n.text("literal_df9bf0f7f1a0",{},"Задачи, заметки и события рядом.")}),
+  sourceBlock("money",{title:globalThis.UladimI18n.text("literal_e9042c3f5512",{},"Ведите финансы"),body:globalThis.UladimI18n.text("literal_016f5d4e2585",{},"Счета, операции и бюджеты без суеты.")}),
+  sourceBlock("account",{title:globalThis.UladimI18n.text("literal_5a0699214354",{},"Делайте вместе"),body:globalThis.UladimI18n.text("literal_f0666a80a518",{},"Личное пространство и общие семейные дела.")})
+ ],({id,fields})=>add(el('div',undefined,'welcome-capability'),homeIcon(id),add(el('div'),el('h2',fields.title),el('p',fields.body))));
  app.append(overview);
  const learn=el('nav',undefined,'welcome-resources');learn.setAttribute('aria-label',globalThis.UladimI18n.text("literal_6ed487146e23",{},"Узнать больше"));
- for(const [label,path]of [[globalThis.UladimI18n.text("literal_04afc09e60bd",{},"Возможности"),'/docs'],[globalThis.UladimI18n.text("literal_5db38a3be3e8",{},"Как установить"),'/download'],[globalThis.UladimI18n.text("literal_b2fbb44bb3e3",{},"Тарифы"),'/plans'],[globalThis.UladimI18n.text("literal_a3ca1c94161e",{},"Вопросы и ответы"),'/faq'],[globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),'/support']]){
-  const entry=el('a',label);entry.href=path;learn.append(entry);
- }
+ editorialRegion(learn,'resources',[
+  sourceBlock("docs",{label:globalThis.UladimI18n.text("literal_04afc09e60bd",{},"Возможности"),href:"/docs"}),
+  sourceBlock("download",{label:globalThis.UladimI18n.text("literal_5db38a3be3e8",{},"Как установить"),href:"/download"}),
+  sourceBlock("plans",{label:globalThis.UladimI18n.text("literal_b2fbb44bb3e3",{},"Тарифы"),href:"/plans"}),
+  sourceBlock("faq",{label:globalThis.UladimI18n.text("literal_a3ca1c94161e",{},"Вопросы и ответы"),href:"/faq"}),
+  sourceBlock("support",{label:globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),href:"/support"})
+ ],editorialLink);
  app.append(learn);
 }
 function applicationCards(full) {
@@ -637,40 +757,72 @@ function applicationPage() {
 }
 async function planComparison(target){
  const data=await api('plans');const section=el('section',undefined,'plan-comparison help-plans');
- add(section,el('h2',globalThis.UladimI18n.text("literal_bcb6c49db733",{},"Планируйте в своём ритме")),el('p',globalThis.UladimI18n.text("literal_3c107369393b",{},"Все текущие возможности доступны бесплатно."),'access-free-note'),el('p',globalThis.UladimI18n.text("literal_2cdea298da98",{},"Задачи, заметки, календарь, финансы, импорт и семейное пространство. Начните без карты и обязательств.")));
+ add(section,el('h2',pageCopy("comparison.title",globalThis.UladimI18n.text("literal_bcb6c49db733",{},"Планируйте в своём ритме"))),el('p',pageCopy("comparison.note",globalThis.UladimI18n.text("literal_3c107369393b",{},"Все текущие возможности доступны бесплатно.")),'access-free-note'),el('p',pageCopy("comparison.body",globalThis.UladimI18n.text("literal_2cdea298da98",{},"Задачи, заметки, календарь, финансы, импорт и семейное пространство. Начните без карты и обязательств."))));
  const grid=el('div',undefined,'access-plan-grid');
  for(const [tier,label,title,text,items]of [
-  ['Free',globalThis.UladimI18n.text("literal_fcbfc557515d",{},"Можно начать сейчас"),globalThis.UladimI18n.text("literal_3f555b1a8a35",{},"Важное под рукой"),globalThis.UladimI18n.text("literal_de7c0c72a41d",{},"Всё, что уже работает в ULADIM, доступно бесплатно."),[globalThis.UladimI18n.text("literal_8f0a73b78579",{},"Задачи, заметки и календарь"),globalThis.UladimI18n.text("literal_44fb43cb1fc3",{},"Финансовый учёт и бюджеты"),globalThis.UladimI18n.text("literal_4e57e09d4a3c",{},"Импорт записей и выписок"),globalThis.UladimI18n.text("literal_4b2d66df8a80",{},"Личное и семейное пространство")]],
-  ['Plus',globalThis.UladimI18n.text("literal_d1f0f0adeb4a",{},"Бесплатный доступ к текущим функциям"),globalThis.UladimI18n.text("literal_68d83e2dffc7",{},"Больше места для вашего ритма"),globalThis.UladimI18n.text("literal_10da5c6ba3f9",{},"Будущий вариант доступа. Окончательные условия ещё готовятся."),[globalThis.UladimI18n.text("literal_e3b829e6107c",{},"Текущие функции остаются доступны бесплатно"),globalThis.UladimI18n.text("literal_10cd48f7e890",{},"Дополнительные возможности — после анонса"),globalThis.UladimI18n.text("literal_a66c83592898",{},"Без оформления подписки сегодня")]],
-  ['Premium',globalThis.UladimI18n.text("literal_71a59de862eb",{},"Появится позже"),globalThis.UladimI18n.text("literal_671e1bf3d0ac",{},"Помощь с искусственным интеллектом"),globalThis.UladimI18n.text("literal_c77ce683b745",{},"Будущий уровень с ИИ. Сейчас эти возможности недоступны."),[globalThis.UladimI18n.text("literal_cca531c62e55",{},"ИИ-функции пока недоступны"),globalThis.UladimI18n.text("literal_091e6a6dc9c4",{},"Срок запуска и цена не объявлены"),globalThis.UladimI18n.text("literal_213c628a6f3f",{},"Подключить этот уровень пока нельзя")]]
+  ['Free',pageCopy("free.label",globalThis.UladimI18n.text("literal_fcbfc557515d",{},"Можно начать сейчас")),pageCopy("free.title",globalThis.UladimI18n.text("literal_3f555b1a8a35",{},"Важное под рукой")),pageCopy("free.body",globalThis.UladimI18n.text("literal_de7c0c72a41d",{},"Всё, что уже работает в ULADIM, доступно бесплатно.")),[
+  sourceBlock("feature-1",{body:globalThis.UladimI18n.text("literal_8f0a73b78579",{},"Задачи, заметки и календарь")}),
+  sourceBlock("feature-2",{body:globalThis.UladimI18n.text("literal_44fb43cb1fc3",{},"Финансовый учёт и бюджеты")}),
+  sourceBlock("feature-3",{body:globalThis.UladimI18n.text("literal_4e57e09d4a3c",{},"Импорт записей и выписок")}),
+  sourceBlock("feature-4",{body:globalThis.UladimI18n.text("literal_4b2d66df8a80",{},"Личное и семейное пространство")})
+ ]],
+  ['Plus',pageCopy("plus.label",globalThis.UladimI18n.text("literal_d1f0f0adeb4a",{},"Бесплатный доступ к текущим функциям")),pageCopy("plus.title",globalThis.UladimI18n.text("literal_68d83e2dffc7",{},"Больше места для вашего ритма")),pageCopy("plus.body",globalThis.UladimI18n.text("literal_10da5c6ba3f9",{},"Будущий вариант доступа. Окончательные условия ещё готовятся.")),[
+  sourceBlock("feature-1",{body:globalThis.UladimI18n.text("literal_e3b829e6107c",{},"Текущие функции остаются доступны бесплатно")}),
+  sourceBlock("feature-2",{body:globalThis.UladimI18n.text("literal_10cd48f7e890",{},"Дополнительные возможности — после анонса")}),
+  sourceBlock("feature-3",{body:globalThis.UladimI18n.text("literal_a66c83592898",{},"Без оформления подписки сегодня")})
+ ]],
+  ['Premium',pageCopy("premium.label",globalThis.UladimI18n.text("literal_71a59de862eb",{},"Появится позже")),pageCopy("premium.title",globalThis.UladimI18n.text("literal_671e1bf3d0ac",{},"Помощь с искусственным интеллектом")),pageCopy("premium.body",globalThis.UladimI18n.text("literal_c77ce683b745",{},"Будущий уровень с ИИ. Сейчас эти возможности недоступны.")),[
+  sourceBlock("feature-1",{body:globalThis.UladimI18n.text("literal_cca531c62e55",{},"ИИ-функции пока недоступны")}),
+  sourceBlock("feature-2",{body:globalThis.UladimI18n.text("literal_091e6a6dc9c4",{},"Срок запуска и цена не объявлены")}),
+  sourceBlock("feature-3",{body:globalThis.UladimI18n.text("literal_213c628a6f3f",{},"Подключить этот уровень пока нельзя")})
+ ]]
  ]){
   if(!data.tiers[tier])continue;
   const card=el('article',undefined,'card access-plan-card');card.dataset.tier=tier;
   if(tier==='Premium')card.setAttribute('aria-label',globalThis.UladimI18n.text("literal_4356cd03c107",{},"Premium: недоступен, появится позже"));
-  add(card,el('p',label,'access-plan-label'),el('h3',tier),el('strong',title),el('p',text));const list=el('ul');for(const item of items)list.append(el('li',item));card.append(list);
+  add(card,el('p',label,'access-plan-label'),el('h3',tier),el('strong',title),el('p',text));const list=el('ul');editorialRegion(list,tier.toLowerCase()+'.highlights',items,({fields})=>el('li',fields.body),item=>add(el('li'),item));card.append(list);
   if(tier==='Free')card.append(link(globalThis.UladimI18n.text("literal_4f1591dbadb5",{},"Начать бесплатно"),'/app'));
   else card.append(el('span',tier==='Plus'?globalThis.UladimI18n.text("literal_e708e2dd5fe3",{},"Продажи ещё не открыты"):globalThis.UladimI18n.text("literal_43b730bef241",{},"Сейчас недоступен"),'help-plan-state'));
   grid.append(card);
  }
  section.append(grid);
- const note=el('aside',undefined,'help-callout');note.append(el('strong',globalThis.UladimI18n.text("literal_533ebaf42f4e",{},"Сначала понятные условия — затем ваш выбор")),el('p',globalThis.UladimI18n.text("literal_0bc844ae8905",{},"Если платные возможности появятся, заранее укажем цену, состав, продление, отмену и возвраты. Сегодня покупки и автоматические списания отключены.")));section.append(note);
- const details=el('details',undefined,'access-plan-details');details.append(el('summary',globalThis.UladimI18n.text("literal_d546f4cbe084",{},"Что доступно сейчас")));
+ editorialRegion(section,'guidance',[
+  sourceBlock("conditions",{title:globalThis.UladimI18n.text("literal_533ebaf42f4e",{},"Сначала понятные условия — затем ваш выбор"),body:globalThis.UladimI18n.text("literal_0bc844ae8905",{},"Если платные возможности появятся, заранее укажем цену, состав, продление, отмену и возвраты. Сегодня покупки и автоматические списания отключены.")})
+ ],({fields})=>add(el('aside',undefined,'help-callout'),el('strong',fields.title),el('p',fields.body)));
+ const details=el('details',undefined,'access-plan-details');details.append(el('summary',pageCopy("feature-title",globalThis.UladimI18n.text("literal_d546f4cbe084",{},"Что доступно сейчас"))));
  const labels={personal_core:globalThis.UladimI18n.text("literal_0c6a5b748c4e",{},"Задачи, заметки, календарь и финансы"),family_sync:globalThis.UladimI18n.text("literal_3f7c9491d6bb",{},"Семейное пространство"),custom_charts:globalThis.UladimI18n.text("literal_b774b32f322a",{},"Настройка диаграмм"),extended_personalization:globalThis.UladimI18n.text("literal_c2d36c8aa703",{},"Темы и палитры"),statement_import:globalThis.UladimI18n.text("literal_b9167b1cb66d",{},"Импорт выписок"),advanced_planning:globalThis.UladimI18n.text("literal_adbd2426fa1d",{},"Расширенное планирование")};
  const features=el('ul');for(const [key,label]of Object.entries(labels))if(data.tiers.Free?.features.includes(key))features.append(el('li',label+globalThis.UladimI18n.text("literal_9f4e7d240793",{}," — бесплатно")));details.append(features);section.append(details);target.append(section);
- const help=el('p');help.append(el('span',globalThis.UladimI18n.text("literal_3db5f628d8da",{},"Есть вопросы? ")));const faq=el('a',globalThis.UladimI18n.text("literal_7b260990784f",{},"Ответы о доступе и оплате"));faq.href='/faq#plans';help.append(faq);target.append(help);
+ const help=el('p');help.append(el('span',pageCopy("help.lead",globalThis.UladimI18n.text("literal_3db5f628d8da",{},"Есть вопросы? "))));const faq=el('a',pageCopy("help.label",globalThis.UladimI18n.text("literal_7b260990784f",{},"Ответы о доступе и оплате")));faq.href=publicEditor()?.safeLink(pageCopy('help.href','/faq#plans'))||'/faq#plans';help.append(faq);target.append(help);
 }
 function installGuide(target){
  const section=el('section',undefined,'install-guide');
  section.id='installation';
- section.append(el('h2',globalThis.UladimI18n.text("literal_027fffde5f5d",{},"Установка на домашний экран")));
+ section.append(el('h2',pageCopy('installation-title',globalThis.UladimI18n.text("literal_027fffde5f5d",{},"Установка на домашний экран"))));
  if(window.UladimInstall)window.UladimInstall.mount(section,{heading:false,placement:'guide'});
  else section.append(link(globalThis.UladimI18n.text("literal_e1e440f7bb62",{},"Открыть веб-приложение"),'/app'));
  target.append(section);
 }
 
+function earlyEditorialHeading(variant,title,lead){
+ heading(title,lead);
+ const headline=app.querySelector('h1'),description=headline.nextElementSibling;
+ let extras;
+ refreshEarlyEditorial=()=>{
+  if(!headline.isConnected)return;
+  headline.textContent=pageCopy(variant+'.title',title);
+  description.textContent=pageCopy(variant+'.lead',lead);
+  extras?.remove();
+  if(editorialContent()?.regions?.[variant+'.guidance']?.length){
+   extras=el('div',undefined,'public-editorial-region');
+   editorialRegion(extras,variant+'.guidance',[],()=>null);
+   description.after(extras);
+  }
+ };
+ refreshEarlyEditorial();
+}
 async function earlyAccess(){
-  const config=await api('config');if(config.registration_open){heading(globalThis.UladimI18n.text("literal_53ab8486a274",{},"Прежние заявки"),globalThis.UladimI18n.text("literal_c1f9aa66ebc5",{},"Обычная регистрация открыта. Приглашение больше не требуется; прежние заявки сохранены."));app.append(link(globalThis.UladimI18n.text("literal_4f1591dbadb5",{},"Начать бесплатно"),'/app?action=signup'));form(globalThis.UladimI18n.text("literal_0fcc659da30c",{},"Проверить прежнюю заявку"),[['email',globalThis.UladimI18n.text("literal_9738aeca2427",{},"Электронная почта"),'email']],globalThis.UladimI18n.text("literal_385c4681b363",{},"Получить код подтверждения"),async b=>{await earlyApi('recover',{email:b.email});confirmEarly(b.email);});return;}
-  heading(globalThis.UladimI18n.text("literal_efe4bf771211",{},"Ваше место в ULADIM"),globalThis.UladimI18n.text("literal_808e58479099",{},"Оставьте заявку на закрытый тест. Мы приглашаем участников постепенно. Аккаунт и подписка при подаче заявки не создаются."));
+  const config=await api('config');if(config.registration_open){earlyEditorialHeading('open',globalThis.UladimI18n.text("literal_53ab8486a274",{},"Прежние заявки"),globalThis.UladimI18n.text("literal_c1f9aa66ebc5",{},"Обычная регистрация открыта. Приглашение больше не требуется; прежние заявки сохранены."));app.append(link(globalThis.UladimI18n.text("literal_4f1591dbadb5",{},"Начать бесплатно"),'/app?action=signup'));form(globalThis.UladimI18n.text("literal_0fcc659da30c",{},"Проверить прежнюю заявку"),[['email',globalThis.UladimI18n.text("literal_9738aeca2427",{},"Электронная почта"),'email']],globalThis.UladimI18n.text("literal_385c4681b363",{},"Получить код подтверждения"),async b=>{await earlyApi('recover',{email:b.email});confirmEarly(b.email);});return;}
+  earlyEditorialHeading('closed',globalThis.UladimI18n.text("literal_efe4bf771211",{},"Ваше место в ULADIM"),globalThis.UladimI18n.text("literal_808e58479099",{},"Оставьте заявку на закрытый тест. Мы приглашаем участников постепенно. Аккаунт и подписка при подаче заявки не создаются."));
   const f=form(globalThis.UladimI18n.text("literal_02a580ada00c",{},"Заявка на участие"),[['email',globalThis.UladimI18n.text("literal_9738aeca2427",{},"Электронная почта"),'email']],globalThis.UladimI18n.text("literal_385c4681b363",{},"Получить код подтверждения"),async b=>{if(!consent.checked)throw new Error(globalThis.UladimI18n.text("literal_e3e12221780c",{},"Подтвердите согласие с политикой обработки данных."));await earlyApi('apply',{...b,consent_version:'2026-11-08',website:trap.value});confirmEarly(b.email);});
   f.elements.email.autocomplete='email';f.elements.email.maxLength=254;
   const row=el('label',undefined,'consent');const consent=el('input');consent.type='checkbox';consent.required=true;const label=el('span',globalThis.UladimI18n.text("literal_c50b52d15696",{},"Согласен с обработкой email для заявки, её статуса и приглашения. "));const policy=el('a',globalThis.UladimI18n.text("literal_3ba8eaa5d624",{},"Политика конфиденциальности"));policy.href='/privacy';add(label,policy);add(row,consent,label);f.insertBefore(row,f.querySelector('button'));
@@ -700,7 +852,7 @@ async function staffApplications(state='pending',before=''){
 }
 
 // Scrub private views before the browser stores a history snapshot.
-window.addEventListener('pagehide',()=>{viewEpoch++;csrf='';controlNavigation=null;app.replaceChildren();});
+window.addEventListener('pagehide',()=>{viewEpoch++;csrf='';controlNavigation=null;stopControlPublishing();editorialRequest?.controller.abort();app.replaceChildren();});
 window.addEventListener('pageshow',event=>{if(!event.persisted)return;app.replaceChildren();if(staff)dashboard().catch(()=>login());else publicPage().catch(error=>{heading(globalThis.UladimI18n.text("literal_209cd070147d",{},"Не удалось загрузить"));notice(error.message);});});
 
 // Public legal documents and help share the factual configuration below.
@@ -709,22 +861,20 @@ function legalPage(path){publicExperience.legal(path);}
 function importGuide(host){
  const guide=el('section',undefined,'import-guide');
  guide.id='import';
- guide.append(el('h2',globalThis.UladimI18n.text("literal_3c5ae3f26a99",{},"Перенос данных в ULADIM")));
+ guide.append(el('h2',pageCopy("import.title",globalThis.UladimI18n.text("literal_3c5ae3f26a99",{},"Перенос данных в ULADIM"))));
  const steps=el('ol');
- for(const [title,body] of [
-  [globalThis.UladimI18n.text("literal_db5a8160c29b",{},"Выберите пространство"),globalThis.UladimI18n.text("literal_bb0e9569deeb",{},"Войдите в веб-приложение. В переключателе вверху выберите личное или доступное семейное пространство. Откройте «Профиль → Импорт и синхронизация».")],
-  [globalThis.UladimI18n.text("literal_7803e5139b06",{},"Откройте экспорт"),globalThis.UladimI18n.text("literal_e9114c99df9a",{},"Выберите календари, заметки или задачи. Можно выбрать несколько файлов за раз. Браузер распознаёт поддерживаемые форматы и показывает, что нашёл.")],
-  [globalThis.UladimI18n.text("literal_d9dbbece5722",{},"Проверьте и сохраните"),globalThis.UladimI18n.text("literal_e78e0165fd3a",{},"Проверьте названия, даты и предупреждения. Снимите отметку с ненужных записей и нажмите «Импортировать». Откройте соответствующий раздел в том же пространстве.")],
- ]){
-  steps.append(add(el('li'),el('strong',title),el('p',body)));
- }
+ editorialRegion(steps,'import.steps',[
+  sourceBlock("workspace",{title:globalThis.UladimI18n.text("literal_db5a8160c29b",{},"Выберите пространство"),body:globalThis.UladimI18n.text("literal_bb0e9569deeb",{},"Войдите в веб-приложение. В переключателе вверху выберите личное или доступное семейное пространство. Откройте «Профиль → Импорт и синхронизация».")}),
+  sourceBlock("export",{title:globalThis.UladimI18n.text("literal_7803e5139b06",{},"Откройте экспорт"),body:globalThis.UladimI18n.text("literal_e9114c99df9a",{},"Выберите календари, заметки или задачи. Можно выбрать несколько файлов за раз. Браузер распознаёт поддерживаемые форматы и показывает, что нашёл.")}),
+  sourceBlock("check",{title:globalThis.UladimI18n.text("literal_d9dbbece5722",{},"Проверьте и сохраните"),body:globalThis.UladimI18n.text("literal_e78e0165fd3a",{},"Проверьте названия, даты и предупреждения. Снимите отметку с ненужных записей и нажмите «Импортировать». Откройте соответствующий раздел в том же пространстве.")})
+ ],({fields})=>add(el('li'),el('strong',fields.title),el('p',fields.body)),node=>add(el('li'),node));
  guide.append(steps);
- for(const [title,body] of [
-  [globalThis.UladimI18n.text("literal_cc44faa7e8bc",{},"Apple Notes и обычные файлы"),globalThis.UladimI18n.text("literal_ccc0c4aad878",{},"На iPad откройте заметку, нажмите «Поделиться → Экспортировать как Markdown» и сохраните файл в «Файлы». В ULADIM выберите этот файл в разделе заметок. TXT и Markdown переносятся как редактируемый текст. PDF, HTML и вложения пока не поддерживаются.")],
-  ['Google Keep',globalThis.UladimI18n.text("literal_8f1992578112",{},"Запросите экспорт Google Keep в Google Takeout. Выберите скачанный ZIP с папкой Keep или отдельные JSON-файлы заметок. Текст и чек-листы сохраняются как редактируемый текст. Метки, закрепление, архивный статус, даты и вложения пока не переносятся. Заметки из корзины пропускаются.")],
-  [globalThis.UladimI18n.text("literal_2ea15d96b2d0",{},"Календарь"),globalThis.UladimI18n.text("literal_5714255d7b3e",{},"Выберите файл .ics из прежнего календаря. Импортируются названия, начало, часовой пояс и поддерживаемые повторения. Проверьте предупреждения о длительности, описаниях и исключениях до сохранения. Файл .ics даёт разовую копию. Для обновлений с Google Calendar потребуется отдельное подключение, которое пока готовится.")],
-  [globalThis.UladimI18n.text("literal_72b0940b8eb1",{},"Задачи и планировщики"),globalThis.UladimI18n.text("literal_493a9727f369",{},"Совместимый JSON переносит название и состояние выполнения. Если в файле есть время, описание, подзадачи или другие поля, ULADIM предупредит, что они пока не перенесутся. Поддержка официального экспорта Structured ещё проверяется.")],
- ]) guide.append(panel(title,body));
+ editorialRegion(guide,'import.sources',[
+  sourceBlock("files",{title:globalThis.UladimI18n.text("literal_cc44faa7e8bc",{},"Apple Notes и обычные файлы"),body:globalThis.UladimI18n.text("literal_ccc0c4aad878",{},"На iPad откройте заметку, нажмите «Поделиться → Экспортировать как Markdown» и сохраните файл в «Файлы». В ULADIM выберите этот файл в разделе заметок. TXT и Markdown переносятся как редактируемый текст. PDF, HTML и вложения пока не поддерживаются.")}),
+  sourceBlock("google-keep",{title:"Google Keep",body:globalThis.UladimI18n.text("literal_8f1992578112",{},"Запросите экспорт Google Keep в Google Takeout. Выберите скачанный ZIP с папкой Keep или отдельные JSON-файлы заметок. Текст и чек-листы сохраняются как редактируемый текст. Метки, закрепление, архивный статус, даты и вложения пока не переносятся. Заметки из корзины пропускаются.")}),
+  sourceBlock("calendar",{title:globalThis.UladimI18n.text("literal_2ea15d96b2d0",{},"Календарь"),body:globalThis.UladimI18n.text("literal_5714255d7b3e",{},"Выберите файл .ics из прежнего календаря. Импортируются названия, начало, часовой пояс и поддерживаемые повторения. Проверьте предупреждения о длительности, описаниях и исключениях до сохранения. Файл .ics даёт разовую копию. Для обновлений с Google Calendar потребуется отдельное подключение, которое пока готовится.")}),
+  sourceBlock("tasks",{title:globalThis.UladimI18n.text("literal_72b0940b8eb1",{},"Задачи и планировщики"),body:globalThis.UladimI18n.text("literal_493a9727f369",{},"Совместимый JSON переносит название и состояние выполнения. Если в файле есть время, описание, подзадачи или другие поля, ULADIM предупредит, что они пока не перенесутся. Поддержка официального экспорта Structured ещё проверяется.")})
+ ],({fields})=>panel(fields.title,fields.body));
  guide.append(link(globalThis.UladimI18n.text("literal_17cc8a5ee310",{},"Открыть ULADIM"),'/app'),link(globalThis.UladimI18n.text("literal_654eda15d607",{},"Вопросы об импорте"),'/faq#import',true));
  host.append(guide);
  if(location.hash==='#import')requestAnimationFrame(()=>guide.scrollIntoView());
@@ -755,9 +905,12 @@ function focusLoginStory(create,lang){
   'uz-Cyrl':['Камроқ ташвиш.','Кўпроқ аниқлик.','Муҳим ишлар бир жойда. Вазифалар, режалар ва молия ўз маромингизда.','Вазифалар ва қайдлар','Тадбирлар ва тақвим','Шахсий ва оилавий молия','Телефон, планшет ва компьютер браузерида.']
  })[lang]||['Less to juggle.','More clarity.','Keep what matters together. Tasks, plans and finances at your pace.','Tasks and notes','Events and calendar','Personal and family finances','In your browser on phone, tablet and desktop.'];
  const aside=create('aside',undefined,'focus-login-story');
- const heading=create('h2');heading.append(create('span',copy[0]),create('span',copy[1]));
- const list=create('ul');for(const text of copy.slice(3,6))list.append(create('li',text));
- aside.append(create('div','ULADIM · '+(globalThis.UladimI18n.text("loc_b05681c1e896",{},"FOCUS")),'focus-story-label'),heading,create('p',copy[2]),list,create('p',copy[6],'focus-story-footnote'));
+ const heading=create('h2');heading.append(create('span',pageCopy('title',copy[0])),create('span',pageCopy('title-accent',copy[1])));
+ const list=create('ul');
+ editorialRegion(list,'features',[
+  sourceBlock('tasks',{body:copy[3]}),sourceBlock('calendar',{body:copy[4]}),sourceBlock('money',{body:copy[5]}),
+ ],({fields})=>create('li',fields.body),node=>add(create('li'),node));
+ aside.append(create('div','ULADIM · '+pageCopy('kicker',globalThis.UladimI18n.text("loc_b05681c1e896",{},"FOCUS")),'focus-story-label'),heading,create('p',pageCopy('lead',copy[2])),list,create('p',pageCopy('footnote',copy[6]),'focus-story-footnote'));
  return aside;
 }
 
@@ -793,9 +946,9 @@ const publicExperience=(()=>{
   document.title=title+' · ULADIM';app.classList.add('help-center');
   app.replaceChildren(node('div',kicker,'help-kicker'),node('h1',title),node('p',description,'help-lead'));
  }
- function related(items=[[globalThis.UladimI18n.text("literal_a3ca1c94161e",{},"Вопросы и ответы"),'/faq'],[globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),'/support']]){
+ function related(items){
   const nav=node('nav',undefined,'help-related');nav.setAttribute('aria-label',globalThis.UladimI18n.text("literal_e49558f3eb38",{},"По теме"));
-  for(const [label,href]of items)nav.append(a(label,href));app.append(nav);
+  editorialRegion(nav,'related',items,editorialLink);app.append(nav);
  }
  function contactLink(parent,label=globalThis.UladimI18n.text("literal_dbe91db5dc01",{},"Написать в поддержку")){
   const email=contact();if(email)parent.append(link(label,'mailto:'+email,true));
@@ -809,108 +962,197 @@ const publicExperience=(()=>{
  function reader(sections){
   const layout=node('div',undefined,'help-reader'),toc=node('nav',undefined,'help-toc'),article=node('article',undefined,'help-document');
   toc.setAttribute('aria-label',globalThis.UladimI18n.text("literal_6c43a76d4cd6",{},"Содержание документа"));toc.append(node('p',globalThis.UladimI18n.text("literal_8ac5f596c28e",{},"На этой странице"),'help-kicker'));const list=node('ol');
-  for(const [id,title,paragraphs]of sections){list.append(add(node('li'),a(title,'#'+id)));const section=block(title,...paragraphs);section.id=id;article.append(section);}
+  for(const [id,title,paragraphs] of sections){
+   list.append(add(node('li'),a(title,'#'+id)));
+   const section=block(title);section.id=id;
+   for(const paragraph of paragraphs){
+    if(Array.isArray(paragraph)){
+     const [region,baseline]=paragraph;
+     editorialRegion(section,region,baseline,({fields})=>node('p',fields.body));
+    }else if(paragraph)section.append(node('p',paragraph));
+   }
+   article.append(section);
+  }
   toc.append(list);layout.append(toc,article);app.append(layout);
  }
  const safety=()=>globalThis.UladimI18n.text("literal_38291337a9b4",{},"Не отправляйте пароли, одноразовые коды, полные банковские реквизиты, выписки или документы. Достаточно описать действие и сообщение на экране.");
  function legal(path){
   const privacy=path==='/privacy';
-  intro(globalThis.UladimI18n.text("literal_185fd23dda83",{},"ДАННЫЕ И ПРАВИЛА"),privacy?globalThis.UladimI18n.text("literal_6d5c24967752",{},"Конфиденциальность"):globalThis.UladimI18n.text("literal_4b5ef4dc258e",{},"Условия использования"),privacy?globalThis.UladimI18n.text("literal_9b5d8db27cb6",{},"Какие данные нужны ULADIM, зачем они используются и как ими управлять."):globalThis.UladimI18n.text("literal_f45c999d5948",{},"Понятные правила работы с аккаунтом, личными и общими записями."));
+  intro(pageCopy('kicker',globalThis.UladimI18n.text("literal_185fd23dda83",{},"ДАННЫЕ И ПРАВИЛА")),pageCopy('title',privacy?globalThis.UladimI18n.text("literal_6d5c24967752",{},"Конфиденциальность"):globalThis.UladimI18n.text("literal_4b5ef4dc258e",{},"Условия использования")),pageCopy('lead',privacy?globalThis.UladimI18n.text("literal_9b5d8db27cb6",{},"Какие данные нужны ULADIM, зачем они используются и как ими управлять."):globalThis.UladimI18n.text("literal_f45c999d5948",{},"Понятные правила работы с аккаунтом, личными и общими записями.")));
   const meta=node('div',undefined,'help-document-meta');meta.append(node('span',globalThis.UladimI18n.text("literal_9d371f780de1",{},"Обновлено ")+facts.updated),node('span',globalThis.UladimI18n.text("literal_83c21cec4c45",{},"Версия ")+facts.version));
   const print=node('button',globalThis.UladimI18n.text("literal_462e125503f6",{},"Распечатать"),'secondary');print.type='button';print.addEventListener('click',()=>window.print());meta.append(print);app.append(meta);draft();
   const highlights=node('section',undefined,'help-highlights');highlights.setAttribute('aria-label',globalThis.UladimI18n.text("literal_b757623f24f4",{},"Главное"));
-  for(const [title,text]of privacy?[
-   [globalThis.UladimI18n.text("literal_7218fca38969",{},"Без рекламной аналитики"),globalThis.UladimI18n.text("literal_a46587c7f203",{},"ULADIM не использует рекламные трекеры и не продаёт ваши данные.")],
-   [globalThis.UladimI18n.text("literal_b25c6a2d47d7",{},"Данные по делу"),globalThis.UladimI18n.text("literal_deaf390f59d4",{},"Аккаунт и ваши записи нужны для выбранных вами функций.")],
-   [globalThis.UladimI18n.text("literal_e18451f23049",{},"Контроль у вас"),globalThis.UladimI18n.text("literal_c86d2a26dbc8",{},"Управляйте доступом, устройствами и удалением аккаунта.")]
-  ]:[[globalThis.UladimI18n.text("literal_e932af24560d",{},"Сейчас бесплатно"),globalThis.UladimI18n.text("literal_ce3f169b44a9",{},"Подписка и банковская карта для текущих функций не нужны.")],[globalThis.UladimI18n.text("literal_8dde14ed1892",{},"Ваши записи — ваши"),globalThis.UladimI18n.text("literal_1e5342ad93d4",{},"Добавляйте данные, которыми вправе пользоваться и делиться.")],[globalThis.UladimI18n.text("literal_3b1d04aa2f19",{},"Финансы для учёта"),globalThis.UladimI18n.text("literal_f4a23a3b8348",{},"Приложение не проводит платежи и банковские переводы.")]])highlights.append(add(node('div'),node('strong',title),node('p',text)));
+  editorialRegion(highlights,'highlights',privacy?[
+  sourceBlock("analytics",{title:globalThis.UladimI18n.text("literal_7218fca38969",{},"Без рекламной аналитики"),body:globalThis.UladimI18n.text("literal_a46587c7f203",{},"ULADIM не использует рекламные трекеры и не продаёт ваши данные.")}),
+  sourceBlock("data",{title:globalThis.UladimI18n.text("literal_b25c6a2d47d7",{},"Данные по делу"),body:globalThis.UladimI18n.text("literal_deaf390f59d4",{},"Аккаунт и ваши записи нужны для выбранных вами функций.")}),
+  sourceBlock("control",{title:globalThis.UladimI18n.text("literal_e18451f23049",{},"Контроль у вас"),body:globalThis.UladimI18n.text("literal_c86d2a26dbc8",{},"Управляйте доступом, устройствами и удалением аккаунта.")})
+ ]:[
+  sourceBlock("free",{title:globalThis.UladimI18n.text("literal_e932af24560d",{},"Сейчас бесплатно"),body:globalThis.UladimI18n.text("literal_ce3f169b44a9",{},"Подписка и банковская карта для текущих функций не нужны.")}),
+  sourceBlock("records",{title:globalThis.UladimI18n.text("literal_8dde14ed1892",{},"Ваши записи — ваши"),body:globalThis.UladimI18n.text("literal_1e5342ad93d4",{},"Добавляйте данные, которыми вправе пользоваться и делиться.")}),
+  sourceBlock("finance",{title:globalThis.UladimI18n.text("literal_3b1d04aa2f19",{},"Финансы для учёта"),body:globalThis.UladimI18n.text("literal_f4a23a3b8348",{},"Приложение не проводит платежи и банковские переводы.")})
+ ],({fields})=>add(node('div'),node('strong',fields.title),node('p',fields.body)));
   app.append(highlights);
   const operator=facts.operatorName?globalThis.UladimI18n.text("template_01b861a1acc8",{"arg0":(facts.operatorName),"arg1":(facts.operatorCountry?globalThis.UladimI18n.text("literal_c8f63987b51f",{},"Страна: ")+facts.operatorCountry+'.':''),"arg2":(facts.operatorPostalAddress?globalThis.UladimI18n.text("literal_91c1740adcfb",{},"Почтовый адрес: ")+facts.operatorPostalAddress+'.':'')},"Оператор сервиса: {arg0}. {arg1} {arg2}"):globalThis.UladimI18n.text("literal_b5906d66ca19",{},"Наименование и страна оператора будут добавлены в окончательную редакцию.");
   const email=contact();
   const sections=privacy?[
-   ['operator',globalThis.UladimI18n.text("literal_0e7d0a284bf5",{},"Кто отвечает за данные"),[operator,email?globalThis.UladimI18n.text("literal_a07e1492a691",{},"Вопросы о данных можно направить по адресу ")+email+'.':contactAddress()?globalThis.UladimI18n.text("literal_3195c9b215f6",{},"Адрес для вопросов о данных: ")+contactAddress()+'. Приём почты готовится к запуску. Пока действующий пользователь может создать обращение в своём аккаунте.':globalThis.UladimI18n.text("literal_90987b85de1c",{},"Публичный адрес для вопросов о данных ещё не подтверждён. Действующий пользователь может создать обращение в разделе поддержки своего аккаунта.")]],
-   ['data',globalThis.UladimI18n.text("literal_b110ddb1ee17",{},"Какие данные используются"),[
-    globalThis.UladimI18n.text("literal_8aeaa61a861a",{},"Для облачного аккаунта нужны адрес электронной почты, подтверждение адреса и сведения о выбранном способе входа. При входе по паролю сохраняется его защищённая проверочная запись, а не открытый пароль. Для безопасности используются сведения о сеансах и подключённых устройствах."),
-    globalThis.UladimI18n.text("literal_61b02c0881b3",{},"Когда вы создаёте или синхронизируете записи, сервис обрабатывает их содержимое: задачи, заметки, события, счета, финансовые операции, переводы, бюджеты и другие выбранные вами данные. Не добавляйте сведения о других людях без достаточного основания."),
-    globalThis.UladimI18n.text("literal_f1e769c59884",{},"В общих пространствах обрабатываются состав участников, их роли, назначения и общие записи. Финансовая запись может содержать введённое вами имя контрагента, назначение или комментарий. Такие сведения также требуют бережного обращения."),
-    globalThis.UladimI18n.text("literal_1f67a8e502d2",{},"Сервис не предназначен для хранения биометрических и генетических материалов, медицинских документов и иных избыточных чувствительных сведений. Не добавляйте такие материалы в заметки, общие записи и обращения в поддержку."),
+   ['operator',pageCopy("section.operator.title",globalThis.UladimI18n.text("literal_0e7d0a284bf5",{},"Кто отвечает за данные")),[
+    operator,
+    email?globalThis.UladimI18n.text("literal_a07e1492a691",{},"Вопросы о данных можно направить по адресу ")+email+'.':contactAddress()?globalThis.UladimI18n.text("literal_3195c9b215f6",{},"Адрес для вопросов о данных: ")+contactAddress()+'. Приём почты готовится к запуску. Пока действующий пользователь может создать обращение в своём аккаунте.':globalThis.UladimI18n.text("literal_90987b85de1c",{},"Публичный адрес для вопросов о данных ещё не подтверждён. Действующий пользователь может создать обращение в разделе поддержки своего аккаунта.")]],
+   ['data',pageCopy("section.data.title",globalThis.UladimI18n.text("literal_b110ddb1ee17",{},"Какие данные используются")),[
+    ["section.data.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_8aeaa61a861a",{},"Для облачного аккаунта нужны адрес электронной почты, подтверждение адреса и сведения о выбранном способе входа. При входе по паролю сохраняется его защищённая проверочная запись, а не открытый пароль. Для безопасности используются сведения о сеансах и подключённых устройствах.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_61b02c0881b3",{},"Когда вы создаёте или синхронизируете записи, сервис обрабатывает их содержимое: задачи, заметки, события, счета, финансовые операции, переводы, бюджеты и другие выбранные вами данные. Не добавляйте сведения о других людях без достаточного основания.")}),
+  sourceBlock("paragraph-3",{body:globalThis.UladimI18n.text("literal_f1e769c59884",{},"В общих пространствах обрабатываются состав участников, их роли, назначения и общие записи. Финансовая запись может содержать введённое вами имя контрагента, назначение или комментарий. Такие сведения также требуют бережного обращения.")}),
+  sourceBlock("paragraph-4",{body:globalThis.UladimI18n.text("literal_1f67a8e502d2",{},"Сервис не предназначен для хранения биометрических и генетических материалов, медицинских документов и иных избыточных чувствительных сведений. Не добавляйте такие материалы в заметки, общие записи и обращения в поддержку.")})
+ ]],
     globalThis.UladimI18n.text("literal_8270cbb104c1",{},"Если вы пишете в поддержку, обрабатываются тема обращения и сообщения, которые вы сами отправили. ")+safety()]],
-   ['purpose',globalThis.UladimI18n.text("literal_c4e977d24cd8",{},"Зачем это нужно"),[
-    globalThis.UladimI18n.text("literal_088e26657065",{},"Данные аккаунта нужны для входа, восстановления доступа и связи по вопросам безопасности. Содержимое записей используется для выбранных вами функций: хранения, планирования, отображения и синхронизации между устройствами и участниками пространства."),
-    globalThis.UladimI18n.text("literal_fca48b580699",{},"Служебные письма связаны с вашим действием или безопасностью аккаунта. Рекламная рассылка и реклама в приложении не используются. ULADIM не подключает рекламную аналитику, межсайтовое отслеживание и продажу персональных данных."),
+   ['purpose',pageCopy("section.purpose.title",globalThis.UladimI18n.text("literal_c4e977d24cd8",{},"Зачем это нужно")),[
+    ["section.purpose.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_088e26657065",{},"Данные аккаунта нужны для входа, восстановления доступа и связи по вопросам безопасности. Содержимое записей используется для выбранных вами функций: хранения, планирования, отображения и синхронизации между устройствами и участниками пространства.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_fca48b580699",{},"Служебные письма связаны с вашим действием или безопасностью аккаунта. Рекламная рассылка и реклама в приложении не используются. ULADIM не подключает рекламную аналитику, межсайтовое отслеживание и продажу персональных данных.")})
+ ]],
     facts.legalBasis||globalThis.UladimI18n.text("literal_f982ec37b1d0",{},"Правовые основания обработки и особенности осуществления ваших прав будут указаны после подтверждения страны и статуса оператора.")]],
-   ['sharing',globalThis.UladimI18n.text("literal_e0b04a87ab0b",{},"Кто может видеть записи"),[
-    globalThis.UladimI18n.text("literal_30c33ac81404",{},"Личные и общие пространства разделены. Другие участники получают доступ к общим данным в пределах своей роли и настроек записи. Проверьте пространство и доступ перед сохранением личной информации."),
-    globalThis.UladimI18n.text("literal_fc0882d81d50",{},"Сотрудники поддержки получают сообщения, которые вы отправили в обращении. Обычная панель поддержки не предоставляет им просмотр личных задач, заметок и финансов. Для эксплуатации сервиса доступ к инфраструктуре имеют уполномоченные лица в пределах своих обязанностей."),
-    globalThis.UladimI18n.text("literal_387f6d32dfeb",{},"Данные могут передаваться по законному требованию в случаях и объёме, предусмотренных применимым правом. Мы не обещаем абсолютную недоступность данных при обстоятельствах, когда закон требует их раскрытия.")]],
-   ['providers',globalThis.UladimI18n.text("literal_ce609ca44fd1",{},"Сервисы, которые помогают работе"),[
-    globalThis.UladimI18n.text("literal_7261c0e0577a",{},"Для размещения сервиса используется инфраструктура Hostinger. Служебные письма отправляются через Resend. Эти поставщики обрабатывают данные, необходимые для своей услуги. Почтовая переписка с поддержкой хранится отдельно от обращений внутри приложения."),
+   ['sharing',pageCopy("section.sharing.title",globalThis.UladimI18n.text("literal_e0b04a87ab0b",{},"Кто может видеть записи")),[
+    ["section.sharing.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_30c33ac81404",{},"Личные и общие пространства разделены. Другие участники получают доступ к общим данным в пределах своей роли и настроек записи. Проверьте пространство и доступ перед сохранением личной информации.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_fc0882d81d50",{},"Сотрудники поддержки получают сообщения, которые вы отправили в обращении. Обычная панель поддержки не предоставляет им просмотр личных задач, заметок и финансов. Для эксплуатации сервиса доступ к инфраструктуре имеют уполномоченные лица в пределах своих обязанностей.")}),
+  sourceBlock("paragraph-3",{body:globalThis.UladimI18n.text("literal_387f6d32dfeb",{},"Данные могут передаваться по законному требованию в случаях и объёме, предусмотренных применимым правом. Мы не обещаем абсолютную недоступность данных при обстоятельствах, когда закон требует их раскрытия.")})
+ ]]]],
+   ['providers',pageCopy("section.providers.title",globalThis.UladimI18n.text("literal_ce609ca44fd1",{},"Сервисы, которые помогают работе")),[
+    ["section.providers.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_7261c0e0577a",{},"Для размещения сервиса используется инфраструктура Hostinger. Служебные письма отправляются через Resend. Эти поставщики обрабатывают данные, необходимые для своей услуги. Почтовая переписка с поддержкой хранится отдельно от обращений внутри приложения.")})
+ ]],
     facts.correspondenceRetention||globalThis.UladimI18n.text("literal_0c44ddf4b4a8",{},"Стандартный срок хранения писем у поставщика почтовой поддержки — ")+facts.supportProviderRetentionDays+globalThis.UladimI18n.text("literal_7a4ce88671d7",{}," дней. Удаление аккаунта само по себе не удаляет отправленные отдельно письма и копии у почтовых поставщиков. Порядок очистки этой переписки будет указан после подтверждения работы почтовой поддержки."),
-    globalThis.UladimI18n.text("literal_f6ca8542e1e7",{},"Вход через Google используется только по вашему выбору. Запрашиваются подтверждение личности и адрес электронной почты. Доступ к вашим контактам, Google Drive, заметкам и календарям этот вход не предоставляет. Подключение Google само по себе не импортирует записи."),
+    ["section.providers.prose2",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_f6ca8542e1e7",{},"Вход через Google используется только по вашему выбору. Запрашиваются подтверждение личности и адрес электронной почты. Доступ к вашим контактам, Google Drive, заметкам и календарям этот вход не предоставляет. Подключение Google само по себе не импортирует записи.")})
+ ]],
     facts.processingRegion?globalThis.UladimI18n.text("literal_76e04ebc81df",{},"Место обработки и международная передача: ")+facts.processingRegion:globalThis.UladimI18n.text("literal_6b09fa0c6ad2",{},"Регион размещения данных, условия международной передачи и сведения о поставщиках будут уточнены в окончательной редакции.")]],
-   ['device',globalThis.UladimI18n.text("literal_86ba4af72f09",{},"Что остаётся на устройстве"),[
-    globalThis.UladimI18n.text("literal_8c868b764a2f",{},"Браузер использует необходимый файл cookie для сохранения входа. На устройстве также сохраняются выбранные язык, тема и другие настройки интерфейса. Файлы интерфейса могут сохраняться для его загрузки. Рекламные cookie не используются."),
-    globalThis.UladimI18n.text("literal_843de3ff70b3",{},"Локальные записи Android хранятся на устройстве. Сам вход в аккаунт не означает автоматическую загрузку всех локальных данных. Облачная обработка начинается для записей, которые вы создаёте в веб-приложении или явно синхронизируете."),
-    globalThis.UladimI18n.text("literal_2431c67bafb4",{},"Файлы импорта обрабатываются на устройстве. После проверки и подтверждения в облако отправляются выбранные записи. Этот инструмент не загружает исходный файл выписки целиком.")]],
-   ['retention',globalThis.UladimI18n.text("literal_9875bf9df1a0",{},"Сроки хранения и удаление"),[
-    globalThis.UladimI18n.text("literal_5c0b61da977c",{},"Данные действующего аккаунта используются, пока нужны для предоставления выбранных вами функций. Удалить отдельные записи и запросить удаление аккаунта можно в приложении."),
+   ['device',pageCopy("section.device.title",globalThis.UladimI18n.text("literal_86ba4af72f09",{},"Что остаётся на устройстве")),[
+    ["section.device.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_8c868b764a2f",{},"Браузер использует необходимый файл cookie для сохранения входа. На устройстве также сохраняются выбранные язык, тема и другие настройки интерфейса. Файлы интерфейса могут сохраняться для его загрузки. Рекламные cookie не используются.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_843de3ff70b3",{},"Локальные записи Android хранятся на устройстве. Сам вход в аккаунт не означает автоматическую загрузку всех локальных данных. Облачная обработка начинается для записей, которые вы создаёте в веб-приложении или явно синхронизируете.")}),
+  sourceBlock("paragraph-3",{body:globalThis.UladimI18n.text("literal_2431c67bafb4",{},"Файлы импорта обрабатываются на устройстве. После проверки и подтверждения в облако отправляются выбранные записи. Этот инструмент не загружает исходный файл выписки целиком.")})
+ ]]]],
+   ['retention',pageCopy("section.retention.title",globalThis.UladimI18n.text("literal_9875bf9df1a0",{},"Сроки хранения и удаление")),[
+    ["section.retention.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_5c0b61da977c",{},"Данные действующего аккаунта используются, пока нужны для предоставления выбранных вами функций. Удалить отдельные записи и запросить удаление аккаунта можно в приложении.")})
+ ]],
     globalThis.UladimI18n.text("literal_4d3e526f8ded",{"arg0":(facts.deletionGraceHours)},"Запрос удаления аккаунта можно отменить в течение {arg0} часов, до указанного времени. После этого вход блокируется и начинается удаление; завершение может занять время. Удаление облачного аккаунта не стирает сохранённые на ваших устройствах копии."),
     facts.deletionPolicy||globalThis.UladimI18n.text("literal_dec5642ebc21",{},"Точный объём удаления личных данных, порядок обращения с общими записями и действия при исключительных обстоятельствах будут зафиксированы после проверки обновлённого процесса удаления."),
     facts.backupRetention?globalThis.UladimI18n.text("literal_f1d8e8b81538",{},"Резервные копии: ")+facts.backupRetention:globalThis.UladimI18n.text("literal_ac2886695e9f",{},"Срок хранения резервных копий и порядок исключения удалённых данных при восстановлении ещё уточняются. До подтверждения этих условий мы не обещаем мгновенное исчезновение данных из всех копий."),
     facts.securityRetention?globalThis.UladimI18n.text("literal_5865973630aa",{},"Данные безопасности: ")+facts.securityRetention:globalThis.UladimI18n.text("literal_e5fa14b1d1e3",{},"Состав и сроки хранения необходимых сведений безопасности будут указаны отдельно. Они не используются для рекламного профилирования.")]],
-   ['rights',globalThis.UladimI18n.text("literal_eac9b6769e9c",{},"Как управлять своими данными"),[
-    globalThis.UladimI18n.text("literal_82ae4d3e8279",{},"В профиле можно изменить доступные сведения аккаунта, проверить устройства, отозвать доступ, настроить защиту и запросить удаление. Экспортируйте нужные записи и проверьте созданный файл перед удалением."),
-    globalThis.UladimI18n.text("literal_e5b2b5155e90",{},"Если нужно получить сведения об обработке, исправить данные, сообщить об ошибке или обратиться по поводу прав другого человека, используйте поддержку. Для защиты аккаунта может потребоваться подтвердить, что запрос относится к вам. Не передавайте пароль или одноразовый код сотруднику поддержки."),
-    globalThis.UladimI18n.text("literal_64059f70ea74",{},"Право на обращение в компетентный орган и другие предусмотренные законом права сохраняются. Срок ответа и применимые процедуры зависят от подтверждённой юрисдикции оператора.")]],
-   ['children',globalThis.UladimI18n.text("literal_11a600f8ecf0",{},"Семейные пространства и возраст"),[facts.minimumAgePolicy||globalThis.UladimI18n.text("literal_9fc7af3a547a",{},"Возрастные условия и порядок участия несовершеннолетних должны быть утверждены оператором до окончательной публикации. Наличие детской роли в семейном пространстве само по себе не заменяет согласие или участие законного представителя, если оно требуется законом."),globalThis.UladimI18n.text("literal_59f141a492d1",{},"Участник, добавляющий данные другого человека, должен иметь право на такое действие. Не размещайте в общих записях избыточные сведения о детях и других членах семьи.")]],
-   ['changes',globalThis.UladimI18n.text("literal_cd65a8c51047",{},"Изменения политики"),[globalThis.UladimI18n.text("literal_850151f3ca93",{},"Дата и версия указаны в начале страницы. При изменении состава обработки или существенных условий новая редакция должна описывать эти изменения понятным языком. Согласие запрашивается отдельно там, где оно требуется законом.")]]
+   ['rights',pageCopy("section.rights.title",globalThis.UladimI18n.text("literal_eac9b6769e9c",{},"Как управлять своими данными")),[
+    ["section.rights.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_82ae4d3e8279",{},"В профиле можно изменить доступные сведения аккаунта, проверить устройства, отозвать доступ, настроить защиту и запросить удаление. Экспортируйте нужные записи и проверьте созданный файл перед удалением.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_e5b2b5155e90",{},"Если нужно получить сведения об обработке, исправить данные, сообщить об ошибке или обратиться по поводу прав другого человека, используйте поддержку. Для защиты аккаунта может потребоваться подтвердить, что запрос относится к вам. Не передавайте пароль или одноразовый код сотруднику поддержки.")}),
+  sourceBlock("paragraph-3",{body:globalThis.UladimI18n.text("literal_64059f70ea74",{},"Право на обращение в компетентный орган и другие предусмотренные законом права сохраняются. Срок ответа и применимые процедуры зависят от подтверждённой юрисдикции оператора.")})
+ ]]]],
+   ['children',pageCopy("section.children.title",globalThis.UladimI18n.text("literal_11a600f8ecf0",{},"Семейные пространства и возраст")),[
+    facts.minimumAgePolicy||globalThis.UladimI18n.text("literal_9fc7af3a547a",{},"Возрастные условия и порядок участия несовершеннолетних должны быть утверждены оператором до окончательной публикации. Наличие детской роли в семейном пространстве само по себе не заменяет согласие или участие законного представителя, если оно требуется законом."),
+    ["section.children.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_59f141a492d1",{},"Участник, добавляющий данные другого человека, должен иметь право на такое действие. Не размещайте в общих записях избыточные сведения о детях и других членах семьи.")})
+ ]]]],
+   ['changes',pageCopy("section.changes.title",globalThis.UladimI18n.text("literal_cd65a8c51047",{},"Изменения политики")),[
+    ["section.changes.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_850151f3ca93",{},"Дата и версия указаны в начале страницы. При изменении состава обработки или существенных условий новая редакция должна описывать эти изменения понятным языком. Согласие запрашивается отдельно там, где оно требуется законом.")})
+ ]]]]
   ]:[
-   ['operator',globalThis.UladimI18n.text("literal_d26f9e70635e",{},"О сервисе и операторе"),[operator,globalThis.UladimI18n.text("literal_7d1e02d74658",{},"ULADIM помогает вести задачи, заметки, календарь, личный финансовый учёт и общие семейные дела. Текущие функции предоставляются бесплатно."),ready()?globalThis.UladimI18n.text("literal_3fc9ccab6147",{},"Настоящая редакция описывает условия использования сервиса. Дата и версия указаны в начале страницы."):globalThis.UladimI18n.text("literal_13980ad0e528",{},"Окончательная публичная редакция условий будет действовать после заполнения и подтверждения сведений оператора.")]],
-   ['account',globalThis.UladimI18n.text("literal_2b7dc80f13f1",{},"Аккаунт и безопасность"),[globalThis.UladimI18n.text("literal_a6b832042a7a",{},"Указывайте доступную вам электронную почту и подтверждайте её. Берегите пароль, коды подтверждения и резервные коды. Не передавайте аккаунт другому человеку. Если устройство потеряно, отзовите его доступ из профиля."),globalThis.UladimI18n.text("literal_4053c16afa84",{},"Используйте только аккаунты и пространства, к которым у вас есть право доступа. Не пытайтесь обходить защиту, читать чужие записи, мешать работе сервиса или распространять через него незаконный и вредоносный контент.")]],
-   ['records',globalThis.UladimI18n.text("literal_e22dc5d4d5b2",{},"Ваши записи и общие пространства"),[globalThis.UladimI18n.text("literal_3dcd9109071d",{},"Вы сохраняете права на собственное содержимое. Размещая запись, вы разрешаете обработку, необходимую для выбранных вами функций и настроек доступа. Это не передаёт сервису право продавать ваши записи."),globalThis.UladimI18n.text("literal_9f670d6554d2",{},"Перед добавлением данных другого человека убедитесь, что вправе это сделать. Выбирайте пространство и участников осознанно. Изменение общих записей может повлиять на других участников; проверяйте последствия перед подтверждением.")]],
-   ['availability',globalThis.UladimI18n.text("literal_65920b5d54ed",{},"Сохранение, синхронизация и доступность"),[globalThis.UladimI18n.text("literal_85a31ac3d53d",{},"Для сохранения и просмотра облачных записей нужно соединение. Локальные функции Android могут работать отдельно от облака. Если соединение пропало во время сохранения, проверьте состояние записи перед повторным вводом."),globalThis.UladimI18n.text("literal_bf01091cca8f",{},"Технические работы и сбои могут временно ограничивать доступ. Для важных записей сохраняйте собственную копию. Возможность восстановления зависит от доступных данных и срока хранения; поддержка не обещает восстановить любую удалённую запись.")]],
-   ['finance',globalThis.UladimI18n.text("literal_70ed37ca6907",{},"Финансовый учёт"),[globalThis.UladimI18n.text("literal_27224901eec4",{},"ULADIM предназначен для записи и анализа введённых вами данных. Создание перевода в приложении не переводит деньги, не подключает банковский счёт и не выполняет платёж. Приложение не оказывает банковские, кредитные, брокерские или инвестиционные услуги."),globalThis.UladimI18n.text("literal_defe84c751b5",{},"Проверяйте исходные суммы, валюты и импорт перед сохранением. Финансовые результаты зависят от полноты и правильности введённых записей. Суммы в разных валютах не следует складывать без выбранного вами способа пересчёта.")]],
-   ['plans',globalThis.UladimI18n.text("literal_f03459015fb8",{},"Бесплатный доступ и будущие подписки"),[globalThis.UladimI18n.text("literal_0950c4130218",{},"Все текущие функции доступны бесплатно. Банковская карта и оформление подписки не требуются. Отображаемый уровень доступа сам по себе не означает покупку или согласие на списания."),globalThis.UladimI18n.text("literal_b982908ebe6b",{},"Plus готовится как будущий вариант доступа. Его окончательные функции, цена, срок и условия продления пока не опубликованы. Возможности с искусственным интеллектом относятся к более поздним планам и сейчас недоступны."),globalThis.UladimI18n.text("literal_bb2a70232952",{},"До появления платной услуги её условия должны отдельно сообщать полную цену, период, правила продления, отмены, восстановления покупки и возврата. Новые платные условия не создают согласие на оплату автоматически.")]],
-   ['refunds',globalThis.UladimI18n.text("literal_66ac80bd2d68",{},"Отмена и возвраты"),[globalThis.UladimI18n.text("literal_70c948fae8c0",{},"Сейчас реальные покупки и списания в ULADIM отключены, поэтому платная подписка здесь не оформляется. Если вы заметили незнакомое списание с похожим названием, проверьте получателя и обратитесь в банк или площадку, где оно было совершено."),globalThis.UladimI18n.text("literal_e4da3c6f3442",{},"Если платные услуги будут запущены, способ управления и возврата будет зависеть от места покупки и применимого закона. Для каждого способа оплаты понадобятся опубликованные правила и доступная поддержка. Эти условия не ограничивают обязательные права потребителя.")]],
-   ['ending',globalThis.UladimI18n.text("literal_25672d9828a1",{},"Прекращение доступа и удаление"),[globalThis.UladimI18n.text("literal_ea67f4f4f096",{},"Вы можете перестать пользоваться сервисом и запросить удаление аккаунта. Облачное удаление и очистка данных на вашем устройстве выполняются отдельно. Перед удалением сохраните нужные записи и проверьте общие пространства."),globalThis.UladimI18n.text("literal_28dc3c660e18",{},"Доступ может быть ограничен для защиты пользователей и сервиса при нарушении правил или выявлении угрозы. Причина и доступный способ обращения должны сообщаться в пределах, допустимых законом и требованиями безопасности. Порядок удаления описан на отдельной странице.")]],
-   ['age',globalThis.UladimI18n.text("literal_bafbb28e450a",{},"Семья и возраст"),[facts.minimumAgePolicy||globalThis.UladimI18n.text("literal_12a278dea57e",{},"Условия участия несовершеннолетних и законного представительства будут указаны после утверждения оператором. Не следует считать, что семейная роль автоматически подтверждает право использовать сервис в любом возрасте.")]],
-   ['law',globalThis.UladimI18n.text("literal_e26a688464ce",{},"Ответственность и обращения"),[globalThis.UladimI18n.text("literal_b526fc5062e5",{},"Обязательные права, предоставленные вам применимым законом, сохраняются. Эти условия не исключают ответственность, которую нельзя исключить по закону."),ready()?globalThis.UladimI18n.text("literal_74671df00ce9",{},"Споры рассматриваются в порядке, предусмотренном применимым законом, с сохранением обязательных прав потребителя. Сведения об операторе и контакт для обращения указаны выше. Для начала можно описать вопрос в поддержке."):globalThis.UladimI18n.text("literal_b1818ce4f484",{},"Применяется законодательство Республики Узбекистан с сохранением обязательных прав, которые предоставляет вам применимый закон. Сначала можно направить обращение оператору. Подсудность и порядок рассмотрения спора определяются законом; эти условия не отменяют право обратиться в компетентный орган или суд.")]],
-   ['changes',globalThis.UladimI18n.text("literal_4fef4a5eb736",{},"Обновления условий"),[globalThis.UladimI18n.text("literal_eb933a03c94e",{},"Дата и версия находятся в начале страницы. Существенные изменения публикуются в новой редакции. Появление новых платных возможностей требует отдельного понятного предложения и вашего согласия там, где оно необходимо.")]]
+   ['operator',pageCopy("section.operator.title",globalThis.UladimI18n.text("literal_d26f9e70635e",{},"О сервисе и операторе")),[
+    operator,
+    ["section.operator.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_7d1e02d74658",{},"ULADIM помогает вести задачи, заметки, календарь, личный финансовый учёт и общие семейные дела. Текущие функции предоставляются бесплатно.")})
+ ]],
+    ready()?globalThis.UladimI18n.text("literal_3fc9ccab6147",{},"Настоящая редакция описывает условия использования сервиса. Дата и версия указаны в начале страницы."):globalThis.UladimI18n.text("literal_13980ad0e528",{},"Окончательная публичная редакция условий будет действовать после заполнения и подтверждения сведений оператора.")]],
+   ['account',pageCopy("section.account.title",globalThis.UladimI18n.text("literal_2b7dc80f13f1",{},"Аккаунт и безопасность")),[
+    ["section.account.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_a6b832042a7a",{},"Указывайте доступную вам электронную почту и подтверждайте её. Берегите пароль, коды подтверждения и резервные коды. Не передавайте аккаунт другому человеку. Если устройство потеряно, отзовите его доступ из профиля.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_4053c16afa84",{},"Используйте только аккаунты и пространства, к которым у вас есть право доступа. Не пытайтесь обходить защиту, читать чужие записи, мешать работе сервиса или распространять через него незаконный и вредоносный контент.")})
+ ]]]],
+   ['records',pageCopy("section.records.title",globalThis.UladimI18n.text("literal_e22dc5d4d5b2",{},"Ваши записи и общие пространства")),[
+    ["section.records.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_3dcd9109071d",{},"Вы сохраняете права на собственное содержимое. Размещая запись, вы разрешаете обработку, необходимую для выбранных вами функций и настроек доступа. Это не передаёт сервису право продавать ваши записи.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_9f670d6554d2",{},"Перед добавлением данных другого человека убедитесь, что вправе это сделать. Выбирайте пространство и участников осознанно. Изменение общих записей может повлиять на других участников; проверяйте последствия перед подтверждением.")})
+ ]]]],
+   ['availability',pageCopy("section.availability.title",globalThis.UladimI18n.text("literal_65920b5d54ed",{},"Сохранение, синхронизация и доступность")),[
+    ["section.availability.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_85a31ac3d53d",{},"Для сохранения и просмотра облачных записей нужно соединение. Локальные функции Android могут работать отдельно от облака. Если соединение пропало во время сохранения, проверьте состояние записи перед повторным вводом.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_bf01091cca8f",{},"Технические работы и сбои могут временно ограничивать доступ. Для важных записей сохраняйте собственную копию. Возможность восстановления зависит от доступных данных и срока хранения; поддержка не обещает восстановить любую удалённую запись.")})
+ ]]]],
+   ['finance',pageCopy("section.finance.title",globalThis.UladimI18n.text("literal_70ed37ca6907",{},"Финансовый учёт")),[
+    ["section.finance.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_27224901eec4",{},"ULADIM предназначен для записи и анализа введённых вами данных. Создание перевода в приложении не переводит деньги, не подключает банковский счёт и не выполняет платёж. Приложение не оказывает банковские, кредитные, брокерские или инвестиционные услуги.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_defe84c751b5",{},"Проверяйте исходные суммы, валюты и импорт перед сохранением. Финансовые результаты зависят от полноты и правильности введённых записей. Суммы в разных валютах не следует складывать без выбранного вами способа пересчёта.")})
+ ]]]],
+   ['plans',pageCopy("section.plans.title",globalThis.UladimI18n.text("literal_f03459015fb8",{},"Бесплатный доступ и будущие подписки")),[
+    ["section.plans.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_0950c4130218",{},"Все текущие функции доступны бесплатно. Банковская карта и оформление подписки не требуются. Отображаемый уровень доступа сам по себе не означает покупку или согласие на списания.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_b982908ebe6b",{},"Plus готовится как будущий вариант доступа. Его окончательные функции, цена, срок и условия продления пока не опубликованы. Возможности с искусственным интеллектом относятся к более поздним планам и сейчас недоступны.")}),
+  sourceBlock("paragraph-3",{body:globalThis.UladimI18n.text("literal_bb2a70232952",{},"До появления платной услуги её условия должны отдельно сообщать полную цену, период, правила продления, отмены, восстановления покупки и возврата. Новые платные условия не создают согласие на оплату автоматически.")})
+ ]]]],
+   ['refunds',pageCopy("section.refunds.title",globalThis.UladimI18n.text("literal_66ac80bd2d68",{},"Отмена и возвраты")),[
+    ["section.refunds.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_70c948fae8c0",{},"Сейчас реальные покупки и списания в ULADIM отключены, поэтому платная подписка здесь не оформляется. Если вы заметили незнакомое списание с похожим названием, проверьте получателя и обратитесь в банк или площадку, где оно было совершено.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_e4da3c6f3442",{},"Если платные услуги будут запущены, способ управления и возврата будет зависеть от места покупки и применимого закона. Для каждого способа оплаты понадобятся опубликованные правила и доступная поддержка. Эти условия не ограничивают обязательные права потребителя.")})
+ ]]]],
+   ['ending',pageCopy("section.ending.title",globalThis.UladimI18n.text("literal_25672d9828a1",{},"Прекращение доступа и удаление")),[
+    ["section.ending.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_ea67f4f4f096",{},"Вы можете перестать пользоваться сервисом и запросить удаление аккаунта. Облачное удаление и очистка данных на вашем устройстве выполняются отдельно. Перед удалением сохраните нужные записи и проверьте общие пространства.")}),
+  sourceBlock("paragraph-2",{body:globalThis.UladimI18n.text("literal_28dc3c660e18",{},"Доступ может быть ограничен для защиты пользователей и сервиса при нарушении правил или выявлении угрозы. Причина и доступный способ обращения должны сообщаться в пределах, допустимых законом и требованиями безопасности. Порядок удаления описан на отдельной странице.")})
+ ]]]],
+   ['age',pageCopy("section.age.title",globalThis.UladimI18n.text("literal_bafbb28e450a",{},"Семья и возраст")),[
+    facts.minimumAgePolicy||globalThis.UladimI18n.text("literal_12a278dea57e",{},"Условия участия несовершеннолетних и законного представительства будут указаны после утверждения оператором. Не следует считать, что семейная роль автоматически подтверждает право использовать сервис в любом возрасте.")]],
+   ['law',pageCopy("section.law.title",globalThis.UladimI18n.text("literal_e26a688464ce",{},"Ответственность и обращения")),[
+    ["section.law.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_b526fc5062e5",{},"Обязательные права, предоставленные вам применимым законом, сохраняются. Эти условия не исключают ответственность, которую нельзя исключить по закону.")})
+ ]],
+    ready()?globalThis.UladimI18n.text("literal_74671df00ce9",{},"Споры рассматриваются в порядке, предусмотренном применимым законом, с сохранением обязательных прав потребителя. Сведения об операторе и контакт для обращения указаны выше. Для начала можно описать вопрос в поддержке."):globalThis.UladimI18n.text("literal_b1818ce4f484",{},"Применяется законодательство Республики Узбекистан с сохранением обязательных прав, которые предоставляет вам применимый закон. Сначала можно направить обращение оператору. Подсудность и порядок рассмотрения спора определяются законом; эти условия не отменяют право обратиться в компетентный орган или суд.")]],
+   ['changes',pageCopy("section.changes.title",globalThis.UladimI18n.text("literal_4fef4a5eb736",{},"Обновления условий")),[
+    ["section.changes.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_eb933a03c94e",{},"Дата и версия находятся в начале страницы. Существенные изменения публикуются в новой редакции. Появление новых платных возможностей требует отдельного понятного предложения и вашего согласия там, где оно необходимо.")})
+ ]]]]
   ];
-  reader(sections);related([[privacy?globalThis.UladimI18n.text("literal_4b5ef4dc258e",{},"Условия использования"):globalThis.UladimI18n.text("literal_6d5c24967752",{},"Конфиденциальность"),privacy?'/terms':'/privacy'],[globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта"),'/delete-account'],[globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),'/support']]);openHash();
+  reader(sections);if(privacy)related([
+  sourceBlock("terms",{label:globalThis.UladimI18n.text("literal_4b5ef4dc258e",{},"Условия использования"),href:"/terms"}),
+  sourceBlock("deletion",{label:globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта"),href:"/delete-account"}),
+  sourceBlock("support",{label:globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),href:"/support"})
+ ]);else related([
+  sourceBlock("privacy",{label:globalThis.UladimI18n.text("literal_6d5c24967752",{},"Конфиденциальность"),href:"/privacy"}),
+  sourceBlock("deletion",{label:globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта"),href:"/delete-account"}),
+  sourceBlock("support",{label:globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),href:"/support"})
+ ]);openHash();
  }
- const groups=[
-  ['start',globalThis.UladimI18n.text("literal_b5b75c376dc8",{},"Начало работы"),globalThis.UladimI18n.text("literal_220146ba1295",{},"От первой записи до удобного дня"),[
-   ['today',globalThis.UladimI18n.text("literal_cca4c262ad16",{},"С чего начать?"),globalThis.UladimI18n.text("literal_73103a2b3eb0",{},"Откройте ULADIM и добавьте одну задачу или заметку. Выберите личное пространство. После этого настройте календарь и финансовые счета — в том порядке, который удобен вам."),globalThis.UladimI18n.text("literal_be432c828c4d",{},"Открыть приложение"),'/app'],
-   ['tasks',globalThis.UladimI18n.text("literal_d846e7692586",{},"Как вести задачи?"),globalThis.UladimI18n.text("literal_de785ebfd0a0",{},"Добавьте понятное название и дату, если она нужна. Завершённые задачи отмечайте выполненными. Для общих дел сначала выберите семейное пространство и проверьте исполнителя."),globalThis.UladimI18n.text("literal_53965ae5bf64",{},"Руководство"),'/docs#first-record'],
-   ['notes',globalThis.UladimI18n.text("literal_29d6bd3f6f1e",{},"Где сохранять идеи и списки?"),globalThis.UladimI18n.text("literal_3fee821f6597",{},"Используйте заметки для текста, идей и списков. Перед сохранением проверьте личное или общее пространство. Перенести текст из другого приложения можно через импорт."),globalThis.UladimI18n.text("literal_2fa3a99f64a7",{},"О переносе заметок"),'/faq#import'],
-   ['calendar',globalThis.UladimI18n.text("literal_9cc76f91a7ca",{},"Как планировать события?"),globalThis.UladimI18n.text("literal_97eb43370217",{},"Укажите начало события и часовой пояс. Для повторяющегося события проверьте правило повторения и ближайшие даты. Уведомления настраиваются отдельно на каждом устройстве."),globalThis.UladimI18n.text("literal_1255e657430d",{},"Об уведомлениях"),'/faq#notifications']
-  ]],
-  ['devices',globalThis.UladimI18n.text("literal_eb84ca12fa84",{},"Устройства и перенос"),globalThis.UladimI18n.text("literal_09035d6ee0d1",{},"Установка, синхронизация и файлы"),[
-   ['installation',globalThis.UladimI18n.text("literal_081bbd37a711",{},"Как установить ULADIM?"),globalThis.UladimI18n.text("literal_acae2b7f904e",{},"На Android доступен отдельный APK. На iPhone, iPad и компьютере открывайте веб-приложение в браузере; его можно добавить на домашний экран. Отдельная версия для iOS пока не выпущена."),globalThis.UladimI18n.text("literal_99aea9c89143",{},"Приложения и установка"),'/download'],
-   ['sync',globalThis.UladimI18n.text("literal_f3dcfdeec39d",{},"Почему записи отличаются на устройствах?"),globalThis.UladimI18n.text("literal_9aec3dd3de81",{},"Проверьте, что вошли в один аккаунт и выбрали одно пространство. Для облачной синхронизации нужно соединение. Сам вход в Android не переносит все локальные записи автоматически: используйте доступные средства импорта и синхронизации."),globalThis.UladimI18n.text("literal_fcd4605b0310",{},"Как перенести данные"),'/docs#import'],
-   ['import',globalThis.UladimI18n.text("literal_751a77333f8a",{},"Как перенести записи из другого приложения?"),globalThis.UladimI18n.text("literal_8f53dbfa558c",{},"В веб-приложении откройте «Профиль → Импорт и синхронизация». Выберите тип данных и файл, проверьте предпросмотр и подтвердите только нужные записи. Заметки: TXT, Markdown и экспорт Google Keep. Календарь: ICS. Вложения и неподдерживаемые правила могут не перенестись — проверьте предупреждения."),globalThis.UladimI18n.text("literal_2e518dc76a07",{},"Пошаговый перенос"),'/docs#import'],
-   ['import-original',globalThis.UladimI18n.text("literal_8f6db5e8aed0",{},"Изменит ли импорт исходные файлы?"),globalThis.UladimI18n.text("literal_decb5da45bdf",{},"Исходные файлы и записи в других приложениях остаются у вас. Файл читается на устройстве; после подтверждения в облако передаются выбранные записи. При повторном импорте проверьте совпадения в предпросмотре."),globalThis.UladimI18n.text("literal_aa97feeebb85",{},"Руководство по импорту"),'/docs#import'],
-   ['notifications',globalThis.UladimI18n.text("literal_6af36a057c18",{},"Почему не пришло напоминание?"),globalThis.UladimI18n.text("literal_3f88c6fdd446",{},"Проверьте дату, время и часовой пояс события, разрешение уведомлений и настройки самого устройства. На Android ограничения батареи могут задерживать напоминания. В браузере разрешите уведомления именно для ULADIM. Включайте только те напоминания, которые вам нужны."),globalThis.UladimI18n.text("literal_6894f99e6bc4",{},"Помощь с устройством"),'/support']
-  ]],
-  ['money-family',globalThis.UladimI18n.text("literal_d827a1dd5678",{},"Финансы и семья"),globalThis.UladimI18n.text("literal_fd529d9eaeab",{},"Личный учёт и общие дела"),[
-   ['finances',globalThis.UladimI18n.text("literal_6d6668cd9dc8",{},"Можно ли переводить деньги через ULADIM?"),globalThis.UladimI18n.text("literal_21962e2b43cf",{},"ULADIM ведёт учёт введённых вами сумм. Запись перевода перемещает сумму между счетами в вашем учёте; деньги в банке она не переводит. Проверяйте валюту и исходные данные, особенно после импорта."),globalThis.UladimI18n.text("literal_15d8243d39f9",{},"О финансовом учёте"),'/terms#finance'],
-   ['family',globalThis.UladimI18n.text("literal_45b05db35b79",{},"Кто видит записи семьи?"),globalThis.UladimI18n.text("literal_11172e16f936",{},"Доступ зависит от выбранного пространства, роли участника и настроек записи. Личную заметку сохраняйте в личном пространстве. Перед добавлением в общую запись сведений о другом человеке убедитесь, что вправе ими делиться."),globalThis.UladimI18n.text("literal_e22fe57e8e8e",{},"Как устроен доступ"),'/privacy#sharing'],
-   ['family-leave',globalThis.UladimI18n.text("literal_037b13d76cd7",{},"Что проверить перед уходом из семьи?"),globalThis.UladimI18n.text("literal_d62491a39562",{},"Сохраните нужные личные копии и проверьте общие дела. Владельцу может потребоваться передать управление другому взрослому участнику или явно завершить работу семейного пространства. Внимательно прочитайте последствия в окне подтверждения."),globalThis.UladimI18n.text("literal_e8b4671088a8",{},"Об удалении аккаунта"),'/delete-account']
-  ]],
-  ['account-group',globalThis.UladimI18n.text("literal_024c259f41e0",{},"Аккаунт и защита"),globalThis.UladimI18n.text("literal_c53f13bea273",{},"Вход, восстановление и приватность"),[
-   ['account',globalThis.UladimI18n.text("literal_3b5cba98021e",{},"Нужен ли аккаунт?"),globalThis.UladimI18n.text("literal_f2e0b51d7fc3",{},"Аккаунт нужен для облачных записей и общих пространств. Локальные функции Android могут использоваться отдельно. Для входа используйте свой подтверждённый адрес почты или подключённый Google."),globalThis.UladimI18n.text("literal_612f724ec00f",{},"Открыть аккаунт"),'/account'],
-   ['security',globalThis.UladimI18n.text("literal_50d22e97f77b",{},"Как защитить аккаунт?"),globalThis.UladimI18n.text("literal_181c94ecd6f2",{},"Выберите уникальный пароль и включите доступную двухфакторную защиту. Сохраните резервные коды в безопасном месте. В профиле проверьте устройства и отзовите потерянные. Никому не сообщайте коды и пароль, в том числе в поддержке."),globalThis.UladimI18n.text("literal_3ba8eaa5d624",{},"Политика конфиденциальности"),'/privacy'],
-   ['recovery',globalThis.UladimI18n.text("literal_27edc9f43d34",{},"Как восстановить доступ?"),globalThis.UladimI18n.text("literal_6ed0f3a60301",{},"На странице входа выберите восстановление пароля и укажите почту аккаунта. Проверьте входящие и папку «Спам». Если использовали Google, попробуйте тот же Google-аккаунт. Если вход недоступен или доступ ограничен, обратитесь в поддержку."),globalThis.UladimI18n.text("literal_667f75f36121",{},"Войти или восстановить"),'/account'],
-   ['privacy',globalThis.UladimI18n.text("literal_ae8bbabbe46a",{},"Есть ли реклама и сбор аналитики?"),globalThis.UladimI18n.text("literal_95c072bd7545",{},"Рекламных трекеров и рекламной аналитики нет. Сервис обрабатывает необходимые данные аккаунта, записи, которые вы сохраняете, и сведения для безопасности. Подробности о поставщиках, доступе и сроках приведены в политике."),globalThis.UladimI18n.text("literal_b110ddb1ee17",{},"Какие данные используются"),'/privacy#data'],
-   ['deletion',globalThis.UladimI18n.text("literal_21ca19d58fc5",{},"Как удалить аккаунт и данные?"),globalThis.UladimI18n.text("literal_bbdb310e9901",{},"Откройте удаление аккаунта в профиле. Сначала сохраните нужное и проверьте общие пространства. Запрос можно отменить в течение 24 часов до указанного времени. Затем вход блокируется и начинается удаление; завершение может занять время. Все созданные вами записи, в том числе общие, удаляются. Копии на устройствах очищаются отдельно."),globalThis.UladimI18n.text("literal_1738fd6a9134",{},"Открыть удаление аккаунта"),'/app?settings=deletion'],
-   ['delete-staff-account',globalThis.UladimI18n.text("literal_98d5abc6cfc7",{},"Как удалить аккаунт, если я сотрудник сервиса?"),globalThis.UladimI18n.text("literal_497a542cb499",{},"Сначала передайте рабочие обязанности и завершите служебный доступ через уполномоченного владельца сервиса. Для единственного владельца потребуется сохранить возможность управления сервисом после передачи. Эта страница не выдаёт новые права и не выполняет передачу автоматически. Затем вернитесь к обычному удалению аккаунта."),globalThis.UladimI18n.text("literal_90db24a173da",{},"Обратиться в поддержку"),'/support']
-  ]],
-  ['access',globalThis.UladimI18n.text("literal_d1532fee320a",{},"Доступ и поддержка"),globalThis.UladimI18n.text("literal_acd036ab319b",{},"Бесплатные функции и помощь"),[
-   ['plans',globalThis.UladimI18n.text("literal_9e6bc58208dc",{},"Нужно ли платить за ULADIM?"),globalThis.UladimI18n.text("literal_ae25c9661d9e",{},"Сейчас все доступные функции бесплатны. Карта и подписка не нужны. Plus готовится на будущее; цены и окончательные различия ещё не опубликованы. Возможности с искусственным интеллектом сейчас недоступны."),globalThis.UladimI18n.text("literal_b2fbb44bb3e3",{},"Тарифы"),'/plans'],
-   ['refund',globalThis.UladimI18n.text("literal_de4bcbe3983d",{},"Как отменить подписку или вернуть оплату?"),globalThis.UladimI18n.text("literal_7f1ba3e1d91b",{},"Сейчас покупки отключены и подписка в ULADIM не оформляется. Если платные услуги появятся, условия цены, продления, отмены и возврата будут опубликованы до оплаты. Незнакомое списание проверьте у банка или площадки покупки."),globalThis.UladimI18n.text("literal_4b5ef4dc258e",{},"Условия использования"),'/terms#refunds'],
-   ['support',globalThis.UladimI18n.text("literal_8545a69006f8",{},"Как получить помощь?"),globalThis.UladimI18n.text("literal_1943f3c7cb7d",{},"Опишите, что хотели сделать, на каком шаге возникла проблема и какой текст появился на экране. Укажите устройство и версию приложения. Скройте личные данные на снимке экрана. Пароли, коды и банковские документы не нужны."),globalThis.UladimI18n.text("literal_1162749e334c",{},"Связаться с поддержкой"),'/support']
-  ]]
+ const groups=()=>[
+  ['start',pageCopy("topic.start.title",globalThis.UladimI18n.text("literal_b5b75c376dc8",{},"Начало работы")),pageCopy("topic.start.lead",globalThis.UladimI18n.text("literal_220146ba1295",{},"От первой записи до удобного дня")),[
+  sourceBlock("today",{title:globalThis.UladimI18n.text("literal_cca4c262ad16",{},"С чего начать?"),body:globalThis.UladimI18n.text("literal_73103a2b3eb0",{},"Откройте ULADIM и добавьте одну задачу или заметку. Выберите личное пространство. После этого настройте календарь и финансовые счета — в том порядке, который удобен вам."),label:globalThis.UladimI18n.text("literal_be432c828c4d",{},"Открыть приложение")}),
+  sourceBlock("tasks",{title:globalThis.UladimI18n.text("literal_d846e7692586",{},"Как вести задачи?"),body:globalThis.UladimI18n.text("literal_de785ebfd0a0",{},"Добавьте понятное название и дату, если она нужна. Завершённые задачи отмечайте выполненными. Для общих дел сначала выберите семейное пространство и проверьте исполнителя."),label:globalThis.UladimI18n.text("literal_53965ae5bf64",{},"Руководство")}),
+  sourceBlock("notes",{title:globalThis.UladimI18n.text("literal_29d6bd3f6f1e",{},"Где сохранять идеи и списки?"),body:globalThis.UladimI18n.text("literal_3fee821f6597",{},"Используйте заметки для текста, идей и списков. Перед сохранением проверьте личное или общее пространство. Перенести текст из другого приложения можно через импорт."),label:globalThis.UladimI18n.text("literal_2fa3a99f64a7",{},"О переносе заметок")}),
+  sourceBlock("calendar",{title:globalThis.UladimI18n.text("literal_9cc76f91a7ca",{},"Как планировать события?"),body:globalThis.UladimI18n.text("literal_97eb43370217",{},"Укажите начало события и часовой пояс. Для повторяющегося события проверьте правило повторения и ближайшие даты. Уведомления настраиваются отдельно на каждом устройстве."),label:globalThis.UladimI18n.text("literal_1255e657430d",{},"Об уведомлениях")})
+ ],{"today": "/app", "tasks": "/docs#first-record", "notes": "/faq#import", "calendar": "/faq#notifications"}],
+  ['devices',pageCopy("topic.devices.title",globalThis.UladimI18n.text("literal_eb84ca12fa84",{},"Устройства и перенос")),pageCopy("topic.devices.lead",globalThis.UladimI18n.text("literal_09035d6ee0d1",{},"Установка, синхронизация и файлы")),[
+  sourceBlock("installation",{title:globalThis.UladimI18n.text("literal_081bbd37a711",{},"Как установить ULADIM?"),body:globalThis.UladimI18n.text("literal_acae2b7f904e",{},"На Android доступен отдельный APK. На iPhone, iPad и компьютере открывайте веб-приложение в браузере; его можно добавить на домашний экран. Отдельная версия для iOS пока не выпущена."),label:globalThis.UladimI18n.text("literal_99aea9c89143",{},"Приложения и установка")}),
+  sourceBlock("sync",{title:globalThis.UladimI18n.text("literal_f3dcfdeec39d",{},"Почему записи отличаются на устройствах?"),body:globalThis.UladimI18n.text("literal_9aec3dd3de81",{},"Проверьте, что вошли в один аккаунт и выбрали одно пространство. Для облачной синхронизации нужно соединение. Сам вход в Android не переносит все локальные записи автоматически: используйте доступные средства импорта и синхронизации."),label:globalThis.UladimI18n.text("literal_fcd4605b0310",{},"Как перенести данные")}),
+  sourceBlock("import",{title:globalThis.UladimI18n.text("literal_751a77333f8a",{},"Как перенести записи из другого приложения?"),body:globalThis.UladimI18n.text("literal_8f53dbfa558c",{},"В веб-приложении откройте «Профиль → Импорт и синхронизация». Выберите тип данных и файл, проверьте предпросмотр и подтвердите только нужные записи. Заметки: TXT, Markdown и экспорт Google Keep. Календарь: ICS. Вложения и неподдерживаемые правила могут не перенестись — проверьте предупреждения."),label:globalThis.UladimI18n.text("literal_2e518dc76a07",{},"Пошаговый перенос")}),
+  sourceBlock("import-original",{title:globalThis.UladimI18n.text("literal_8f6db5e8aed0",{},"Изменит ли импорт исходные файлы?"),body:globalThis.UladimI18n.text("literal_decb5da45bdf",{},"Исходные файлы и записи в других приложениях остаются у вас. Файл читается на устройстве; после подтверждения в облако передаются выбранные записи. При повторном импорте проверьте совпадения в предпросмотре."),label:globalThis.UladimI18n.text("literal_aa97feeebb85",{},"Руководство по импорту")}),
+  sourceBlock("notifications",{title:globalThis.UladimI18n.text("literal_6af36a057c18",{},"Почему не пришло напоминание?"),body:globalThis.UladimI18n.text("literal_3f88c6fdd446",{},"Проверьте дату, время и часовой пояс события, разрешение уведомлений и настройки самого устройства. На Android ограничения батареи могут задерживать напоминания. В браузере разрешите уведомления именно для ULADIM. Включайте только те напоминания, которые вам нужны."),label:globalThis.UladimI18n.text("literal_6894f99e6bc4",{},"Помощь с устройством")})
+ ],{"installation": "/download", "sync": "/docs#import", "import": "/docs#import", "import-original": "/docs#import", "notifications": "/support"}],
+  ['money-family',pageCopy("topic.money-family.title",globalThis.UladimI18n.text("literal_d827a1dd5678",{},"Финансы и семья")),pageCopy("topic.money-family.lead",globalThis.UladimI18n.text("literal_fd529d9eaeab",{},"Личный учёт и общие дела")),[
+  sourceBlock("finances",{title:globalThis.UladimI18n.text("literal_6d6668cd9dc8",{},"Можно ли переводить деньги через ULADIM?"),body:globalThis.UladimI18n.text("literal_21962e2b43cf",{},"ULADIM ведёт учёт введённых вами сумм. Запись перевода перемещает сумму между счетами в вашем учёте; деньги в банке она не переводит. Проверяйте валюту и исходные данные, особенно после импорта."),label:globalThis.UladimI18n.text("literal_15d8243d39f9",{},"О финансовом учёте")}),
+  sourceBlock("family",{title:globalThis.UladimI18n.text("literal_45b05db35b79",{},"Кто видит записи семьи?"),body:globalThis.UladimI18n.text("literal_11172e16f936",{},"Доступ зависит от выбранного пространства, роли участника и настроек записи. Личную заметку сохраняйте в личном пространстве. Перед добавлением в общую запись сведений о другом человеке убедитесь, что вправе ими делиться."),label:globalThis.UladimI18n.text("literal_e22fe57e8e8e",{},"Как устроен доступ")}),
+  sourceBlock("family-leave",{title:globalThis.UladimI18n.text("literal_037b13d76cd7",{},"Что проверить перед уходом из семьи?"),body:globalThis.UladimI18n.text("literal_d62491a39562",{},"Сохраните нужные личные копии и проверьте общие дела. Владельцу может потребоваться передать управление другому взрослому участнику или явно завершить работу семейного пространства. Внимательно прочитайте последствия в окне подтверждения."),label:globalThis.UladimI18n.text("literal_e8b4671088a8",{},"Об удалении аккаунта")})
+ ],{"finances": "/terms#finance", "family": "/privacy#sharing", "family-leave": "/delete-account"}],
+  ['account-group',pageCopy("topic.account-group.title",globalThis.UladimI18n.text("literal_024c259f41e0",{},"Аккаунт и защита")),pageCopy("topic.account-group.lead",globalThis.UladimI18n.text("literal_c53f13bea273",{},"Вход, восстановление и приватность")),[
+  sourceBlock("account",{title:globalThis.UladimI18n.text("literal_3b5cba98021e",{},"Нужен ли аккаунт?"),body:globalThis.UladimI18n.text("literal_f2e0b51d7fc3",{},"Аккаунт нужен для облачных записей и общих пространств. Локальные функции Android могут использоваться отдельно. Для входа используйте свой подтверждённый адрес почты или подключённый Google."),label:globalThis.UladimI18n.text("literal_612f724ec00f",{},"Открыть аккаунт")}),
+  sourceBlock("security",{title:globalThis.UladimI18n.text("literal_50d22e97f77b",{},"Как защитить аккаунт?"),body:globalThis.UladimI18n.text("literal_181c94ecd6f2",{},"Выберите уникальный пароль и включите доступную двухфакторную защиту. Сохраните резервные коды в безопасном месте. В профиле проверьте устройства и отзовите потерянные. Никому не сообщайте коды и пароль, в том числе в поддержке."),label:globalThis.UladimI18n.text("literal_3ba8eaa5d624",{},"Политика конфиденциальности")}),
+  sourceBlock("recovery",{title:globalThis.UladimI18n.text("literal_27edc9f43d34",{},"Как восстановить доступ?"),body:globalThis.UladimI18n.text("literal_6ed0f3a60301",{},"На странице входа выберите восстановление пароля и укажите почту аккаунта. Проверьте входящие и папку «Спам». Если использовали Google, попробуйте тот же Google-аккаунт. Если вход недоступен или доступ ограничен, обратитесь в поддержку."),label:globalThis.UladimI18n.text("literal_667f75f36121",{},"Войти или восстановить")}),
+  sourceBlock("privacy",{title:globalThis.UladimI18n.text("literal_ae8bbabbe46a",{},"Есть ли реклама и сбор аналитики?"),body:globalThis.UladimI18n.text("literal_95c072bd7545",{},"Рекламных трекеров и рекламной аналитики нет. Сервис обрабатывает необходимые данные аккаунта, записи, которые вы сохраняете, и сведения для безопасности. Подробности о поставщиках, доступе и сроках приведены в политике."),label:globalThis.UladimI18n.text("literal_b110ddb1ee17",{},"Какие данные используются")}),
+  sourceBlock("deletion",{title:globalThis.UladimI18n.text("literal_21ca19d58fc5",{},"Как удалить аккаунт и данные?"),body:globalThis.UladimI18n.text("literal_bbdb310e9901",{},"Откройте удаление аккаунта в профиле. Сначала сохраните нужное и проверьте общие пространства. Запрос можно отменить в течение 24 часов до указанного времени. Затем вход блокируется и начинается удаление; завершение может занять время. Все созданные вами записи, в том числе общие, удаляются. Копии на устройствах очищаются отдельно."),label:globalThis.UladimI18n.text("literal_1738fd6a9134",{},"Открыть удаление аккаунта")}),
+  sourceBlock("delete-staff-account",{title:globalThis.UladimI18n.text("literal_98d5abc6cfc7",{},"Как удалить аккаунт, если я сотрудник сервиса?"),body:globalThis.UladimI18n.text("literal_497a542cb499",{},"Сначала передайте рабочие обязанности и завершите служебный доступ через уполномоченного владельца сервиса. Для единственного владельца потребуется сохранить возможность управления сервисом после передачи. Эта страница не выдаёт новые права и не выполняет передачу автоматически. Затем вернитесь к обычному удалению аккаунта."),label:globalThis.UladimI18n.text("literal_90db24a173da",{},"Обратиться в поддержку")})
+ ],{"account": "/account", "security": "/privacy", "recovery": "/account", "privacy": "/privacy#data", "deletion": "/app?settings=deletion", "delete-staff-account": "/support"}],
+  ['access',pageCopy("topic.access.title",globalThis.UladimI18n.text("literal_d1532fee320a",{},"Доступ и поддержка")),pageCopy("topic.access.lead",globalThis.UladimI18n.text("literal_acd036ab319b",{},"Бесплатные функции и помощь")),[
+  sourceBlock("plans",{title:globalThis.UladimI18n.text("literal_9e6bc58208dc",{},"Нужно ли платить за ULADIM?"),body:globalThis.UladimI18n.text("literal_ae25c9661d9e",{},"Сейчас все доступные функции бесплатны. Карта и подписка не нужны. Plus готовится на будущее; цены и окончательные различия ещё не опубликованы. Возможности с искусственным интеллектом сейчас недоступны."),label:globalThis.UladimI18n.text("literal_b2fbb44bb3e3",{},"Тарифы")}),
+  sourceBlock("refund",{title:globalThis.UladimI18n.text("literal_de4bcbe3983d",{},"Как отменить подписку или вернуть оплату?"),body:globalThis.UladimI18n.text("literal_7f1ba3e1d91b",{},"Сейчас покупки отключены и подписка в ULADIM не оформляется. Если платные услуги появятся, условия цены, продления, отмены и возврата будут опубликованы до оплаты. Незнакомое списание проверьте у банка или площадки покупки."),label:globalThis.UladimI18n.text("literal_4b5ef4dc258e",{},"Условия использования")}),
+  sourceBlock("support",{title:globalThis.UladimI18n.text("literal_8545a69006f8",{},"Как получить помощь?"),body:globalThis.UladimI18n.text("literal_1943f3c7cb7d",{},"Опишите, что хотели сделать, на каком шаге возникла проблема и какой текст появился на экране. Укажите устройство и версию приложения. Скройте личные данные на снимке экрана. Пароли, коды и банковские документы не нужны."),label:globalThis.UladimI18n.text("literal_1162749e334c",{},"Связаться с поддержкой")})
+ ],{"plans": "/plans", "refund": "/terms#refunds", "support": "/support"}]
  ];
  function openHash(){
   let id;try{id=decodeURIComponent(location.hash.slice(1));}catch{return;}if(!id)return;const target=document.getElementById(id);if(!target)return;
@@ -918,108 +1160,182 @@ const publicExperience=(()=>{
   requestAnimationFrame(()=>{target.scrollIntoView({block:'start'});});
  }
  function faq(){
-  intro(globalThis.UladimI18n.text("literal_bc4d55d87d90",{},"ЦЕНТР ПОМОЩИ"),globalThis.UladimI18n.text("literal_586ce98ef5aa",{},"Найдём ответ"),globalThis.UladimI18n.text("literal_87acdc423c70",{},"Начало работы, перенос записей, семья и приватность — всё в одном месте."));
+  intro(pageCopy("kicker",globalThis.UladimI18n.text("literal_bc4d55d87d90",{},"ЦЕНТР ПОМОЩИ")),pageCopy("title",globalThis.UladimI18n.text("literal_586ce98ef5aa",{},"Найдём ответ")),pageCopy("lead",globalThis.UladimI18n.text("literal_87acdc423c70",{},"Начало работы, перенос записей, семья и приватность — всё в одном месте.")));
   const search=node('div',undefined,'help-search');const label=node('label',globalThis.UladimI18n.text("literal_e7168d12aa92",{},"О чём хотите узнать?"));label.htmlFor='help-search';const input=node('input');input.id='help-search';input.type='search';input.placeholder=globalThis.UladimI18n.text("literal_f0e4ab6a93f2",{},"Например: импорт, уведомления, удаление");input.autocomplete='off';
   const count=node('p','','help-result-count');count.setAttribute('role','status');count.setAttribute('aria-live','polite');add(search,label,input,count);app.append(search);
   const layout=node('div',undefined,'help-reader'),nav=node('nav',undefined,'help-toc'),content=node('div',undefined,'help-faq-groups');nav.setAttribute('aria-label',globalThis.UladimI18n.text("literal_e1ba2ef51839",{},"Темы помощи"));nav.append(node('p',globalThis.UladimI18n.text("literal_4604dc444bab",{},"Выберите тему"),'help-kicker'));
   const entries=[];
-  for(const [id,title,subtitle,questions]of groups){
+  for(const [id,title,subtitle,questions,hrefs] of groups()){
    nav.append(a(title,'#'+id));const section=node('section',undefined,'help-faq-group');section.id=id;section.append(node('h2',title),node('p',subtitle,'help-muted'));
-   for(const [anchor,q,answer,label,href]of questions){const details=node('details',undefined,'help-question');details.id=anchor;const body=node('div',undefined,'help-answer');body.append(node('p',answer),inline(label,href));details.append(node('summary',q),body);section.append(details);entries.push({details,section,text:(title+' '+q+' '+answer).toLocaleLowerCase(authLanguage)});}
+   const present=new Set(),publishedText=new Map();
+   editorialRegion(section,'topic.'+id,questions,({id:anchor,fields})=>{
+    if(!Object.hasOwn(hrefs,anchor))return null;
+    const details=node('details',undefined,'help-question');details.id=anchor;present.add(anchor);
+    const body=node('div',undefined,'help-answer');body.append(node('p',fields.body),inline(fields.label,hrefs[anchor]));
+    details.append(node('summary',fields.title),body);publishedText.set(details,fields.title+' '+fields.body);return details;
+   });
+   for(const item of [...section.children].slice(2))entries.push({details:item,section,text:(title+' '+(publishedText.get(item)??item.textContent)).toLocaleLowerCase(authLanguage)});
+   for(const original of questions){
+    if(present.has(original.id))continue;
+    const href=hrefs[original.id];
+    const protectedLink=['/account','/app?settings=deletion','/support','/download'].includes(href);
+    const destination=node(protectedLink?'p':'span');destination.id=original.id;section.append(destination);
+    if(protectedLink){
+     destination.append(inline(original.fields.label,href));
+     entries.push({details:destination,section,text:(title+' '+original.fields.label).toLocaleLowerCase(authLanguage)});
+    }
+   }
    content.append(section);
   }
   const empty=node('section',undefined,'help-empty');empty.hidden=true;empty.append(node('h2',globalThis.UladimI18n.text("literal_5e66543c50c2",{},"Пока не нашли подходящий ответ")),node('p',globalThis.UladimI18n.text("literal_0f63f541fe17",{},"Попробуйте другое слово или напишите нам — подскажем, с чего начать.")),inline(globalThis.UladimI18n.text("literal_611cda719a59",{},"Получить помощь"),'/support'));content.append(empty);layout.append(nav,content);app.append(layout);
-  function filter(){const query=input.value.trim().toLocaleLowerCase(authLanguage);const words=query.split(/\s+/).filter(Boolean);let visible=0;
-   for(const entry of entries){const match=words.every(word=>entry.text.includes(word));entry.details.hidden=!match;if(match)visible++;if(query&&match)entry.details.open=true;else if(!query)entry.details.open=entry.details.id===location.hash.slice(1);}
+   function filter(){const query=input.value.trim().toLocaleLowerCase(authLanguage);const words=query.split(/\s+/).filter(Boolean);let visible=0;
+    for(const entry of entries){const match=words.every(word=>entry.text.includes(word));entry.details.hidden=!match;if(match)visible++;if(entry.details.tagName==='DETAILS'){if(query&&match)entry.details.open=true;else if(!query)entry.details.open=entry.details.id===location.hash.slice(1);}}
    for(const section of content.querySelectorAll('.help-faq-group'))section.hidden=!entries.some(entry=>entry.section===section&&!entry.details.hidden);
    empty.hidden=visible>0;count.textContent=query?globalThis.UladimI18n.text("literal_94f789754a4a",{},"Найдено ответов: ")+visible:globalThis.UladimI18n.text("literal_0827a176a4d6",{},"Ответы по темам: ")+entries.length;
   }
   input.addEventListener('input',filter);nav.addEventListener('click',()=>{if(input.value){input.value='';filter();}});
-  window.addEventListener('hashchange',openHash);filter();openHash();related([[globalThis.UladimI18n.text("literal_53965ae5bf64",{},"Руководство"),'/docs'],[globalThis.UladimI18n.text("literal_a95642d636d1",{},"Установка"),'/download'],[globalThis.UladimI18n.text("literal_4baae6995fd4",{},"Задать вопрос"),'/support']]);
+  window.addEventListener('hashchange',openHash);filter();openHash();related([
+  sourceBlock("docs",{label:globalThis.UladimI18n.text("literal_53965ae5bf64",{},"Руководство"),href:"/docs"}),
+  sourceBlock("install",{label:globalThis.UladimI18n.text("literal_a95642d636d1",{},"Установка"),href:"/download"}),
+  sourceBlock("support",{label:globalThis.UladimI18n.text("literal_4baae6995fd4",{},"Задать вопрос"),href:"/support"})
+ ]);
  }
  function support(){
-  intro(globalThis.UladimI18n.text("literal_cbcaa985d7d6",{},"МЫ РЯДОМ"),globalThis.UladimI18n.text("literal_1fabc98b1337",{},"Поможем разобраться"),globalThis.UladimI18n.text("literal_99d6ca68e466",{},"Вопрос о записи, входе или своих данных — начните с удобного способа связи."));
+  intro(pageCopy("kicker",globalThis.UladimI18n.text("literal_cbcaa985d7d6",{},"МЫ РЯДОМ")),pageCopy("title",globalThis.UladimI18n.text("literal_1fabc98b1337",{},"Поможем разобраться")),pageCopy("lead",globalThis.UladimI18n.text("literal_99d6ca68e466",{},"Вопрос о записи, входе или своих данных — начните с удобного способа связи.")));
   const grid=node('div',undefined,'help-support-grid');
-  const own=block(globalThis.UladimI18n.text("literal_d7e86e0aa9e5",{},"Есть доступ к аккаунту"),globalThis.UladimI18n.text("literal_e1bfd4b93806",{},"Отправьте обращение из профиля: там сохранятся ваш вопрос и ответ. Выберите подходящую тему — так будет проще разобраться."));own.append(link(globalThis.UladimI18n.text("literal_612f724ec00f",{},"Открыть аккаунт"),'/account'));grid.append(own);
-  const no=block(globalThis.UladimI18n.text("literal_4676b0db9bd2",{},"Не получается войти?"),globalThis.UladimI18n.text("literal_c8549a27d3d7",{},"Попробуйте восстановить пароль или войти тем же Google-аккаунтом. Для вопроса об ограничении доступа или своих данных не передавайте средства входа."));no.append(inline(globalThis.UladimI18n.text("literal_779b8c2386ff",{},"Помощь со входом"),'/faq#recovery'));contactLink(no);grid.append(no);app.append(grid);
-  const how=block(globalThis.UladimI18n.text("literal_ae7e6bcda6de",{},"Что поможет быстрее найти решение"),globalThis.UladimI18n.text("literal_eed37ed7f3c2",{},"Опишите ожидаемый результат, действие перед ошибкой и сообщение на экране. Добавьте модель устройства, браузер и версию приложения, если знаете их."),globalThis.UladimI18n.text("literal_24621ae0e8c1",{},"На снимке экрана закройте имена, адреса, суммы и другие личные сведения, которые не относятся к вопросу."),safety());app.append(how);
-  related([[globalThis.UladimI18n.text("literal_a3ca1c94161e",{},"Вопросы и ответы"),'/faq'],[globalThis.UladimI18n.text("literal_651cff325357",{},"Запрос о данных"),'/privacy#rights'],[globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта"),'/delete-account']]);
+  const own=block(pageCopy("account.title",globalThis.UladimI18n.text("literal_d7e86e0aa9e5",{},"Есть доступ к аккаунту")),pageCopy("account.body",globalThis.UladimI18n.text("literal_e1bfd4b93806",{},"Отправьте обращение из профиля: там сохранятся ваш вопрос и ответ. Выберите подходящую тему — так будет проще разобраться.")));own.append(link(globalThis.UladimI18n.text("literal_612f724ec00f",{},"Открыть аккаунт"),'/account'));grid.append(own);
+  const no=block(pageCopy("recovery.title",globalThis.UladimI18n.text("literal_4676b0db9bd2",{},"Не получается войти?")),pageCopy("recovery.body",globalThis.UladimI18n.text("literal_c8549a27d3d7",{},"Попробуйте восстановить пароль или войти тем же Google-аккаунтом. Для вопроса об ограничении доступа или своих данных не передавайте средства входа.")));no.append(inline(globalThis.UladimI18n.text("literal_779b8c2386ff",{},"Помощь со входом"),'/faq#recovery'));contactLink(no);grid.append(no);app.append(grid);
+  let safetyPlaced=false;
+  editorialRegion(app,'instructions',[
+  sourceBlock("details",{title:globalThis.UladimI18n.text("literal_ae7e6bcda6de",{},"Что поможет быстрее найти решение"),body:globalThis.UladimI18n.text("literal_eed37ed7f3c2",{},"Опишите ожидаемый результат, действие перед ошибкой и сообщение на экране. Добавьте модель устройства, браузер и версию приложения, если знаете их."),note:globalThis.UladimI18n.text("literal_24621ae0e8c1",{},"На снимке экрана закройте имена, адреса, суммы и другие личные сведения, которые не относятся к вопросу.")})
+ ],({fields})=>{safetyPlaced=true;return block(fields.title,fields.body,fields.note,safety());});
+  if(!safetyPlaced)app.append(node('p',safety(),'help-muted'));
+  related([
+  sourceBlock("faq",{label:globalThis.UladimI18n.text("literal_a3ca1c94161e",{},"Вопросы и ответы"),href:"/faq"}),
+  sourceBlock("rights",{label:globalThis.UladimI18n.text("literal_651cff325357",{},"Запрос о данных"),href:"/privacy#rights"}),
+  sourceBlock("deletion",{label:globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта"),href:"/delete-account"})
+ ]);
  }
  function deletion(){
-  intro(globalThis.UladimI18n.text("literal_3458fb2e8588",{},"ВАШ АККАУНТ"),globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта"),globalThis.UladimI18n.text("literal_0d703b0a48fb",{},"Проверьте последствия, сохраните нужное и подтвердите решение."));
+  intro(pageCopy("kicker",globalThis.UladimI18n.text("literal_3458fb2e8588",{},"ВАШ АККАУНТ")),pageCopy("title",globalThis.UladimI18n.text("literal_10d87746ac09",{},"Удаление аккаунта")),pageCopy("lead",globalThis.UladimI18n.text("literal_0d703b0a48fb",{},"Проверьте последствия, сохраните нужное и подтвердите решение.")));
   const callout=node('aside',undefined,'help-callout');callout.append(node('strong',globalThis.UladimI18n.text("literal_b88de35d8444",{},"Есть время передумать")),node('p',globalThis.UladimI18n.text("literal_d7dfae9fab62",{"arg0":(facts.deletionGraceHours)},"Запрос можно отменить в течение {arg0} часов до указанного времени. Затем вход блокируется и начинается удаление; завершение может занять время.")));app.append(callout);
-  const steps=node('ol',undefined,'help-steps');for(const [title,text]of [
-   [globalThis.UladimI18n.text("literal_90eaabcf59b4",{},"Сохраните нужные записи"),globalThis.UladimI18n.text("literal_0e291f1319d2",{},"Экспортируйте данные, которые хотите оставить, и убедитесь, что созданный файл открывается.")],
-   [globalThis.UladimI18n.text("literal_2f9129c7fd44",{},"Проверьте общие пространства"),globalThis.UladimI18n.text("literal_27a279ab8d58",{},"Если управляете семьёй, передайте управление другому взрослому участнику или явно закройте семейное пространство. При закрытии участники потеряют облачный доступ к этому пространству. Сначала прочитайте последствия; записи других участников не становятся вашими и не передаются вам.")],
-   [globalThis.UladimI18n.text("literal_b49347d36b08",{},"Откройте удаление в профиле"),globalThis.UladimI18n.text("literal_f1b44ce13755",{},"Войдите в аккаунт, откройте раздел аккаунта и приватности и выберите удаление. Подтвердите, что действие выполняете вы, и прочитайте итоговое предупреждение.")],
-   [globalThis.UladimI18n.text("literal_a9fad6768933",{},"Дождитесь окончания срока отмены"),globalThis.UladimI18n.text("literal_85b1e59a1e4a",{},"Если передумали, вернитесь в тот же раздел до окончания 24 часов и отмените запрос. После окончания 24 часов вход блокируется и начинается удаление. Завершение может занять время; окончание срока отмены не означает, что данные уже стёрты.")]
-  ])steps.append(add(node('li'),node('h2',title),node('p',text)));app.append(steps,link(globalThis.UladimI18n.text("literal_1738fd6a9134",{},"Открыть удаление аккаунта"),'/app?settings=deletion'));
+  const steps=node('ol',undefined,'help-steps');
+  editorialRegion(steps,'steps',[
+  sourceBlock("export",{title:globalThis.UladimI18n.text("literal_90eaabcf59b4",{},"Сохраните нужные записи"),body:globalThis.UladimI18n.text("literal_0e291f1319d2",{},"Экспортируйте данные, которые хотите оставить, и убедитесь, что созданный файл открывается.")}),
+  sourceBlock("family",{title:globalThis.UladimI18n.text("literal_2f9129c7fd44",{},"Проверьте общие пространства"),body:globalThis.UladimI18n.text("literal_27a279ab8d58",{},"Если управляете семьёй, передайте управление другому взрослому участнику или явно закройте семейное пространство. При закрытии участники потеряют облачный доступ к этому пространству. Сначала прочитайте последствия; записи других участников не становятся вашими и не передаются вам.")}),
+  sourceBlock("settings",{title:globalThis.UladimI18n.text("literal_b49347d36b08",{},"Откройте удаление в профиле"),body:globalThis.UladimI18n.text("literal_f1b44ce13755",{},"Войдите в аккаунт, откройте раздел аккаунта и приватности и выберите удаление. Подтвердите, что действие выполняете вы, и прочитайте итоговое предупреждение.")}),
+  sourceBlock("wait",{title:globalThis.UladimI18n.text("literal_a9fad6768933",{},"Дождитесь окончания срока отмены"),body:globalThis.UladimI18n.text("literal_85b1e59a1e4a",{},"Если передумали, вернитесь в тот же раздел до окончания 24 часов и отмените запрос. После окончания 24 часов вход блокируется и начинается удаление. Завершение может занять время; окончание срока отмены не означает, что данные уже стёрты.")})
+ ],({fields})=>add(node('li'),node('h2',fields.title),node('p',fields.body)),item=>add(node('li'),item));
+  app.append(steps,link(globalThis.UladimI18n.text("literal_1738fd6a9134",{},"Открыть удаление аккаунта"),'/app?settings=deletion'));
   reader([
-   ['removed',globalThis.UladimI18n.text("literal_fdd6315df1fc",{},"Что будет удалено"),[facts.deletionPolicy||globalThis.UladimI18n.text("literal_cb6a1ac1d4c9",{},"Удаление предназначено для прекращения облачного аккаунта и удаления связанных с ним личных данных. Точный перечень и порядок для общих записей уточняются в проверяемом процессе удаления; окончательная политика ещё не опубликована.")]],
-   ['separate-mail',globalThis.UladimI18n.text("literal_7eaa7b9f5efe",{},"Письма в поддержку"),[facts.correspondenceRetention||globalThis.UladimI18n.text("literal_973d04eaedce",{},"Обращения внутри приложения удаляются вместе с аккаунтом. Письма, которые вы отправляли отдельно по электронной почте, и копии у почтовых поставщиков обрабатываются отдельно. Стандартный срок хранения писем у поставщика поддержки — ")+facts.supportProviderRetentionDays+globalThis.UladimI18n.text("literal_04042d99e696",{}," дней; работа почтового канала и порядок очистки ещё подтверждаются.")]],
-   ['local-copy',globalThis.UladimI18n.text("literal_d5adbef28180",{},"Что проверить на устройствах"),[globalThis.UladimI18n.text("literal_288ca7a93d56",{},"Удаление облачного аккаунта не очищает автоматически локальную базу Android, сделанные вами экспорты и копии на других устройствах. Если хотите удалить и их, отдельно очистите данные приложения и собственные файлы после сохранения нужного. Не удаляйте приложение ради обычного обновления.")]],
-   ['backups',globalThis.UladimI18n.text("literal_e69afbe6f5f9",{},"Резервные копии"),[facts.backupRetention||globalThis.UladimI18n.text("literal_458e067f5afb",{},"Подтверждённый срок хранения резервных копий и порядок исключения удалённых данных при восстановлении будут указаны в окончательной политике. Мгновенное стирание всех резервных копий пока не заявляется.")]],
-   ['no-access',globalThis.UladimI18n.text("literal_dd0aed1ba2cf",{},"Если вход недоступен"),[globalThis.UladimI18n.text("literal_88d815fae682",{},"Попробуйте восстановить доступ. Если это невозможно, обратитесь по вопросу удаления через доступный контакт поддержки. Для защиты ваших данных потребуется подтвердить принадлежность аккаунта. Пароль и одноразовый код сообщать поддержке не нужно.")]]
-  ]);contactLink(app,globalThis.UladimI18n.text("literal_48f48c65f176",{},"Обратиться по вопросу удаления"));related([[globalThis.UladimI18n.text("literal_2a3c80d1c3b9",{},"Восстановление доступа"),'/faq#recovery'],[globalThis.UladimI18n.text("literal_6d5c24967752",{},"Конфиденциальность"),'/privacy#retention'],[globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),'/support']]);openHash();
+   ['removed',pageCopy("section.removed.title",globalThis.UladimI18n.text("literal_fdd6315df1fc",{},"Что будет удалено")),[
+    facts.deletionPolicy||globalThis.UladimI18n.text("literal_cb6a1ac1d4c9",{},"Удаление предназначено для прекращения облачного аккаунта и удаления связанных с ним личных данных. Точный перечень и порядок для общих записей уточняются в проверяемом процессе удаления; окончательная политика ещё не опубликована.")]],
+   ['separate-mail',pageCopy("section.separate-mail.title",globalThis.UladimI18n.text("literal_7eaa7b9f5efe",{},"Письма в поддержку")),[
+    facts.correspondenceRetention||globalThis.UladimI18n.text("literal_973d04eaedce",{},"Обращения внутри приложения удаляются вместе с аккаунтом. Письма, которые вы отправляли отдельно по электронной почте, и копии у почтовых поставщиков обрабатываются отдельно. Стандартный срок хранения писем у поставщика поддержки — ")+facts.supportProviderRetentionDays+globalThis.UladimI18n.text("literal_04042d99e696",{}," дней; работа почтового канала и порядок очистки ещё подтверждаются.")]],
+   ['local-copy',pageCopy("section.local-copy.title",globalThis.UladimI18n.text("literal_d5adbef28180",{},"Что проверить на устройствах")),[
+    ["section.local-copy.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_288ca7a93d56",{},"Удаление облачного аккаунта не очищает автоматически локальную базу Android, сделанные вами экспорты и копии на других устройствах. Если хотите удалить и их, отдельно очистите данные приложения и собственные файлы после сохранения нужного. Не удаляйте приложение ради обычного обновления.")})
+ ]]]],
+   ['backups',pageCopy("section.backups.title",globalThis.UladimI18n.text("literal_e69afbe6f5f9",{},"Резервные копии")),[
+    facts.backupRetention||globalThis.UladimI18n.text("literal_458e067f5afb",{},"Подтверждённый срок хранения резервных копий и порядок исключения удалённых данных при восстановлении будут указаны в окончательной политике. Мгновенное стирание всех резервных копий пока не заявляется.")]],
+   ['no-access',pageCopy("section.no-access.title",globalThis.UladimI18n.text("literal_dd0aed1ba2cf",{},"Если вход недоступен")),[
+    ["section.no-access.prose",[
+  sourceBlock("paragraph-1",{body:globalThis.UladimI18n.text("literal_88d815fae682",{},"Попробуйте восстановить доступ. Если это невозможно, обратитесь по вопросу удаления через доступный контакт поддержки. Для защиты ваших данных потребуется подтвердить принадлежность аккаунта. Пароль и одноразовый код сообщать поддержке не нужно.")})
+ ]]]]
+  ]);contactLink(app,globalThis.UladimI18n.text("literal_48f48c65f176",{},"Обратиться по вопросу удаления"));related([
+  sourceBlock("recovery",{label:globalThis.UladimI18n.text("literal_2a3c80d1c3b9",{},"Восстановление доступа"),href:"/faq#recovery"}),
+  sourceBlock("privacy",{label:globalThis.UladimI18n.text("literal_6d5c24967752",{},"Конфиденциальность"),href:"/privacy#retention"}),
+  sourceBlock("support",{label:globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),href:"/support"})
+ ]);openHash();
  }
  // The optional edge manifest is published only after the signed APK is
  // verified. Validate the whole immutable tuple before replacing any content.
- let downloadRequest=null;
+ let downloadVerification=null;
  function validatedAndroidRelease(value){
-  const keys=['source','version_code','version_name','bytes','apk_url','apk_sha256','certificate_sha256'];
+  const managed=value?.origin==='control';
+  const keys=[managed?'origin':'source','version_code','version_name','bytes','apk_url','apk_sha256','certificate_sha256'];
   if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==keys.length||!keys.every(key=>Object.hasOwn(value,key)))return null;
-  if(typeof value.source!=='string'||!/^[a-f0-9]{40}$/.test(value.source))return null;
+  if(!managed&&(typeof value.source!=='string'||!/^[a-f0-9]{40}$/.test(value.source)))return null;
   if(!Number.isSafeInteger(value.version_code)||value.version_code<312001||value.version_code>2100000000)return null;
-  if(!Number.isSafeInteger(value.bytes)||value.bytes<1||value.bytes>2147483647)return null;
+  if(!Number.isSafeInteger(value.bytes)||value.bytes<1||value.bytes>(managed?512*1024*1024:2147483647))return null;
   const name=value.version_name;
   if(name!==null&&(typeof name!=='string'||name.length>80||/[\u0000-\u001f\u007f]/.test(name)||name.trim()!==name))return null;
+  if(typeof value.apk_sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.apk_sha256)||value.certificate_sha256!==PUBLIC_RELEASE_FACTS.android.certificateSha256)return null;
+  const metadata={certificateSha256:value.certificate_sha256,version:name||null,build:value.version_code,bytes:value.bytes,sha256:value.apk_sha256};
+  if(managed){
+   const url='/download/android/sha256/'+value.apk_sha256+'/ULADIM.apk';
+   return value.apk_url===url?Object.freeze({...metadata,origin:'control',url,release:'/faq#installation'}):null;
+  }
   const release='https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/tag/uladim-native-'+value.source.slice(0,12);
   const url='https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/download/uladim-native-'+value.source.slice(0,12)+'/ULADIM.apk';
-  if(value.apk_url!==url||typeof value.apk_sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.apk_sha256)||value.certificate_sha256!==PUBLIC_RELEASE_FACTS.android.certificateSha256)return null;
-  return Object.freeze({source:value.source,certificateSha256:value.certificate_sha256,version:name||null,build:value.version_code,bytes:value.bytes,url,sha256:value.apk_sha256,release,minAndroid:PUBLIC_RELEASE_FACTS.android.minAndroid});
+  return value.apk_url===url?Object.freeze({...metadata,source:value.source,url,release,minAndroid:PUBLIC_RELEASE_FACTS.android.minAndroid}):null;
  }
  async function sameOriginAndroidRelease(android,signal){
-  const url='/download/android/'+android.source+'/ULADIM.apk';
+  const managed=android.origin==='control';
+  const fallback=managed?null:android;
+  const url=managed?android.url:'/download/android/'+android.source+'/ULADIM.apk';
   try{
    const response=await fetch(url,{method:'HEAD',credentials:'omit',cache:'no-store',redirect:'error',signal});
    const h=response.headers;
-   if(response.status!==200||(h.get('Content-Type')||'').split(';')[0].trim().toLowerCase()!=='application/vnd.android.package-archive'||h.get('Content-Length')!==String(android.bytes)||h.get('ETag')!=='"sha256-'+android.sha256+'"'||h.get('X-ULADIM-Source')!==android.source||h.get('X-ULADIM-Version-Code')!==String(android.build)||h.get('X-ULADIM-APK-SHA256')!==android.sha256||h.get('X-ULADIM-Certificate-SHA256')!==android.certificateSha256)return android;
+   if(response.status!==200||(h.get('Content-Type')||'').split(';')[0].trim().toLowerCase()!=='application/vnd.android.package-archive'||h.get('Content-Length')!==String(android.bytes)||h.get('ETag')!=='"sha256-'+android.sha256+'"'||h.get('X-ULADIM-Version-Code')!==String(android.build)||h.get('X-ULADIM-APK-SHA256')!==android.sha256||h.get('X-ULADIM-Certificate-SHA256')!==android.certificateSha256)return fallback;
+   if(managed){
+    if(h.get('X-ULADIM-Origin')!=='control'||h.has('X-ULADIM-Source')||h.get('Content-Disposition')!==`attachment; filename="ULADIM-${android.build}.apk"`)return null;
+   }else if(h.get('X-ULADIM-Source')!==android.source)return fallback;
    return Object.freeze({...android,url,sameOrigin:true});
-  }catch{return android;}
+  }catch{return fallback;}
  }
  function androidReleaseCard(android){
   const card=block(globalThis.UladimI18n.text("literal_f3233bf59e09",{},"Приложение для Android"),globalThis.UladimI18n.text("literal_4412e7cf1974",{},"Доступная сборка для прямой установки. Скачивайте APK только по официальной ссылке ниже."));card.id='android';card.classList.add('help-android-release');
-  card.dataset.source=android.source;card.dataset.versionCode=String(android.build);card.dataset.apkBytes=String(android.bytes);card.dataset.apkSha256=android.sha256;card.dataset.certificateSha256=android.certificateSha256;
+  if(android.source)card.dataset.source=android.source;
+  if(android.origin)card.dataset.origin=android.origin;
+  card.dataset.versionCode=String(android.build);card.dataset.apkBytes=String(android.bytes);card.dataset.apkSha256=android.sha256;card.dataset.certificateSha256=android.certificateSha256;
   const title=android.version?globalThis.UladimI18n.text("literal_83c21cec4c45",{},"Версия ")+android.version:'Android';
   const download=link(globalThis.UladimI18n.text("literal_df5db67a6789",{},"Скачать APK для Android"),android.url);download.dataset.releaseDownload='';if(android.sameOrigin){download.download='ULADIM.apk';download.dataset.delivery='same-origin';}
   const notes=inline(android.sameOrigin?globalThis.UladimI18n.text("literal_60c68404b7b0",{},"Как установить приложение?"):globalThis.UladimI18n.text("literal_0436a8c80cfb",{},"Сведения об этой сборке"),android.sameOrigin?'/faq':android.release);notes.dataset.releaseNotes='';
-  card.append(node('p',globalThis.UladimI18n.text("template_1639ae3b8823",{"arg0":(title),"arg1":(android.build),"arg2":((android.bytes/1000000).toLocaleString(authLanguage,{maximumFractionDigits:1})),"arg3":(android.minAndroid)},"{arg0} · сборка {arg1} · {arg2} МБ · {arg3} и новее"),'help-download-meta'),download,notes);
+  const size=(android.bytes/1000000).toLocaleString(authLanguage,{maximumFractionDigits:1});
+  const meta=android.origin==='control'?`${title} · ${android.build} · ${new Intl.NumberFormat(authLanguage,{style:'unit',unit:'megabyte',maximumFractionDigits:1}).format(android.bytes/1000000)}`:globalThis.UladimI18n.text("template_1639ae3b8823",{"arg0":title,"arg1":android.build,"arg2":size,"arg3":android.minAndroid},"{arg0} · сборка {arg1} · {arg2} МБ · {arg3} и новее");
+  card.append(node('p',meta,'help-download-meta'),download,notes);
   const hash=node('details',undefined,'help-question');hash.append(node('summary',globalThis.UladimI18n.text("literal_89bd120c1894",{},"Как проверить скачанный файл?")));const body=node('div',undefined,'help-answer');body.append(node('p',globalThis.UladimI18n.text("literal_2e92fb309bd3",{},"Для доступной сборки контрольная сумма SHA-256:")),node('code',android.sha256,'help-digest'),node('p',globalThis.UladimI18n.text("literal_66354fdb6aae",{},"Контрольная сумма помогает убедиться, что файл совпадает с опубликованным. Если значения отличаются, не устанавливайте файл и сообщите в поддержку.")));hash.append(body);card.append(hash);
   return card;
  }
- async function refreshAndroidRelease(card){
-  downloadRequest?.abort();
-  const controller=new AbortController();downloadRequest=controller;
-  const epoch=viewEpoch,timer=setTimeout(()=>controller.abort(),8000);
+ async function verifyAndroidRelease(controller){
+  const timer=setTimeout(()=>controller.abort(),8000);
   try{
    const response=await fetch('/download/release.json',{method:'GET',credentials:'omit',cache:'no-store',redirect:'error',signal:controller.signal});
    if(response.status!==200||(response.headers.get('Content-Type')||'').split(';')[0].trim().toLowerCase()!=='application/json'||Number(response.headers.get('Content-Length')||0)>4096)return;
    const text=await response.text();if(text.length>4096)return;
    const verified=validatedAndroidRelease(JSON.parse(text));if(!verified)return;
-   const android=await sameOriginAndroidRelease(verified,controller.signal);
-   if(!android||controller.signal.aborted||epoch!==viewEpoch||location.pathname!=='/download'||!card.isConnected||!app.contains(card))return;
-   // One subtree replacement publishes version, size, URLs and digest together.
-   card.replaceWith(androidReleaseCard(android));
+   return await sameOriginAndroidRelease(verified,controller.signal);
   }catch{/* Keep the complete verified fallback for unavailable or invalid metadata. */}
-  finally{clearTimeout(timer);if(downloadRequest===controller)downloadRequest=null;}
+  finally{clearTimeout(timer);}
+ }
+ async function refreshAndroidRelease(card){
+  if(downloadVerification?.epoch!==viewEpoch){
+   downloadVerification?.controller.abort();
+   const controller=new AbortController();
+   const result={controller,epoch:viewEpoch,android:null};
+   result.promise=verifyAndroidRelease(controller).then(android=>{result.android=controller.signal.aborted?null:android;return result.android;});
+   downloadVerification=result;
+  }
+  const verification=downloadVerification;
+  const android=await verification.promise;
+  if(!android||verification.controller.signal.aborted||verification.epoch!==viewEpoch||location.pathname!=='/download'||!card.isConnected||!app.contains(card))return;
+  // One subtree replacement publishes version, size, URLs and digest together.
+  card.replaceWith(androidReleaseCard(android));
  }
  function download(){
-  intro(globalThis.UladimI18n.text("literal_32f2e663143a",{},"ULADIM НА ВАШИХ УСТРОЙСТВАХ"),globalThis.UladimI18n.text("literal_ce402064b0c3",{},"Ближе к вашему дню"),globalThis.UladimI18n.text("literal_8ef098988ba7",{},"В браузере на телефоне и компьютере. Отдельное приложение — для Android."));
-  const grid=node('div',undefined,'help-download-grid'),web=block(globalThis.UladimI18n.text("literal_5a07ca917db2",{},"Открыть в браузере"),globalThis.UladimI18n.text("literal_57936cce6e13",{},"На iPhone, iPad, Android, Windows, macOS и Linux. Можно пользоваться во вкладке или добавить значок на домашний экран."));web.append(link(globalThis.UladimI18n.text("literal_17cc8a5ee310",{},"Открыть ULADIM"),'/app'),inline(globalThis.UladimI18n.text("literal_e1b2f32fe7ae",{},"Добавить на домашний экран"),'#installation'));grid.append(web);
-  const card=androidReleaseCard(PUBLIC_RELEASE_FACTS.android);grid.append(card);app.append(grid);
-  const update=block(globalThis.UladimI18n.text("literal_01761fcb1308",{},"Обновление без потери записей"),globalThis.UladimI18n.text("literal_64ad3309d540",{},"Установите новую официальную версию поверх уже установленной. Не удаляйте приложение и не очищайте его данные ради обновления. Если Android предлагает удалить прежнюю версию, остановитесь и обратитесь в поддержку."),globalThis.UladimI18n.text("literal_6012bd3aa9eb",{},"Перед обновлением важных локальных данных сделайте собственную резервную копию. Установка APK может потребовать временно разрешить установку из выбранного браузера или файлового приложения; после установки разрешение можно отключить."));app.append(update);
-  installGuide(app);related([[globalThis.UladimI18n.text("literal_32072150adca",{},"Помощь с установкой"),'/faq#installation'],[globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),'/support']]);openHash();
-  refreshAndroidRelease(card);
+  intro(pageCopy("kicker",globalThis.UladimI18n.text("literal_32f2e663143a",{},"ULADIM НА ВАШИХ УСТРОЙСТВАХ")),pageCopy("title",globalThis.UladimI18n.text("literal_ce402064b0c3",{},"Ближе к вашему дню")),pageCopy("lead",globalThis.UladimI18n.text("literal_8ef098988ba7",{},"В браузере на телефоне и компьютере. Отдельное приложение — для Android.")));
+  const grid=node('div',undefined,'help-download-grid'),web=block(pageCopy("browser.title",globalThis.UladimI18n.text("literal_5a07ca917db2",{},"Открыть в браузере")),pageCopy("browser.body",globalThis.UladimI18n.text("literal_57936cce6e13",{},"На iPhone, iPad, Android, Windows, macOS и Linux. Можно пользоваться во вкладке или добавить значок на домашний экран.")));web.append(link(globalThis.UladimI18n.text("literal_17cc8a5ee310",{},"Открыть ULADIM"),'/app'),inline(globalThis.UladimI18n.text("literal_e1b2f32fe7ae",{},"Добавить на домашний экран"),'#installation'));grid.append(web);
+  const accepted=downloadVerification?.epoch===viewEpoch?downloadVerification.android:null;
+  const card=androidReleaseCard(accepted||PUBLIC_RELEASE_FACTS.android);grid.append(card);app.append(grid);
+  editorialRegion(app,'guidance',[
+  sourceBlock("update",{title:globalThis.UladimI18n.text("literal_01761fcb1308",{},"Обновление без потери записей"),body:globalThis.UladimI18n.text("literal_64ad3309d540",{},"Установите новую официальную версию поверх уже установленной. Не удаляйте приложение и не очищайте его данные ради обновления. Если Android предлагает удалить прежнюю версию, остановитесь и обратитесь в поддержку."),note:globalThis.UladimI18n.text("literal_6012bd3aa9eb",{},"Перед обновлением важных локальных данных сделайте собственную резервную копию. Установка APK может потребовать временно разрешить установку из выбранного браузера или файлового приложения; после установки разрешение можно отключить.")})
+ ],({fields})=>block(fields.title,fields.body,fields.note));
+  installGuide(app);related([
+  sourceBlock("installation",{label:globalThis.UladimI18n.text("literal_32072150adca",{},"Помощь с установкой"),href:"/faq#installation"}),
+  sourceBlock("support",{label:globalThis.UladimI18n.text("literal_f0012086d52e",{},"Поддержка"),href:"/support"})
+ ]);openHash();
+  if(!accepted)refreshAndroidRelease(card);
  }
  return {configure,legal,faq,support,deletion,download};
 })();

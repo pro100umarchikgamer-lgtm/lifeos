@@ -1,5 +1,6 @@
 import {loadI18n} from './i18n-fixture.mjs';
-import {describe,it,expect,vi} from 'vitest';
+import assert from 'node:assert/strict';
+import {describe, it, mock} from 'node:test';
 import {JSDOM} from 'jsdom';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../backend/webassets/app/appearance-intensity.js',import.meta.url),'utf8');
@@ -14,32 +15,32 @@ function fixture(){
 describe('background intensity',()=>{
  it('defaults invalid preferences and bounds finite values',()=>{
   const f=fixture();
-  for(const value of [undefined,null,'invalid',NaN]){const state={appearanceIntensity:value};f.api.applyIntensity({state});expect(state.appearanceIntensity).toBe(50);}
+  for(const value of [undefined,null,'invalid',NaN]){const state={appearanceIntensity:value};f.api.applyIntensity({state});assert.equal(state.appearanceIntensity, 50);}
   for(const [value,expected] of [[-1,0],[0,0],[20.8,21],[100,100],[500,100]]){
    const state={appearanceIntensity:value};f.api.applyIntensity({state});
-   expect(state.appearanceIntensity).toBe(expected);
-   expect(f.window.document.body.dataset.appearanceIntensity).toBe(String(expected));
-   expect(f.window.document.body.style.getPropertyValue('--appearance-tint')).toBe((20+expected*.8)+'%');
+   assert.equal(state.appearanceIntensity, expected);
+   assert.equal(f.window.document.body.dataset.appearanceIntensity, String(expected));
+   assert.equal(f.window.document.body.style.getPropertyValue('--appearance-tint'), (20+expected*.8)+'%');
   }
  });
  it('inserts one labelled keyboard range after palette choices, saves input and preserves palette/theme',()=>{
-  const f=fixture(),state={lang:'ru',theme:'dark',palette:'rose'},save=vi.fn();
+  const f=fixture(),state={lang:'ru',theme:'dark',palette:'rose'},save=mock.fn();
   f.api.attachIntensity({...f,state,save});f.api.attachIntensity({...f,state,save});
-  expect(f.container.querySelectorAll('input[type=range]')).toHaveLength(1);
+  assert.equal(f.container.querySelectorAll('input[type=range]').length, 1);
   const section=f.container.querySelector('.appearance-intensity'),range=section.querySelector('input');
-  expect(section.previousElementSibling.className).toBe('appearance-palettes');
-  expect(section.querySelector('label').htmlFor).toBe(range.id);
-  expect([range.min,range.max,range.step,range.value]).toEqual(['0','100','1','50']);
+  assert.equal(section.previousElementSibling.className, 'appearance-palettes');
+  assert.equal(section.querySelector('label').htmlFor, range.id);
+  assert.deepEqual([range.min,range.max,range.step,range.value], ['0','100','1','50']);
   range.value='89';range.dispatchEvent(new f.window.Event('input',{bubbles:true}));
-  expect(state).toMatchObject({appearanceIntensity:89,palette:'rose',theme:'dark'});
-  expect(save).toHaveBeenCalledTimes(1);expect(section.querySelector('output').textContent).toBe('89%');
+  assert.partialDeepStrictEqual(state, {appearanceIntensity:89,palette:'rose',theme:'dark'});
+  assert.equal(save.mock.callCount(), 1);assert.equal(section.querySelector('output').textContent, '89%');
  });
  it('labels Russian, English and both Uzbek scripts without exposing untranslated keys',()=>{
   for(const lang of ['ru','en','uz-Latn','uz-Cyrl']){
    const f=fixture();f.api.attachIntensity({...f,state:{lang},save:()=>{}});
    const range=f.container.querySelector('input');
-   expect(range.labels[0].textContent.length).toBeGreaterThan(5);
-   expect(range.getAttribute('aria-valuetext')).toBe('50%');
+   assert.ok(range.labels[0].textContent.length > 5);
+   assert.equal(range.getAttribute('aria-valuetext'), '50%');
   }
  });
 });

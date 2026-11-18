@@ -10,9 +10,23 @@ const COPY = {
  newcomers:['Новые пользователи после регистрации','New users after registration'],newcomers_help:['Будущие подтверждённые аккаунты: приветствие при первом подходящем входе в приложение. ID выбирать не нужно. Одно приветствие на аккаунт.','Future verified accounts receive a welcome at their first eligible signed-in app open. No account IDs are needed. One welcome per account.'],future_users:['Будущие пользователи. Сейчас 0 получателей — это ожидаемо; новые аккаунты подключатся после публикации.','Future users. 0 recipients now is expected; new accounts become eligible after publication.'],no_expiry:['Без даты завершения','No end date'],no_expiry_help:['Для новых пользователей сообщение действует до остановки показа. Время начала можно запланировать.','For new users, the message stays active until stopped. You can schedule its start time.'],snapshot_help:['Для существующих аккаунтов получатели определяются при публикации. Будущие регистрации в эту аудиторию не входят.','For existing accounts, recipients are fixed at publication. Future registrations are excluded.']
 };
 
+Object.assign(COPY, {
+ role_content_editor: ['Редактор страниц', 'Content editor'],
+ role_content_editor_help: ['Редактирует страницы, проверяет черновики и восстанавливает версии.', 'Edits pages, previews drafts and restores revisions.'],
+ role_content_publisher: ['Публикатор страниц', 'Content publisher'],
+ role_content_publisher_help: ['Редактирует и публикует страницы сайта.', 'Edits and publishes website pages.'],
+ role_release_manager: ['Менеджер релизов Android', 'Android release manager'],
+ role_release_manager_help: ['Загружает подписанные сборки, проверяет и публикует их.', 'Uploads, validates and publishes signed Android builds.'],
+ perm_pages_edit: ['Редактирование страниц', 'Edit pages'],
+ perm_pages_publish: ['Публикация страниц', 'Publish pages'],
+ perm_android_read: ['Просмотр релизов Android', 'View Android releases'],
+ perm_android_upload: ['Загрузка и проверка APK', 'Upload and validate APKs'],
+ perm_android_publish: ['Публикация APK', 'Publish APKs'],
+});
+
 export function createControlWorkbench(ctx) {
- const {app,api,el,add,heading,staffUser,supportThread,getLanguage}=ctx;
- const t=(key,values={})=>globalThis.UladimI18n.text('control_'+key,values,COPY[key]?.[getLanguage()==='ru'?0:1]||key).replace(/\{(\w+)\}/g,(match,name)=>Object.hasOwn(values,name)?values[name]:match);
+ const {app,api,el,add,heading,staffUser,supportThread,getLanguage,getPublishingCopy}=ctx;
+ const t=(key,values={})=>getPublishingCopy?.()?.roles?.[key]||globalThis.UladimI18n.text('control_'+key,values,COPY[key]?.[getLanguage()==='ru'?0:1]||key).replace(/\{(\w+)\}/g,(match,name)=>Object.hasOwn(values,name)?values[name]:match);
  const date=value=>value?new Date(value*1000).toLocaleString(getLanguage()):t('unknown');
  const perm=key=>t('perm_'+key.replaceAll('.','_'));
  const role=key=>t('role_'+key);

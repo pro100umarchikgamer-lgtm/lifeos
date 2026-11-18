@@ -1,4 +1,5 @@
-import {describe,it,expect} from 'vitest';
+import assert from 'node:assert/strict';
+import {describe, it} from 'node:test';
 import {JSDOM} from 'jsdom';
 import {readFileSync} from 'node:fs';
 import {loadI18n} from './i18n-fixture.mjs';
@@ -16,13 +17,18 @@ function fixture({wrong=false,denied=false,pending=false}={}){
 }
 describe('original-owner assistance cases',()=>{
  it('confirms the original account separately from per-record recovery consent',async()=>{
-  const f=fixture();await settle();const confirm=[...f.host.querySelectorAll('button')].find(node=>node.textContent==='Confirm my original account');expect(confirm).toBeTruthy();confirm.click();await settle();
-  expect(f.calls.filter(call=>call.body)).toEqual([{path:'recovery-cases/confirm',body:{id:cid,revision:1}}]);expect(f.host.textContent).toContain('Original account confirmed');expect(f.host.textContent).toContain('separate recovery request');expect(f.host.textContent).not.toContain('must-not-render');
+  const f=fixture();await settle();const confirm=[...f.host.querySelectorAll('button')].find(node=>node.textContent==='Confirm my original account');assert.ok(confirm);confirm.click();await settle();
+  assert.deepEqual(structuredClone(f.calls.filter(call=>call.body)), [
+   {path:'recovery-cases/confirm',body:{id:cid,revision:1}},
+  ]);
+  assert.ok(f.host.textContent.includes('Original account confirmed'));
+  assert.ok(f.host.textContent.includes('separate recovery request'));
+  assert.equal(f.host.textContent.includes('must-not-render'), false);
  });
  it('treats a wrong account or a 404 as unavailable without exposing target identity',async()=>{
-  for(const options of [{wrong:true},{denied:true}]){const f=fixture(options);await settle();expect(f.host.textContent).toContain('unavailable for this account');expect(f.host.textContent).not.toContain('owner@example.test');expect(f.host.textContent).not.toContain('Confirm my original account');expect(f.calls.some(call=>call.body)).toBe(false);}
+  for(const options of [{wrong:true},{denied:true}]){const f=fixture(options);await settle();assert.ok(f.host.textContent.includes('unavailable for this account'));assert.equal(f.host.textContent.includes('owner@example.test'), false);assert.equal(f.host.textContent.includes('Confirm my original account'), false);assert.equal(f.calls.some(call=>call.body), false);}
  });
  it('locks confirmation while pending and discards a response after leaving the account',async()=>{
-  const f=fixture({pending:true});await settle();const confirm=[...f.host.querySelectorAll('button')].find(node=>node.textContent==='Confirm my original account');expect(confirm).toBeTruthy();confirm.click();confirm.click();await settle();expect(f.calls.filter(call=>call.path==='recovery-cases/confirm')).toHaveLength(1);expect(f.host.querySelector('.recovery-case-confirm')?.disabled).toBe(true);f.api.clear();f.host.replaceChildren();f.release();await settle();expect(f.host.textContent).toBe('');
+  const f=fixture({pending:true});await settle();const confirm=[...f.host.querySelectorAll('button')].find(node=>node.textContent==='Confirm my original account');assert.ok(confirm);confirm.click();confirm.click();await settle();assert.equal(f.calls.filter(call=>call.path==='recovery-cases/confirm').length, 1);assert.equal(f.host.querySelector('.recovery-case-confirm')?.disabled, true);f.api.clear();f.host.replaceChildren();f.release();await settle();assert.equal(f.host.textContent, '');
  });
 });

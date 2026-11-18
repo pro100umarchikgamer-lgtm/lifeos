@@ -1,4 +1,5 @@
 """Serve one locally accepted APK. No network, user-selected files or redirects."""
+from collections import OrderedDict
 import hashlib
 import json
 import os
@@ -50,8 +51,9 @@ class FileBody:
 class NativeDownload:
     def __init__(self, root, *, trusted_uid=0):
         self.root, self.trusted_uid = root, trusted_uid
-        self.lock = threading.Lock()
-        self.verified_key = None
+        self.lock = threading.Condition()
+        self.verified = OrderedDict()
+        self.verifying = set()
 
     def _directory(self):
         if not safe_root(self.root): raise ValueError('Download disabled')
@@ -81,7 +83,7 @@ class NativeDownload:
         except BaseException:
             os.close(fd); raise
 
-    def _accepted(self, source):
+    def _accepted(self, source=None):
         directory = self._directory()
         apk = None
         try:
@@ -98,35 +100,66 @@ class NativeDownload:
                     value[key] = item
                 return value
             value = json.loads(raw, object_pairs_hook=unique)
-            if (not isinstance(value, dict) or set(value) != FIELDS or value['source'] != source
-                    or type(value['version_code']) is not int or not 312001 < value['version_code'] <= 2100000000
+            if (not isinstance(value, dict) or set(value) != FIELDS or not isinstance(value['source'], str)
+                    or not re.fullmatch('[a-f0-9]{40}', value['source']) or source is not None and value['source'] != source
+                    or type(value['version_code']) is not int or not 312001 <= value['version_code'] <= 2100000000
                     or type(value['bytes']) is not int or not 0 < value['bytes'] <= MAX_BYTES
                     or not isinstance(value['apk_sha256'], str) or not re.fullmatch('[a-f0-9]{64}', value['apk_sha256'])
                     or value['certificate_sha256'] != CERTIFICATE
-                    or value['apk_url'] != 'https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/download/uladim-native-' + source[:12] + '/ULADIM.apk'
+                    or value['apk_url'] != 'https://github.com/pro100umarchikgamer-lgtm/lifeos/releases/download/uladim-native-' + value['source'][:12] + '/ULADIM.apk'
                     or value['version_name'] is not None and (not isinstance(value['version_name'], str) or not re.fullmatch(r'[A-Za-z0-9._+\-]{1,64}', value['version_name']))):
                 raise ValueError('Unaccepted download metadata')
             apk, info = self._file(directory, 'ULADIM.apk', MAX_BYTES)
-            identity = fingerprint(info)
-            if info.st_size != value['bytes'] or os.pread(apk, 4, 0) != b'PK\x03\x04':
-                raise ValueError('Download size/type mismatch')
-            key = identity + (value['apk_sha256'],)
-            with self.lock:
-                if self.verified_key != key:
-                    digest, offset = hashlib.sha256(), 0
-                    while offset < info.st_size:
-                        chunk = os.pread(apk, min(CHUNK, info.st_size-offset), offset)
-                        if not chunk: raise ValueError('Incomplete download file')
-                        digest.update(chunk); offset += len(chunk)
-                    if digest.hexdigest() != value['apk_sha256'] or fingerprint(os.fstat(apk)) != identity:
-                        raise ValueError('Download digest mismatch')
-                    self.verified_key = key
-            if fingerprint(os.fstat(apk)) != identity: raise ValueError('Download changed after verification')
+            identity = self.verify_file(apk, info, value)
             result, apk = (apk, identity, value), None
             return result
         finally:
             if apk is not None: os.close(apk)
             os.close(directory)
+
+    def manifest(self):
+        try:
+            fd, _, value = self._accepted()
+        except (OSError, ValueError, TypeError, KeyError):
+            return None
+        os.close(fd)
+        return value
+
+    def verify_file(self, apk, info, value, *, rehash=False):
+        identity = fingerprint(info)
+        if info.st_size != value['bytes'] or os.pread(apk, 4, 0) != b'PK\x03\x04':
+            raise ValueError('Download size/type mismatch')
+        key = identity + (value['apk_sha256'],)
+        with self.lock:
+            while key in self.verifying:
+                self.lock.wait()
+            needs_hash = rehash or key not in self.verified
+            if needs_hash:
+                self.verified.pop(key, None)
+                self.verifying.add(key)
+            else:
+                self.verified.move_to_end(key)
+        if needs_hash:
+            valid = False
+            try:
+                digest, offset = hashlib.sha256(), 0
+                while offset < info.st_size:
+                    chunk = os.pread(apk, min(CHUNK, info.st_size-offset), offset)
+                    if not chunk: raise ValueError('Incomplete download file')
+                    digest.update(chunk); offset += len(chunk)
+                if digest.hexdigest() != value['apk_sha256'] or fingerprint(os.fstat(apk)) != identity:
+                    raise ValueError('Download digest mismatch')
+                valid = True
+            finally:
+                with self.lock:
+                    if valid:
+                        self.verified[key] = None
+                        if len(self.verified) > 32:
+                            self.verified.popitem(last=False)
+                    self.verifying.remove(key)
+                    self.lock.notify_all()
+        if fingerprint(os.fstat(apk)) != identity: raise ValueError('Download changed after verification')
+        return identity
 
     @staticmethod
     def _empty(status, extra=()):
@@ -139,14 +172,22 @@ class NativeDownload:
         if method not in ('GET', 'HEAD'): return self._empty(405, [('Allow', 'GET, HEAD')])
         try: fd, identity, value = self._accepted(match[1])
         except (OSError, ValueError, TypeError, KeyError): return self._empty(404)
+        return self.file_response(env, fd, identity, value)
+
+    def file_response(self, env, fd, identity, value):
+        method = env.get('REQUEST_METHOD', '')
         size = value['bytes']
         etag = '"sha256-' + value['apk_sha256'] + '"'
         headers = [('Content-Type', 'application/vnd.android.package-archive'),
                    ('Content-Disposition', f'attachment; filename="ULADIM-{value["version_code"]}.apk"'),
                    ('Cache-Control', 'no-store'), ('X-Content-Type-Options', 'nosniff'),
-                   ('Accept-Ranges', 'bytes'), ('ETag', etag), ('X-ULADIM-Source', value['source']),
+                   ('Accept-Ranges', 'bytes'), ('ETag', etag),
                    ('X-ULADIM-Version-Code', str(value['version_code'])),
-                   ('X-ULADIM-APK-SHA256', value['apk_sha256']), ('X-ULADIM-Certificate-SHA256', CERTIFICATE)]
+                   ('X-ULADIM-APK-SHA256', value['apk_sha256']), ('X-ULADIM-Certificate-SHA256', value['certificate_sha256'])]
+        if 'source' in value:
+            headers.append(('X-ULADIM-Source', value['source']))
+        else:
+            headers.append(('X-ULADIM-Origin', 'control'))
         start, end, status = 0, size-1, 200
         spec = env.get('HTTP_RANGE', '') if method == 'GET' else ''
         if spec and env.get('HTTP_IF_RANGE', etag) == etag:

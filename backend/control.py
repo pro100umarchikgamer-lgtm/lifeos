@@ -13,7 +13,9 @@ import uuid
 from .service import Failure, canonical, identifier, require, text, token_hash
 from . import entitlements
 
-ROLE_RANK = {'owner': 100, 'admin': 80, 'billing_manager': 40, 'moderator': 30, 'support': 20, 'auditor': 10}
+ROLE_RANK = {'owner': 100, 'admin': 80, 'release_manager': 50,
+             'content_publisher': 45, 'billing_manager': 40, 'moderator': 30,
+             'support': 20, 'content_editor': 15, 'auditor': 10}
 ROLE_PERMISSIONS = {
     'owner': {'announcements.manage', 'records.recover', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'plans.catalog', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
     'admin': {'announcements.manage', 'records.recover', 'users.recover', 'applications.manage', 'dashboard.read', 'users.read', 'users.moderate', 'staff.manage', 'plans.grant', 'support.read', 'support.reply', 'audit.read', 'flags.manage'},
@@ -21,7 +23,11 @@ ROLE_PERMISSIONS = {
     'moderator': {'users.read', 'users.moderate', 'support.read', 'support.reply'},
     'support': {'records.recover', 'users.recover', 'users.read', 'support.read', 'support.reply'},
     'auditor': {'dashboard.read', 'audit.read'},
+    'content_editor': {'pages.edit'},
+    'content_publisher': {'pages.edit', 'pages.publish'},
+    'release_manager': {'android.read', 'android.upload', 'android.publish'},
 }
+ROLE_PERMISSIONS['owner'].update({'pages.edit', 'pages.publish', 'android.read', 'android.upload', 'android.publish'})
 SAFE_FLAGS = {'compact_onboarding', 'chart_styles', 'support_entry'}
 ROLE_PERMISSIONS['owner'].add('referrals.read')
 ROLE_PERMISSIONS['admin'].add('referrals.read')

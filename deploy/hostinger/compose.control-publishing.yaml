@@ -1,0 +1,12 @@
+# Merge after the reviewed runtime overrides that define the legacy APK mount.
+services:
+  api:
+    environment:
+      NATIVE_PUBLISH_DIR: /run/uladim/android-publications
+    volumes:
+      - type: bind
+        source: ${ULADIM_ANDROID_PUBLICATIONS_DIR:?Set the private APK publications host directory}
+        target: /run/uladim/android-publications
+        read_only: false
+        bind:
+          create_host_path: false
